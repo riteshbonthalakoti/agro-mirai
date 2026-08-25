@@ -1,0 +1,10 @@
+# Normalize line endings to LF across OS/editor combinations.
+* text=auto eol=lf
+
+# Binary reference material — never diff/merge as text.
+*.pdf binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.tif binary
+*.tiff binary
