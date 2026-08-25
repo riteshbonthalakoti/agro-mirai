@@ -58,11 +58,18 @@ to build the phase table in `PROGRESS.md`.
 
 ## Current phase
 
-**Module 03 complete — Module 04 next.** The three data-acquisition
-adapters (weather via Open-Meteo, soil via SoilGrids, NDVI via Earth
-Engine with local-cache fallback) live in `src/agro_mirai/acquisition/`,
-behind a shared `Adapter` interface, and are the first application code
-in the repo. Module 04 (Storage Layer: SQLite/Supabase, repository
-interface) builds against `specs/core/repository-interface.md` and
-consumes these adapters' output. See `PROGRESS.md` for the full
-15-module plan and status.
+**Module 04 blocked on a human step — otherwise complete.** The storage
+layer (`src/agro_mirai/persistence/`) implements
+`specs/core/repository-interface.md` in full: domain dataclasses,
+generated SQLite+Postgres DDL (`tools/gen_migrations.py`,
+`migrations/`), `SQLiteDataStore` (tested, green), and
+`SupabaseDataStore` (code complete against the same migrations, not yet
+exercised against a live project). The parity suite
+(`tests/persistence/contract/`) runs identical assertions against both
+backends — SQLite always, Supabase skipping cleanly without credentials
+— and `tools/seed_fixture.py` round-trips the golden fixture on SQLite.
+Blocked on: no Supabase project exists yet for AGRO MIRAI (see
+`modules/04-storage/STATUS` for the exact `supabase projects create` /
+`link` / `db push` commands a human needs to run). Module 05 (Processing
+& Feature Engineering) can start once that's unblocked. See
+`PROGRESS.md` for the full 15-module plan and status.
