@@ -58,18 +58,18 @@ to build the phase table in `PROGRESS.md`.
 
 ## Current phase
 
-**Module 04 blocked on a human step — otherwise complete.** The storage
-layer (`src/agro_mirai/persistence/`) implements
+**Module 04 complete. Module 05 next.** The storage layer
+(`src/agro_mirai/persistence/`) implements
 `specs/core/repository-interface.md` in full: domain dataclasses,
 generated SQLite+Postgres DDL (`tools/gen_migrations.py`,
-`migrations/`), `SQLiteDataStore` (tested, green), and
-`SupabaseDataStore` (code complete against the same migrations, not yet
-exercised against a live project). The parity suite
-(`tests/persistence/contract/`) runs identical assertions against both
-backends — SQLite always, Supabase skipping cleanly without credentials
-— and `tools/seed_fixture.py` round-trips the golden fixture on SQLite.
-Blocked on: no Supabase project exists yet for AGRO MIRAI (see
-`modules/04-storage/STATUS` for the exact `supabase projects create` /
-`link` / `db push` commands a human needs to run). Module 05 (Processing
-& Feature Engineering) can start once that's unblocked. See
-`PROGRESS.md` for the full 15-module plan and status.
+`migrations/`), `SQLiteDataStore`, and `SupabaseDataStore` — both
+tested against a live Supabase project (ref `yzsemdauwafxssaknlzr`,
+org "ritesh-1918's Project", region ap-south-1). The parity suite
+(`tests/persistence/contract/`) runs 36 identical assertions across
+both backends (18 SQLite + 18 Supabase), and `tools/seed_fixture.py`
+round-trips the golden fixture field-for-field on both. Note: the
+Supabase free tier auto-pauses after 7 days idle — see
+`docs/TOOLING.md` for the resume command before assuming a Supabase
+test failure is a real regression. Module 05 (Processing & Feature
+Engineering) can start now. See `PROGRESS.md` for the full 15-module
+plan and status.
