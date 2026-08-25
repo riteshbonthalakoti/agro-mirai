@@ -8,3 +8,5 @@ One entry per architectural decision record.
 - `0004-gee-timeout-and-fallback.md` — Earth Engine call timeout, cloud
   cover ceiling, lookback window, and buffer radius for the NDVI
   live/cache fallback.
+- `0005-migration-generation.md` — SQLite/Postgres migrations are
+  generated from `schema.yaml`, not hand-written.

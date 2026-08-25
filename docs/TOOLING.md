@@ -60,6 +60,23 @@ Verified on: 2026-08-25, Windows 11.
     real Sentinel-2 NDVI value into
     `specs/domains/fixtures/ndvi_cache.json`.
 
+## Supabase (Module 04)
+
+- No AGRO MIRAI project exists yet under any org visible to
+  `supabase projects list` (5 unrelated projects found, all for other
+  work). Creating one is a human decision (which org, db password, size)
+  — not done automatically. See `modules/04-storage/STATUS` for the
+  exact `supabase projects create` / `supabase link` / `supabase db
+  push` sequence to unblock `SupabaseDataStore`.
+- Supabase's free tier auto-pauses a project after **7 days with no
+  API/DB activity**. A paused project rejects connections until resumed.
+  Resume via CLI with `supabase projects restore <project-ref>`, or from
+  the dashboard: Project → banner "Project is paused" → **Restore
+  project**. The parity test suite's Supabase branch calls
+  `SupabaseDataStore.ping()` first and skips cleanly (with a clear
+  reason, not a failure) if the project is unreachable — restore it and
+  re-run for real coverage instead of a skip.
+
 ## Test reporting
 
 Test runs use `pytest` with the `pytest-json-report` plugin
