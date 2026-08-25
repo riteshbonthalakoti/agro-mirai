@@ -46,3 +46,4 @@ Thumbs.db
 # Test reports
 .report.json
 htmlcov/
+.temp/
