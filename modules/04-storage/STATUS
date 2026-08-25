@@ -1,39 +1,19 @@
-blocked
+done
 
-Everything that does not require creating a new cloud resource is done:
-domain dataclasses, DataStore protocol, generated SQLite+Postgres
-migrations, SQLiteDataStore (full interface, tests passing),
-SupabaseDataStore (full interface, code complete against the same
-migrations, untested against a live project), parity test suite
-(SQLite green, Supabase skips cleanly without creds), seed_fixture.py
-(round-trips the golden fixture on SQLite).
+Full DataStore repository interface implemented and verified against
+both backends: domain dataclasses, DataStore protocol, generated
+SQLite+Postgres migrations, SQLiteDataStore, SupabaseDataStore, a
+parametrized parity test suite, and seed_fixture.py.
 
-Blocked on: no Supabase project exists yet for AGRO MIRAI. Module 01's
-TOOLING.md records `supabase` CLI as logged in, but `supabase projects
-list` shows only 5 unrelated projects (SHEM, AxiomAI, ai-helpdesk,
-mediqueue-v2, TEAM CFC) under 3 different orgs — none for this capstone.
-Creating a new project is a human decision (which org, db password,
-region/size) that CLAUDE.md's "nothing hand-faked" rule says to stop
-and hand back rather than guess.
+Supabase project created (org "ritesh-1918's Project", ref
+yzsemdauwafxssaknlzr, region ap-south-1). Migration applied via
+`supabase db push`. Parity suite: 36/36 passing (18 SQLite + 18
+Supabase, both live). seed_fixture.py round-trips all 16 golden
+fixture records across 10 collections field-for-field on both
+backends.
 
-Exact unblock sequence (run by a human, from repo root):
+Local .env holds the real SUPABASE_URL/SUPABASE_KEY (service_role key,
+needed to bypass RLS for backend writes) — gitignored, never committed.
 
-    supabase projects create agro-mirai \
-      --org-id <one of: mtwgtbyqbvobvbtursch | gqtciuqltrymgnwwwrnc | sbazxhzdekdpcsgnqweh> \
-      --region ap-south-1 \
-      --db-password <choose a strong password, save it somewhere safe>
-
-    # note the returned project ref, then:
-    supabase link --project-ref <project-ref>
-    supabase db push --file migrations/postgres/001_init.sql
-
-    # then set real values (never commit them) in .env:
-    #   SUPABASE_URL=https://<project-ref>.supabase.co
-    #   SUPABASE_KEY=<anon or service-role key from the dashboard's API settings>
-
-Once that's done:
-
-    pytest tests/persistence/ -q          # Supabase branch should now run, not skip
-    python tools/seed_fixture.py --backend supabase
-
-...and flip this STATUS to `done`.
+Free-tier project auto-pauses after 7 days idle — see docs/TOOLING.md
+for the resume command before assuming Supabase tests are broken.
