@@ -1,0 +1,73 @@
+{
+  "_fixture_note": "Structure is a real SoilGrids v2.0 properties/query response (property/depth/unit_measure shape and d_factor values captured live against rest.isric.org on 2026-08-25). The ISRIC service was returning null 'mean' values for every property/location during that capture (a live service outage, see docs/architecture.md), so the numeric 'mean' values below are representative — plausible for the golden-fixture farm's red-soil profile — not a live pull. The live-hitting test (test_soilgrids_live) exercises the real endpoint separately and is skipped when it/network is unavailable.",
+  "type": "Feature",
+  "geometry": { "type": "Point", "coordinates": [76.9214, 15.1394] },
+  "properties": {
+    "layers": [
+      {
+        "name": "phh2o",
+        "unit_measure": {
+          "d_factor": 10,
+          "mapped_units": "pH*10",
+          "target_units": "-",
+          "uncertainty_unit": ""
+        },
+        "depths": [
+          {
+            "range": { "top_depth": 0, "bottom_depth": 5, "unit_depth": "cm" },
+            "label": "0-5cm",
+            "values": { "mean": 68 }
+          },
+          {
+            "range": { "top_depth": 5, "bottom_depth": 15, "unit_depth": "cm" },
+            "label": "5-15cm",
+            "values": { "mean": 66 }
+          }
+        ]
+      },
+      {
+        "name": "nitrogen",
+        "unit_measure": {
+          "d_factor": 100,
+          "mapped_units": "cg/kg",
+          "target_units": "g/kg",
+          "uncertainty_unit": ""
+        },
+        "depths": [
+          {
+            "range": { "top_depth": 0, "bottom_depth": 5, "unit_depth": "cm" },
+            "label": "0-5cm",
+            "values": { "mean": 450 }
+          },
+          {
+            "range": { "top_depth": 5, "bottom_depth": 15, "unit_depth": "cm" },
+            "label": "5-15cm",
+            "values": { "mean": 410 }
+          }
+        ]
+      },
+      {
+        "name": "soc",
+        "unit_measure": {
+          "d_factor": 10,
+          "mapped_units": "dg/kg",
+          "target_units": "g/kg",
+          "uncertainty_unit": ""
+        },
+        "depths": [
+          {
+            "range": { "top_depth": 0, "bottom_depth": 5, "unit_depth": "cm" },
+            "label": "0-5cm",
+            "values": { "mean": 62 }
+          },
+          {
+            "range": { "top_depth": 5, "bottom_depth": 15, "unit_depth": "cm" },
+            "label": "5-15cm",
+            "values": { "mean": 55 }
+          }
+        ]
+      }
+    ]
+  },
+  "query_time_s": 3.3
+}
