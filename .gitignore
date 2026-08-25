@@ -20,6 +20,7 @@ build/
 !.env.example
 *.pem
 *credentials*.json
+*service-account*.json
 kaggle.json
 
 # Model artifacts / data
