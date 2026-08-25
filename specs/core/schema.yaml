@@ -1,0 +1,166 @@
+# AGRO MIRAI — Core Schema
+#
+# The domain entities every module builds against. Field naming, units,
+# and timestamp conventions follow docs/conventions.md. Enum values must
+# be listed in specs/core/enums.md.
+#
+# Additive-only: never rename or remove a field without bumping the
+# schema version and writing an ADR.
+
+version: v1
+
+entities:
+
+  Farmer:
+    description: |
+      A user of the system. One-to-one with an authenticated account
+      (see docs/conventions.md §4). Owns zero or more Fields.
+    fields:
+      id: { type: uuid, required: true }
+      created_at: { type: timestamp, required: true }
+      updated_at: { type: timestamp, required: true }
+      name: { type: string, required: true }
+      preferred_language: { type: string, enum: language_code, required: true }
+      phone: { type: string, required: false, note: "E.164 format, optional" }
+      district: { type: string, required: false }
+      state: { type: string, required: false }
+
+  Field:
+    description: |
+      A cultivated plot belonging to a Farmer. Geometry is modelled as a
+      centroid + area for v1; polygon geometry is a v2 concern.
+    fields:
+      id: { type: uuid, required: true }
+      farmer_id: { type: uuid, required: true, ref: Farmer.id }
+      created_at: { type: timestamp, required: true }
+      updated_at: { type: timestamp, required: true }
+      name: { type: string, required: true }
+      latitude: { type: float, required: true, range: [-90.0, 90.0] }
+      longitude: { type: float, required: true, range: [-180.0, 180.0] }
+      area_ha: { type: float, required: true, min: 0.0 }
+      elevation_m: { type: float, required: false }
+      soil_type: { type: string, enum: soil_type, required: false }
+      current_crop: { type: string, enum: crop_type, required: false }
+      sown_on: { type: date, required: false }
+
+  WeatherReading:
+    description: |
+      A weather observation or forecast anchored to a Field. Sourced from
+      Open-Meteo or an equivalent weather API in Module 03.
+    fields:
+      id: { type: uuid, required: true }
+      field_id: { type: uuid, required: true, ref: Field.id }
+      observed_at: { type: timestamp, required: true }
+      source: { type: string, enum: weather_source, required: true }
+      temp_c: { type: float, required: true }
+      temp_min_c: { type: float, required: false }
+      temp_max_c: { type: float, required: false }
+      humidity_pct: { type: float, required: false, range: [0.0, 100.0] }
+      rainfall_mm: { type: float, required: false, min: 0.0 }
+      wind_mps: { type: float, required: false, min: 0.0 }
+      is_forecast: { type: bool, required: true }
+
+  SoilSample:
+    description: |
+      A soil chemistry sample for a Field. Users may enter values from a
+      lab report; Module 05 may synthesise defaults from soil_type.
+    fields:
+      id: { type: uuid, required: true }
+      field_id: { type: uuid, required: true, ref: Field.id }
+      observed_at: { type: timestamp, required: true }
+      source: { type: string, enum: soil_source, required: true }
+      ph: { type: float, required: false, range: [0.0, 14.0] }
+      nitrogen_mg_per_kg: { type: float, required: false, min: 0.0 }
+      phosphorus_mg_per_kg: { type: float, required: false, min: 0.0 }
+      potassium_mg_per_kg: { type: float, required: false, min: 0.0 }
+      organic_carbon_pct: { type: float, required: false, range: [0.0, 100.0] }
+      moisture_pct: { type: float, required: false, range: [0.0, 100.0] }
+
+  NDVIReading:
+    description: |
+      A vegetation index observation for a Field. Live source is Google
+      Earth Engine (Sentinel-2); cache fallback is the local NDVI cache
+      (see CLAUDE.md hard rule #4).
+    fields:
+      id: { type: uuid, required: true }
+      field_id: { type: uuid, required: true, ref: Field.id }
+      observed_at: { type: timestamp, required: true }
+      source: { type: string, enum: ndvi_source, required: true }
+      ndvi: { type: float, required: true, range: [-1.0, 1.0] }
+      cloud_cover_pct: { type: float, required: false, range: [0.0, 100.0] }
+      satellite: { type: string, required: false, note: "e.g. sentinel-2" }
+
+  CropRecommendation:
+    description: |
+      Model output recommending a crop for a Field given current weather,
+      soil, and NDVI context. Produced by Module 06.
+    fields:
+      id: { type: uuid, required: true }
+      field_id: { type: uuid, required: true, ref: Field.id }
+      created_at: { type: timestamp, required: true }
+      recommended_crop: { type: string, enum: crop_type, required: true }
+      confidence: { type: float, required: true, range: [0.0, 1.0] }
+      alternatives:
+        type: list
+        item: { type: string, enum: crop_type }
+        required: false
+      rationale: { type: string, required: false }
+      season: { type: string, enum: season, required: false }
+
+  IrrigationAdvice:
+    description: |
+      Recommended irrigation action for a Field, produced by Module 07.
+    fields:
+      id: { type: uuid, required: true }
+      field_id: { type: uuid, required: true, ref: Field.id }
+      created_at: { type: timestamp, required: true }
+      recommended_depth_mm: { type: float, required: true, min: 0.0 }
+      window_start_at: { type: timestamp, required: true }
+      window_end_at: { type: timestamp, required: true }
+      urgency: { type: string, enum: risk_level, required: true }
+      rationale: { type: string, required: false }
+
+  DiseaseRiskAlert:
+    description: |
+      A disease-risk alert for a Field, produced by Module 08.
+    fields:
+      id: { type: uuid, required: true }
+      field_id: { type: uuid, required: true, ref: Field.id }
+      created_at: { type: timestamp, required: true }
+      disease: { type: string, required: true, note: "free-text for v1" }
+      risk_level: { type: string, enum: risk_level, required: true }
+      confidence: { type: float, required: true, range: [0.0, 1.0] }
+      window_start_at: { type: timestamp, required: false }
+      window_end_at: { type: timestamp, required: false }
+      recommended_action: { type: string, required: false }
+
+  Advisory:
+    description: |
+      A localised, farmer-facing advisory bundling one or more upstream
+      outputs (crop, irrigation, disease). Produced by Module 09 or 12.
+    fields:
+      id: { type: uuid, required: true }
+      field_id: { type: uuid, required: true, ref: Field.id }
+      created_at: { type: timestamp, required: true }
+      language: { type: string, enum: language_code, required: true }
+      title: { type: string, required: true }
+      body: { type: string, required: true }
+      severity: { type: string, enum: risk_level, required: true }
+      source_refs:
+        type: list
+        item: { type: uuid }
+        required: false
+        note: "IDs of upstream CropRecommendation/IrrigationAdvice/DiseaseRiskAlert"
+
+  FeedbackEntry:
+    description: |
+      Farmer feedback on an Advisory. Feeds the model-improvement loop in
+      Module 13.
+    fields:
+      id: { type: uuid, required: true }
+      farmer_id: { type: uuid, required: true, ref: Farmer.id }
+      advisory_id: { type: uuid, required: true, ref: Advisory.id }
+      created_at: { type: timestamp, required: true }
+      rating: { type: int, required: true, range: [1, 5] }
+      helpful: { type: bool, required: true }
+      comment: { type: string, required: false }
