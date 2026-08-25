@@ -1,0 +1,47 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Node
+node_modules/
+npm-debug.log*
+dist/
+build/
+
+# Env / secrets
+.env
+.env.*
+!.env.example
+*.pem
+*credentials*.json
+kaggle.json
+
+# Model artifacts / data
+*.h5
+*.pt
+*.pkl
+*.onnx
+data/raw/
+data/cache/
+*.tif
+*.tiff
+
+# DB
+*.sqlite3
+*.db
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Test reports
+.report.json
+htmlcov/
