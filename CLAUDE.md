@@ -37,8 +37,10 @@ agro-mirai/
     TOOLING.md             # verified CLI versions + auth status
     architecture.md        # system architecture (from Module 02)
   specs/
-    core/                  # cross-cutting contracts (from Module 02)
-    domains/               # per-domain contracts
+    core/                  # cross-cutting contracts (from Module 02):
+                            #   schema.yaml, enums.md, openapi.yaml,
+                            #   repository-interface.md
+    domains/               # per-domain contracts + golden fixtures
   decisions/
     0001-index.md           # ADR index
     NNNN-<slug>.md           # individual ADRs
@@ -56,5 +58,9 @@ to build the phase table in `PROGRESS.md`.
 
 ## Current phase
 
-**Module 01 — Foundation, Tooling & Doctrine.** Scaffold only; no farming
-logic exists yet. See `PROGRESS.md` for the full 15-module plan and status.
+**Module 02 complete — Module 03 next.** Data contracts and conventions
+(`docs/conventions.md`, `specs/core/`, the golden fixture, and
+`tools/check_specs.py`) are in place; no application code exists yet.
+Module 03 (Data Acquisition: weather, GEE+cache, soil) builds against
+these contracts. See `PROGRESS.md` for the full 15-module plan and
+status.

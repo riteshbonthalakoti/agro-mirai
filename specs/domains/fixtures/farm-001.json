@@ -1,0 +1,215 @@
+{
+  "fixture": "farm-001",
+  "description": "One farmer, one field in Bellary, Karnataka. A week of weather readings (2026-08-18 through 2026-08-24), one soil sample, one NDVI reading, one crop recommendation, one irrigation advisory, one disease-risk alert, one farmer-facing advisory bundling them, and one feedback entry rating that advisory.",
+  "schema_version": "v1",
+  "farmers": [
+    {
+      "id": "11111111-1111-4111-8111-111111111111",
+      "created_at": "2026-06-01T09:00:00Z",
+      "updated_at": "2026-08-25T09:00:00Z",
+      "name": "Ravi Kumar",
+      "preferred_language": "kn",
+      "phone": "+919812345678",
+      "district": "Bellary",
+      "state": "Karnataka"
+    }
+  ],
+  "fields": [
+    {
+      "id": "22222222-2222-4222-8222-222222222222",
+      "farmer_id": "11111111-1111-4111-8111-111111111111",
+      "created_at": "2026-06-02T09:00:00Z",
+      "updated_at": "2026-08-25T09:00:00Z",
+      "name": "North Plot",
+      "latitude": 15.1394,
+      "longitude": 76.9214,
+      "area_ha": 1.75,
+      "elevation_m": 449.0,
+      "soil_type": "red",
+      "current_crop": "cotton",
+      "sown_on": "2026-06-15"
+    }
+  ],
+  "weather_readings": [
+    {
+      "id": "3a000001-0000-4000-8000-000000000001",
+      "field_id": "22222222-2222-4222-8222-222222222222",
+      "observed_at": "2026-08-18T06:00:00Z",
+      "source": "open_meteo",
+      "temp_c": 24.2,
+      "temp_min_c": 21.0,
+      "temp_max_c": 30.4,
+      "humidity_pct": 78.0,
+      "rainfall_mm": 6.4,
+      "wind_mps": 2.1,
+      "is_forecast": false
+    },
+    {
+      "id": "3a000001-0000-4000-8000-000000000002",
+      "field_id": "22222222-2222-4222-8222-222222222222",
+      "observed_at": "2026-08-19T06:00:00Z",
+      "source": "open_meteo",
+      "temp_c": 25.0,
+      "temp_min_c": 21.8,
+      "temp_max_c": 31.1,
+      "humidity_pct": 74.0,
+      "rainfall_mm": 0.0,
+      "wind_mps": 1.7,
+      "is_forecast": false
+    },
+    {
+      "id": "3a000001-0000-4000-8000-000000000003",
+      "field_id": "22222222-2222-4222-8222-222222222222",
+      "observed_at": "2026-08-20T06:00:00Z",
+      "source": "open_meteo",
+      "temp_c": 25.8,
+      "temp_min_c": 22.3,
+      "temp_max_c": 32.0,
+      "humidity_pct": 71.0,
+      "rainfall_mm": 0.0,
+      "wind_mps": 1.9,
+      "is_forecast": false
+    },
+    {
+      "id": "3a000001-0000-4000-8000-000000000004",
+      "field_id": "22222222-2222-4222-8222-222222222222",
+      "observed_at": "2026-08-21T06:00:00Z",
+      "source": "open_meteo",
+      "temp_c": 26.4,
+      "temp_min_c": 22.7,
+      "temp_max_c": 32.5,
+      "humidity_pct": 69.0,
+      "rainfall_mm": 0.0,
+      "wind_mps": 2.4,
+      "is_forecast": false
+    },
+    {
+      "id": "3a000001-0000-4000-8000-000000000005",
+      "field_id": "22222222-2222-4222-8222-222222222222",
+      "observed_at": "2026-08-22T06:00:00Z",
+      "source": "open_meteo",
+      "temp_c": 26.9,
+      "temp_min_c": 23.0,
+      "temp_max_c": 33.1,
+      "humidity_pct": 66.0,
+      "rainfall_mm": 0.2,
+      "wind_mps": 2.6,
+      "is_forecast": false
+    },
+    {
+      "id": "3a000001-0000-4000-8000-000000000006",
+      "field_id": "22222222-2222-4222-8222-222222222222",
+      "observed_at": "2026-08-23T06:00:00Z",
+      "source": "open_meteo",
+      "temp_c": 27.3,
+      "temp_min_c": 23.4,
+      "temp_max_c": 33.6,
+      "humidity_pct": 64.0,
+      "rainfall_mm": 0.0,
+      "wind_mps": 2.8,
+      "is_forecast": false
+    },
+    {
+      "id": "3a000001-0000-4000-8000-000000000007",
+      "field_id": "22222222-2222-4222-8222-222222222222",
+      "observed_at": "2026-08-24T06:00:00Z",
+      "source": "open_meteo",
+      "temp_c": 27.6,
+      "temp_min_c": 23.7,
+      "temp_max_c": 34.0,
+      "humidity_pct": 62.0,
+      "rainfall_mm": 0.0,
+      "wind_mps": 3.0,
+      "is_forecast": false
+    }
+  ],
+  "soil_samples": [
+    {
+      "id": "4b000001-0000-4000-8000-000000000001",
+      "field_id": "22222222-2222-4222-8222-222222222222",
+      "observed_at": "2026-06-10T10:00:00Z",
+      "source": "lab_report",
+      "ph": 6.8,
+      "nitrogen_mg_per_kg": 45.0,
+      "phosphorus_mg_per_kg": 28.0,
+      "potassium_mg_per_kg": 180.0,
+      "organic_carbon_pct": 0.62,
+      "moisture_pct": 18.5
+    }
+  ],
+  "ndvi_readings": [
+    {
+      "id": "5c000001-0000-4000-8000-000000000001",
+      "field_id": "22222222-2222-4222-8222-222222222222",
+      "observed_at": "2026-08-20T05:30:00Z",
+      "source": "gee_live",
+      "ndvi": 0.62,
+      "cloud_cover_pct": 8.0,
+      "satellite": "sentinel-2"
+    }
+  ],
+  "crop_recommendations": [
+    {
+      "id": "6d000001-0000-4000-8000-000000000001",
+      "field_id": "22222222-2222-4222-8222-222222222222",
+      "created_at": "2026-08-25T08:00:00Z",
+      "recommended_crop": "cotton",
+      "confidence": 0.82,
+      "alternatives": ["maize", "pigeonpeas"],
+      "rationale": "Current pH, NPK and rainfall pattern match cotton's kharif profile; NDVI trending healthy.",
+      "season": "kharif"
+    }
+  ],
+  "irrigation_advices": [
+    {
+      "id": "7e000001-0000-4000-8000-000000000001",
+      "field_id": "22222222-2222-4222-8222-222222222222",
+      "created_at": "2026-08-25T08:05:00Z",
+      "recommended_depth_mm": 12.0,
+      "window_start_at": "2026-08-25T15:00:00Z",
+      "window_end_at": "2026-08-25T18:00:00Z",
+      "urgency": "moderate",
+      "rationale": "No rainfall in the last five days; soil moisture below crop-stage target."
+    }
+  ],
+  "disease_risk_alerts": [
+    {
+      "id": "8f000001-0000-4000-8000-000000000001",
+      "field_id": "22222222-2222-4222-8222-222222222222",
+      "created_at": "2026-08-25T08:07:00Z",
+      "disease": "cotton_bollworm",
+      "risk_level": "moderate",
+      "confidence": 0.71,
+      "window_start_at": "2026-08-26T00:00:00Z",
+      "window_end_at": "2026-08-30T00:00:00Z",
+      "recommended_action": "Scout plots for bollworm; consider pheromone traps if larvae observed."
+    }
+  ],
+  "advisories": [
+    {
+      "id": "9a000001-0000-4000-8000-000000000001",
+      "field_id": "22222222-2222-4222-8222-222222222222",
+      "created_at": "2026-08-25T08:10:00Z",
+      "language": "kn",
+      "title": "ಈ ವಾರದ ಸಲಹೆ: ನೀರಾವರಿ + ಕೀಟ ಕಾವಲು",
+      "body": "ನಿಮ್ಮ ಕಪಾಸು ಬೆಳೆಗೆ ಇಂದು 12 ಮಿಮೀ ನೀರಾವರಿ ನೀಡಿ. ಈ ವಾರ ಬೊಳ್ಲುಹುಳು ಅಪಾಯ ಮಧ್ಯಮ — ಪ್ಲಾಟ್ ಪರಿಶೀಲಿಸಿ.",
+      "severity": "moderate",
+      "source_refs": [
+        "6d000001-0000-4000-8000-000000000001",
+        "7e000001-0000-4000-8000-000000000001",
+        "8f000001-0000-4000-8000-000000000001"
+      ]
+    }
+  ],
+  "feedback_entries": [
+    {
+      "id": "ab000001-0000-4000-8000-000000000001",
+      "farmer_id": "11111111-1111-4111-8111-111111111111",
+      "advisory_id": "9a000001-0000-4000-8000-000000000001",
+      "created_at": "2026-08-25T18:30:00Z",
+      "rating": 4,
+      "helpful": true,
+      "comment": "Irrigation timing matched what I planned. Will scout for bollworm tomorrow."
+    }
+  ]
+}
