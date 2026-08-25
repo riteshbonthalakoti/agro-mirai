@@ -58,9 +58,11 @@ to build the phase table in `PROGRESS.md`.
 
 ## Current phase
 
-**Module 02 complete — Module 03 next.** Data contracts and conventions
-(`docs/conventions.md`, `specs/core/`, the golden fixture, and
-`tools/check_specs.py`) are in place; no application code exists yet.
-Module 03 (Data Acquisition: weather, GEE+cache, soil) builds against
-these contracts. See `PROGRESS.md` for the full 15-module plan and
-status.
+**Module 03 complete — Module 04 next.** The three data-acquisition
+adapters (weather via Open-Meteo, soil via SoilGrids, NDVI via Earth
+Engine with local-cache fallback) live in `src/agro_mirai/acquisition/`,
+behind a shared `Adapter` interface, and are the first application code
+in the repo. Module 04 (Storage Layer: SQLite/Supabase, repository
+interface) builds against `specs/core/repository-interface.md` and
+consumes these adapters' output. See `PROGRESS.md` for the full
+15-module plan and status.

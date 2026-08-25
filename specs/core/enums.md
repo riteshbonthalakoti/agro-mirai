@@ -92,6 +92,7 @@ Indian agricultural seasons.
 - `lab_report`
 - `manual`
 - `synthesised`
+- `soilgrids` — ISRIC SoilGrids REST API point query (Module 03)
 
 ## `ndvi_source`
 

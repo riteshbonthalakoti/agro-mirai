@@ -41,6 +41,24 @@ Verified on: 2026-08-25, Windows 11.
     not hardcode it.
   - Verified: `ee.Initialize(ee.ServiceAccountCredentials(...))` +
     `ee.Number(1).add(1).getInfo()` returns `2`.
+  - **Module 03 addendum:** registering the GCP project for Earth Engine
+    was not sufficient on its own — the service account also needed two
+    IAM roles granted on `agro-mirai-8315` before live queries (not just
+    `ee.Number(1).add(1)`) would work: `roles/serviceusage.
+    serviceUsageConsumer` (without it: `403 USER_PROJECT_DENIED`) and
+    `roles/earthengine.writer` (without it: `Permission
+    'earthengine.computations.create' denied`). Granted via:
+    ```
+    gcloud projects add-iam-policy-binding agro-mirai-8315 \
+      --member="serviceAccount:agro-mirai-ee@agro-mirai-8315.iam.gserviceaccount.com" \
+      --role="roles/serviceusage.serviceUsageConsumer" --condition=None
+    gcloud projects add-iam-policy-binding agro-mirai-8315 \
+      --member="serviceAccount:agro-mirai-ee@agro-mirai-8315.iam.gserviceaccount.com" \
+      --role="roles/earthengine.writer" --condition=None
+    ```
+    Verified end-to-end via `tools/seed_ndvi_cache.py`, which pulled a
+    real Sentinel-2 NDVI value into
+    `specs/domains/fixtures/ndvi_cache.json`.
 
 ## Test reporting
 
