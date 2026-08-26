@@ -58,7 +58,7 @@ to build the phase table in `PROGRESS.md`.
 
 ## Current phase
 
-**Modules 06, 07, 08, 09, and 12 complete. Module 10 next.** The crop recommendation model
+**Modules 06, 07, 08, 09, 10, and 12 complete. Module 11 next.** The crop recommendation model
 (`src/agro_mirai/models/crop_recommendation_model.py`) wraps a
 `RandomForestClassifier` (`tools/train_crop_model.py`, seed=42) trained
 on the Kaggle crop-recommendation-dataset's native 7 columns against all
@@ -137,6 +137,33 @@ disease) and integration against the real crop/irrigation artifacts and
 farm-001/farm-002 fixtures — irrigation's top contributors include
 `Soil_Moisture`, as expected agronomically. Module 10
 (Decision & Recommendation Engine) can start now.
+
+Module 10 (Decision & Recommendation Engine) is done:
+`DecisionEngine.recommend(field, features) -> Advisory`
+(`src/agro_mirai/models/decision_engine.py`) orchestrates Modules 06/07/08
+and `ExplanationService` for a single `FeatureVector`, always calling all
+three model wrappers (no data-availability gating in the engine itself —
+each wrapper already degrades under partial data per its own module's
+policy) and never synthesizing across their outputs — `Advisory.body` is
+the three `Explanation.summary_en` sentences concatenated unmodified.
+`Advisory.severity` is the max of `IrrigationAdvice.urgency` and
+`DiseaseRiskAlert.risk_level` on the shared `risk_level` ladder; this
+doubles as the immediate-action alert signal
+(`severity in {"high", "severe"}`) — no new schema field was added,
+since `severity` already carries that information.
+`decisions/0011-decision-engine.md` documents the full reasoning:
+pass-through synthesis over conflict resolution, always-call over
+per-model gating, and the `Advisory` field mapping table.
+
+18 tests in `tests/models/`: 15 unit tests (`test_decision_engine.py`,
+all four dependencies mocked) covering schema-valid output and the
+severity/alert-threshold logic across the full urgency x risk_level
+matrix, and 3 integration tests (`test_decision_engine_integration.py`)
+running farm-001/farm-002 through the real `FeatureBuilder` and real
+crop/irrigation artifacts end to end, plus a synthetic high-urgency
+input confirming the alert threshold fires. This is the first test
+proving Modules 05-09 compose correctly together. Module 11 (API Layer,
+Flask) can start now.
 
 Module 12 (Voice & Language) ran concurrently, independent of 06:
 `VoiceService` (`specs/core/voice-interface.md`,

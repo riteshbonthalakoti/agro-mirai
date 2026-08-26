@@ -28,3 +28,8 @@ One entry per architectural decision record.
   06/07's trained RandomForest classifiers; Module 08's rule-based score
   gets direct weight×signal attribution, explicitly labeled
   `rule_weight`, never presented as SHAP.
+- `0011-decision-engine.md` — `DecisionEngine` always calls all three
+  models and surfaces their outputs unmodified in `Advisory.body` rather
+  than synthesizing across them; `Advisory.severity` (max of irrigation
+  urgency / disease risk_level) doubles as the immediate-action alert
+  signal, no new schema field added.
