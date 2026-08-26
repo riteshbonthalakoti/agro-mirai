@@ -58,7 +58,7 @@ to build the phase table in `PROGRESS.md`.
 
 ## Current phase
 
-**Modules 06-13 complete. Module 13 ran in parallel with Module 14 (Frontend). Module 14 and final integration (Module 15) next.** The crop recommendation model
+**Modules 06-14 complete. Module 13 (Feedback Loop) and Module 14 (Frontend) ran in parallel. Final integration (Module 15) next.** The crop recommendation model
 (`src/agro_mirai/models/crop_recommendation_model.py`) wraps a
 `RandomForestClassifier` (`tools/train_crop_model.py`, seed=42) trained
 on the Kaggle crop-recommendation-dataset's native 7 columns against all
@@ -222,7 +222,37 @@ auth, and unknown-field-id -> 404 (not 500). Full suite (excluding
 `tests/voice/`, which needs the project-local `.venv/` for `torch`):
 145 passed, 0 failed, 19 skipped.
 
-Modules 13 (Feedback Loop) and 14 (Frontend) can start now, in
-parallel — everything they need is this HTTP API, not the Python model
-classes directly. See `PROGRESS.md` for the full 15-module plan and
+Module 14 (Frontend) ran concurrently with Module 13, in a separate
+session working the same repo/origin — no conflicts on push.
+`decisions/0013-frontend-platform-sequencing.md` locks the platform
+build order (web now, mobile next, WhatsApp/messaging after, so it
+isn't re-litigated) and the stack: server-rendered Jinja2 templates and
+a new `frontend` blueprint added additively inside Module 11's own
+Flask process (`src/agro_mirai/api/templates/`,
+`src/agro_mirai/api/static/`, `src/agro_mirai/api/routes/frontend.py`)
+— not a separate React/Vite SPA service, so Module 15 has one process
+to deploy, not two. The frontend calls Module 11's JSON API
+exclusively, never `DecisionEngine`/model classes directly, via
+`src/agro_mirai/api/frontend_client.py`: an in-process helper that runs
+real request/response round trips through `current_app.test_client()`
+with the server-held `API_KEY` attached server-side (never sent to the
+browser). Three screens: single-farmer dashboard (per ADR 0003), field
+detail (crop recommendation / irrigation advice / disease-risk alerts /
+advisories with severity badges, all pulled from the real GET
+endpoints), and an inline feedback form per advisory posting to
+`POST /feedback`. "Listen in Kannada" TTS was not built — no endpoint
+exposes `Explanation.summary_kn` or `VoiceService` audio today; noted
+as a known limitation in the ADR and on the page itself rather than
+silently dropped. 15 tests in `tests/frontend/`: 8 unit (mocked API
+layer, covering the 404/422-tolerant degradation helpers) and 7
+integration (real Flask app, real `DecisionEngine`, real crop/irrigation
+artifacts, farm-001 fixture) confirming the field-detail page's
+rendered advisory data matches `GET /fields/{id}/advisories` exactly,
+an unknown field id renders a 404 error page not a 500, and a feedback
+POST is retrievable afterward via `DataStore.list_feedback_for_advisory`.
+No new API endpoints were needed. Full suite (excluding `tests/voice/`):
+177 passed, 0 failed, 19 skipped.
+
+Modules 13 and 14 are both done. Module 15 (Integration, deploy, docs)
+can start now — see `PROGRESS.md` for the full 15-module plan and
 status.

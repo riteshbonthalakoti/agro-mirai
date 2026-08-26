@@ -116,6 +116,31 @@ Verified on: 2026-08-25, Windows 11.
   of installing a C++ toolchain for one dependency — see
   `docs/architecture.md` for details.
 
+## Running the web frontend (Module 14)
+
+The frontend is server-rendered Jinja2 templates in the same Flask
+process as Module 11's API — there is no separate service or build
+step. From a clean checkout:
+
+```bash
+pip install -r requirements.txt   # or the individual packages Modules 01-11 already need
+cp .env.example .env              # then fill in API_KEY and FARMER_ID
+
+# Seed a farmer/field into SQLite so the dashboard has something to show
+python tools/seed_fixture.py specs/domains/fixtures/farm-001.json agro_mirai.db
+# (copy the printed farmer id into .env's FARMER_ID if it's not already set)
+
+python -m flask --app agro_mirai.api.app:create_app run
+```
+
+Then open `http://127.0.0.1:5000/` in a browser — it shows the
+configured farmer's fields; click one to see crop recommendation,
+irrigation advice, disease-risk alerts, advisories, and a feedback form
+per advisory. See `decisions/0013-frontend-platform-sequencing.md` for
+why this is same-process rather than a separate SPA, and
+`modules/14-frontend/STATUS` for what was verified against a real
+seeded database.
+
 ## Test reporting
 
 Test runs use `pytest` with the `pytest-json-report` plugin
