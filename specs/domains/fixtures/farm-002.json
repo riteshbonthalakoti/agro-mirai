@@ -1,0 +1,120 @@
+{
+  "fixture": "farm-002",
+  "description": "One farmer, one field in Raichur, Karnataka. Exists to exercise Module 05's missing-data policy: five days of weather readings and one soil sample are present, but ndvi_readings is deliberately empty (no GEE/cache NDVI has been captured for this field yet). Used by tests/processing/test_feature_builder.py to assert ndvi_data_available=False and all ndvi_* features are None while weather/soil features still compute normally.",
+  "schema_version": "v1",
+  "farmers": [
+    {
+      "id": "c1c1c1c1-1111-4111-8111-c1c1c1c1c1c1",
+      "created_at": "2026-07-01T09:00:00Z",
+      "updated_at": "2026-08-20T09:00:00Z",
+      "name": "Lakshmi Devi",
+      "preferred_language": "kn",
+      "phone": "+919876500001",
+      "district": "Raichur",
+      "state": "Karnataka"
+    }
+  ],
+  "fields": [
+    {
+      "id": "c2c2c2c2-2222-4222-8222-c2c2c2c2c2c2",
+      "farmer_id": "c1c1c1c1-1111-4111-8111-c1c1c1c1c1c1",
+      "created_at": "2026-07-02T09:00:00Z",
+      "updated_at": "2026-08-20T09:00:00Z",
+      "name": "South Plot",
+      "latitude": 16.2076,
+      "longitude": 77.3463,
+      "area_ha": 0.9,
+      "elevation_m": 407.0,
+      "soil_type": "black",
+      "current_crop": "maize",
+      "sown_on": "2026-06-20"
+    }
+  ],
+  "weather_readings": [
+    {
+      "id": "d3000001-0000-4000-8000-000000000001",
+      "field_id": "c2c2c2c2-2222-4222-8222-c2c2c2c2c2c2",
+      "observed_at": "2026-08-16T06:00:00Z",
+      "source": "open_meteo",
+      "temp_c": 26.1,
+      "temp_min_c": 22.5,
+      "temp_max_c": 31.0,
+      "humidity_pct": 68.0,
+      "rainfall_mm": 0.0,
+      "wind_mps": 2.0,
+      "is_forecast": false
+    },
+    {
+      "id": "d3000001-0000-4000-8000-000000000002",
+      "field_id": "c2c2c2c2-2222-4222-8222-c2c2c2c2c2c2",
+      "observed_at": "2026-08-17T06:00:00Z",
+      "source": "open_meteo",
+      "temp_c": 26.6,
+      "temp_min_c": 22.8,
+      "temp_max_c": 31.6,
+      "humidity_pct": 66.0,
+      "rainfall_mm": 2.4,
+      "wind_mps": 2.2,
+      "is_forecast": false
+    },
+    {
+      "id": "d3000001-0000-4000-8000-000000000003",
+      "field_id": "c2c2c2c2-2222-4222-8222-c2c2c2c2c2c2",
+      "observed_at": "2026-08-18T06:00:00Z",
+      "source": "open_meteo",
+      "temp_c": 27.0,
+      "temp_min_c": 23.1,
+      "temp_max_c": 32.2,
+      "humidity_pct": 63.0,
+      "rainfall_mm": 0.0,
+      "wind_mps": 2.5,
+      "is_forecast": false
+    },
+    {
+      "id": "d3000001-0000-4000-8000-000000000004",
+      "field_id": "c2c2c2c2-2222-4222-8222-c2c2c2c2c2c2",
+      "observed_at": "2026-08-19T06:00:00Z",
+      "source": "open_meteo",
+      "temp_c": 27.4,
+      "temp_min_c": 23.4,
+      "temp_max_c": 32.8,
+      "humidity_pct": 61.0,
+      "rainfall_mm": 0.0,
+      "wind_mps": 2.7,
+      "is_forecast": false
+    },
+    {
+      "id": "d3000001-0000-4000-8000-000000000005",
+      "field_id": "c2c2c2c2-2222-4222-8222-c2c2c2c2c2c2",
+      "observed_at": "2026-08-20T06:00:00Z",
+      "source": "open_meteo",
+      "temp_c": 27.9,
+      "temp_min_c": 23.8,
+      "temp_max_c": 33.3,
+      "humidity_pct": 59.0,
+      "rainfall_mm": 0.0,
+      "wind_mps": 2.9,
+      "is_forecast": false
+    }
+  ],
+  "soil_samples": [
+    {
+      "id": "d4000001-0000-4000-8000-000000000001",
+      "field_id": "c2c2c2c2-2222-4222-8222-c2c2c2c2c2c2",
+      "observed_at": "2026-06-25T10:00:00Z",
+      "source": "lab_report",
+      "ph": 7.2,
+      "nitrogen_mg_per_kg": 52.0,
+      "phosphorus_mg_per_kg": 24.0,
+      "potassium_mg_per_kg": 210.0,
+      "organic_carbon_pct": 0.55,
+      "moisture_pct": 21.0
+    }
+  ],
+  "ndvi_readings": [],
+  "crop_recommendations": [],
+  "irrigation_advices": [],
+  "disease_risk_alerts": [],
+  "advisories": [],
+  "feedback_entries": []
+}
