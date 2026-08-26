@@ -99,3 +99,8 @@ Indian agricultural seasons.
 - `gee_live` — live Google Earth Engine query
 - `cache` — local NDVI cache fallback (per CLAUDE.md hard rule #4)
 - `manual`
+
+## `health_status`
+
+- `ok` — data store reachable, service healthy
+- `degraded` — data store ping failed; service is up but persistence is unavailable
