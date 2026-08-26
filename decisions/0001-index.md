@@ -10,3 +10,6 @@ One entry per architectural decision record.
   live/cache fallback.
 - `0005-migration-generation.md` — SQLite/Postgres migrations are
   generated from `schema.yaml`, not hand-written.
+- `0006-missing-data-policy.md` — Weather is required (hard error if
+  absent); soil and NDVI are optional with explicit `*_data_available`
+  flags and `None`-propagation, never a silent `0.0`.
