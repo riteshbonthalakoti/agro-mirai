@@ -1,0 +1,54 @@
+done
+
+Closed all four known gaps from the module prompt: no requirements.txt,
+no production WSGI server, the SQLite thread-safety fix untested under a
+real multi-worker server, and no documented resolution for the
+two-Python-environment split at deploy time.
+
+requirements.txt (runtime) / requirements-dev.txt (adds pytest tooling)
+generated from `pip freeze` against the global interpreter, hand-checked
+against actual imports across src/, tools/, and tests/ (excluding
+tests/voice/). decisions/0014-deploy-target-and-voice-scope.md records
+four explicit decisions: voice/AI4Bharat excluded from the deployed
+instance (demoed locally — ~6.8GB of weights + torch doesn't fit
+Render's free-tier 512MB); gunicorn==26.2.0 as the production WSGI
+server, verified for real via a throwaway WSL environment (gunicorn
+doesn't run on Windows) — 60 concurrent requests across 2 worker
+processes, all 200s, confirming the Module 11 SQLite thread-local fix
+also holds under gunicorn's multi-process model, not just Flask's dev
+server; the two Kaggle training CSVs (~1.2MB) committed so Render's
+build can retrain models/*.joblib from a clean clone without a Kaggle
+API build secret; create_app() now auto-selects SupabaseDataStore over
+SQLiteDataStore when SUPABASE_URL/SUPABASE_KEY are set (additive, no
+change for any existing caller).
+
+render.yaml (a Render Blueprint) defines the agro-mirai web service,
+validated via `render blueprints validate ./render.yaml` (passes).
+Actual deployment needs one human-in-the-browser step this module could
+not complete headlessly — connecting the GitHub repo to Render's GitHub
+App is an OAuth-style authorization the CLI can't finish non-
+interactively. docs/DEMO_DAY.md has the exact remaining steps.
+
+tests/e2e/test_deployed_smoke.py hits a real deployed URL (health,
+authenticated schema-valid advisory fetch, 401 on bad auth, 404 on an
+unknown field, a feedback POST round trip) — skips cleanly when
+AGRO_MIRAI_DEPLOYED_URL/AGRO_MIRAI_DEPLOYED_API_KEY aren't set, so it
+never blocks the local suite. Not yet run against a live URL as of this
+commit — the Render Blueprint hasn't been applied through the dashboard
+yet (see docs/DEMO_DAY.md).
+
+README.md added at repo root (didn't exist before this module).
+docs/DEMO_SCRIPT.md is the literal 10-minute review walkthrough,
+leading with the full pipeline and the Kannada voice story.
+
+Full regression pass, both environments: `python -m pytest
+--ignore=tests/voice --ignore=tests/e2e -q` -> 178 passed, 0 failed, 19
+skipped (global interpreter); `.venv/Scripts/python.exe -m pytest
+tests/voice -q` -> 25 passed (pinned voice environment). `python
+tools/check_specs.py` -> OK. No existing test needed to change for this
+module's changes.
+
+Remaining risk: the Render Blueprint apply + Supabase seed + live e2e
+smoke test are the one piece that needed a human in a browser and could
+not be completed in this session. Everything else (dependency pinning,
+WSGI config, gunicorn verification, docs, regression) is done.
