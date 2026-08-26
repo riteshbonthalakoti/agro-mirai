@@ -28,8 +28,10 @@ kaggle.json
 *.pt
 *.pkl
 *.onnx
+*.joblib
 data/raw/
 data/cache/
+/models/
 *.tif
 *.tiff
 
