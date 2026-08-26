@@ -141,6 +141,34 @@ why this is same-process rather than a separate SPA, and
 `modules/14-frontend/STATUS` for what was verified against a real
 seeded database.
 
+## Dependency pinning and production WSGI (Module 15)
+
+- `requirements.txt` (runtime) and `requirements-dev.txt` (adds pytest
+  tooling) are generated from `pip freeze` against the global
+  interpreter, hand-checked against actual imports across `src/`,
+  `tools/`, and `tests/` (excluding `tests/voice/`, which needs the
+  separate `.venv`). See `decisions/0014-deploy-target-and-voice-scope.md`
+  for why the voice/AI4Bharat stack is excluded from `requirements.txt`.
+- The pinned versions (`numpy==2.5.2`, `pandas==3.0.5`, `scikit-learn==1.4.2`,
+  etc.) are exactly what Modules 06/07's training scripts already ran
+  under on this machine — not a newer/different set introduced by this
+  module. No re-training or eval-report invalidation risk from the pin
+  itself; if you ever bump `scikit-learn` independently of a
+  `requirements.txt` sync, re-run `tools/train_crop_model.py` /
+  `tools/train_irrigation_model.py` and diff `docs/eval/*.json` first.
+- `gunicorn==26.2.0` added for production. **It does not run on
+  Windows** (no `fcntl`) — this dev machine can only run it inside WSL
+  or a container, never natively. The multi-worker/SQLite-thread-safety
+  verification for this module was done via a throwaway
+  `pip install --user` environment inside WSL (Ubuntu), not committed
+  anywhere — see ADR 0014 for the exact commands and result (60
+  concurrent requests across 2 worker processes, all 200s).
+- `Procfile` and `render.yaml`'s `startCommand` both run:
+  `PYTHONPATH=src gunicorn -w 2 -b 0.0.0.0:$PORT "agro_mirai.api.app:create_app()"`
+  — `PYTHONPATH=src` is needed because there's still no `pyproject.toml`/
+  `setup.py` installing the package; this mirrors how tests and
+  `flask run` already load it.
+
 ## Test reporting
 
 Test runs use `pytest` with the `pytest-json-report` plugin
