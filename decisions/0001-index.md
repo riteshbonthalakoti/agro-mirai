@@ -13,3 +13,6 @@ One entry per architectural decision record.
 - `0006-missing-data-policy.md` — Weather is required (hard error if
   absent); soil and NDVI are optional with explicit `*_data_available`
   flags and `None`-propagation, never a silent `0.0`.
+- `0007-crop-model-feature-mapping.md` — Crop model trains on the Kaggle
+  dataset's native 7 columns; `FeatureVector` → model-input mapping is a
+  documented prediction-time transform, not a training-data reshape.
