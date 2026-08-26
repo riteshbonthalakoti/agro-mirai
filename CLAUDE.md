@@ -58,7 +58,7 @@ to build the phase table in `PROGRESS.md`.
 
 ## Current phase
 
-**Modules 06-14 complete. Module 13 (Feedback Loop) and Module 14 (Frontend) ran in parallel. Final integration (Module 15) next.** The crop recommendation model
+**All 15 modules complete (Module 15 — Integration, Deploy, Docs — landed 2026-08-27). Project is done pending final report writing; no more modules follow.** See `decisions/0014-deploy-target-and-voice-scope.md` for Module 15's deploy-target and voice-scope calls, `docs/DEMO_DAY.md`/`docs/DEMO_SCRIPT.md` for the live review, and `PROGRESS.md`'s Module 15 entry for the full regression/deploy status. The crop recommendation model
 (`src/agro_mirai/models/crop_recommendation_model.py`) wraps a
 `RandomForestClassifier` (`tools/train_crop_model.py`, seed=42) trained
 on the Kaggle crop-recommendation-dataset's native 7 columns against all
