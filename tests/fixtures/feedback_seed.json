@@ -1,0 +1,194 @@
+{
+  "_note": "SYNTHETIC TEST DATA — not real farmer feedback. Generated for Module 13 unit and integration testing only. All IDs, ratings, and comments are fabricated.",
+  "farmer_id": "11111111-1111-4111-8111-111111111111",
+  "field_id": "22222222-2222-4222-8222-222222222222",
+  "advisories": [
+    {
+      "id": "fb000001-0000-4000-8000-000000000001",
+      "field_id": "22222222-2222-4222-8222-222222222222",
+      "created_at": "2026-06-01T08:00:00Z",
+      "language": "en",
+      "title": "Crop recommendation: rice",
+      "body": "Based on your soil and weather, rice is recommended. Irrigate lightly and monitor humidity.",
+      "severity": "low",
+      "source_refs": []
+    },
+    {
+      "id": "fb000002-0000-4000-8000-000000000002",
+      "field_id": "22222222-2222-4222-8222-222222222222",
+      "created_at": "2026-06-08T08:00:00Z",
+      "language": "en",
+      "title": "Irrigation advice: moderate urgency",
+      "body": "Soil moisture is declining. Apply 30mm irrigation within the next 3 days.",
+      "severity": "moderate",
+      "source_refs": []
+    },
+    {
+      "id": "fb000003-0000-4000-8000-000000000003",
+      "field_id": "22222222-2222-4222-8222-222222222222",
+      "created_at": "2026-06-15T08:00:00Z",
+      "language": "en",
+      "title": "Disease risk: high humidity alert",
+      "body": "14-day humidity is 84%. Fungal disease risk is high. Apply preventive fungicide.",
+      "severity": "high",
+      "source_refs": []
+    },
+    {
+      "id": "fb000004-0000-4000-8000-000000000004",
+      "field_id": "22222222-2222-4222-8222-222222222222",
+      "created_at": "2026-06-22T08:00:00Z",
+      "language": "en",
+      "title": "Critical: severe disease outbreak risk",
+      "body": "Conditions strongly favour late blight. Immediate action required.",
+      "severity": "severe",
+      "source_refs": []
+    },
+    {
+      "id": "fb000005-0000-4000-8000-000000000005",
+      "field_id": "22222222-2222-4222-8222-222222222222",
+      "created_at": "2026-06-29T08:00:00Z",
+      "language": "en",
+      "title": "Crop recommendation: wheat",
+      "body": "Weather has shifted cooler. Wheat is now recommended for your field.",
+      "severity": "low",
+      "source_refs": []
+    }
+  ],
+  "feedback_entries": [
+    {
+      "id": "fe000001-0000-4000-8000-000000000001",
+      "farmer_id": "11111111-1111-4111-8111-111111111111",
+      "advisory_id": "fb000001-0000-4000-8000-000000000001",
+      "created_at": "2026-06-02T10:00:00Z",
+      "rating": 5,
+      "helpful": true,
+      "comment": "Very useful, planted rice and it grew well."
+    },
+    {
+      "id": "fe000002-0000-4000-8000-000000000002",
+      "farmer_id": "11111111-1111-4111-8111-111111111111",
+      "advisory_id": "fb000001-0000-4000-8000-000000000001",
+      "created_at": "2026-06-03T09:00:00Z",
+      "rating": 4,
+      "helpful": true,
+      "comment": null
+    },
+    {
+      "id": "fe000003-0000-4000-8000-000000000003",
+      "farmer_id": "11111111-1111-4111-8111-111111111111",
+      "advisory_id": "fb000001-0000-4000-8000-000000000001",
+      "created_at": "2026-06-04T09:00:00Z",
+      "rating": 5,
+      "helpful": true,
+      "comment": null
+    },
+    {
+      "id": "fe000004-0000-4000-8000-000000000004",
+      "farmer_id": "11111111-1111-4111-8111-111111111111",
+      "advisory_id": "fb000002-0000-4000-8000-000000000002",
+      "created_at": "2026-06-09T11:00:00Z",
+      "rating": 4,
+      "helpful": true,
+      "comment": "Irrigation advice was timely."
+    },
+    {
+      "id": "fe000005-0000-4000-8000-000000000005",
+      "farmer_id": "11111111-1111-4111-8111-111111111111",
+      "advisory_id": "fb000002-0000-4000-8000-000000000002",
+      "created_at": "2026-06-10T08:30:00Z",
+      "rating": 3,
+      "helpful": true,
+      "comment": null
+    },
+    {
+      "id": "fe000006-0000-4000-8000-000000000006",
+      "farmer_id": "11111111-1111-4111-8111-111111111111",
+      "advisory_id": "fb000002-0000-4000-8000-000000000002",
+      "created_at": "2026-06-11T09:00:00Z",
+      "rating": 2,
+      "helpful": false,
+      "comment": "Depth recommendation was too high for my field."
+    },
+    {
+      "id": "fe000007-0000-4000-8000-000000000007",
+      "farmer_id": "11111111-1111-4111-8111-111111111111",
+      "advisory_id": "fb000003-0000-4000-8000-000000000003",
+      "created_at": "2026-06-16T07:00:00Z",
+      "rating": 2,
+      "helpful": false,
+      "comment": "Alert was too late, already saw symptoms."
+    },
+    {
+      "id": "fe000008-0000-4000-8000-000000000008",
+      "farmer_id": "11111111-1111-4111-8111-111111111111",
+      "advisory_id": "fb000003-0000-4000-8000-000000000003",
+      "created_at": "2026-06-17T08:00:00Z",
+      "rating": 3,
+      "helpful": true,
+      "comment": null
+    },
+    {
+      "id": "fe000009-0000-4000-8000-000000000009",
+      "farmer_id": "11111111-1111-4111-8111-111111111111",
+      "advisory_id": "fb000003-0000-4000-8000-000000000003",
+      "created_at": "2026-06-18T10:00:00Z",
+      "rating": 2,
+      "helpful": false,
+      "comment": "Fungicide recommendation not locally available."
+    },
+    {
+      "id": "fe000010-0000-4000-8000-000000000010",
+      "farmer_id": "11111111-1111-4111-8111-111111111111",
+      "advisory_id": "fb000004-0000-4000-8000-000000000004",
+      "created_at": "2026-06-23T08:00:00Z",
+      "rating": 1,
+      "helpful": false,
+      "comment": "No action was possible, no supply available."
+    },
+    {
+      "id": "fe000011-0000-4000-8000-000000000011",
+      "farmer_id": "11111111-1111-4111-8111-111111111111",
+      "advisory_id": "fb000004-0000-4000-8000-000000000004",
+      "created_at": "2026-06-24T09:00:00Z",
+      "rating": 2,
+      "helpful": false,
+      "comment": null
+    },
+    {
+      "id": "fe000012-0000-4000-8000-000000000012",
+      "farmer_id": "11111111-1111-4111-8111-111111111111",
+      "advisory_id": "fb000004-0000-4000-8000-000000000004",
+      "created_at": "2026-06-25T07:00:00Z",
+      "rating": 1,
+      "helpful": false,
+      "comment": "Warning came too late."
+    },
+    {
+      "id": "fe000013-0000-4000-8000-000000000013",
+      "farmer_id": "11111111-1111-4111-8111-111111111111",
+      "advisory_id": "fb000005-0000-4000-8000-000000000005",
+      "created_at": "2026-06-30T09:00:00Z",
+      "rating": 5,
+      "helpful": true,
+      "comment": "Good recommendation, planted wheat."
+    },
+    {
+      "id": "fe000014-0000-4000-8000-000000000014",
+      "farmer_id": "11111111-1111-4111-8111-111111111111",
+      "advisory_id": "fb000005-0000-4000-8000-000000000005",
+      "created_at": "2026-07-01T10:00:00Z",
+      "rating": 4,
+      "helpful": true,
+      "comment": null
+    },
+    {
+      "id": "fe000015-0000-4000-8000-000000000015",
+      "farmer_id": "11111111-1111-4111-8111-111111111111",
+      "advisory_id": "fb000005-0000-4000-8000-000000000005",
+      "created_at": "2026-07-02T11:00:00Z",
+      "rating": 5,
+      "helpful": true,
+      "comment": null
+    }
+  ]
+}

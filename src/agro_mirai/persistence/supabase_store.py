@@ -561,6 +561,20 @@ class SupabaseDataStore:
         )
         return [self._row_to_feedback(r) for r in res.data]
 
+    def list_feedback_for_farmer(
+        self, farmer_id: str, limit: int = 200
+    ) -> list[FeedbackEntry]:
+        """Return all feedback entries for the farmer, newest first."""
+        res = (
+            self._client.table("feedback_entries")
+            .select("*")
+            .eq("farmer_id", farmer_id)
+            .order("created_at", desc=True)
+            .limit(limit)
+            .execute()
+        )
+        return [self._row_to_feedback(r) for r in res.data]
+
     @staticmethod
     def _row_to_feedback(row: dict) -> FeedbackEntry:
         return FeedbackEntry(
