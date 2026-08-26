@@ -24,6 +24,18 @@ from agro_mirai.persistence.models import (
 )
 from agro_mirai.processing.feature_builder import FeatureVector
 
+try:
+    import shap  # noqa: F401
+
+    _SHAP_AVAILABLE = True
+except ImportError:
+    _SHAP_AVAILABLE = False
+
+pytestmark = pytest.mark.skipif(
+    not _SHAP_AVAILABLE,
+    reason="shap not installed — pip install shap to run these tests",
+)
+
 
 def _vector(**overrides) -> FeatureVector:
     defaults = dict(

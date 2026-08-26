@@ -41,9 +41,16 @@ from agro_mirai.processing.feature_builder import FeatureBuilder  # noqa: E402
 
 FIXTURES_DIR = ROOT / "specs" / "domains" / "fixtures"
 
+try:
+    import shap  # noqa: F401
+
+    _SHAP_AVAILABLE = True
+except ImportError:
+    _SHAP_AVAILABLE = False
+
 pytestmark = pytest.mark.skipif(
-    not CROP_MODEL_PATH.exists() or not IRRIGATION_MODEL_PATH.exists(),
-    reason="models/*.joblib not present — run tools/train_*.py first",
+    not _SHAP_AVAILABLE or not CROP_MODEL_PATH.exists() or not IRRIGATION_MODEL_PATH.exists(),
+    reason="shap not installed, or models/*.joblib not present — pip install shap and/or run tools/train_*.py first",
 )
 
 
