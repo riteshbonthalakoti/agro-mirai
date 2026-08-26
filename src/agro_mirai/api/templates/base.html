@@ -4,18 +4,26 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}AGRO MIRAI{% endblock %}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
   <header class="site-header">
-    <a class="brand" href="{{ url_for('frontend.dashboard') }}">AGRO MIRAI</a>
+    <a class="brand" href="{{ url_for('frontend.dashboard') }}">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M12 21c-4.5-1.2-8-5-8-10 0-3 1.5-6 4-8 1 3 3 4.5 5 6 2.5 2 4 4.5 4 7 0 2.8-2.2 5-5 5Z" fill="white" fill-opacity="0.95"/>
+        <path d="M12 21V9" stroke="#1f6b3a" stroke-width="1.4" stroke-linecap="round"/>
+      </svg>
+      AGRO MIRAI
+    </a>
     <span class="tagline">AI-driven smart agriculture advisory</span>
   </header>
 
-  <main class="container">
+  <main class="container page-enter">
     {% with messages = get_flashed_messages(with_categories=true) %}
       {% if messages %}
-        <div class="flash-list">
+        <div class="flash-list" role="status">
           {% for category, message in messages %}
             <div class="flash flash-{{ category }}">{{ message }}</div>
           {% endfor %}
@@ -27,7 +35,7 @@
   </main>
 
   <footer class="site-footer">
-    <p>AGRO MIRAI — VTU Sem 7 capstone, BITM Dept. of AIML. Module 14 (Frontend).</p>
+    <p>AGRO MIRAI &mdash; VTU Sem 7 capstone, BITM Dept. of AIML.</p>
   </footer>
 </body>
 </html>
