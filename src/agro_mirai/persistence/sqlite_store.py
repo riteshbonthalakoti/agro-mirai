@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import json
 import sqlite3
+import threading
 from datetime import date, datetime, timezone
 from pathlib import Path
 
@@ -59,18 +60,38 @@ class SQLiteDataStore:
 
     def __init__(self, db_path: str = "agro_mirai.db") -> None:
         self.db_path = db_path
-        self._conn = sqlite3.connect(db_path)
-        self._conn.execute("PRAGMA foreign_keys = ON;")
-        self._conn.row_factory = sqlite3.Row
+        self._local = threading.local()
         self._apply_migration()
+
+    def _new_connection(self) -> sqlite3.Connection:
+        conn = sqlite3.connect(self.db_path)
+        conn.execute("PRAGMA foreign_keys = ON;")
+        conn.row_factory = sqlite3.Row
+        return conn
+
+    @property
+    def _conn(self) -> sqlite3.Connection:
+        # sqlite3 connections aren't safe to share across threads, and
+        # Flask's dev server (and any real WSGI server) dispatches each
+        # request on its own thread — so each thread gets its own
+        # lazily-opened connection to the same on-disk database file.
+        conn = getattr(self._local, "conn", None)
+        if conn is None:
+            conn = self._new_connection()
+            self._local.conn = conn
+        return conn
 
     def _apply_migration(self) -> None:
         sql = MIGRATION_PATH.read_text(encoding="utf-8")
-        self._conn.executescript(sql)
-        self._conn.commit()
+        conn = self._conn
+        conn.executescript(sql)
+        conn.commit()
 
     def close(self) -> None:
-        self._conn.close()
+        conn = getattr(self._local, "conn", None)
+        if conn is not None:
+            conn.close()
+            self._local.conn = None
 
     # --- Farmer ---
     def get_farmer(self, farmer_id: str) -> Farmer | None:
