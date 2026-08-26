@@ -39,7 +39,11 @@ def get_module_statuses():
         if not module_dir.is_dir():
             continue
         status_file = module_dir / "STATUS"
-        status = status_file.read_text().strip() if status_file.exists() else "unknown"
+        status = (
+            status_file.read_text(encoding="utf-8").strip()
+            if status_file.exists()
+            else "unknown"
+        )
         statuses[module_dir.name] = status
     return statuses
 
@@ -91,7 +95,7 @@ def main():
     if not PROGRESS_PATH.exists():
         raise SystemExit(f"{PROGRESS_PATH} does not exist — cannot update state block")
 
-    content = PROGRESS_PATH.read_text()
+    content = PROGRESS_PATH.read_text(encoding="utf-8")
     if STATE_START not in content or STATE_END not in content:
         raise SystemExit(
             f"{PROGRESS_PATH} is missing {STATE_START}/{STATE_END} markers"
@@ -101,7 +105,7 @@ def main():
     _, after = rest.split(STATE_END, 1)
 
     new_content = before + build_state_block() + after
-    PROGRESS_PATH.write_text(new_content)
+    PROGRESS_PATH.write_text(new_content, encoding="utf-8")
     print(f"Updated state block in {PROGRESS_PATH}")
 
 
