@@ -19,6 +19,17 @@ security:
 
 paths:
 
+  /health:
+    get:
+      summary: Liveness check — returns service and data-store status.
+      security: []
+      responses:
+        '200':
+          description: Service is reachable (status may still be "degraded" if the data store is down).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/HealthStatus' }
+
   /farmers/me:
     get:
       summary: Get the authenticated farmer's profile.
@@ -188,6 +199,14 @@ components:
           schema: { $ref: '#/components/schemas/ErrorEnvelope' }
 
   schemas:
+
+    HealthStatus:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [ok, degraded]
 
     ErrorEnvelope:
       type: object
