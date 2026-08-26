@@ -1,16 +1,41 @@
 {% extends "base.html" %}
 {% block title %}{{ field.name }} — AGRO MIRAI{% endblock %}
+
+{% macro severity_badge(level) %}
+  {% set level = level or "low" %}
+  <span class="severity-badge severity-{{ level }}">
+    {% if level == "severe" %}
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M8 2h8l6 6v8l-6 6H8l-6-6V8Z" fill="currentColor"/></svg>
+    {% elif level == "high" %}
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3 2 20h20Z" fill="currentColor"/></svg>
+    {% elif level == "moderate" %}
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="3" fill="currentColor"/></svg>
+    {% else %}
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="currentColor"/></svg>
+    {% endif %}
+    {{ level }}
+  </span>
+{% endmacro %}
+
 {% block content %}
-  <p><a href="{{ url_for('frontend.dashboard') }}">&larr; back to fields</a></p>
+  <a class="back-link" href="{{ url_for('frontend.dashboard') }}">&larr; back to fields</a>
   <h1>{{ field.name }}</h1>
   <p class="muted">{{ field.area_ha }} ha &middot; {{ field.latitude }}, {{ field.longitude }}</p>
 
   <section class="panel">
-    <h2>Crop recommendation</h2>
+    <div class="panel-header">
+      <span class="panel-icon" aria-hidden="true">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 21c-4.5-1.2-8-5-8-10 0-3 1.5-6 4-8 1 3 3 4.5 5 6 2.5 2 4 4.5 4 7 0 2.8-2.2 5-5 5Z" fill="currentColor"/></svg>
+      </span>
+      <h2>Crop recommendation</h2>
+    </div>
     {% if recommendation %}
-      <p><strong>{{ recommendation.recommended_crop }}</strong>
-        (confidence {{ "%.0f"|format(recommendation.confidence * 100) }}%)</p>
-      {% if recommendation.rationale %}<p>{{ recommendation.rationale }}</p>{% endif %}
+      <p><strong>{{ recommendation.recommended_crop }}</strong></p>
+      <div class="confidence-bar-track">
+        <div class="confidence-bar-fill" style="width: {{ (recommendation.confidence * 100) | round(0, 'floor') }}%"></div>
+      </div>
+      <p class="muted">confidence {{ "%.0f"|format(recommendation.confidence * 100) }}%</p>
+      {% if recommendation.rationale %}<p class="rationale">{{ recommendation.rationale }}</p>{% endif %}
       {% if recommendation.alternatives %}
         <p class="muted">Alternatives: {{ recommendation.alternatives | join(", ") }}</p>
       {% endif %}
@@ -20,60 +45,82 @@
   </section>
 
   <section class="panel">
-    <h2>Irrigation advice</h2>
+    <div class="panel-header">
+      <span class="panel-icon" aria-hidden="true">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 2s7 8 7 13a7 7 0 1 1-14 0c0-5 7-13 7-13Z" fill="currentColor"/></svg>
+      </span>
+      <h2>Irrigation advice</h2>
+      {% if irrigation %}{{ severity_badge(irrigation.urgency) }}{% endif %}
+    </div>
     {% if irrigation %}
-      <p><strong>Urgency: {{ irrigation.urgency }}</strong></p>
-      <p>Recommended depth: {{ irrigation.recommended_depth_mm }} mm,
+      <p>Recommended depth: <strong>{{ irrigation.recommended_depth_mm }} mm</strong>,
          window {{ irrigation.window_start_at }} &ndash; {{ irrigation.window_end_at }}</p>
-      {% if irrigation.rationale %}<p>{{ irrigation.rationale }}</p>{% endif %}
+      {% if irrigation.rationale %}<p class="rationale">{{ irrigation.rationale }}</p>{% endif %}
     {% else %}
       <p class="muted">Not available yet — insufficient weather data for this field.</p>
     {% endif %}
   </section>
 
   <section class="panel">
-    <h2>Disease risk</h2>
+    <div class="panel-header">
+      <span class="panel-icon" aria-hidden="true">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 2 2 7v6c0 5 4 8.5 10 9 6-.5 10-4 10-9V7Z" fill="currentColor"/></svg>
+      </span>
+      <h2>Disease risk</h2>
+    </div>
     {% if disease_alerts %}
-      <ul>
-        {% for alert in disease_alerts %}
-          <li>
-            <strong>{{ alert.disease }}</strong> &mdash; risk: {{ alert.risk_level }}
-            (confidence {{ "%.0f"|format(alert.confidence * 100) }}%)
-            {% if alert.recommended_action %}<div>{{ alert.recommended_action }}</div>{% endif %}
-          </li>
-        {% endfor %}
-      </ul>
+      {% for alert in disease_alerts %}
+        <div class="advisory severity-{{ alert.risk_level }}">
+          <div class="advisory-header">
+            <h3>{{ alert.disease }}</h3>
+            {{ severity_badge(alert.risk_level) }}
+          </div>
+          <p class="muted">confidence {{ "%.0f"|format(alert.confidence * 100) }}%</p>
+          {% if alert.recommended_action %}<p class="rationale">{{ alert.recommended_action }}</p>{% endif %}
+        </div>
+      {% endfor %}
     {% else %}
       <p class="muted">No disease-risk alerts.</p>
     {% endif %}
   </section>
 
   <section class="panel">
-    <h2>Advisories</h2>
+    <div class="panel-header">
+      <span class="panel-icon" aria-hidden="true">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="m12 2 2.6 6.6L21 11l-6.4 2.4L12 20l-2.6-6.6L3 11l6.4-2.4Z" fill="currentColor"/></svg>
+      </span>
+      <h2>Advisories</h2>
+    </div>
     {% if advisories %}
       {% for advisory in advisories %}
         <article class="advisory severity-{{ advisory.severity }}">
-          <h3>{{ advisory.title }} <span class="badge">{{ advisory.severity }}</span></h3>
+          <div class="advisory-header">
+            <h3>{{ advisory.title }}</h3>
+            {{ severity_badge(advisory.severity) }}
+          </div>
+          <p class="advisory-why">Why we're telling you this</p>
           <p>{{ advisory.body }}</p>
           <p class="muted">{{ advisory.created_at }} &middot; language: {{ advisory.language }}</p>
-          <p class="muted">
+          <p class="limitation-note">
             "Listen in Kannada" is a known limitation — no API endpoint
             currently exposes a Kannada summary or TTS audio for this
             advisory (see decisions/0013).
           </p>
 
-          <form class="feedback-form" method="post" action="{{ url_for('frontend.submit_feedback') }}">
+          <form class="feedback-form" method="post" action="{{ url_for('frontend.submit_feedback') }}" data-feedback-form>
             <input type="hidden" name="field_id" value="{{ field.id }}">
             <input type="hidden" name="advisory_id" value="{{ advisory.id }}">
-            <label>
-              Rating
-              <select name="rating" required>
-                <option value="">--</option>
-                {% for n in range(1, 6) %}
-                  <option value="{{ n }}">{{ n }}</option>
+
+            <div class="rating-field">
+              <span id="rating-label-{{ advisory.id }}">Rating</span>
+              <div class="star-rating" role="radiogroup" aria-labelledby="rating-label-{{ advisory.id }}">
+                {% for n in range(5, 0, -1) %}
+                  <input type="radio" name="rating" id="star-{{ advisory.id }}-{{ n }}" value="{{ n }}" required>
+                  <label for="star-{{ advisory.id }}-{{ n }}" title="{{ n }} star{{ 's' if n != 1 }}">&#9733;</label>
                 {% endfor %}
-              </select>
-            </label>
+              </div>
+            </div>
+
             <label>
               <input type="radio" name="helpful" value="yes" checked> Helpful
             </label>
@@ -82,9 +129,12 @@
             </label>
             <label class="comment-label">
               Comment
-              <input type="text" name="comment" maxlength="500">
+              <input type="text" name="comment" maxlength="500" placeholder="Optional">
             </label>
-            <button type="submit">Submit feedback</button>
+            <button type="submit">
+              <span class="btn-spinner" aria-hidden="true"></span>
+              <span class="btn-label">Submit feedback</span>
+            </button>
           </form>
         </article>
       {% endfor %}
@@ -92,4 +142,19 @@
       <p class="muted">No advisories yet.</p>
     {% endif %}
   </section>
+
+  <script>
+    document.querySelectorAll('[data-feedback-form]').forEach(function (form) {
+      form.addEventListener('submit', function () {
+        var btn = form.querySelector('button[type="submit"]');
+        if (btn) {
+          btn.classList.add('is-submitting');
+          btn.disabled = true;
+        }
+        // No preventDefault: the browser still performs the normal POST
+        // and follows the server's redirect — this only gives instant
+        // visual feedback while that round trip happens.
+      });
+    });
+  </script>
 {% endblock %}

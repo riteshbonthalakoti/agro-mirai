@@ -253,6 +253,10 @@ POST is retrievable afterward via `DataStore.list_feedback_for_advisory`.
 No new API endpoints were needed. Full suite (excluding `tests/voice/`):
 177 passed, 0 failed, 19 skipped.
 
-Modules 13 and 14 are both done. Module 15 (Integration, deploy, docs)
-can start now — see `PROGRESS.md` for the full 15-module plan and
-status.
+Modules 13 and 14 are both done. Module 14b (UI/UX Uplift) is also
+done — a presentation-layer-only redesign of the Module 14 web
+frontend (design tokens, real visual hierarchy, colorblind-safe
+severity indicators, accessible star rating), with no route/contract
+changes; see `PROGRESS.md` for details. Module 15 (Integration,
+deploy, docs) can start now — see `PROGRESS.md` for the full
+15-module plan and status.

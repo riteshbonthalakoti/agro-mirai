@@ -343,7 +343,40 @@ No new src/agro_mirai/api/ endpoints were added — the openapi.yaml
 contract already covered everything the frontend needed. Module 15
 (Integration, deploy, docs) can start once Module 13 also lands.
 
+### Module 14b — UI/UX Uplift (follow-up to Module 14, not a renumbered module)
+
+Presentation-layer-only redesign of the Module 14 web frontend — no
+route signatures, `openapi.yaml`, or `DecisionEngine`/`DataStore` data
+flow changed. New `static/tokens.css` design system: Space Grotesk
+(headings) + Inter (body) via Google Fonts CDN with a system-font
+fallback stack, a spacing scale, a neutral gray ramp, and semantic
+`low/moderate/high/severe` colors (matching `risk_level` in
+`specs/core/enums.md`) each paired with a distinct icon shape (circle /
+square / triangle / octagon) so severity is never color-only —
+addresses WCAG colorblind-safety. All five templates
+(`base.html`, `index.html`, `field.html`, `error.html`, `style.css`)
+were rewritten for real visual hierarchy: a dashboard hero/summary
+strip, card-based crop/irrigation/disease/advisory panels with icons, a
+CSS-only radio-based star rating (keyboard-accessible, no JS logic to
+test), and a cosmetic submit-button spinner that does not intercept the
+existing POST redirect flow — so no backend/contract change was needed
+to get a non-static feel. Stitch CLI (Google's AI UI-design tool)
+was not on PATH for this session, so the design system was hand-written
+instead of Stitch-generated; noted rather than blocking on it.
+
+All 37 pre-existing `tests/api/` + `tests/frontend/` tests pass
+unmodified — they assert on response text/status, not exact markup.
+Manually verified via the in-app browser against a locally seeded
+SQLite `DataStore` (farm-001 fixture): dashboard and field-detail pages
+render real crop/irrigation/disease/advisory data with zero console
+errors at both 375px and desktop width, and the star-rating + feedback
+submit flow was exercised end to end (real `POST /ui/feedback`,
+confirmed via the "Thanks — your feedback was recorded." flash).
+
+Module 15 (Integration, deploy, docs) can start now.
+
 ### Latest test run
-- 177/196 passed, 0 failed
+- 177/196 passed, 0 failed (pre-14b baseline; 14b re-ran 37/37 in
+  tests/api/ + tests/frontend/ green, no new test category needed)
 
 <!-- STATE:END -->
