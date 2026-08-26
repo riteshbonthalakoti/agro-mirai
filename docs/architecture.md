@@ -143,10 +143,36 @@ local dev; Supabase Postgres backs prod. Both implementations pass the
 same contract test suite against the golden fixture
 (`specs/domains/fixtures/farm-001.json`).
 
+## Crop recommendation model (Module 06)
+
+`CropRecommendationModel` (`src/agro_mirai/models/crop_recommendation_model.py`)
+wraps a `RandomForestClassifier` trained by `tools/train_crop_model.py`
+on the Kaggle **Crop Recommendation Dataset**
+(`atharvaingle/crop-recommendation-dataset`, Apache-2.0 license,
+<https://www.kaggle.com/datasets/atharvaingle/crop-recommendation-dataset>):
+2200 rows, 22 balanced crop labels (`specs/core/enums.md`'s `crop_type`
+was sourced from this exact label set), 7 feature columns
+(`N, P, K, temperature, humidity, ph, rainfall`).
+
+The trained artifact (`models/crop_rf.joblib`) is **not committed** —
+`/models/` is gitignored. It is reproducible by re-running
+`python tools/train_crop_model.py` (fixed random seed 42 throughout;
+downloads nothing itself — run
+`kaggle datasets download atharvaingle/crop-recommendation-dataset -p data/raw --unzip`
+first). The eval report (accuracy, macro-F1, confusion matrix) *is*
+committed at `docs/eval/crop_rf_eval.json` — that's the diffable,
+reviewable artifact; the binary model is not.
+
+`FeatureVector` (Module 05's output) does not share a shape with the
+Kaggle columns — `decisions/0007-crop-model-feature-mapping.md` documents
+the exact mapping (`src/agro_mirai/models/crop_feature_mapping.py`) used
+at prediction time. NDVI and season features are not consumed by this
+model version; see that ADR for why.
+
 ## What's not decided yet
 
 - API framework and routing (Module 11).
-- Model-serving shape for CropRecommendation / IrrigationAdvice /
-  DiseaseRiskAlert (Modules 06-08).
+- Model-serving shape for IrrigationAdvice / DiseaseRiskAlert
+  (Modules 07-08).
 - Deployment split between Render (API) and Supabase (DB/auth) — open
   question tracked in `PROGRESS.md`.

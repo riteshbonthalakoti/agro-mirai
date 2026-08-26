@@ -58,19 +58,23 @@ to build the phase table in `PROGRESS.md`.
 
 ## Current phase
 
-**Module 05 complete. Module 06 next.** The feature-engineering layer
-(`src/agro_mirai/processing/feature_builder.py`) turns raw
-`WeatherReading`/`SoilSample`/`NDVIReading` history plus a `Field_`
-into a `FeatureVector`, per `specs/core/features.md`: rolling weather
-aggregates (7/14/30-day rainfall sum, temp mean, humidity mean), soil
-pass-through plus a derived NPK balance index, NDVI latest/trend/source,
-and a season/days-since-sowing heuristic from `sown_on`. It is a pure
-function — no `DataStore` calls, no network, no `datetime.now()`.
-Weather is required (raises if absent); soil and NDVI are optional with
-explicit `*_data_available` flags and `None`-propagation, documented and
-enforced per ADR 0006. 15 tests in `tests/processing/` cover full data,
-missing NDVI/soil, weather-only, and the zero-weather error, including
-one loaded from a new second golden fixture,
-`specs/domains/fixtures/farm-002.json` (weather + soil, no NDVI). Module
-06 (Crop Recommendation Model) can start now. See `PROGRESS.md` for the
-full 15-module plan and status.
+**Module 06 complete. Module 07 next.** The crop recommendation model
+(`src/agro_mirai/models/crop_recommendation_model.py`) wraps a
+`RandomForestClassifier` (`tools/train_crop_model.py`, seed=42) trained
+on the Kaggle crop-recommendation-dataset's native 7 columns against all
+22 `crop_type` labels — held-out accuracy 0.9955, macro-F1 0.9955
+(`docs/eval/crop_rf_eval.json`). The artifact (`models/crop_rf.joblib`)
+is gitignored and reproducible by re-running the training script; the
+eval report is committed. `decisions/0007-crop-model-feature-mapping.md`
+documents the `FeatureVector` → model-input mapping
+(`src/agro_mirai/models/crop_feature_mapping.py`) used at prediction
+time: soil N/P/K/ph pass through, 14-day temp/humidity means, 30-day
+rainfall sum; NDVI and season are not consumed by this model version.
+`CropRecommendationModel.predict(FeatureVector) -> CropRecommendation`
+matches `specs/core/schema.yaml` exactly and keeps sklearn out of the
+public interface. 12 tests in `tests/models/` cover the feature-mapping
+function in isolation, schema-valid wrapper output (reusing
+`check_specs.py`'s validation logic), and the full
+farm-001/farm-002 → `FeatureBuilder` → mapping → `predict` chain end to
+end. Module 07 (Irrigation Prediction Model) can start now. See
+`PROGRESS.md` for the full 15-module plan and status.
