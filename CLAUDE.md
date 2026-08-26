@@ -58,7 +58,7 @@ to build the phase table in `PROGRESS.md`.
 
 ## Current phase
 
-**Modules 06, 07, and 12 complete. Module 08 next.** The crop recommendation model
+**Modules 06, 07, 08, and 12 complete. Module 09 next.** The crop recommendation model
 (`src/agro_mirai/models/crop_recommendation_model.py`) wraps a
 `RandomForestClassifier` (`tools/train_crop_model.py`, seed=42) trained
 on the Kaggle crop-recommendation-dataset's native 7 columns against all
@@ -91,6 +91,29 @@ predicted urgency, since no dataset with a continuous depth-mm target
 was found — `decisions/0008-irrigation-model-feature-mapping.md` has
 the full reasoning. Module 09-10 can consume `IrrigationPredictionModel`
 the same way they consume `CropRecommendationModel`.
+
+Module 08 (Crop Health / Disease Risk) is done: `DiseaseRiskModel`
+(`src/agro_mirai/models/disease_risk_model.py`) wraps a documented
+threshold/scoring MVP — `score_disease_risk`
+(`src/agro_mirai/models/disease_risk_scoring.py`) — not a trained
+classifier or image CNN, per the roadmap's locked scope decision 5. The
+score is a weighted composite over `FeatureVector`'s
+`humidity_pct_mean_14d` (weight 0.40), `rainfall_mm_sum_7d` (0.25),
+`temp_c_mean_14d` (0.15), and `ndvi_trend` when available (0.20), each
+picked for an agronomic disease-risk mechanism, not just availability —
+`decisions/0009-disease-risk-model.md` has the full reasoning, the
+threshold table, the confidence-as-evidence-completeness formula, and
+the explicit CNN upgrade path (additive — no `DiseaseRiskAlert` schema
+change needed). No labeled dataset exists for this target, unlike
+Modules 06/07, so there is no trained artifact and no `models/*.joblib`
+for this module. `DiseaseRiskModel.predict(FeatureVector) ->
+DiseaseRiskAlert` matches `specs/core/schema.yaml` exactly and follows
+Modules 06/07's calling convention. 16 tests in `tests/models/` cover
+the scoring function in isolation (including a deliberately high-risk
+and a deliberately low-risk synthetic input), schema-valid wrapper
+output, and the full farm-001/farm-002 → `FeatureBuilder` → score →
+predict chain end to end. Module 09 (Explainability/SHAP) can start
+now — it needs Modules 06, 07, and 08 all done.
 
 Module 12 (Voice & Language) ran concurrently, independent of 06:
 `VoiceService` (`specs/core/voice-interface.md`,
