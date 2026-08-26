@@ -1,0 +1,60 @@
+# AGRO MIRAI — runtime dependencies (API + web frontend).
+#
+# Generated from `pip freeze` against the global interpreter that has run
+# every module's tests, hand-checked against actual `import` statements
+# across src/, tools/, and tests/ (excluding tests/voice/) via:
+#   grep -rhoE '^\s*(import|from)\s+[a-zA-Z0-9_\.]+' src tools tests
+#
+# Deliberately EXCLUDED: the Module 12 voice/AI4Bharat stack (torch,
+# transformers, indicnlp, sacremoses, regex, soundfile, piper, torchaudio).
+# See decisions/0014-deploy-target-and-voice-scope.md — the hosted Render
+# instance does not run live voice inference; it is demoed locally from
+# the project-local .venv/ instead. requirements-dev.txt covers test-only
+# tooling.
+#
+# Pinned to the exact versions this codebase has been tested against.
+# If you bump any of these, re-run docs/eval/*.json-producing scripts
+# (tools/train_crop_model.py, tools/train_irrigation_model.py) and diff
+# the eval reports before trusting the existing model artifacts under a
+# new scikit-learn version.
+
+Flask==3.1.3
+Werkzeug==3.1.8
+Jinja2==3.1.6
+MarkupSafe==3.0.3
+itsdangerous==2.2.0
+click==8.4.2
+blinker==1.9.0
+
+scikit-learn==1.4.2
+scipy==1.17.1
+joblib==1.4.2
+numpy==2.5.2
+pandas==3.0.5
+
+shap==0.52.0
+numba==0.67.0
+llvmlite==0.49.0
+cloudpickle==3.1.2
+slicer==0.0.8
+tqdm==4.70.0
+
+PyYAML==6.0.3
+python-dotenv==1.2.2
+requests==2.34.2
+
+# Module 04 — SupabaseDataStore (prod persistence)
+supabase==2.31.0
+postgrest==2.31.0
+supabase-auth==2.31.0
+supabase-functions==2.31.0
+storage3==2.31.0
+realtime==2.31.0
+httpx==0.28.1
+
+# Module 15 — production WSGI server.
+# gunicorn does not run on Windows (no fcntl); Render's build/runtime is
+# Linux, so this is fine for deploy. Local Windows dev keeps using
+# `flask run`, and the multi-worker verification for this module was run
+# under WSL (see decisions/0014-deploy-target-and-voice-scope.md).
+gunicorn==26.2.0
