@@ -20,3 +20,7 @@ One entry per architectural decision record.
   trained classifier on a 3-class Kaggle label; `recommended_depth_mm`
   and the advisory window are a documented rule-based lookup, not
   fabricated regression targets.
+- `0009-disease-risk-model.md` — Disease risk is a documented threshold
+  scoring system over humidity/rainfall/temperature/NDVI-trend, not a
+  trained classifier or image CNN; the CNN upgrade path is additive
+  behind the same `DiseaseRiskAlert` shape.
