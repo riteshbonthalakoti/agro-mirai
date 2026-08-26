@@ -1,0 +1,30 @@
+done
+
+Irrigation prediction model trained and wrapped. tools/train_irrigation_model.py
+trains a RandomForestClassifier (seed=42) on the Kaggle
+irrigation-water-requirement-prediction-dataset (miadul, MIT license,
+10000 rows) against the 3-class Irrigation_Need label (Low/Medium/High);
+held-out accuracy 0.7240, macro-F1 0.5796 (docs/eval/irrigation_rf_eval.json).
+The artifact (models/irrigation_rf.joblib) is gitignored and reproducible
+by re-running the script; the eval report is committed.
+
+decisions/0008-irrigation-model-feature-mapping.md documents the
+FeatureVector -> model-input mapping (src/agro_mirai/models/irrigation_feature_mapping.py)
+used at prediction time -- soil_ph/soil_moisture_pct pass through,
+14-day temp/humidity means, 30-day rainfall sum, one-hot season -- and
+the decision to train only `urgency` as a classifier while
+`recommended_depth_mm` and the advisory window are a documented
+rule-based lookup keyed off the predicted urgency, since no dataset
+with a continuous depth-mm target was found. NDVI and crop-stage are
+not consumed by this model version.
+
+IrrigationPredictionModel (src/agro_mirai/models/irrigation_prediction_model.py)
+loads the artifact and exposes predict(FeatureVector) -> IrrigationAdvice
+matching specs/core/schema.yaml exactly, keeping sklearn objects out of
+the public interface for Modules 09-10.
+
+16 tests in tests/models/ cover the feature-mapping function in isolation,
+the wrapper's schema-valid output (reusing tools/check_specs.py's
+validation logic), and the full farm-001/farm-002 fixture ->
+FeatureBuilder -> mapping -> predict chain end to end. Module 08 can
+start now.

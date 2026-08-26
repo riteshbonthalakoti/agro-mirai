@@ -58,7 +58,7 @@ to build the phase table in `PROGRESS.md`.
 
 ## Current phase
 
-**Modules 06 and 12 complete. Module 07 next.** The crop recommendation model
+**Modules 06, 07, and 12 complete. Module 08 next.** The crop recommendation model
 (`src/agro_mirai/models/crop_recommendation_model.py`) wraps a
 `RandomForestClassifier` (`tools/train_crop_model.py`, seed=42) trained
 on the Kaggle crop-recommendation-dataset's native 7 columns against all
@@ -77,6 +77,20 @@ function in isolation, schema-valid wrapper output (reusing
 `check_specs.py`'s validation logic), and the full
 farm-001/farm-002 → `FeatureBuilder` → mapping → `predict` chain end to
 end. Module 07 (Irrigation Prediction Model) can start now.
+
+Module 07 (Irrigation Prediction Model) is done: `IrrigationPredictionModel`
+(`src/agro_mirai/models/irrigation_prediction_model.py`) wraps a
+`RandomForestClassifier` (`tools/train_irrigation_model.py`, seed=42)
+trained on the Kaggle irrigation-water-requirement-prediction-dataset's
+6 columns (soil pH/moisture, 14d temp/humidity means, 30d rainfall sum,
+one-hot season) against the 3-class `Irrigation_Need` label — held-out
+accuracy 0.7240, macro-F1 0.5796 (`docs/eval/irrigation_rf_eval.json`).
+Only `urgency` is a trained output; `recommended_depth_mm` and the
+advisory window are a documented rule-based lookup keyed off the
+predicted urgency, since no dataset with a continuous depth-mm target
+was found — `decisions/0008-irrigation-model-feature-mapping.md` has
+the full reasoning. Module 09-10 can consume `IrrigationPredictionModel`
+the same way they consume `CropRecommendationModel`.
 
 Module 12 (Voice & Language) ran concurrently, independent of 06:
 `VoiceService` (`specs/core/voice-interface.md`,

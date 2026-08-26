@@ -169,6 +169,53 @@ the exact mapping (`src/agro_mirai/models/crop_feature_mapping.py`) used
 at prediction time. NDVI and season features are not consumed by this
 model version; see that ADR for why.
 
+## Irrigation prediction model (Module 07)
+
+`IrrigationPredictionModel` (`src/agro_mirai/models/irrigation_prediction_model.py`)
+wraps a `RandomForestClassifier` trained by `tools/train_irrigation_model.py`.
+
+**Dataset search:** unlike Module 06, no single canonical Kaggle dataset
+covers "soil moisture + weather + crop stage → irrigation depth" as a
+continuous target. `kaggle datasets list -s "smart irrigation"` and
+related searches turned up mostly IoT sensor logs, water-budget
+datasets, or duplicates. The dataset used —
+`miadul/irrigation-water-requirement-prediction-dataset`
+(<https://www.kaggle.com/datasets/miadul/irrigation-water-requirement-prediction-dataset>,
+MIT license) — was picked over the alternatives found because: (a) it's
+the most-downloaded/voted irrigation dataset in the search results with
+a usable regression/classification framing, (b) it is clean (10,000
+rows, zero nulls), and (c) its `Season` column uses `Kharif`/`Rabi`/
+`Zaid` — the exact Indian-season vocabulary already in
+`specs/core/enums.md`'s `season` enum, a genuine fit rather than a
+coincidence worth forcing.
+
+Its target, `Irrigation_Need`, is a 3-class label (`Low`/`Medium`/
+`High`, 5864/3800/336 rows) — not the continuous depth-in-mm
+`IrrigationAdvice.recommended_depth_mm` needs. Rather than inventing
+numeric depths to fabricate a regression target (laundering a rule as
+if it were learned), `urgency` is trained as a classifier against this
+label and `recommended_depth_mm` (plus the advisory window) is a
+documented rule-based lookup keyed off the predicted urgency —
+`decisions/0008-irrigation-model-feature-mapping.md` has the full
+reasoning, including why `risk_level`'s `severe` tier is unreachable in
+this model version.
+
+The trained artifact (`models/irrigation_rf.joblib`) is **not
+committed** — `/models/` is gitignored. Reproducible via
+`python tools/train_irrigation_model.py` (fixed random seed 42
+throughout; downloads nothing itself — run
+`kaggle datasets download miadul/irrigation-water-requirement-prediction-dataset -p data/raw --unzip`
+first). Held-out eval (`docs/eval/irrigation_rf_eval.json`): accuracy
+0.7240, macro-F1 0.5796 — the gap between the two reflects the `High`
+class's small size (336/10000 rows) even with `class_weight="balanced"`,
+not a bug.
+
+`FeatureVector` (Module 05's output) does not share a shape with the
+dataset's columns — `decisions/0008-irrigation-model-feature-mapping.md`
+documents the exact mapping (`src/agro_mirai/models/irrigation_feature_mapping.py`)
+used at prediction time. NDVI and crop-stage features are not consumed
+by this model version; see that ADR for why.
+
 ## Voice & language (Module 12)
 
 `VoiceService` (`specs/core/voice-interface.md`,
