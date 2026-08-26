@@ -22,6 +22,7 @@ from agro_mirai.persistence.sqlite_store import SQLiteDataStore
 def create_app(config: dict | None = None) -> Flask:
     app = Flask(__name__)
 
+    app.secret_key = os.environ.get("FLASK_SECRET_KEY", "dev-only-secret-not-for-prod")
     app.config["API_KEY"] = os.environ.get("API_KEY", "")
     app.config["FARMER_ID"] = os.environ.get("FARMER_ID", "")
     app.config["DATABASE_URL"] = os.environ.get("DATABASE_URL", "agro_mirai.db")
@@ -50,11 +51,13 @@ def create_app(config: dict | None = None) -> Flask:
     from agro_mirai.api.routes.advisory import advisory_bp
     from agro_mirai.api.routes.farms import farms_bp
     from agro_mirai.api.routes.feedback import feedback_bp
+    from agro_mirai.api.routes.frontend import frontend_bp
     from agro_mirai.api.routes.health import health_bp
 
     app.register_blueprint(health_bp)
     app.register_blueprint(farms_bp)
     app.register_blueprint(advisory_bp)
     app.register_blueprint(feedback_bp)
+    app.register_blueprint(frontend_bp)
 
     return app

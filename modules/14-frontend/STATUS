@@ -1,0 +1,61 @@
+done
+
+Web frontend (server-rendered Flask/Jinja2 templates + minimal vanilla
+JS-free UI) added to the same Flask process as Module 11's API —
+src/agro_mirai/api/templates/, src/agro_mirai/api/static/, a new
+frontend blueprint (src/agro_mirai/api/routes/frontend.py) registered
+additively in app.py. Ran in parallel with Module 13 (Feedback Loop) in
+a separate session working the same repo; no conflicts on push.
+
+decisions/0013-frontend-platform-sequencing.md records the locked
+platform build order (web now, mobile next, WhatsApp/messaging after)
+and the stack choice: same-process Flask templates over a separate
+React/Vite SPA, for finishability before Nov 14 and because it means
+Module 15 (deploy) provisions one service, not two.
+
+The frontend calls Module 11's own JSON API exclusively — never imports
+DecisionEngine or any model class — via src/agro_mirai/api/frontend_client.py,
+an in-process helper that issues real request/response round trips
+through current_app.test_client() with the server-held API_KEY attached
+server-side (never exposed to the browser). Three screens: dashboard
+(single-farmer field list, per ADR 0003), field detail (crop
+recommendation, irrigation advice, disease-risk alerts, advisories with
+severity badges — all pulled from the real GET endpoints, not
+recomputed), and an inline feedback form per advisory posting to
+POST /feedback (required fields checked against routes/feedback.py's
+actual _REQUIRED_KEYS before assuming the shape). "Listen in Kannada"
+TTS was not built — no endpoint exposes Explanation.summary_kn or
+VoiceService audio today; recorded as a known limitation in the ADR and
+on the field-detail page itself, not silently dropped.
+
+15 tests: 8 unit (tests/frontend/test_frontend_unit.py, mocked API
+layer) covering _safe_get/_safe_get_list's 404/422-tolerant degradation
+and ApiError message extraction; 7 integration
+(tests/frontend/test_frontend_integration.py) against a real Flask app,
+real DecisionEngine, real crop/irrigation artifacts, and the farm-001
+fixture — confirming the dashboard renders, the field-detail page's
+rendered advisory titles/ids match what GET /fields/{id}/advisories
+actually returns byte-for-byte, an unknown field id renders a 404 error
+page (not a 500), the feedback form's POST is retrievable afterward via
+DataStore.list_feedback_for_advisory, and invalid ratings are rejected
+with the flashed message surfaced in the page. Full suite (excluding
+tests/voice/): 177 passed, 0 failed, 19 skipped.
+
+Acceptance checklist (all manually re-verified, not just asserted):
+- [x] Advisory view renders real data for farm-001's field, matching
+      GET /fields/{id}/advisories — verified in
+      test_field_detail_renders_real_advisory_data by comparing the
+      API's JSON response against the rendered HTML for the same
+      request.
+- [x] Feedback form successfully posts and the entry is retrievable via
+      DataStore afterward — verified end to end in
+      test_feedback_form_posts_and_entry_is_retrievable.
+- [x] The app runs from a clean checkout following install/run steps —
+      actually tried: seeded a fresh temp SQLite DB via
+      tools/seed_fixture.py's loader, started create_app() with that
+      store, hit GET / and GET /field/<id> through the real test
+      client, got 200s with the crop-recommendation section populated.
+
+No new src/agro_mirai/api/ endpoints were added — the openapi.yaml
+contract already covered everything the frontend needed. Module 15
+(Integration, deploy, docs) can start once Module 13 also lands.
