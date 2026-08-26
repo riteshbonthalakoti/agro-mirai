@@ -58,7 +58,7 @@ to build the phase table in `PROGRESS.md`.
 
 ## Current phase
 
-**Modules 06-12 complete. Modules 13 and 14 next (in parallel).** The crop recommendation model
+**Modules 06-13 complete. Module 13 ran in parallel with Module 14 (Frontend). Module 14 and final integration (Module 15) next.** The crop recommendation model
 (`src/agro_mirai/models/crop_recommendation_model.py`) wraps a
 `RandomForestClassifier` (`tools/train_crop_model.py`, seed=42) trained
 on the Kaggle crop-recommendation-dataset's native 7 columns against all

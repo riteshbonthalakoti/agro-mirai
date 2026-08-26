@@ -640,6 +640,17 @@ class SQLiteDataStore:
         ).fetchall()
         return [self._row_to_feedback(r) for r in rows]
 
+    def list_feedback_for_farmer(
+        self, farmer_id: str, limit: int = 200
+    ) -> list[FeedbackEntry]:
+        """Return all feedback entries for the farmer, newest first."""
+        rows = self._conn.execute(
+            "SELECT * FROM feedback_entries WHERE farmer_id = ? "
+            "ORDER BY created_at DESC LIMIT ?",
+            (farmer_id, limit),
+        ).fetchall()
+        return [self._row_to_feedback(r) for r in rows]
+
     @staticmethod
     def _row_to_feedback(row: sqlite3.Row) -> FeedbackEntry:
         return FeedbackEntry(
