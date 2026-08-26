@@ -24,3 +24,7 @@ One entry per architectural decision record.
   scoring system over humidity/rainfall/temperature/NDVI-trend, not a
   trained classifier or image CNN; the CNN upgrade path is additive
   behind the same `DiseaseRiskAlert` shape.
+- `0010-explainability.md` — SHAP (`shap.TreeExplainer`) explains Modules
+  06/07's trained RandomForest classifiers; Module 08's rule-based score
+  gets direct weight×signal attribution, explicitly labeled
+  `rule_weight`, never presented as SHAP.

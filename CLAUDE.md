@@ -58,7 +58,7 @@ to build the phase table in `PROGRESS.md`.
 
 ## Current phase
 
-**Modules 06, 07, 08, and 12 complete. Module 09 next.** The crop recommendation model
+**Modules 06, 07, 08, 09, and 12 complete. Module 10 next.** The crop recommendation model
 (`src/agro_mirai/models/crop_recommendation_model.py`) wraps a
 `RandomForestClassifier` (`tools/train_crop_model.py`, seed=42) trained
 on the Kaggle crop-recommendation-dataset's native 7 columns against all
@@ -114,6 +114,29 @@ and a deliberately low-risk synthetic input), schema-valid wrapper
 output, and the full farm-001/farm-002 → `FeatureBuilder` → score →
 predict chain end to end. Module 09 (Explainability/SHAP) can start
 now — it needs Modules 06, 07, and 08 all done.
+
+Module 09 (Explainability) is done: `ExplanationService`
+(`src/agro_mirai/models/explanation_service.py`) turns any of the three
+models' predictions into a uniform `Explanation`
+(`src/agro_mirai/models/explanation.py`) — `explain_crop` and
+`explain_irrigation` use `shap.TreeExplainer` against the real
+`crop_rf.joblib`/`irrigation_rf.joblib` artifacts (`method="shap_tree"`);
+`explain_disease` has no trained artifact to explain, so it reports the
+exact weight×signal decomposition `disease_risk_scoring.py` already
+computes (`method="rule_weight"`), explicitly labeled "contributing
+factor," never "SHAP value" — `decisions/0010-explainability.md` has
+the full reasoning for the split. `summary_kn` is populated by calling
+an injected `VoiceService.translate` (Module 12); the service defaults
+to no `VoiceService` and leaves `summary_kn=None`, so it's testable
+without the AI4Bharat stack. `shap` was added as a new dependency
+(no project-wide manifest exists yet, so it's installed directly into
+the interpreter the way `scikit-learn`/`joblib` were for Modules 06/07).
+9 tests in `tests/models/` cover unit plumbing (mocked
+`shap.TreeExplainer` for crop/irrigation, no mocking needed for
+disease) and integration against the real crop/irrigation artifacts and
+farm-001/farm-002 fixtures — irrigation's top contributors include
+`Soil_Moisture`, as expected agronomically. Module 10
+(Decision & Recommendation Engine) can start now.
 
 Module 12 (Voice & Language) ran concurrently, independent of 06:
 `VoiceService` (`specs/core/voice-interface.md`,
