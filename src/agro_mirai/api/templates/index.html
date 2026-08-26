@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — AGRO MIRAI{% endblock %}
+{% block content %}
+  <h1>Welcome, {{ farmer.name }}</h1>
+  <p class="muted">
+    {{ farmer.district or "" }}{% if farmer.district and farmer.state %}, {% endif %}{{ farmer.state or "" }}
+    &middot; preferred language: {{ farmer.preferred_language }}
+  </p>
+
+  <h2>Your fields</h2>
+  {% if fields %}
+    <ul class="field-list">
+      {% for field in fields %}
+        <li class="field-card">
+          <a href="{{ url_for('frontend.field_detail', field_id=field.id) }}">
+            <strong>{{ field.name }}</strong>
+          </a>
+          <div class="muted">
+            {{ field.area_ha }} ha
+            {% if field.soil_type %} &middot; {{ field.soil_type }} soil{% endif %}
+            {% if field.current_crop %} &middot; currently {{ field.current_crop }}{% endif %}
+          </div>
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p>No fields yet. Create one via <code>POST /fields</code>.</p>
+  {% endif %}
+{% endblock %}

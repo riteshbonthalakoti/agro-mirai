@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+{% block title %}{{ field.name }} — AGRO MIRAI{% endblock %}
+{% block content %}
+  <p><a href="{{ url_for('frontend.dashboard') }}">&larr; back to fields</a></p>
+  <h1>{{ field.name }}</h1>
+  <p class="muted">{{ field.area_ha }} ha &middot; {{ field.latitude }}, {{ field.longitude }}</p>
+
+  <section class="panel">
+    <h2>Crop recommendation</h2>
+    {% if recommendation %}
+      <p><strong>{{ recommendation.recommended_crop }}</strong>
+        (confidence {{ "%.0f"|format(recommendation.confidence * 100) }}%)</p>
+      {% if recommendation.rationale %}<p>{{ recommendation.rationale }}</p>{% endif %}
+      {% if recommendation.alternatives %}
+        <p class="muted">Alternatives: {{ recommendation.alternatives | join(", ") }}</p>
+      {% endif %}
+    {% else %}
+      <p class="muted">Not available yet — insufficient weather data for this field.</p>
+    {% endif %}
+  </section>
+
+  <section class="panel">
+    <h2>Irrigation advice</h2>
+    {% if irrigation %}
+      <p><strong>Urgency: {{ irrigation.urgency }}</strong></p>
+      <p>Recommended depth: {{ irrigation.recommended_depth_mm }} mm,
+         window {{ irrigation.window_start_at }} &ndash; {{ irrigation.window_end_at }}</p>
+      {% if irrigation.rationale %}<p>{{ irrigation.rationale }}</p>{% endif %}
+    {% else %}
+      <p class="muted">Not available yet — insufficient weather data for this field.</p>
+    {% endif %}
+  </section>
+
+  <section class="panel">
+    <h2>Disease risk</h2>
+    {% if disease_alerts %}
+      <ul>
+        {% for alert in disease_alerts %}
+          <li>
+            <strong>{{ alert.disease }}</strong> &mdash; risk: {{ alert.risk_level }}
+            (confidence {{ "%.0f"|format(alert.confidence * 100) }}%)
+            {% if alert.recommended_action %}<div>{{ alert.recommended_action }}</div>{% endif %}
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p class="muted">No disease-risk alerts.</p>
+    {% endif %}
+  </section>
+
+  <section class="panel">
+    <h2>Advisories</h2>
+    {% if advisories %}
+      {% for advisory in advisories %}
+        <article class="advisory severity-{{ advisory.severity }}">
+          <h3>{{ advisory.title }} <span class="badge">{{ advisory.severity }}</span></h3>
+          <p>{{ advisory.body }}</p>
+          <p class="muted">{{ advisory.created_at }} &middot; language: {{ advisory.language }}</p>
+          <p class="muted">
+            "Listen in Kannada" is a known limitation — no API endpoint
+            currently exposes a Kannada summary or TTS audio for this
+            advisory (see decisions/0013).
+          </p>
+
+          <form class="feedback-form" method="post" action="{{ url_for('frontend.submit_feedback') }}">
+            <input type="hidden" name="field_id" value="{{ field.id }}">
+            <input type="hidden" name="advisory_id" value="{{ advisory.id }}">
+            <label>
+              Rating
+              <select name="rating" required>
+                <option value="">--</option>
+                {% for n in range(1, 6) %}
+                  <option value="{{ n }}">{{ n }}</option>
+                {% endfor %}
+              </select>
+            </label>
+            <label>
+              <input type="radio" name="helpful" value="yes" checked> Helpful
+            </label>
+            <label>
+              <input type="radio" name="helpful" value="no"> Not helpful
+            </label>
+            <label class="comment-label">
+              Comment
+              <input type="text" name="comment" maxlength="500">
+            </label>
+            <button type="submit">Submit feedback</button>
+          </form>
+        </article>
+      {% endfor %}
+    {% else %}
+      <p class="muted">No advisories yet.</p>
+    {% endif %}
+  </section>
+{% endblock %}

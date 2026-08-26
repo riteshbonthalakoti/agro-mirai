@@ -33,3 +33,8 @@ One entry per architectural decision record.
   than synthesizing across them; `Advisory.severity` (max of irrigation
   urgency / disease risk_level) doubles as the immediate-action alert
   signal, no new schema field added.
+- `0013-frontend-platform-sequencing.md` — Platform build order is web
+  now, mobile next, WhatsApp/messaging after; Module 14's web frontend
+  is server-rendered Flask templates in the same process as Module 11's
+  API (not a separate SPA service), calling the JSON API in-process with
+  a server-held `API_KEY` rather than exposing it client-side.
