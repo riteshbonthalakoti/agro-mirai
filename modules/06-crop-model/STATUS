@@ -1,0 +1,26 @@
+done
+
+Crop recommendation model trained and wrapped. tools/train_crop_model.py
+trains a RandomForestClassifier (seed=42) on the Kaggle
+crop-recommendation-dataset's native 7 columns (N, P, K, temperature,
+humidity, ph, rainfall) against all 22 crop_type labels; held-out
+accuracy 0.9955, macro-F1 0.9955 (docs/eval/crop_rf_eval.json). The
+artifact (models/crop_rf.joblib) is gitignored and reproducible by
+re-running the script; the eval report is committed.
+
+decisions/0007-crop-model-feature-mapping.md documents the FeatureVector
+-> model-input mapping (src/agro_mirai/models/crop_feature_mapping.py)
+used at prediction time — N/P/K/ph pass through from soil, 14-day
+temp/humidity means, 30-day rainfall sum. NDVI and season are not
+consumed by this model version.
+
+CropRecommendationModel (src/agro_mirai/models/crop_recommendation_model.py)
+loads the artifact and exposes predict(FeatureVector) -> CropRecommendation
+matching specs/core/schema.yaml exactly, keeping sklearn objects out of
+the public interface for Modules 09-10.
+
+12 tests in tests/models/ cover the feature-mapping function in isolation,
+the wrapper's schema-valid output (reusing tools/check_specs.py's
+validation logic), and the full farm-001/farm-002 fixture ->
+FeatureBuilder -> mapping -> predict chain end to end. Module 07
+(Irrigation Prediction Model) can start now.
