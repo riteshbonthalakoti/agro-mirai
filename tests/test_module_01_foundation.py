@@ -28,7 +28,7 @@ def test_repo_layout_exists():
 
 
 def test_progress_has_state_markers():
-    content = (ROOT / "PROGRESS.md").read_text()
+    content = (ROOT / "PROGRESS.md").read_text(encoding="utf-8")
     assert "<!-- STATE:START -->" in content
     assert "<!-- STATE:END -->" in content
 
@@ -46,7 +46,7 @@ def test_update_state_script_runs_and_populates_state_block():
     )
     assert result.returncode == 0, result.stderr
 
-    content = (ROOT / "PROGRESS.md").read_text()
+    content = (ROOT / "PROGRESS.md").read_text(encoding="utf-8")
     start = content.index("<!-- STATE:START -->")
     end = content.index("<!-- STATE:END -->")
     state_block = content[start:end]
