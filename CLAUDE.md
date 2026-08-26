@@ -58,7 +58,7 @@ to build the phase table in `PROGRESS.md`.
 
 ## Current phase
 
-**Modules 06, 07, 08, 09, 10, and 12 complete. Module 11 next.** The crop recommendation model
+**Modules 06-12 complete. Modules 13 and 14 next (in parallel).** The crop recommendation model
 (`src/agro_mirai/models/crop_recommendation_model.py`) wraps a
 `RandomForestClassifier` (`tools/train_crop_model.py`, seed=42) trained
 on the Kaggle crop-recommendation-dataset's native 7 columns against all
@@ -180,5 +180,49 @@ interface, not blocked on Bhashini access. Requires the project-local
 `.venv/` (transformers pinned to 4.49.0 — the global interpreter's
 transformers 5.x is incompatible with these AI4Bharat models in three
 separate ways, see `docs/architecture.md`). 25 tests in `tests/voice/`,
-all passing under `.venv/Scripts/python.exe`. See `PROGRESS.md` for the
-full 15-module plan and status.
+all passing under `.venv/Scripts/python.exe`.
+
+Module 11 (API Layer) is done: `src/agro_mirai/api/` exposes Modules
+06-10's `DecisionEngine` and the underlying models plus the `DataStore`
+behind Flask endpoints matching `specs/core/openapi.yaml` exactly (no
+new endpoints were needed — the spec already covered
+farmers/fields/recommendation/irrigation/disease-risk/advisories/feedback).
+`create_app(config=None) -> Flask` (`src/agro_mirai/api/app.py`) is the
+app factory: it builds the `DataStore`/model singletons once per app and
+stores them in `app.extensions`, never as module-level globals, so tests
+can inject mocks or a real `SQLiteDataStore` via the `config` dict
+(`DATA_STORE`, `CROP_MODEL`, `IRRIGATION_MODEL`, `DISEASE_MODEL`,
+`DECISION_ENGINE` keys). Auth is a single shared `API_KEY` checked
+against `Authorization: Bearer <key>` (`src/agro_mirai/api/auth.py`) —
+not JWT/OAuth, per the module's own scope — mapped to one `FARMER_ID`
+per ADR 0003 (single-farmer-per-account). Every 400/401/404/422/500
+response uses the `{"error": {"code","message","details"}}` envelope
+(`src/agro_mirai/api/errors.py`), never Flask's default HTML error page.
+
+Because `openapi.yaml` has no separate "generate" endpoint, each
+GET under `/fields/{field_id}/...` (recommendation, irrigation,
+disease-risk, advisories) both computes and persists: it builds a fresh
+`FeatureVector` from whatever the `DataStore` currently holds
+(`src/agro_mirai/api/features.py`), runs the relevant model (or the full
+`DecisionEngine` for advisories), saves the result via `DataStore`, and
+returns it — a missing-weather `FeatureBuilder` error becomes a 422, not
+a 500. `POST /feedback` is fully implemented against
+`DataStore.save_feedback_entry` (not a placeholder stub) since the CRUD
+was trivial to wire; Module 13 builds aggregation/analysis on top of what
+this persists.
+
+22 tests: 16 unit tests (`tests/api/test_routes_unit.py`, `DataStore` and
+all four model/engine dependencies mocked) covering response shape, auth
+rejection (missing/wrong key -> 401), and 404s; 6 integration tests
+(`tests/api/test_integration.py`) against a real Flask test client, a
+real `SQLiteDataStore` seeded from `farm-001.json` via
+`tools/seed_fixture.py`'s loader, and the real crop/irrigation
+artifacts — confirming a schema-valid `Advisory` end to end, health,
+auth, and unknown-field-id -> 404 (not 500). Full suite (excluding
+`tests/voice/`, which needs the project-local `.venv/` for `torch`):
+145 passed, 0 failed, 19 skipped.
+
+Modules 13 (Feedback Loop) and 14 (Frontend) can start now, in
+parallel — everything they need is this HTTP API, not the Python model
+classes directly. See `PROGRESS.md` for the full 15-module plan and
+status.
