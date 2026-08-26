@@ -132,5 +132,9 @@ class DataStore(Protocol):
         self, farmer_id: str, advisory_id: str, limit: int = 50
     ) -> list[FeedbackEntry]: ...
 
+    def list_feedback_for_farmer(
+        self, farmer_id: str, limit: int = 200
+    ) -> list[FeedbackEntry]: ...
+
     # --- Health ---
     def ping(self) -> bool: ...

@@ -153,6 +153,12 @@ def save_feedback_entry(farmer_id: str, entry: FeedbackEntry) -> FeedbackEntry:
 def list_feedback_for_advisory(
     farmer_id: str, advisory_id: str, limit: int = 50
 ) -> list[FeedbackEntry]: ...
+
+def list_feedback_for_farmer(
+    farmer_id: str, limit: int = 200
+) -> list[FeedbackEntry]:
+    """Return all feedback entries for the farmer, newest first.
+    Added in Module 13 to support FeedbackAggregator."""
 ```
 
 ### Health
