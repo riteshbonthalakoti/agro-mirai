@@ -58,18 +58,19 @@ to build the phase table in `PROGRESS.md`.
 
 ## Current phase
 
-**Module 04 complete. Module 05 next.** The storage layer
-(`src/agro_mirai/persistence/`) implements
-`specs/core/repository-interface.md` in full: domain dataclasses,
-generated SQLite+Postgres DDL (`tools/gen_migrations.py`,
-`migrations/`), `SQLiteDataStore`, and `SupabaseDataStore` — both
-tested against a live Supabase project (ref `yzsemdauwafxssaknlzr`,
-org "ritesh-1918's Project", region ap-south-1). The parity suite
-(`tests/persistence/contract/`) runs 36 identical assertions across
-both backends (18 SQLite + 18 Supabase), and `tools/seed_fixture.py`
-round-trips the golden fixture field-for-field on both. Note: the
-Supabase free tier auto-pauses after 7 days idle — see
-`docs/TOOLING.md` for the resume command before assuming a Supabase
-test failure is a real regression. Module 05 (Processing & Feature
-Engineering) can start now. See `PROGRESS.md` for the full 15-module
-plan and status.
+**Module 05 complete. Module 06 next.** The feature-engineering layer
+(`src/agro_mirai/processing/feature_builder.py`) turns raw
+`WeatherReading`/`SoilSample`/`NDVIReading` history plus a `Field_`
+into a `FeatureVector`, per `specs/core/features.md`: rolling weather
+aggregates (7/14/30-day rainfall sum, temp mean, humidity mean), soil
+pass-through plus a derived NPK balance index, NDVI latest/trend/source,
+and a season/days-since-sowing heuristic from `sown_on`. It is a pure
+function — no `DataStore` calls, no network, no `datetime.now()`.
+Weather is required (raises if absent); soil and NDVI are optional with
+explicit `*_data_available` flags and `None`-propagation, documented and
+enforced per ADR 0006. 15 tests in `tests/processing/` cover full data,
+missing NDVI/soil, weather-only, and the zero-weather error, including
+one loaded from a new second golden fixture,
+`specs/domains/fixtures/farm-002.json` (weather + soil, no NDVI). Module
+06 (Crop Recommendation Model) can start now. See `PROGRESS.md` for the
+full 15-module plan and status.

@@ -1,0 +1,22 @@
+done
+
+Feature engineering layer implemented: specs/core/features.md documents
+every feature (weather rolling aggregates over 7/14/30-day windows,
+soil pass-through + derived NPK balance index, NDVI latest/trend/source,
+season/days-since-sowing from sown_on) plus an explicit missing-data
+policy. FeatureBuilder (src/agro_mirai/processing/feature_builder.py) is
+a pure function of a Field_ plus plain WeatherReading/SoilSample/
+NDVIReading lists and an as_of date — no DataStore calls, no network,
+no datetime.now(). Weather is required (raises ValueError if empty);
+soil and NDVI are optional with explicit *_data_available flags and
+None-propagation, never a silent 0.0.
+
+15 tests in tests/processing/test_feature_builder.py cover full data,
+missing NDVI (both synthetic and loaded from the new farm-002.json
+fixture), missing soil, weather-only, the zero-weather error, and the
+season-mapping boundaries. farm-002.json is a second golden fixture
+(new farmer/field, weather+soil but empty ndvi_readings) validated via
+`python tools/check_specs.py --fixture specs/domains/fixtures/farm-002.json`.
+
+ADR 0006 records the missing-data policy decision. Module 06 (Crop
+Recommendation Model) can start now.
