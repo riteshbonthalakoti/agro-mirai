@@ -1,7 +1,9 @@
 {% extends "base.html" %}
 {% block title %}Error — AGRO MIRAI{% endblock %}
 {% block content %}
-  <h1>Something went wrong</h1>
-  <p>{{ error.get("error", {}).get("message", "Unknown error") }}</p>
-  <p><a href="{{ url_for('frontend.dashboard') }}">&larr; back to fields</a></p>
+  <div class="empty-state">
+    <h1>Something went wrong</h1>
+    <p class="muted">{{ error.get("error", {}).get("message", "Unknown error") }}</p>
+    <p><a class="back-link" href="{{ url_for('frontend.dashboard') }}">&larr; back to fields</a></p>
+  </div>
 {% endblock %}
