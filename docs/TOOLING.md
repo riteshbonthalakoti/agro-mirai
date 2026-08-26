@@ -77,6 +77,45 @@ Verified on: 2026-08-25, Windows 11.
   reason, not a failure) if the project is unreachable — restore it and
   re-run for real coverage instead of a skip.
 
+## Voice stack (Module 12)
+
+- All four AI4Bharat model repos used (`indictrans2-en-indic-dist-200M`,
+  `indictrans2-indic-en-dist-200M`, `indic-conformer-600m-multilingual`,
+  `vits_rasa_13`) are **HF-gated** — each needed a separate manual
+  "Request access" click on huggingface.co under the `ritesh1918`
+  account (auto-approved within a couple of minutes each, but it is a
+  human step, not something `hf download`/`hf auth login` alone unlocks;
+  README.md is fetchable on a gated repo before access is granted, which
+  is misleading — don't take that as proof of full access, verify with
+  an actual model file like `config.json`).
+- Download sizes/times, measured on this connection: en-indic dist200M
+  2.21GB (~39s), indic-en dist200M 1.84GB (~29s), indic-conformer-600m
+  2.56GB / 404 files (~110s), vits_rasa_13 0.16GB (~8s), Piper
+  `en_US-lessac-medium` voice ~60MB. **~6.8GB total, well under 5
+  minutes** on this connection — reasonable for a capstone setup step,
+  but worth budgeting for on a slower connection.
+- `models/voice/` holds the downloaded weights and is gitignored
+  (`/models/` in `.gitignore`), same pattern as `models/crop_rf.joblib`.
+  Reproduce with `hf download <repo> --local-dir models/voice/<name>`
+  per repo (see `src/agro_mirai/voice/ai4bharat_voice.py` for exact repo
+  ids/paths) or regenerate via the model card usage snippets.
+- **Project-local virtualenv required**: `.venv/` (gitignored), created
+  with `python -m venv .venv`, pinned to `transformers==4.49.0` +
+  `torch==2.4.1`/`torchaudio==2.4.1` (CPU wheels from
+  `https://download.pytorch.org/whl/cpu`) + `sentencepiece soundfile
+  indic-nlp-library sacremoses regex onnxruntime==1.20.1 piper-tts`. The
+  project's global Python interpreter has transformers 5.15, which is
+  incompatible with these AI4Bharat models in three different ways — see
+  `docs/architecture.md` "AI4Bharat model / transformers version pin"
+  for the specifics. Run voice code/tests with
+  `.venv/Scripts/python.exe`, not bare `python`.
+- `IndicTransToolkit` (IndicTrans2's required preprocessor) has no
+  prebuilt Windows wheel and needs MSVC Build Tools to compile from
+  source — not installed on this machine. Worked around with a
+  pure-Python port (`src/agro_mirai/voice/_indic_processor.py`) instead
+  of installing a C++ toolchain for one dependency — see
+  `docs/architecture.md` for details.
+
 ## Test reporting
 
 Test runs use `pytest` with the `pytest-json-report` plugin
