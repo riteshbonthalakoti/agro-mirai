@@ -29,7 +29,9 @@ kaggle.json
 *.pkl
 *.onnx
 *.joblib
-data/raw/
+data/raw/*
+!data/raw/Crop_recommendation.csv
+!data/raw/irrigation_prediction.csv
 data/cache/
 /models/
 *.tif

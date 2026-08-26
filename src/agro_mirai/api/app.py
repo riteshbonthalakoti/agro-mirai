@@ -19,6 +19,21 @@ from agro_mirai.models.irrigation_prediction_model import IrrigationPredictionMo
 from agro_mirai.persistence.sqlite_store import SQLiteDataStore
 
 
+def _build_default_store(app: Flask):
+    """Pick SupabaseDataStore when creds are configured, else SQLite.
+
+    Render's filesystem is ephemeral across restarts/deploys, so the
+    deployed instance must use Supabase — set via ``SUPABASE_URL``/
+    ``SUPABASE_KEY`` env vars in Render's dashboard. Local dev leaves
+    those unset and gets the existing SQLite path unchanged.
+    """
+    if os.environ.get("SUPABASE_URL") and os.environ.get("SUPABASE_KEY"):
+        from agro_mirai.persistence.supabase_store import SupabaseDataStore
+
+        return SupabaseDataStore()
+    return SQLiteDataStore(app.config["DATABASE_URL"])
+
+
 def create_app(config: dict | None = None) -> Flask:
     app = Flask(__name__)
 
@@ -30,7 +45,7 @@ def create_app(config: dict | None = None) -> Flask:
     if config:
         app.config.update(config)
 
-    store = app.config.get("DATA_STORE") or SQLiteDataStore(app.config["DATABASE_URL"])
+    store = app.config.get("DATA_STORE") or _build_default_store(app)
     crop_model = app.config.get("CROP_MODEL") or CropRecommendationModel()
     irrigation_model = app.config.get("IRRIGATION_MODEL") or IrrigationPredictionModel()
     disease_model = app.config.get("DISEASE_MODEL") or DiseaseRiskModel()

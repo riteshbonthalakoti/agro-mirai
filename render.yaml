@@ -1,0 +1,30 @@
+services:
+  - type: web
+    name: agro-mirai
+    runtime: python
+    repo: https://github.com/riteshbonthalakoti/agro-mirai
+    plan: free
+    region: singapore
+    branch: main
+    buildCommand: >-
+      pip install -r requirements.txt &&
+      python tools/train_crop_model.py &&
+      python tools/train_irrigation_model.py
+    startCommand: 'PYTHONPATH=src gunicorn -w 2 -b 0.0.0.0:$PORT "agro_mirai.api.app:create_app()"'
+    healthCheckPath: /health
+    envVars:
+      - key: FLASK_ENV
+        value: production
+      - key: PYTHONPATH
+        value: src
+      # Set these in the Render dashboard, never commit real values:
+      - key: API_KEY
+        sync: false
+      - key: FARMER_ID
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_KEY
+        sync: false
+      - key: FLASK_SECRET_KEY
+        sync: false
