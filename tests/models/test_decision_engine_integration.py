@@ -19,6 +19,7 @@ if str(ROOT / "tools") not in sys.path:
 
 from agro_mirai.models.crop_recommendation_model import (  # noqa: E402
     DEFAULT_MODEL_PATH as CROP_MODEL_PATH,
+    CropRecommendationModel,
 )
 from agro_mirai.models.irrigation_prediction_model import (  # noqa: E402
     DEFAULT_MODEL_PATH as IRRIGATION_MODEL_PATH,
@@ -164,6 +165,14 @@ def test_full_chain_produces_schema_valid_advisory(fixture_name):
     assert advisory.body
     assert len(advisory.source_refs) == 3
     assert all(advisory.source_refs)
+
+    # Module 18: if the crop model's top pick for this fixture is
+    # out-of-region, the Advisory body (which concatenates
+    # summary_en unmodified per ADR 0011) must carry the caveat.
+    crop_model = CropRecommendationModel()
+    crop = crop_model.predict(vector)
+    if crop.out_of_region:
+        assert "caveat" in advisory.body.lower()
 
 
 def test_synthetic_high_urgency_input_triggers_alert():
