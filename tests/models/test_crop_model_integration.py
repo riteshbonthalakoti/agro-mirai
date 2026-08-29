@@ -162,3 +162,6 @@ def test_full_chain_produces_schema_valid_recommendation(fixture_name):
     )
     assert problems == []
     assert rec.field_id == field.id
+    # Module 18: regional-suitability flag is always computed (bool),
+    # never left unset, for a fresh prediction.
+    assert isinstance(rec.out_of_region, bool)
