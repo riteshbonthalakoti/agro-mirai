@@ -1,8 +1,17 @@
 # ADR 0003 — Ownership model: single farmer per user account
 
-**Status:** accepted
+**Status:** accepted (superseded for `/v2` by ADR 0017 — see note below)
 **Date:** 2026-08-25
 **Module:** 02 — Data Contracts & Conventions
+
+> **2026-08-29 update (Module 19):** as this ADR itself anticipated
+> ("it needs a new ADR and a new API version (`/v2`), not a patch to
+> `v1`"), multi-tenancy was reintroduced under `/v2` — see
+> `decisions/0017-multi-tenant-v2.md` for the full decision, including
+> the explicit call that `/v1` (everything below) stays alive,
+> unmodified, single-tenant, for demo/backward-compat continuity. This
+> ADR is not rewritten, only annotated, per this project's convention
+> (see how 0008/0015 handle partial supersession).
 
 ## Context
 
