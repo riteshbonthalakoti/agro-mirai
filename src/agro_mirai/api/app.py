@@ -168,12 +168,12 @@ def create_app(config: dict | None = None) -> Flask:
     app.register_blueprint(admin_bp)
 
     # Module 19 — login-specific rate limit, on top of the general
-    # per-key limit above. Applied to the already-registered view
-    # function (Flask-Limiter supports decorating post-registration);
-    # keyed by remote address since a pre-login request has no API key/
-    # session to key on.
-    limiter.limit(app.config["LOGIN_RATE_LIMIT"], key_func=get_remote_address)(
-        app.view_functions["auth_v2.login"]
-    )
+    # per-key limit above. The @login_limiter.limit(...) decorator lives
+    # on the view function itself in routes/auth_v2.py (must be applied
+    # before blueprint registration, see login_rate_limit.py's
+    # docstring); this just binds that limiter to this app instance.
+    from agro_mirai.api.login_rate_limit import login_limiter
+
+    login_limiter.init_app(app)
 
     return app
