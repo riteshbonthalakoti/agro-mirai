@@ -102,10 +102,68 @@ fixed-depth assertions are gone, replaced with assertions that depth
 varies with rainfall and the rationale cites real ET0/ETc/deficit
 numbers); `tests/models/test_irrigation_model_integration.py` and the
 full API/`DecisionEngine` regression suite pass unchanged against the
-new code path. Module 18 (multi-tenant data model + real login/session
-auth + read-only Admin dashboard) and Module 19 (CNN disease model on
-PlantVillage) are next — see `docs/ROADMAP_PRODUCTION.md` and
-`PROGRESS.md`'s Module 17 entry for the full handoff. See
+new code path.
+
+Module 18 (Crop model localization — Karnataka/Bellary sanity layer)
+landed 2026-08-29, the second of two model-realism modules run ahead of
+multi-tenant/Admin (now Module 19) and the CNN disease model (now
+Module 20) per the same sequencing rationale as Module 17. A real
+dataset investigation (web search across Kaggle, ICAR/data.gov.in-style
+sources — see `decisions/0016-regional-crop-suitability.md`'s
+"Investigation" section for the exact queries and what was found and
+rejected) turned up no usable India/Karnataka-specific dataset with
+both a matching N/P/K/temp/humidity/pH/rainfall feature schema and
+real overlap with the 22-crop label set — every Kaggle "crop
+recommendation" hit was a re-upload of the same generic dataset already
+in use, and the genuinely Karnataka-specific datasets found are
+district/season yield-area statistics, a different schema entirely, not
+retrainable into the existing model without building a new pipeline
+from scratch (out of scope). This was the module's honestly-expected
+outcome, so **Option B (regional-suitability sanity layer)** was built
+instead of forcing a retrain: `src/agro_mirai/models/regional_suitability.py`
+holds `BELLARY_REGIONAL_CROPS`, a small set (`cotton`, `rice`, `maize`,
+`chickpea`, `pigeonpeas`) intersecting the 22-crop enum against three
+independently cross-checked, cited sources on what's actually grown in
+Bellary/Ballari district (ICAR-CRIDA's official district Agriculture
+Contingency Plan, Wikipedia's "Ballari district" citing Karnataka
+government statistics, and AgriFarming.in's district-wise Karnataka crop
+list — full URLs in the ADR). `CropRecommendationModel.predict` now
+calls `check_regional_fit` after ranking predictions; when the top pick
+falls outside that set it does **not** override the ML output — it adds
+two new additive `CropRecommendation` fields, `out_of_region: bool` and
+`regional_alternative: str | None` (the highest-confidence in-region
+crop from `alternatives`, or `None` if none of them are regional
+either), documented in `specs/core/schema.yaml` and
+`specs/core/openapi.yaml`. `ExplanationService.explain_crop` appends a
+plain-language caveat sentence to `summary_en` when the flag is raised,
+which `DecisionEngine.recommend` picks up automatically since
+`Advisory.body` concatenates `summary_en` unmodified (ADR 0011) — both
+real fixtures (`farm-001`'s cotton field predicts `grapes`, `farm-002`'s
+maize field predicts `muskmelon`) are actually flagged `out_of_region`
+today, confirming this isn't dead code but a genuinely load-bearing
+honesty check on a model whose top-1 pick for both current fixtures is
+already agronomically implausible for the region. `decisions/0016-regional-crop-suitability.md`
+has the full investigation writeup, source list, and — importantly —
+honest known limitations: most of Bellary's actual dominant crops
+(jowar, groundnut, sunflower, millet, soybean) have no label at all in
+the 22-crop enum so can never be surfaced as the "right" answer, the
+table is hardcoded to one district (not yet field-location-aware for
+Module 19's eventual multi-tenant/multi-region reality), and `maize`'s
+inclusion in the regional set is weaker-evidenced than the other four.
+25 new/updated tests: `tests/models/test_regional_suitability.py` (new,
+unit coverage of `check_regional_fit`'s in-region/out-of-region/
+no-alternative/empty-alternatives cases), extended
+`tests/models/test_crop_recommendation_model.py` and
+`tests/models/test_explanation_service.py` (caveat text present/absent/
+no-alternative-available cases), and extended
+`tests/models/test_crop_model_integration.py` /
+`test_decision_engine_integration.py` (real fixtures, real artifact,
+confirming the flag and caveat propagate end to end through
+`DecisionEngine`). Module 19 (multi-tenant data model + real
+login/session auth + read-only Admin dashboard) and Module 20 (CNN
+disease model on PlantVillage) are next — see
+`docs/ROADMAP_PRODUCTION.md` and `PROGRESS.md`'s Module 18 entry for the
+full handoff. See
 `decisions/0014-deploy-target-and-voice-scope.md` for Module 15's
 deploy-target and voice-scope calls, `docs/DEMO_DAY.md`/
 `docs/DEMO_SCRIPT.md` for the live review. The crop recommendation model
