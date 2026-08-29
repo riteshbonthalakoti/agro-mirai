@@ -18,3 +18,12 @@ def _fmt(value):
 def to_json(record) -> dict:
     data = dataclasses.asdict(record)
     return {k: _fmt(v) for k, v in data.items()}
+
+
+def farmer_to_public_json(farmer) -> dict:
+    """Module 19: like to_json, but drops password_hash. Every /v2 route
+    that returns a Farmer uses this, never the raw to_json, so a hash
+    can't leak into a response by accident."""
+    data = to_json(farmer)
+    data.pop("password_hash", None)
+    return data
