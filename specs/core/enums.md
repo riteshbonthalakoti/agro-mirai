@@ -100,6 +100,15 @@ Indian agricultural seasons.
 - `cache` — local NDVI cache fallback (per CLAUDE.md hard rule #4)
 - `manual`
 
+## `user_role`
+
+Module 19. Distinguishes a regular farmer account from an Admin account
+on the same `Farmer` entity (see `decisions/0017-multi-tenant-v2.md` for
+why a `role` field was chosen over a separate `AdminUser` entity).
+
+- `farmer`
+- `admin`
+
 ## `health_status`
 
 - `ok` — data store reachable, service healthy

@@ -19,7 +19,13 @@ pseudocode; Module 04 will land the real `Protocol` (or ABC) in
 3. **Ownership is enforced inside the store.** Every read/write method
    that touches farmer-owned data takes an explicit `farmer_id` and
    filters by it. There is no "admin escape hatch" for v1
-   (docs/conventions.md §4).
+   (docs/conventions.md §4). **Module 19 adds exactly three
+   admin-scoped read methods** (`list_all_farmers`, `list_all_fields`,
+   `list_all_feedback_with_advisories`) that are the one deliberate,
+   documented exception -- they are unscoped by design, and it is the
+   caller's job (`require_admin` in `src/agro_mirai/api/session_auth.py`)
+   to gate them behind an admin role check. No write method gets this
+   treatment; see `decisions/0017-multi-tenant-v2.md`.
 4. **Not-found is `None`, not an exception.** `NotFoundError` is reserved
    for cases where a caller tried to write against a missing parent
    (e.g. `save_ndvi_reading` for a `field_id` the farmer does not own).
@@ -55,6 +61,25 @@ def get_farmer(farmer_id: str) -> Farmer | None: ...
 
 def save_farmer(farmer: Farmer) -> Farmer:
     """Insert if id is unknown, else update. Sets created_at/updated_at."""
+
+def get_farmer_by_email(email: str) -> Farmer | None:
+    """Module 19. Case-sensitive; callers normalise (lowercase) email
+    first. None if unknown, including farmers created via /v1 with no
+    email set."""
+
+def list_all_farmers(limit: int = 500) -> list[Farmer]:
+    """Module 19. Admin-only escape hatch from design rule 3 above --
+    unscoped by farmer_id. The store does not check role; callers
+    (src/agro_mirai/api/session_auth.py's require_admin) must."""
+
+def list_all_fields(limit: int = 1000) -> list[Field]:
+    """Module 19. Admin-only, unscoped across every farmer's fields."""
+
+def list_all_feedback_with_advisories(
+    limit: int = 2000
+) -> list[tuple[FeedbackEntry, Advisory]]:
+    """Module 19. Admin-only. Joined so FeedbackAggregator.aggregate can
+    be reused unmodified for the system-wide report."""
 ```
 
 ### Field
