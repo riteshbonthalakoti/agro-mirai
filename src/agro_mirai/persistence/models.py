@@ -92,6 +92,8 @@ class CropRecommendation:
     alternatives: list[str] | None = None
     rationale: str | None = None
     season: str | None = None
+    out_of_region: bool | None = None
+    regional_alternative: str | None = None
 
 
 @dataclass
