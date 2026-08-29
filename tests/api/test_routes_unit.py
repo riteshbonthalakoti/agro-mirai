@@ -185,6 +185,89 @@ def test_create_field_success(client):
     assert resp.get_json()["name"] == "South Plot"
 
 
+def test_create_field_non_numeric_latitude_returns_400(client):
+    resp = client.post(
+        "/fields",
+        json={"name": "X", "latitude": "not-a-number", "longitude": 77.0, "area_ha": 2.0},
+        headers=_auth_headers(),
+    )
+    assert resp.status_code == 400
+    assert resp.get_json()["error"]["code"] == "BAD_REQUEST"
+
+
+def test_create_field_out_of_range_latitude_returns_400(client):
+    resp = client.post(
+        "/fields",
+        json={"name": "X", "latitude": 91.0, "longitude": 77.0, "area_ha": 2.0},
+        headers=_auth_headers(),
+    )
+    assert resp.status_code == 400
+
+
+def test_create_field_out_of_range_longitude_returns_400(client):
+    resp = client.post(
+        "/fields",
+        json={"name": "X", "latitude": 15.0, "longitude": -181.0, "area_ha": 2.0},
+        headers=_auth_headers(),
+    )
+    assert resp.status_code == 400
+
+
+def test_create_field_negative_area_ha_returns_400(client):
+    resp = client.post(
+        "/fields",
+        json={"name": "X", "latitude": 15.0, "longitude": 77.0, "area_ha": -1.0},
+        headers=_auth_headers(),
+    )
+    assert resp.status_code == 400
+
+
+def test_create_field_invalid_soil_type_returns_400(client):
+    resp = client.post(
+        "/fields",
+        json={
+            "name": "X", "latitude": 15.0, "longitude": 77.0, "area_ha": 2.0,
+            "soil_type": "moon-dust",
+        },
+        headers=_auth_headers(),
+    )
+    assert resp.status_code == 400
+
+
+def test_create_field_invalid_current_crop_returns_400(client):
+    resp = client.post(
+        "/fields",
+        json={
+            "name": "X", "latitude": 15.0, "longitude": 77.0, "area_ha": 2.0,
+            "current_crop": "unobtainium",
+        },
+        headers=_auth_headers(),
+    )
+    assert resp.status_code == 400
+
+
+def test_create_field_malformed_sown_on_returns_400_not_500(client):
+    resp = client.post(
+        "/fields",
+        json={
+            "name": "X", "latitude": 15.0, "longitude": 77.0, "area_ha": 2.0,
+            "sown_on": "not-a-date",
+        },
+        headers=_auth_headers(),
+    )
+    assert resp.status_code == 400
+    assert resp.get_json()["error"]["code"] == "BAD_REQUEST"
+
+
+def test_create_field_non_string_name_returns_400(client):
+    resp = client.post(
+        "/fields",
+        json={"name": 12345, "latitude": 15.0, "longitude": 77.0, "area_ha": 2.0},
+        headers=_auth_headers(),
+    )
+    assert resp.status_code == 400
+
+
 def test_get_field_unknown_id_returns_404(app, client):
     app.extensions["store_mock"].get_field.return_value = None
     resp = client.get("/fields/does-not-exist", headers=_auth_headers())
@@ -253,6 +336,25 @@ def test_submit_feedback_bad_rating_returns_400(client):
     resp = client.post(
         "/feedback",
         json={"advisory_id": "a1", "rating": 9, "helpful": False},
+        headers=_auth_headers(),
+    )
+    assert resp.status_code == 400
+
+
+def test_submit_feedback_non_bool_helpful_returns_400(client):
+    resp = client.post(
+        "/feedback",
+        json={"advisory_id": "a1", "rating": 3, "helpful": "yes"},
+        headers=_auth_headers(),
+    )
+    assert resp.status_code == 400
+    assert resp.get_json()["error"]["code"] == "BAD_REQUEST"
+
+
+def test_submit_feedback_non_string_comment_returns_400(client):
+    resp = client.post(
+        "/feedback",
+        json={"advisory_id": "a1", "rating": 3, "helpful": True, "comment": 123},
         headers=_auth_headers(),
     )
     assert resp.status_code == 400
