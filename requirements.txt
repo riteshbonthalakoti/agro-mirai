@@ -58,3 +58,13 @@ httpx==0.28.1
 # `flask run`, and the multi-worker verification for this module was run
 # under WSL (see decisions/0014-deploy-target-and-voice-scope.md).
 gunicorn==26.2.0
+
+# Module 16 — reliability & CI hardening.
+# Per-API-key rate limiting; in-memory store (single-process deploy only —
+# a multi-worker deploy would need a shared store like Redis).
+Flask-Limiter==4.1.1
+limits==5.8.0
+ordered-set==4.1.0
+Deprecated==1.3.1
+# Error monitoring. No-op with no SENTRY_DSN configured — see app.py.
+sentry-sdk==2.68.1
