@@ -75,16 +75,16 @@ is now Module 19 and the CNN disease model is now Module 20.)*
 <!-- STATE:START -->
 
 ### Recent commits
+- `38bd0eb Module 19: ADR 0017 (supersedes 0003), /v1 vs /v2 decision, docs updated`
+- `430b025 Module 19: server-rendered /admin dashboard (Jinja2, ADR 0013 pattern)`
+- `2a8c5e1 Module 19: tests (password/validation/session unit, cross-tenant integration, admin, login rate limit)`
+- `9c78a91 Module 19: read-only Admin dashboard API (/v2/admin)`
+- `b8c4cd9 Module 19: real login/session auth (/v2/auth) â€” bcrypt hashing, signed session, login rate limit`
+- `4b99d2b Module 19: multi-tenant data model â€” email/password_hash/role on Farmer`
+- `fff78ae Module 18: doctrine updates (CLAUDE.md, PROGRESS.md, roadmap checkbox)`
 - `2637c16 Module 18: tests for regional-suitability sanity layer`
 - `8230212 Module 18: ADR 0016 (regional crop suitability, no retrain)`
 - `22d801e Module 18: wire regional-fit check into CropRecommendationModel and explanations`
-- `6e31da7 Module 18: Bellary/Karnataka regional-suitability sanity layer + additive schema fields`
-- `7309166 Module 17: doctrine updates (CLAUDE.md, PROGRESS.md, roadmap renumbering)`
-- `0f35486 Module 17: ADR 0015 (ET0 water balance, supersedes part of ADR 0008)`
-- `6ba9e63 Module 17: recommended_depth_mm is now water-balance-derived`
-- `d17f572 Module 17: Hargreaves-Samani ET0 module + FAO-56 Kc lookup table`
-- `4291c17 Module 17: add ET0/Kc water-balance inputs to FeatureVector`
-- `121cfee Module 16: deselect flaky live-network tests from CI`
 
 ### Module status
 - **01-foundation**: done
@@ -407,8 +407,9 @@ WSGI config, gunicorn verification, docs, regression) is done.
 - **16-reliability-ci**: done
 - **17-et0-water-balance**: done
 - **18-crop-localization**: done
+- **19-multi-tenant-auth-admin**: done
 
 ### Latest test run
-- no test report found (.report.json missing — run pytest --json-report)
+- 284/309 passed, 0 failed
 
 <!-- STATE:END -->

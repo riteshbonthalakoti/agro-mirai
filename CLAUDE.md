@@ -159,10 +159,8 @@ no-alternative-available cases), and extended
 `tests/models/test_crop_model_integration.py` /
 `test_decision_engine_integration.py` (real fixtures, real artifact,
 confirming the flag and caveat propagate end to end through
-`DecisionEngine`). Module 19 (multi-tenant data model + real
-login/session auth + read-only Admin dashboard) and Module 20 (CNN
-disease model on PlantVillage) are next — see
-`docs/ROADMAP_PRODUCTION.md` and `PROGRESS.md`'s Module 18 entry for the
+`DecisionEngine`). Module 20 (CNN disease model on PlantVillage) is next — see
+`docs/ROADMAP_PRODUCTION.md` and `PROGRESS.md`'s Module 19 entry for the
 full handoff. See
 `decisions/0014-deploy-target-and-voice-scope.md` for Module 15's
 deploy-target and voice-scope calls, `docs/DEMO_DAY.md`/
@@ -368,3 +366,84 @@ severity indicators, accessible star rating), with no route/contract
 changes; see `PROGRESS.md` for details. Module 15 (Integration,
 deploy, docs) can start now — see `PROGRESS.md` for the full
 15-module plan and status.
+
+Module 19 (multi-tenant data model + real login/session auth +
+read-only Admin dashboard) landed 2026-08-29 — the biggest single
+module in this project, explicitly superseding ADR 0003
+(`decisions/0017-multi-tenant-v2.md`). `Farmer`
+(`src/agro_mirai/persistence/models.py`) gained three additive fields —
+`email`, `password_hash`, `role` (new `user_role` enum: `farmer` |
+`admin`, `specs/core/enums.md`) — implemented in both
+`SQLiteDataStore` and `SupabaseDataStore`, with a hand-written
+`migrations/{sqlite,postgres}/002_auth_fields.sql` migration path for
+databases created before this module (verified directly against a
+synthetic pre-Module-19 SQLite file, not just against a fresh one).
+`DataStore` gained three new, deliberately unscoped admin-only read
+methods (`list_all_farmers`, `list_all_fields`,
+`list_all_feedback_with_advisories`) — the one documented exception to
+`repository-interface.md`'s "every method takes a `farmer_id`" rule,
+gated by role checks at the caller, never inside the store.
+
+Auth is a real login/session system, not per-farmer API keys (Ritesh's
+explicit call, understanding it's more work than the alternative): new
+`agro_mirai.auth` package hashes passwords via **bcrypt**
+(`auth/password.py`, an established KDF, not hand-rolled) and validates
+registration input (`auth/validation.py` — real password-strength
+requirements: 8+ chars, upper/lower/digit, rejects `"a"`). Sessions are
+Flask's own signed cookie (no new session-store dependency — see ADR
+0017 for why), issued/read via `src/agro_mirai/api/session_auth.py`'s
+`issue_session`/`require_session_auth`/`require_admin`; expiry is
+enforced both by the cookie's own `PERMANENT_SESSION_LIFETIME` (24h)
+and a pure, unit-testable `is_expired(issued_at)` check on every
+request. `POST /v2/auth/login` (`src/agro_mirai/api/routes/auth_v2.py`)
+carries its own Flask-Limiter instance
+(`src/agro_mirai/api/login_rate_limit.py`, default 5/min, keyed by
+remote address) layered on top of Module 16's general per-key
+`RATE_LIMIT` — it had to live in its own module and decorate the view
+at import time, because this project's installed Flask-Limiter version
+silently no-ops `.limit(...)` applied to an already-registered
+`app.view_functions[...]` entry (discovered and fixed while writing the
+rate-limit test, not assumed). `farmer_to_public_json`
+(`api/serializers.py`) strips `password_hash` from every `Farmer`
+response, applied everywhere a `Farmer` is serialized, including the
+pre-existing `/v1 GET /farmers/me`.
+
+The new `/v2` surface (`/v2/auth/*`, `/v2/farmers/me`, `/v2/fields*`,
+`/v2/admin/*`) is additive alongside the unchanged `/v1` shared-`API_KEY`
+routes — **`/v1` stays alive, unmodified, for demo/backward-compat
+continuity, a deliberate decision documented in ADR 0017**, not an
+accident; `MANUAL_TEST_GUIDE.md`/`docs/DEMO_SCRIPT.md` were updated to
+say so explicitly rather than go stale. Cross-tenant isolation
+(ADR 0003's ownership rule, now enforced per-farmer for real instead of
+via the single-shared-identity shortcut) is proven by
+`tests/api/test_v2_auth_integration.py`'s full register->login->
+access-own-data->CANNOT-access-another-farmer's-field(404,
+not-leaked)->logout->session-invalidated flow against a real Flask test
+client and real `SQLiteDataStore` — no mocked auth.
+
+The read-only Admin dashboard (list all farmers/fields, system-wide
+feedback aggregates via Module 13's `FeedbackAggregator` reused
+unmodified) ships as both a JSON API (`src/agro_mirai/api/routes/admin.py`,
+`/v2/admin/{farmers,fields,feedback}`) and a server-rendered page
+(`src/agro_mirai/api/routes/admin_ui.py`, `/admin`, same Jinja2/Flask
+stack as the Module 14 frontend per ADR 0013, minimally styled and
+labeled "functional, not yet polished" on the page itself). Genuinely
+no write route exists anywhere on this surface —
+`tests/api/test_admin_routes.py` asserts this directly by inspecting
+`app.url_map` rather than trusting the blueprint's docstring. There is
+no self-service admin-signup endpoint; provisioning an admin account is
+an out-of-band step (register normally, then flip `role` via the
+`DataStore` directly), documented in `MANUAL_TEST_GUIDE.md`'s new step 8
+and in ADR 0017's known limitations.
+
+61 new tests across `tests/auth/` (password hashing/verification/
+salting, registration validation, session issuance/expiry — all pure-
+function, no Flask context needed for the expiry check) and
+`tests/api/` (`test_v2_auth_integration.py`,
+`test_admin_routes.py`, `test_admin_ui.py`, `test_login_rate_limit.py`).
+Full regression (`pytest --ignore=tests/voice`): 284 passed, 0 failed,
+25 skipped. `check_specs.py`: OK. `tools/seed_fixture.py` and the
+existing farm-001/farm-002 golden fixtures verified unaffected. Module
+20 (CNN disease model on PlantVillage) can start now — see
+`docs/ROADMAP_PRODUCTION.md` and `PROGRESS.md`'s Module 19 entry for the
+full handoff.
