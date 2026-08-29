@@ -1,8 +1,16 @@
 # ADR 0008 — Irrigation model feature mapping (FeatureVector → dataset inputs, and the depth-mm gap)
 
-**Status:** accepted
+**Status:** accepted (partially superseded — see note below)
 **Date:** 2026-08-26
 **Module:** 07 — Irrigation Prediction Model
+
+> **2026-08-29 update:** the `recommended_depth_mm` (rule-based band,
+> not trained)` section below is superseded by
+> `decisions/0015-et0-water-balance.md` (Module 17), which replaces the
+> fixed urgency-keyed lookup with an ET0 (Hargreaves-Samani) x Kc water
+> balance. Everything else in this ADR (the trained `urgency`
+> classifier, the `FeatureVector` -> dataset column mapping, the
+> missing-data policy) is unchanged and still accurate.
 
 ## Context
 
