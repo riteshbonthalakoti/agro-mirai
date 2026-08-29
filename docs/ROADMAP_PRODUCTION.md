@@ -112,3 +112,77 @@ model, auth, and every layer above it — worth sequencing carefully:
 3. Should I start with workstream A (CI + hardening) as the next module
    prompt, since it's lowest-risk and fits before Review-1? I'd suggest
    yes, then sequence B and C after.
+
+---
+
+## Part 4 — Backend realism audit (post-Module-16, full source read)
+
+Direct read of `decision_engine.py`, `crop_recommendation_model.py`,
+`irrigation_prediction_model.py`, `disease_risk_scoring.py`,
+`feature_builder.py`, `open_meteo.py`, `acquisition/base.py`, and both
+training scripts. Verdict: the architecture (adapter pattern,
+repository/DataStore abstraction, contract-first specs) is genuinely
+solid and extensible. The weak point is real-world agronomic validity
+of the two trained models, not the plumbing around them.
+
+**Crop model**: trained on Kaggle's generic
+`atharvaingle/crop-recommendation-dataset` (N/P/K/temp/humidity/pH/
+rainfall only, 22 crops). Known in the ML community to be near-perfectly
+separable/synthetic-feeling — explains the 99.55% accuracy, which is a
+red flag rather than a win for a real agronomic problem. Not calibrated
+to Karnataka/Ballari soils or climate; no market price, water
+availability, crop rotation, or variety-access signal.
+
+**Irrigation model**: also a generic Kaggle dataset (72.4% accuracy,
+more honestly uncertain). Bigger issue: `recommended_depth_mm` and the
+advisory window are a hardcoded lookup table keyed off predicted
+urgency (`_URGENCY_TO_DEPTH_MM` in `irrigation_prediction_model.py`),
+not physically grounded. Real irrigation scheduling uses a water
+balance — reference evapotranspiration (Penman-Monteith or a simplified
+Hargreaves) combined with a crop coefficient (Kc) — and the weather
+inputs needed for this (temp, humidity, wind) are already being pulled,
+just not used this way. **Done (Module 17)** — see the priorities list
+below and `decisions/0015-et0-water-balance.md`.
+
+**Disease model**: correctly and honestly scoped as an environmental
+proxy MVP (ADR 0009), no change needed here beyond the already-planned
+Module 18 CNN upgrade.
+
+**Weather**: Open-Meteo works, free, no key. OpenWeatherMap swap is
+low-risk given the `Adapter` interface (`acquisition/base.py`) — a new
+adapter class, same shape, nothing downstream changes. Ritesh wants a
+genuine side-by-side comparison (not just PPT-compliance) before
+deciding which is primary for Bellary/Karnataka forecasts.
+
+### New backend priorities (decided, sequencing TBD)
+1. **ET0-based irrigation water balance** — replace the static
+   urgency→depth_mm lookup with a real evapotranspiration calculation.
+   Biggest single realism gap identified. **Done (Module 17, 2026-08-29)**
+   — Hargreaves-Samani ET0 x FAO-56 Kc water balance now drives
+   `recommended_depth_mm`; see `decisions/0015-et0-water-balance.md`.
+2. **Crop model localization** — find/build a more Karnataka-relevant
+   dataset, or add a rule-based regional-suitability sanity layer on
+   top of the ML prediction rather than trusting it blindly.
+3. **OpenWeatherMap adapter + side-by-side comparison** — build the
+   adapter, then actually compare its Bellary-area forecasts against
+   Open-Meteo's before deciding which is the default.
+
+**Module numbering correction:** the water-balance item above ran as
+**Module 17**, ahead of multi-tenant + Admin (workstream B), per
+Ritesh's explicit call (`module-17-prompt.md`'s sequencing note) — model/
+backend logic first, so multi-tenant auth isn't layered on top of models
+about to change. Multi-tenant + Admin is now **Module 18**, and the CNN
+disease-model upgrade (item C below / originally referenced as "Module
+18 CNN upgrade" earlier in this doc) is now **Module 19**. Any earlier
+reference in this document to "Module 17" meaning multi-tenant/Admin, or
+"Module 18" meaning the CNN upgrade, is superseded by this renumbering.
+
+### Restructured phasing (per Ritesh, supersedes Part 3's calendar-based
+sequencing)
+- Backend/DB only for the foreseeable next stretch (~18 more modules):
+  workstreams A (done, Module 16/16b) + B (multi-tenant/admin) + C (CNN
+  disease model) + the three new realism items above, in whatever order
+  makes sense as they're scoped.
+- UI/UX: deliberately deferred to its own dedicated phase (~15 modules)
+  after backend is finalized — not interleaved.
+- Deployment/hosting: its own final phase after both of the above.

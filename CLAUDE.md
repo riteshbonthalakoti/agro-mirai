@@ -58,7 +58,57 @@ to build the phase table in `PROGRESS.md`.
 
 ## Current phase
 
-**Modules 01–15 (the original capstone scope) are complete. A second, explicitly non-academic-pace push — Modules 16–18 — is now underway to take the project from "capstone MVP" toward "production grade"; see `docs/ROADMAP_PRODUCTION.md` for why and what's in scope.** Module 16 (Reliability & CI Hardening — workstream A) landed 2026-08-29: GitHub Actions CI (`.github/workflows/ci.yml`, gates on `pytest --ignore=tests/voice` + `check_specs.py`, non-blocking `ruff` lint), Sentry error monitoring (`sentry-sdk[flask]`, no-op without `SENTRY_DSN`), request-id structured logging, an input-validation audit of `POST /fields`/`POST /feedback` (real gaps found and fixed — see `src/agro_mirai/api/validation.py`), `tools/backup_supabase.py` + `docs/BACKUPS.md`, and per-API-key rate limiting (Flask-Limiter, 60/min default). Modules 17 (multi-tenant data model + real login/session auth + read-only Admin dashboard) and 18 (CNN disease model on PlantVillage) are next — see `docs/ROADMAP_PRODUCTION.md` and `PROGRESS.md`'s Module 16 entry for the full handoff. See `decisions/0014-deploy-target-and-voice-scope.md` for Module 15's deploy-target and voice-scope calls, `docs/DEMO_DAY.md`/`docs/DEMO_SCRIPT.md` for the live review. The crop recommendation model
+**Modules 01–15 (the original capstone scope) are complete. A second, explicitly non-academic-pace push — Modules 16–19 — is now underway to take the project from "capstone MVP" toward "production grade"; see `docs/ROADMAP_PRODUCTION.md` for why and what's in scope.** Module 16 (Reliability & CI Hardening — workstream A) landed 2026-08-29: GitHub Actions CI (`.github/workflows/ci.yml`, gates on `pytest --ignore=tests/voice` + `check_specs.py`, non-blocking `ruff` lint), Sentry error monitoring (`sentry-sdk[flask]`, no-op without `SENTRY_DSN`), request-id structured logging, an input-validation audit of `POST /fields`/`POST /feedback` (real gaps found and fixed — see `src/agro_mirai/api/validation.py`), `tools/backup_supabase.py` + `docs/BACKUPS.md`, and per-API-key rate limiting (Flask-Limiter, 60/min default).
+
+Module 17 (ET0-based irrigation water balance) landed 2026-08-29, ahead
+of multi-tenant/Admin per Ritesh's explicit sequencing call (model/
+backend logic first, so multi-tenant auth isn't layered on top of models
+about to change — see `module-17-prompt.md`'s sequencing note and
+`docs/ROADMAP_PRODUCTION.md`'s renumbering note). `recommended_depth_mm`
+on `IrrigationAdvice` is no longer the fixed `_URGENCY_TO_DEPTH_MM`
+lookup from Module 07 — `IrrigationPredictionModel.predict`
+(`src/agro_mirai/models/irrigation_prediction_model.py`) now runs a
+water balance: reference evapotranspiration via the Hargreaves-Samani
+method (`src/agro_mirai/models/evapotranspiration.py`, FAO-56 Ch.3
+Eq 21/52, needs only temperature + latitude/day-of-year — chosen over
+Penman-Monteith because this project doesn't reliably have solar
+radiation/wind/VPD) times a crop coefficient Kc looked up by crop and
+FAO-56-approximated growth stage
+(`src/agro_mirai/models/crop_coefficients.py`, FAO-56 Table 12, covers
+all 22 `crop_type` labels from `docs/eval/crop_rf_eval.json`, three
+crops mapped to a documented closest analog where FAO-56 has no direct
+entry), minus `rainfall_mm_sum_7d`, floored at a 2mm minimum. The
+trained `urgency` classifier (low/moderate/high, RandomForest, unchanged
+from Module 07) still gates the advisory window length via
+`_URGENCY_TO_WINDOW_DAYS`. `FeatureVector`
+(`src/agro_mirai/processing/feature_builder.py`) gained four additive
+optional fields the water balance needed and didn't previously have:
+`temp_c_min_7d`/`temp_c_max_7d` (from `WeatherReading.temp_min_c`/
+`temp_max_c`, previously only aggregated into means),
+`latitude`/`crop_type` (pass-through from `Field_`) —
+`specs/core/features.md` documents all four.
+`decisions/0015-et0-water-balance.md` supersedes the
+`recommended_depth_mm` section of `decisions/0008-irrigation-model-feature-mapping.md`
+(0008 itself is annotated, not rewritten) and has the full reasoning,
+including the missing-Tmin/Tmax fallback (a documented +/-4C diurnal-
+range approximation from the mean, not a raised error, per this
+project's degrade-not-fail doctrine) and why urgency still drives the
+window instead of being derived from the deficit. 20 new/updated tests
+across `tests/models/test_evapotranspiration.py` (new, golden Ra/ET0
+values), `tests/models/test_crop_coefficients.py` (new, full label-set
+coverage + stage breakpoints), and
+`tests/models/test_irrigation_prediction_model.py` (extended — the old
+fixed-depth assertions are gone, replaced with assertions that depth
+varies with rainfall and the rationale cites real ET0/ETc/deficit
+numbers); `tests/models/test_irrigation_model_integration.py` and the
+full API/`DecisionEngine` regression suite pass unchanged against the
+new code path. Module 18 (multi-tenant data model + real login/session
+auth + read-only Admin dashboard) and Module 19 (CNN disease model on
+PlantVillage) are next — see `docs/ROADMAP_PRODUCTION.md` and
+`PROGRESS.md`'s Module 17 entry for the full handoff. See
+`decisions/0014-deploy-target-and-voice-scope.md` for Module 15's
+deploy-target and voice-scope calls, `docs/DEMO_DAY.md`/
+`docs/DEMO_SCRIPT.md` for the live review. The crop recommendation model
 (`src/agro_mirai/models/crop_recommendation_model.py`) wraps a
 `RandomForestClassifier` (`tools/train_crop_model.py`, seed=42) trained
 on the Kaggle crop-recommendation-dataset's native 7 columns against all
