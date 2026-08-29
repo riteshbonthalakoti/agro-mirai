@@ -166,6 +166,182 @@ paths:
         '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
 
+  # --- v2: multi-tenant session auth + read-only Admin (Module 19) ---
+  # Session-cookie authenticated, not bearerAuth — see sessionCookie below.
+  # decisions/0017-multi-tenant-v2.md. /v1 above is unchanged and stays
+  # live for demo/backward-compat; these are additive new paths, not a
+  # revision of the /v1 ones.
+
+  /v2/auth/register:
+    post:
+      summary: Register a new Farmer account (email + password).
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RegisterRequest' }
+      responses:
+        '201':
+          description: The created Farmer (public fields only — never password_hash).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Farmer' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '409':
+          description: Email already registered.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+
+  /v2/auth/login:
+    post:
+      summary: Log in with email + password; issues a signed session cookie. Rate-limited per remote address.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/LoginRequest' }
+      responses:
+        '200':
+          description: Logged in; session cookie set.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Farmer' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '429':
+          description: Too many login attempts.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+
+  /v2/auth/logout:
+    post:
+      summary: Clear the current session.
+      security: []
+      responses:
+        '200':
+          description: Logged out.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: { ok: { type: boolean } }
+
+  /v2/farmers/me:
+    get:
+      summary: Get the session-authenticated Farmer's own profile.
+      security: [ { sessionCookie: [] } ]
+      responses:
+        '200':
+          description: Farmer profile.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Farmer' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /v2/fields:
+    get:
+      summary: List Fields owned by the session-authenticated Farmer.
+      security: [ { sessionCookie: [] } ]
+      responses:
+        '200':
+          description: A list of Fields.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: '#/components/schemas/Field' }
+                required: [items]
+        '401': { $ref: '#/components/responses/Unauthorized' }
+    post:
+      summary: Create a Field owned by the session-authenticated Farmer.
+      security: [ { sessionCookie: [] } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/FieldCreate' }
+      responses:
+        '201':
+          description: The created Field.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Field' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /v2/fields/{field_id}:
+    parameters:
+      - $ref: '#/components/parameters/FieldId'
+    get:
+      summary: Get a Field by id. 404 (not 403) if it exists but is owned by a different Farmer — no cross-tenant existence leak.
+      security: [ { sessionCookie: [] } ]
+      responses:
+        '200':
+          description: The Field.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Field' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /v2/admin/farmers:
+    get:
+      summary: 'Admin only: list every Farmer with their field count. Read-only.'
+      security: [ { sessionCookie: [] } ]
+      responses:
+        '200':
+          description: A list of Farmers, each with an additional field_count.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: '#/components/schemas/AdminFarmerSummary' }
+                required: [items]
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /v2/admin/fields:
+    get:
+      summary: 'Admin only: list every Field across every Farmer. Read-only.'
+      security: [ { sessionCookie: [] } ]
+      responses:
+        '200':
+          description: A list of Fields.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: '#/components/schemas/Field' }
+                required: [items]
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /v2/admin/feedback:
+    get:
+      summary: 'Admin only: system-wide feedback aggregates (all Farmers). Read-only.'
+      security: [ { sessionCookie: [] } ]
+      responses:
+        '200':
+          description: Aggregated feedback report (same shape as Module 13's per-farmer aggregator, scoped to everyone).
+          content:
+            application/json:
+              schema: { type: object, additionalProperties: true }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
 components:
 
   securitySchemes:
@@ -173,6 +349,11 @@ components:
       type: http
       scheme: bearer
       bearerFormat: JWT
+    sessionCookie:
+      type: apiKey
+      in: cookie
+      name: session
+      description: Flask signed session cookie issued by POST /v2/auth/login (Module 19). Not a bearer token — the cookie is opaque and itsdangerous-signed.
 
   parameters:
     FieldId:
@@ -194,6 +375,11 @@ components:
           schema: { $ref: '#/components/schemas/ErrorEnvelope' }
     NotFound:
       description: Resource not found or not owned by the caller.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+    Forbidden:
+      description: Authenticated, but not permitted (e.g. non-admin calling an /v2/admin route).
       content:
         application/json:
           schema: { $ref: '#/components/schemas/ErrorEnvelope' }
@@ -234,6 +420,43 @@ components:
         phone: { type: string, nullable: true }
         district: { type: string, nullable: true }
         state: { type: string, nullable: true }
+        email:
+          type: string
+          format: email
+          nullable: true
+          description: Module 19. Present for farmers registered via /v2. Never accompanied by password_hash in a response.
+        role:
+          type: string
+          enum: [farmer, admin]
+          nullable: true
+          description: Module 19. Absent/defaults to "farmer" for pre-Module-19 records.
+
+    RegisterRequest:
+      type: object
+      required: [email, password, name]
+      properties:
+        email: { type: string, format: email }
+        password: { type: string, description: Must satisfy the strength policy in agro_mirai.auth.validation (min length + composition). }
+        name: { type: string }
+        preferred_language:
+          type: string
+          enum: [en, hi, kn, ta, te, mr, bn, gu]
+
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email: { type: string, format: email }
+        password: { type: string }
+
+    AdminFarmerSummary:
+      description: A Farmer plus the one admin-only aggregate field.
+      allOf:
+        - { $ref: '#/components/schemas/Farmer' }
+        - type: object
+          required: [field_count]
+          properties:
+            field_count: { type: integer, minimum: 0 }
 
     Field:
       type: object
