@@ -160,9 +160,15 @@ deciding which is primary for Bellary/Karnataka forecasts.
    Biggest single realism gap identified. **Done (Module 17, 2026-08-29)**
    — Hargreaves-Samani ET0 x FAO-56 Kc water balance now drives
    `recommended_depth_mm`; see `decisions/0015-et0-water-balance.md`.
-2. **Crop model localization** — find/build a more Karnataka-relevant
+2. [x] **Crop model localization** — find/build a more Karnataka-relevant
    dataset, or add a rule-based regional-suitability sanity layer on
-   top of the ML prediction rather than trusting it blindly.
+   top of the ML prediction rather than trusting it blindly. **Done
+   (Module 18, 2026-08-29)** — no usable Karnataka-specific dataset was
+   found (see `decisions/0016-regional-crop-suitability.md`'s
+   investigation section), so a cited Bellary/Karnataka
+   regional-suitability sanity layer (`src/agro_mirai/models/regional_suitability.py`)
+   now flags, never overrides, out-of-region top predictions via two new
+   additive `CropRecommendation` fields.
 3. **OpenWeatherMap adapter + side-by-side comparison** — build the
    adapter, then actually compare its Bellary-area forecasts against
    Open-Meteo's before deciding which is the default.
@@ -171,11 +177,14 @@ deciding which is primary for Bellary/Karnataka forecasts.
 **Module 17**, ahead of multi-tenant + Admin (workstream B), per
 Ritesh's explicit call (`module-17-prompt.md`'s sequencing note) — model/
 backend logic first, so multi-tenant auth isn't layered on top of models
-about to change. Multi-tenant + Admin is now **Module 18**, and the CNN
-disease-model upgrade (item C below / originally referenced as "Module
-18 CNN upgrade" earlier in this doc) is now **Module 19**. Any earlier
-reference in this document to "Module 17" meaning multi-tenant/Admin, or
-"Module 18" meaning the CNN upgrade, is superseded by this renumbering.
+about to change. The crop-localization item above ran as **Module 18**,
+the second of the two model-realism modules, for the same reason
+(`module-18-prompt.md`'s sequencing note). Multi-tenant + Admin is now
+**Module 19**, and the CNN disease-model upgrade (item C below /
+originally referenced as "Module 18 CNN upgrade" earlier in this doc) is
+now **Module 20**. Any earlier reference in this document to "Module 17"
+or "Module 18" meaning multi-tenant/Admin, or "Module 18" meaning the
+CNN upgrade, is superseded by this renumbering.
 
 ### Restructured phasing (per Ritesh, supersedes Part 3's calendar-based
 sequencing)
