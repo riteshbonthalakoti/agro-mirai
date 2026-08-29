@@ -7,11 +7,13 @@ blueprint. Config is read from env vars — see ``.env.example`` for
 """
 from __future__ import annotations
 
+import logging
 import os
 
 from flask import Flask
 
 from agro_mirai.api.errors import register_error_handlers
+from agro_mirai.api.request_context import init_request_logging
 from agro_mirai.models.crop_recommendation_model import CropRecommendationModel
 from agro_mirai.models.decision_engine import DecisionEngine
 from agro_mirai.models.disease_risk_model import DiseaseRiskModel
@@ -32,6 +34,21 @@ def _build_default_store(app: Flask):
 
         return SupabaseDataStore()
     return SQLiteDataStore(app.config["DATABASE_URL"])
+
+
+def _configure_logging(app: Flask) -> None:
+    """Standard-library ``logging`` only — no new dependency. Each handler
+    gets a formatter that includes ``request_id`` (populated by the
+    ``_RequestIdLogFilter`` installed in ``init_request_logging``).
+    """
+    handler = logging.StreamHandler()
+    handler.setFormatter(
+        logging.Formatter(
+            "[%(asctime)s] %(levelname)s request_id=%(request_id)s %(name)s: %(message)s"
+        )
+    )
+    app.logger.handlers = [handler]
+    app.logger.setLevel(logging.INFO)
 
 
 def create_app(config: dict | None = None) -> Flask:
@@ -62,6 +79,8 @@ def create_app(config: dict | None = None) -> Flask:
     app.extensions["decision_engine"] = decision_engine
 
     register_error_handlers(app)
+    _configure_logging(app)
+    init_request_logging(app)
 
     from agro_mirai.api.routes.advisory import advisory_bp
     from agro_mirai.api.routes.farms import farms_bp
