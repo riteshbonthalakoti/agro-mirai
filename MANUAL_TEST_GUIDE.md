@@ -308,6 +308,61 @@ Between the two runs you've now independently exercised every module
 | 12 | Voice/language | Step 7 |
 | 13 | Feedback loop | Step 6 |
 | 14 + 14b | Web frontend | Step 4 |
+| 16 | CI, Sentry, rate limiting, backups | `/health`, `.github/workflows/ci.yml` |
+| 17 | ET0-based irrigation water balance | `/fields/{id}/irrigation`'s `rationale` field cites ET0/ETc/deficit |
+| 18 | Regional crop-suitability sanity layer | `out_of_region`/`regional_alternative` in `/fields/{id}/recommendation` |
+| 19 | Multi-tenant `/v2` auth + read-only Admin | Step 8 below |
+
+## Step 8 — Module 19: `/v2` multi-tenant auth + Admin (new, `/v1` above is unaffected)
+
+Everything in steps 1–7 above still exercises the original `/v1`
+single-shared-`API_KEY` flow, which **stays alive unmodified** —
+`decisions/0017-multi-tenant-v2.md` made that an explicit decision, not
+an accident, so this guide's earlier steps don't go stale.
+
+`/v2` is a separate, real login/session system, additive alongside it:
+
+```bash
+# Register a farmer (real password-strength validation — try "a" and
+# watch it get rejected with a 400, not silently accepted).
+curl -s -X POST http://localhost:5000/v2/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{"email":"you@example.com","password":"Sup3rSecret1","name":"Your Name","preferred_language":"en"}'
+
+# Log in — issues a signed session cookie (curl: -c/-b to persist it).
+curl -s -c cookies.txt -X POST http://localhost:5000/v2/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"you@example.com","password":"Sup3rSecret1"}'
+
+# Access your own data using the session cookie, no API key needed.
+curl -s -b cookies.txt http://localhost:5000/v2/fields
+
+# Log out — the same cookie stops working afterward.
+curl -s -b cookies.txt -X POST http://localhost:5000/v2/auth/logout
+```
+
+**Admin dashboard** (read-only — list farmers/fields, system-wide
+feedback aggregates, genuinely no write action anywhere on this
+surface): register an account as above, then promote it to admin
+out-of-band (there is no self-service admin signup, by design):
+
+```bash
+python -c "
+import sys; sys.path.insert(0, 'src')
+from agro_mirai.persistence.sqlite_store import SQLiteDataStore
+store = SQLiteDataStore('agro_mirai.db')
+f = store.get_farmer_by_email('you@example.com')
+f.role = 'admin'
+store.save_farmer(f)
+"
+```
+
+Then visit `http://localhost:5000/admin/login` in a browser (server-
+rendered Jinja2, same stack as the Module 14 frontend — minimally
+styled, labeled "functional, not yet polished" on the page itself), or
+hit the JSON equivalents directly: `GET /v2/admin/farmers`,
+`GET /v2/admin/fields`, `GET /v2/admin/feedback` (with the session
+cookie from logging in as the admin account above).
 
 If anything in here breaks in a way that doesn't match what a
 handoff claimed, that's exactly the kind of thing to bring back to me

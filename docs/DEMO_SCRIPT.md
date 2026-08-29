@@ -97,6 +97,18 @@ One or two `curl` calls straight from `MANUAL_TEST_GUIDE.md` §5 against
 the deployed URL — `/health`, `/fields/{id}/advisories` — to show real
 JSON, and one deliberate 401 (wrong key) to show auth actually rejects.
 
+## 5b. If asked about multi-tenancy / who else can use this (Module 19)
+
+> "The live demo above is the original single-farmer `/v1` flow — it's
+> unchanged and still what this script drives, deliberately, per
+> `decisions/0017-multi-tenant-v2.md`. Underneath it there's now also a
+> real `/v2`: registration, bcrypt-hashed passwords, real login sessions
+> — not per-farmer API keys — plus a read-only Admin dashboard that
+> lists every farmer/field and system-wide feedback, genuinely no write
+> path. It's additive, not a replacement, so this demo script didn't
+> need to change to stay accurate." See `MANUAL_TEST_GUIDE.md` step 8
+> for the exact commands if asked to show it live.
+
 ## 6. Close (30s)
 
 > "Fifteen modules, each gated on the last being tested and committed,

@@ -30,3 +30,5 @@ services:
         sync: false
       - key: SENTRY_DSN
         sync: false
+      - key: LOGIN_RATE_LIMIT
+        value: 5 per minute

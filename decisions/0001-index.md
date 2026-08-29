@@ -4,7 +4,8 @@ One entry per architectural decision record.
 
 - `0002-id-format.md` — Entity IDs are UUIDv4 strings.
 - `0003-single-farmer-tenancy.md` — One `Farmer` per user account; no
-  multi-tenant sharing in `v1`.
+  multi-tenant sharing in `v1`. **Superseded by 0017** for the new `/v2`
+  surface; `/v1` itself is unchanged and still governed by this ADR.
 - `0004-gee-timeout-and-fallback.md` — Earth Engine call timeout, cloud
   cover ceiling, lookback window, and buffer radius for the NDVI
   live/cache fallback.
@@ -49,3 +50,8 @@ One entry per architectural decision record.
   table flags (never overrides) a top prediction outside the known
   regionally-grown crop set via two new additive `CropRecommendation`
   fields, `out_of_region`/`regional_alternative`.
+- `0017-multi-tenant-v2.md` — Supersedes 0003 for the new `/v2` surface:
+  real multi-farmer accounts (`Farmer.role`, not a separate `AdminUser`),
+  bcrypt-hashed passwords, Flask signed-session login (not JWT/OAuth), a
+  read-only Admin dashboard. `/v1` stays alive unmodified for demo/
+  backward-compat, a deliberate decision, not an accident.
