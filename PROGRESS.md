@@ -75,6 +75,8 @@ is now Module 19 and the CNN disease model is now Module 20.)*
 <!-- STATE:START -->
 
 ### Recent commits
+- `cd1b205 Module 19: document /v2 auth + admin paths in openapi.yaml`
+- `7486c06 Module 19: doctrine updates (CLAUDE.md, PROGRESS.md, modules/19 STATUS)`
 - `38bd0eb Module 19: ADR 0017 (supersedes 0003), /v1 vs /v2 decision, docs updated`
 - `430b025 Module 19: server-rendered /admin dashboard (Jinja2, ADR 0013 pattern)`
 - `2a8c5e1 Module 19: tests (password/validation/session unit, cross-tenant integration, admin, login rate limit)`
@@ -83,8 +85,6 @@ is now Module 19 and the CNN disease model is now Module 20.)*
 - `4b99d2b Module 19: multi-tenant data model â€” email/password_hash/role on Farmer`
 - `fff78ae Module 18: doctrine updates (CLAUDE.md, PROGRESS.md, roadmap checkbox)`
 - `2637c16 Module 18: tests for regional-suitability sanity layer`
-- `8230212 Module 18: ADR 0016 (regional crop suitability, no retrain)`
-- `22d801e Module 18: wire regional-fit check into CropRecommendationModel and explanations`
 
 ### Module status
 - **01-foundation**: done
