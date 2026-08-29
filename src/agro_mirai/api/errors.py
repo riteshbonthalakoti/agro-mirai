@@ -7,6 +7,7 @@ Flask's default HTML error pages are never returned.
 from __future__ import annotations
 
 from flask import Flask, jsonify
+from flask_limiter.errors import RateLimitExceeded
 from werkzeug.exceptions import HTTPException
 
 
@@ -27,6 +28,10 @@ def register_error_handlers(app: Flask) -> None:
     @app.errorhandler(ApiError)
     def _handle_api_error(err: ApiError):
         return jsonify(_envelope(err.code, err.message, err.details)), err.status
+
+    @app.errorhandler(RateLimitExceeded)
+    def _handle_rate_limit(err: RateLimitExceeded):
+        return jsonify(_envelope("RATE_LIMIT_EXCEEDED", "Too many requests")), 429
 
     @app.errorhandler(HTTPException)
     def _handle_http_exception(err: HTTPException):

@@ -11,6 +11,8 @@ import logging
 import os
 
 from flask import Flask
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 
 from agro_mirai.api.errors import register_error_handlers
 from agro_mirai.api.request_context import init_request_logging
@@ -36,6 +38,35 @@ def _build_default_store(app: Flask):
     return SQLiteDataStore(app.config["DATABASE_URL"])
 
 
+def _rate_limit_key() -> str:
+    """Key by the caller's API key (Bearer token) so each key gets its own
+    bucket; falls back to remote address for unauthenticated requests so
+    they still share a (coarser) limit instead of bypassing it entirely.
+    """
+    from flask import request
+
+    header = request.headers.get("Authorization", "")
+    if header.startswith("Bearer "):
+        return header[len("Bearer "):].strip()
+    return get_remote_address()
+
+
+def _configure_rate_limit(app: Flask) -> Limiter:
+    """Sensible default: 60 requests/minute per API key, in-memory store —
+    no new infra dependency (fine for a single-process deployment; a
+    multi-worker deploy would need a shared store like Redis, noted here
+    rather than silently assumed). Adjust via the RATE_LIMIT env var, e.g.
+    "120 per minute". /health is exempt so uptime checks never trip it.
+    """
+    limiter = Limiter(
+        key_func=_rate_limit_key,
+        app=app,
+        default_limits=[app.config["RATE_LIMIT"]],
+        storage_uri="memory://",
+    )
+    return limiter
+
+
 def _configure_logging(app: Flask) -> None:
     """Standard-library ``logging`` only — no new dependency. Each handler
     gets a formatter that includes ``request_id`` (populated by the
@@ -59,6 +90,7 @@ def create_app(config: dict | None = None) -> Flask:
     app.config["FARMER_ID"] = os.environ.get("FARMER_ID", "")
     app.config["DATABASE_URL"] = os.environ.get("DATABASE_URL", "agro_mirai.db")
     app.config["TESTING"] = os.environ.get("FLASK_ENV") == "testing"
+    app.config["RATE_LIMIT"] = os.environ.get("RATE_LIMIT", "60 per minute")
     if config:
         app.config.update(config)
 
@@ -81,12 +113,15 @@ def create_app(config: dict | None = None) -> Flask:
     register_error_handlers(app)
     _configure_logging(app)
     init_request_logging(app)
+    limiter = _configure_rate_limit(app)
 
     from agro_mirai.api.routes.advisory import advisory_bp
     from agro_mirai.api.routes.farms import farms_bp
     from agro_mirai.api.routes.feedback import feedback_bp
     from agro_mirai.api.routes.frontend import frontend_bp
     from agro_mirai.api.routes.health import health_bp
+
+    limiter.exempt(health_bp)
 
     app.register_blueprint(health_bp)
     app.register_blueprint(farms_bp)
