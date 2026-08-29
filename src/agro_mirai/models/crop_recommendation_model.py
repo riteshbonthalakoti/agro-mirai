@@ -18,6 +18,7 @@ from agro_mirai.models.crop_feature_mapping import (
     MODEL_FEATURE_COLUMNS,
     map_features,
 )
+from agro_mirai.models.regional_suitability import check_regional_fit
 from agro_mirai.persistence.models import CropRecommendation
 from agro_mirai.processing.feature_builder import FeatureVector
 
@@ -55,6 +56,10 @@ class CropRecommendationModel:
         recommended_crop, confidence = ranked[0]
         alternatives = [crop for crop, _ in ranked[1 : 1 + top_k]]
 
+        # Module 18: Bellary/Karnataka regional-suitability sanity layer.
+        # A flag, never a silent override — decisions/0016.
+        fit = check_regional_fit(recommended_crop, alternatives)
+
         return CropRecommendation(
             id=str(uuid.uuid4()),
             field_id=features.field_id,
@@ -63,4 +68,6 @@ class CropRecommendationModel:
             confidence=float(confidence),
             alternatives=alternatives,
             season=features.season,
+            out_of_region=fit.out_of_region,
+            regional_alternative=fit.regional_alternative,
         )

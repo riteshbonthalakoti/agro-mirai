@@ -109,6 +109,7 @@ class ExplanationService:
         summary_en = _summary_en(
             f"recommendation of {recommendation.recommended_crop}", top
         )
+        summary_en += _regional_fit_note(recommendation)
         return Explanation(
             id=str(uuid.uuid4()),
             field_id=recommendation.field_id,
@@ -186,6 +187,28 @@ class ExplanationService:
             summary_en=summary_en,
             summary_kn=self._translate(summary_en),
         )
+
+
+def _regional_fit_note(recommendation: CropRecommendation) -> str:
+    """Module 18: plain-language caveat when the crop model's top pick
+    isn't in the known Bellary/Karnataka regionally-grown set
+    (`regional_suitability.py`, decisions/0016). Never silently drops or
+    replaces the ML output — this is an appended honesty note."""
+    if not recommendation.out_of_region:
+        return ""
+    if recommendation.regional_alternative:
+        return (
+            f" Caveat: {recommendation.recommended_crop} is not commonly grown in "
+            f"the Bellary/Karnataka region based on available regional crop data; "
+            f"{recommendation.regional_alternative} is a more regionally-established "
+            f"alternative worth considering."
+        )
+    return (
+        f" Caveat: {recommendation.recommended_crop} is not commonly grown in the "
+        f"Bellary/Karnataka region based on available regional crop data, and none "
+        f"of the other suggested alternatives are either — treat this recommendation "
+        f"with extra caution and consult a local agriculture extension officer."
+    )
 
 
 def _clip(value: float, lower: float, upper: float) -> float:
