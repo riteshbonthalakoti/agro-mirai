@@ -16,6 +16,7 @@ from datetime import datetime, timezone
 from flask import Blueprint, current_app, jsonify, request
 
 from agro_mirai.api.errors import ApiError
+from agro_mirai.api.login_rate_limit import login_limiter
 from agro_mirai.api.serializers import farmer_to_public_json
 from agro_mirai.api.session_auth import clear_session, issue_session
 from agro_mirai.auth.password import hash_password, verify_password
@@ -68,6 +69,7 @@ def register():
 
 
 @auth_v2_bp.post("/login")
+@login_limiter.limit(lambda: current_app.config["LOGIN_RATE_LIMIT"])
 def login():
     body = request.get_json(silent=True)
     if not isinstance(body, dict):
