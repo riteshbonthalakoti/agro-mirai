@@ -106,6 +106,22 @@ entities:
         required: false
       rationale: { type: string, required: false }
       season: { type: string, enum: season, required: false }
+      out_of_region:
+        type: bool
+        required: false
+        note: >
+          true when recommended_crop falls outside the known Bellary/
+          Karnataka regional-suitability set (decisions/0016). Absent or
+          false means either the crop is in that set, or the check has
+          not been run against this record (e.g. a record predating
+          Module 18) — it is a flag, not a guarantee of regional fit.
+      regional_alternative:
+        type: string
+        enum: crop_type
+        required: false
+        note: >
+          Highest-confidence regionally-plausible crop from alternatives,
+          populated only when out_of_region is true and one exists.
 
   IrrigationAdvice:
     description: |
