@@ -1,0 +1,47 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt -r requirements-dev.txt
+
+      - name: Train model artifacts
+        run: |
+          python tools/train_crop_model.py
+          python tools/train_irrigation_model.py
+
+      - name: Check specs contracts
+        run: python tools/check_specs.py
+
+      - name: Run test suite
+        env:
+          PYTHONPATH: src
+        run: pytest --ignore=tests/voice
+
+      # Module 12's voice/AI4Bharat stack (torch, transformers, etc.) needs
+      # the project-local .venv/ with transformers pinned to 4.49.0 — see
+      # docs/architecture.md. Installing and running it in CI within a
+      # reasonable time/cost budget wasn't attempted; tests/voice/ is
+      # skipped here deliberately, not silently dropped.
+
+      - name: Lint (non-blocking)
+        continue-on-error: true
+        run: |
+          pip install ruff
+          ruff check src tools tests
