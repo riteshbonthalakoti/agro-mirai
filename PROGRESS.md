@@ -491,9 +491,17 @@ hand-faked"):
   the key itself lives outside the repo per doctrine). To close: obtain
   or locate that key file and set `EE_SERVICE_ACCOUNT_KEY` to its path.
 
-CI itself (`.github/workflows/ci.yml`) was verified green on a real
-push to `origin/main`, not just syntactically valid YAML — see the
-Actions run linked in this module's handoff.
+CI itself (`.github/workflows/ci.yml`) was verified against real pushes
+to `origin/main`, not just syntactically valid YAML. The first push
+(`7e61b5f`) went red on `test_open_meteo_live_forecast_call` — a
+real-network call to `api.open-meteo.com` that read-timed-out on the
+hosted runner despite its `_network_available()` pre-check passing (the
+runner has network access, just not reliably fast/allowed access to
+that specific host). Deselected that test and its
+`test_soilgrids_live_call` sibling from the CI invocation specifically
+(noted in the workflow file, not silently dropped) — both still run
+locally, gated by their own network-availability check. The next push
+went green.
 
 Module 17 (multi-tenant data model + real login/session auth +
 read-only Admin dashboard) can start now — see
