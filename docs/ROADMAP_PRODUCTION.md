@@ -53,25 +53,23 @@ Row 6 is a framing note for the final report. Row 10 stays parked.
 6. [x] **Rate limiting**: Flask-Limiter, 60/min per API key by default,
    429 on exceed.
 
-### B. Multi-tenant + Admin role
-This is the biggest single piece of new scope, and it touches the data
-model, auth, and every layer above it — worth sequencing carefully:
-1. **Data model**: extend `farmers`/`fields` to support many farmers
-   properly (largely already shaped for it — ADR 0003 chose single-tenant
-   *behavior*, not necessarily a single-tenant *schema* — needs verifying
-   against the actual schema.yaml).
-2. **Auth**: replace the single static `API_KEY` with per-farmer
-   credentials (simplest realistic option: per-farmer API keys issued at
-   registration; a full login system is heavier than this timeline
-   probably supports — flag if you want that instead).
-3. **Admin role** (matches PPT's use-case diagram): a small admin
-   surface — list all farmers/fields, view system-wide feedback
-   aggregates, and a stubbed/simple "update advisory rule thresholds"
-   control (the PPT doesn't specify what "update rules" concretely means,
-   so this needs a concrete definition before it's buildable — see open
-   question below).
-4. **Farmer registration flow**: currently there's no way to add a new
-   farmer except via `seed_fixture.py` / direct DB writes.
+### B. Multi-tenant + Admin role — done, Module 19 (`decisions/0017-multi-tenant-v2.md`, `PROGRESS.md` have the full handoff)
+1. [x] **Data model**: `Farmer` gained additive `email`/`password_hash`/
+   `role` fields (`specs/core/schema.yaml`, new `user_role` enum in
+   `enums.md`); migration path for pre-Module-19 databases via
+   `migrations/{sqlite,postgres}/002_auth_fields.sql`.
+2. [x] **Auth**: real login/session system (Ritesh's explicit call, not
+   the simpler per-farmer-API-key option) — bcrypt password hashing,
+   Flask signed session cookies, `/v2/auth/{register,login,logout}`,
+   login-specific rate limiting. See `decisions/0017-multi-tenant-v2.md`.
+3. [x] **Admin role**: read-only surface — list all farmers/fields,
+   system-wide feedback aggregates (`/v2/admin/*` JSON + server-rendered
+   `/admin`). The "update advisory rule thresholds" control from the
+   original open question below was explicitly descoped to read-only,
+   per Ritesh's decided scope in `module-19-prompt.md`.
+4. [x] **Farmer registration flow**: `POST /v2/auth/register` — real
+   password-strength validation, no more seed-script-only farmer
+   creation.
 
 ### C. Close remaining PPT gaps
 1. **CNN disease model**: train a real MobileNet-based image classifier
