@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}Admin login — AGRO MIRAI{% endblock %}
+{% block content %}
+<h1>Admin login</h1>
+<p><em>Functional, not yet polished — Module 19 read-only admin surface.</em></p>
+<form method="post" action="{{ url_for('admin_ui.login') }}">
+  <label>Email<br><input type="email" name="email" required></label><br><br>
+  <label>Password<br><input type="password" name="password" required></label><br><br>
+  <button type="submit">Log in</button>
+</form>
+{% endblock %}
