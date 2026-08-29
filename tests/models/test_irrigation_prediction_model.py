@@ -61,6 +61,11 @@ def _full_vector(**overrides) -> FeatureVector:
         ndvi_data_available=False,
         season="kharif",
         days_since_sowing=70,
+        # Module 17: ET0/Kc water-balance inputs.
+        temp_c_min_7d=21.0,
+        temp_c_max_7d=32.0,
+        latitude=15.0,
+        crop_type="rice",
     )
     defaults.update(overrides)
     return FeatureVector(**defaults)
@@ -99,6 +104,31 @@ def test_predict_returns_schema_valid_irrigation_advice(model):
 
 def test_predict_depth_is_positive(model):
     rec = model.predict(_full_vector())
+    assert rec.recommended_depth_mm > 0.0
+
+
+def test_predict_depth_is_water_balance_derived_not_fixed_lookup(model):
+    # Module 17: recommended_depth_mm must vary with the water balance
+    # (rainfall received), not be a fixed number keyed off urgency
+    # (ADR 0008's old _URGENCY_TO_DEPTH_MM lookup, now removed).
+    dry = model.predict(_full_vector(rainfall_mm_sum_7d=0.0))
+    wet = model.predict(_full_vector(rainfall_mm_sum_7d=200.0))
+    assert dry.recommended_depth_mm > wet.recommended_depth_mm
+
+
+def test_predict_rationale_cites_et0_and_deficit_numbers(model):
+    rec = model.predict(_full_vector())
+    assert "ET0=" in rec.rationale
+    assert "ETc=" in rec.rationale
+    assert "deficit" in rec.rationale
+
+
+def test_predict_depth_falls_back_when_temp_extremes_missing(model):
+    # temp_c_min_7d/temp_c_max_7d are optional on FeatureVector; predict
+    # should degrade via the documented diurnal-range fallback, not
+    # raise, per CLAUDE.md's degrade-not-fail doctrine.
+    vector = _full_vector(temp_c_min_7d=None, temp_c_max_7d=None)
+    rec = model.predict(vector)
     assert rec.recommended_depth_mm > 0.0
 
 
