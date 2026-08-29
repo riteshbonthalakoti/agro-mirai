@@ -14,6 +14,7 @@ from flask import Blueprint, current_app, g, jsonify, request
 from agro_mirai.api.auth import require_auth
 from agro_mirai.api.errors import ApiError
 from agro_mirai.api.serializers import to_json
+from agro_mirai.api.validation import validate_feedback_create
 from agro_mirai.persistence.models import FeedbackEntry
 
 feedback_bp = Blueprint("feedback", __name__)
@@ -31,10 +32,8 @@ def submit_feedback():
     missing = [k for k in _REQUIRED_KEYS if k not in body]
     if missing:
         raise ApiError(400, "BAD_REQUEST", f"Missing required fields: {', '.join(missing)}")
-
+    validate_feedback_create(body)
     rating = body["rating"]
-    if not isinstance(rating, int) or not (1 <= rating <= 5):
-        raise ApiError(400, "BAD_REQUEST", "rating must be an integer between 1 and 5")
 
     store = current_app.extensions["data_store"]
     advisory = store.get_advisory(g.farmer_id, body["advisory_id"])
