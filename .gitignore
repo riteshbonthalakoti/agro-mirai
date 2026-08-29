@@ -41,6 +41,9 @@ data/cache/
 *.sqlite3
 *.db
 
+# Module 16 — Supabase backup dumps (data, never committed)
+/backups/
+
 # IDE / OS
 .vscode/
 .idea/
