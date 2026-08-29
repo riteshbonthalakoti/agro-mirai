@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import logging
 import os
+from datetime import timedelta
 
 import sentry_sdk
 from flask import Flask, g, request
@@ -115,6 +116,12 @@ def create_app(config: dict | None = None) -> Flask:
     app.config["TESTING"] = os.environ.get("FLASK_ENV") == "testing"
     app.config["RATE_LIMIT"] = os.environ.get("RATE_LIMIT", "60 per minute")
     app.config["SENTRY_DSN"] = os.environ.get("SENTRY_DSN", "")
+    # Module 19 — /v2 session auth. FLASK_SECRET_KEY (already required by
+    # Module 15's Procfile/render.yaml for Flask's session signing) covers
+    # this; no new secret was introduced. LOGIN_RATE_LIMIT is specific to
+    # /v2/auth/login, on top of the general per-key RATE_LIMIT above.
+    app.config["LOGIN_RATE_LIMIT"] = os.environ.get("LOGIN_RATE_LIMIT", "5 per minute")
+    app.permanent_session_lifetime = timedelta(hours=24)
     if config:
         app.config.update(config)
 
@@ -140,8 +147,11 @@ def create_app(config: dict | None = None) -> Flask:
     _configure_sentry(app)
     limiter = _configure_rate_limit(app)
 
+    from agro_mirai.api.routes.admin import admin_bp
     from agro_mirai.api.routes.advisory import advisory_bp
+    from agro_mirai.api.routes.auth_v2 import auth_v2_bp
     from agro_mirai.api.routes.farms import farms_bp
+    from agro_mirai.api.routes.farms_v2 import farms_v2_bp
     from agro_mirai.api.routes.feedback import feedback_bp
     from agro_mirai.api.routes.frontend import frontend_bp
     from agro_mirai.api.routes.health import health_bp
@@ -153,5 +163,17 @@ def create_app(config: dict | None = None) -> Flask:
     app.register_blueprint(advisory_bp)
     app.register_blueprint(feedback_bp)
     app.register_blueprint(frontend_bp)
+    app.register_blueprint(auth_v2_bp)
+    app.register_blueprint(farms_v2_bp)
+    app.register_blueprint(admin_bp)
+
+    # Module 19 — login-specific rate limit, on top of the general
+    # per-key limit above. Applied to the already-registered view
+    # function (Flask-Limiter supports decorating post-registration);
+    # keyed by remote address since a pre-login request has no API key/
+    # session to key on.
+    limiter.limit(app.config["LOGIN_RATE_LIMIT"], key_func=get_remote_address)(
+        app.view_functions["auth_v2.login"]
+    )
 
     return app
