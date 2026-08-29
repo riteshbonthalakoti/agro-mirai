@@ -62,6 +62,14 @@ class FeatureVector:
     season: str | None = None
     days_since_sowing: int | None = None
 
+    # Module 17 additions (additive-only, specs/core/features.md):
+    # ET0/water-balance inputs the irrigation model needs that weren't
+    # previously exposed on the vector.
+    temp_c_min_7d: float | None = None
+    temp_c_max_7d: float | None = None
+    latitude: float | None = None
+    crop_type: str | None = None
+
 
 class FeatureBuilder:
     """Stateless; ``build`` is the only entry point."""
@@ -101,6 +109,7 @@ class FeatureBuilder:
         r7, t7, h7 = weather_windows[7]
         r14, t14, h14 = weather_windows[14]
         r30, t30, h30 = weather_windows[30]
+        tmin7, tmax7 = _temp_min_max_window(weather_in_range, as_of, 7)
 
         return FeatureVector(
             field_id=field.id,
@@ -121,6 +130,10 @@ class FeatureBuilder:
             ndvi_confidence_source=ndvi_source,
             season=season,
             days_since_sowing=days_since_sowing,
+            temp_c_min_7d=tmin7,
+            temp_c_max_7d=tmax7,
+            latitude=field.latitude,
+            crop_type=field.current_crop,
             **soil_features,
         )
 
@@ -144,6 +157,33 @@ def _weather_window(
     humidity_mean = sum(humidities) / len(humidities) if humidities else None
 
     return rainfall_sum, temp_mean, humidity_mean
+
+
+def _temp_min_max_window(
+    readings: list[WeatherReading], as_of: date, window_days: int
+) -> tuple[float | None, float | None]:
+    """Mean of per-reading ``temp_min_c``/``temp_max_c`` over the window.
+
+    Module 17 addition: the Hargreaves-Samani ET0 formula needs a daily
+    Tmin/Tmax, which the original weather aggregates (mean-only) didn't
+    expose. ``temp_min_c``/``temp_max_c`` are optional per-reading
+    (unlike required ``temp_c``), so a reading missing either is skipped
+    for that statistic rather than treated as 0 — same "skip None, empty
+    window is None" policy as ``humidity_pct_mean``.
+    """
+    lower_exclusive = as_of.toordinal() - window_days
+    windowed = [
+        w
+        for w in readings
+        if lower_exclusive < w.observed_at.date().toordinal() <= as_of.toordinal()
+    ]
+
+    mins = [w.temp_min_c for w in windowed if w.temp_min_c is not None]
+    maxs = [w.temp_max_c for w in windowed if w.temp_max_c is not None]
+
+    temp_min_mean = sum(mins) / len(mins) if mins else None
+    temp_max_mean = sum(maxs) / len(maxs) if maxs else None
+    return temp_min_mean, temp_max_mean
 
 
 def _soil_features(
