@@ -96,6 +96,36 @@ range, `ndvi_latest`, `ndvi_trend`, and `ndvi_confidence_source` are all
 represented as `0.0` — `0.0` is a real, meaningful NDVI value (bare
 soil/no vegetation), not the same thing as "we have no reading."
 
+## 3b. Temperature extremes (Module 17 addition)
+
+Source: same `WeatherReading` list/window logic as §1, but over the
+optional `temp_min_c`/`temp_max_c` fields (unlike `temp_c`, these are
+allowed to be `None` per-reading).
+
+| Feature | Computation | Unit | Missing-data policy |
+|---|---|---|---|
+| `temp_c_min_7d` | mean of `temp_min_c` over the 7-day window, skipping `None` | °C | `None` if every reading in the window has `temp_min_c is None` |
+| `temp_c_max_7d` | mean of `temp_max_c` over the 7-day window, skipping `None` | °C | `None` if every reading in the window has `temp_max_c is None` |
+
+Added for Module 17's ET0 (Hargreaves-Samani) calculation, which needs a
+representative Tmin/Tmax, not just Tmean — see
+`decisions/0015-et0-water-balance.md`. Only the 7-day window is
+computed (not also 14/30d) since that's the only window the water
+balance actually consumes, matching `rainfall_mm_sum_7d`'s existing use
+downstream.
+
+## 3c. Field context pass-through (Module 17 addition)
+
+| Feature | Computation | Unit |
+|---|---|---|
+| `latitude` | pass-through `Field_.latitude` | decimal degrees |
+| `crop_type` | pass-through `Field_.current_crop` (optional on `Field_`) | enum (`crop_type`) or `None` |
+
+Added so the ET0/Kc water-balance calculation (Module 17) has the
+inputs it needs — extraterrestrial radiation requires latitude, and the
+crop coefficient lookup requires the crop — without every model needing
+to separately re-fetch `Field_`.
+
 ## 4. Season / derived context
 
 Source: `Field_.sown_on` (date, optional) mapped against `as_of` using a
