@@ -120,6 +120,86 @@ def test_explain_crop_shape(as_list):
     assert explanation.summary_kn is None
 
 
+def test_explain_crop_no_caveat_when_in_region():
+    classes = ["rice", "maize", "cotton"]
+    model_wrapper = MagicMock()
+    model_wrapper._model = _FakeSklearnModel(classes)
+
+    service = ExplanationService(crop_model=model_wrapper)
+    recommendation = CropRecommendation(
+        id=str(uuid.uuid4()),
+        field_id="ff000001-0000-4000-8000-000000000001",
+        created_at=datetime.now(timezone.utc),
+        recommended_crop="rice",
+        confidence=0.9,
+        alternatives=["maize"],
+        season="kharif",
+        out_of_region=False,
+        regional_alternative=None,
+    )
+
+    with patch("shap.TreeExplainer") as mock_cls:
+        mock_cls.return_value = _fake_tree_explainer(7, 3, as_list=True)
+        explanation = service.explain_crop(recommendation, _vector())
+
+    assert "caveat" not in explanation.summary_en.lower()
+
+
+def test_explain_crop_caveat_with_regional_alternative():
+    classes = ["rice", "maize", "grapes"]
+    model_wrapper = MagicMock()
+    model_wrapper._model = _FakeSklearnModel(classes)
+
+    service = ExplanationService(crop_model=model_wrapper)
+    recommendation = CropRecommendation(
+        id=str(uuid.uuid4()),
+        field_id="ff000001-0000-4000-8000-000000000001",
+        created_at=datetime.now(timezone.utc),
+        recommended_crop="grapes",
+        confidence=0.7,
+        alternatives=["rice", "maize"],
+        season="kharif",
+        out_of_region=True,
+        regional_alternative="rice",
+    )
+
+    with patch("shap.TreeExplainer") as mock_cls:
+        mock_cls.return_value = _fake_tree_explainer(7, 3, as_list=True)
+        explanation = service.explain_crop(recommendation, _vector())
+
+    summary = explanation.summary_en.lower()
+    assert "caveat" in summary
+    assert "grapes" in summary
+    assert "rice" in summary
+
+
+def test_explain_crop_caveat_with_no_regional_alternative():
+    classes = ["papaya", "banana", "grapes"]
+    model_wrapper = MagicMock()
+    model_wrapper._model = _FakeSklearnModel(classes)
+
+    service = ExplanationService(crop_model=model_wrapper)
+    recommendation = CropRecommendation(
+        id=str(uuid.uuid4()),
+        field_id="ff000001-0000-4000-8000-000000000001",
+        created_at=datetime.now(timezone.utc),
+        recommended_crop="grapes",
+        confidence=0.6,
+        alternatives=["papaya", "banana"],
+        season="kharif",
+        out_of_region=True,
+        regional_alternative=None,
+    )
+
+    with patch("shap.TreeExplainer") as mock_cls:
+        mock_cls.return_value = _fake_tree_explainer(7, 3, as_list=True)
+        explanation = service.explain_crop(recommendation, _vector())
+
+    summary = explanation.summary_en.lower()
+    assert "caveat" in summary
+    assert "none" in summary
+
+
 def test_explain_irrigation_shape():
     model_wrapper = MagicMock()
     model_wrapper._model = _FakeSklearnModel(["Low", "Medium", "High"])

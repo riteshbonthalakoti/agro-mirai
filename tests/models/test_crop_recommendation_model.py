@@ -117,6 +117,22 @@ def test_predict_propagates_field_id_and_season(model):
     assert rec.season == "rabi"
 
 
+def test_predict_out_of_region_is_bool_and_consistent_with_regional_set(model):
+    from agro_mirai.models.regional_suitability import BELLARY_REGIONAL_CROPS
+
+    rec = model.predict(_full_vector())
+    assert isinstance(rec.out_of_region, bool)
+    assert rec.out_of_region == (rec.recommended_crop not in BELLARY_REGIONAL_CROPS)
+    if not rec.out_of_region:
+        assert rec.regional_alternative is None
+
+
+def test_predict_regional_alternative_only_set_when_out_of_region(model):
+    rec = model.predict(_full_vector())
+    if rec.regional_alternative is not None:
+        assert rec.out_of_region is True
+
+
 def test_predict_raises_on_missing_soil(model):
     vector = _full_vector(soil_data_available=False, soil_ph=None,
                            soil_nitrogen_mg_per_kg=None,
