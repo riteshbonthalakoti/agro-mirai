@@ -12,6 +12,9 @@ CREATE TABLE IF NOT EXISTS "farmers" (
   "phone" text,
   "district" text,
   "state" text,
+  "email" text,
+  "password_hash" text,
+  "role" text,
   PRIMARY KEY ("id")
 );
 
@@ -88,6 +91,8 @@ CREATE TABLE IF NOT EXISTS "crop_recommendations" (
   "alternatives" jsonb,
   "rationale" text,
   "season" text,
+  "out_of_region" boolean,
+  "regional_alternative" text,
   PRIMARY KEY ("id")
 );
 

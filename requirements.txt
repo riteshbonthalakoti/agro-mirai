@@ -68,3 +68,8 @@ ordered-set==4.1.0
 Deprecated==1.3.1
 # Error monitoring. No-op with no SENTRY_DSN configured — see app.py.
 sentry-sdk==2.68.1
+
+# Module 19 — real login/session auth (multi-tenant v2).
+# bcrypt for password hashing (established KDF library, not hand-rolled) —
+# see decisions/0017-multi-tenant-v2.md.
+bcrypt==5.0.0

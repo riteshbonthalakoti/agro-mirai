@@ -32,6 +32,7 @@ from agro_mirai.persistence.store import ConflictError, NotFoundError
 
 ROOT = Path(__file__).resolve().parent.parent.parent.parent
 MIGRATION_PATH = ROOT / "migrations" / "sqlite" / "001_init.sql"
+AUTH_MIGRATION_PATH = ROOT / "migrations" / "sqlite" / "002_auth_fields.sql"
 
 
 # --------------------------------------------------------------------------
@@ -86,6 +87,26 @@ class SQLiteDataStore:
         conn = self._conn
         conn.executescript(sql)
         conn.commit()
+        self._apply_auth_migration()
+
+    def _apply_auth_migration(self) -> None:
+        """Module 19: ALTER TABLE ADD COLUMN has no IF NOT EXISTS in
+        SQLite, so each statement is applied individually and a
+        "duplicate column name" failure (already-migrated or
+        freshly-generated-001 database) is tolerated -- see
+        migrations/sqlite/002_auth_fields.sql's header comment."""
+        sql = AUTH_MIGRATION_PATH.read_text(encoding="utf-8")
+        conn = self._conn
+        for statement in sql.split(";"):
+            statement = statement.strip()
+            if not statement:
+                continue
+            try:
+                conn.execute(statement)
+            except sqlite3.OperationalError as e:
+                if "duplicate column name" not in str(e):
+                    raise
+        conn.commit()
 
     def close(self) -> None:
         conn = getattr(self._local, "conn", None)
@@ -107,31 +128,101 @@ class SQLiteDataStore:
         ).fetchone()
         created_at = _text_to_dt(existing["created_at"]) if existing else (farmer.created_at or now)
         updated_at = now
-        self._conn.execute(
-            """
-            INSERT INTO farmers (id, created_at, updated_at, name, preferred_language, phone, district, state)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            ON CONFLICT(id) DO UPDATE SET
-                updated_at=excluded.updated_at, name=excluded.name,
-                preferred_language=excluded.preferred_language, phone=excluded.phone,
-                district=excluded.district, state=excluded.state
-            """,
-            (
-                farmer.id,
-                _dt_to_text(created_at),
-                _dt_to_text(updated_at),
-                farmer.name,
-                farmer.preferred_language,
-                farmer.phone,
-                farmer.district,
-                farmer.state,
-            ),
-        )
-        self._conn.commit()
+        try:
+            self._conn.execute(
+                """
+                INSERT INTO farmers (id, created_at, updated_at, name, preferred_language, phone,
+                    district, state, email, password_hash, role)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(id) DO UPDATE SET
+                    updated_at=excluded.updated_at, name=excluded.name,
+                    preferred_language=excluded.preferred_language, phone=excluded.phone,
+                    district=excluded.district, state=excluded.state, email=excluded.email,
+                    password_hash=excluded.password_hash, role=excluded.role
+                """,
+                (
+                    farmer.id,
+                    _dt_to_text(created_at),
+                    _dt_to_text(updated_at),
+                    farmer.name,
+                    farmer.preferred_language,
+                    farmer.phone,
+                    farmer.district,
+                    farmer.state,
+                    farmer.email,
+                    farmer.password_hash,
+                    farmer.role or "farmer",
+                ),
+            )
+            self._conn.commit()
+        except sqlite3.IntegrityError as e:
+            raise ConflictError(str(e)) from e
         return self.get_farmer(farmer.id)  # type: ignore[return-value]
+
+    def get_farmer_by_email(self, email: str) -> Farmer | None:
+        """Module 19. Case-sensitive on the stored value -- callers
+        normalise (lowercase) email before calling, per
+        api/routes/auth_v2.py."""
+        row = self._conn.execute(
+            "SELECT * FROM farmers WHERE email = ?", (email,)
+        ).fetchone()
+        return self._row_to_farmer(row) if row else None
+
+    def list_all_farmers(self, limit: int = 500) -> list[Farmer]:
+        """Module 19: admin-only, unscoped by farmer_id -- callers must
+        gate this behind an admin role check (src/agro_mirai/api/session_auth.py)."""
+        rows = self._conn.execute(
+            "SELECT * FROM farmers ORDER BY created_at DESC LIMIT ?", (limit,)
+        ).fetchall()
+        return [self._row_to_farmer(r) for r in rows]
+
+    def list_all_fields(self, limit: int = 1000):
+        """Module 19: admin-only, unscoped across all farmers."""
+        rows = self._conn.execute(
+            "SELECT * FROM fields ORDER BY created_at DESC LIMIT ?", (limit,)
+        ).fetchall()
+        return [self._row_to_field(r) for r in rows]
+
+    def list_all_feedback_with_advisories(self, limit: int = 2000):
+        """Module 19: admin-only. Returns (FeedbackEntry, Advisory) pairs
+        across every farmer, joined so FeedbackAggregator.aggregate can
+        be reused unmodified with the "scope = all farmers" input."""
+        rows = self._conn.execute(
+            """
+            SELECT feedback_entries.*,
+                   advisories.field_id AS adv_field_id,
+                   advisories.created_at AS adv_created_at,
+                   advisories.language AS adv_language,
+                   advisories.title AS adv_title,
+                   advisories.body AS adv_body,
+                   advisories.severity AS adv_severity,
+                   advisories.source_refs AS adv_source_refs
+            FROM feedback_entries
+            JOIN advisories ON advisories.id = feedback_entries.advisory_id
+            ORDER BY feedback_entries.created_at DESC
+            LIMIT ?
+            """,
+            (limit,),
+        ).fetchall()
+        pairs = []
+        for row in rows:
+            entry = self._row_to_feedback(row)
+            advisory = Advisory(
+                id=row["advisory_id"],
+                field_id=row["adv_field_id"],
+                created_at=_text_to_dt(row["adv_created_at"]),
+                language=row["adv_language"],
+                title=row["adv_title"],
+                body=row["adv_body"],
+                severity=row["adv_severity"],
+                source_refs=json.loads(row["adv_source_refs"]) if row["adv_source_refs"] else [],
+            )
+            pairs.append((entry, advisory))
+        return pairs
 
     @staticmethod
     def _row_to_farmer(row: sqlite3.Row) -> Farmer:
+        keys = row.keys()
         return Farmer(
             id=row["id"],
             created_at=_text_to_dt(row["created_at"]),
@@ -141,6 +232,9 @@ class SQLiteDataStore:
             phone=row["phone"],
             district=row["district"],
             state=row["state"],
+            email=row["email"] if "email" in keys else None,
+            password_hash=row["password_hash"] if "password_hash" in keys else None,
+            role=(row["role"] if "role" in keys and row["role"] else "farmer"),
         )
 
     # --- Field ---
