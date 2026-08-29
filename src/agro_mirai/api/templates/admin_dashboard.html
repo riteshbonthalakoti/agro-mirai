@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}Admin — AGRO MIRAI{% endblock %}
+{% block content %}
+<h1>Admin dashboard</h1>
+<p><em>Functional, not yet polished — read-only: no write actions exist on this surface (Module 19).</em></p>
+<form method="post" action="{{ url_for('admin_ui.logout') }}"><button type="submit">Log out</button></form>
+
+<h2>Farmers ({{ farmers|length }})</h2>
+<table border="1" cellpadding="6">
+  <tr><th>Name</th><th>Email</th><th>Role</th><th>Fields</th></tr>
+  {% for f in farmers %}
+  <tr><td>{{ f.name }}</td><td>{{ f.email or "—" }}</td><td>{{ f.role }}</td><td>{{ f.field_count }}</td></tr>
+  {% endfor %}
+</table>
+
+<h2>Fields ({{ fields|length }})</h2>
+<table border="1" cellpadding="6">
+  <tr><th>Name</th><th>Farmer</th><th>Soil</th><th>Crop</th></tr>
+  {% for fl in fields %}
+  <tr><td>{{ fl.name }}</td><td>{{ fl.farmer_id }}</td><td>{{ fl.soil_type or "—" }}</td><td>{{ fl.current_crop or "—" }}</td></tr>
+  {% endfor %}
+</table>
+
+<h2>System-wide feedback</h2>
+<p>Total entries: {{ feedback.total_entries }} &middot;
+   Mean rating: {{ feedback.mean_rating if feedback.mean_rating is not none else "—" }} &middot;
+   Helpful rate: {{ feedback.helpful_rate if feedback.helpful_rate is not none else "—" }}</p>
+{% endblock %}

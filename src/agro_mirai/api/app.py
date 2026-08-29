@@ -148,6 +148,7 @@ def create_app(config: dict | None = None) -> Flask:
     limiter = _configure_rate_limit(app)
 
     from agro_mirai.api.routes.admin import admin_bp
+    from agro_mirai.api.routes.admin_ui import admin_ui_bp
     from agro_mirai.api.routes.advisory import advisory_bp
     from agro_mirai.api.routes.auth_v2 import auth_v2_bp
     from agro_mirai.api.routes.farms import farms_bp
@@ -166,6 +167,7 @@ def create_app(config: dict | None = None) -> Flask:
     app.register_blueprint(auth_v2_bp)
     app.register_blueprint(farms_v2_bp)
     app.register_blueprint(admin_bp)
+    app.register_blueprint(admin_ui_bp)
 
     # Module 19 — login-specific rate limit, on top of the general
     # per-key limit above. The @login_limiter.limit(...) decorator lives
