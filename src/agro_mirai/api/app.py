@@ -10,9 +10,11 @@ from __future__ import annotations
 import logging
 import os
 
-from flask import Flask
+import sentry_sdk
+from flask import Flask, g, request
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
+from sentry_sdk.integrations.flask import FlaskIntegration
 
 from agro_mirai.api.errors import register_error_handlers
 from agro_mirai.api.request_context import init_request_logging
@@ -36,6 +38,27 @@ def _build_default_store(app: Flask):
 
         return SupabaseDataStore()
     return SQLiteDataStore(app.config["DATABASE_URL"])
+
+
+def _configure_sentry(app: Flask) -> None:
+    """No-op with no SENTRY_DSN set — local dev and any deploy that hasn't
+    configured one run fine without it. With a DSN, tags each event with
+    the request id, route, and farmer id (when known) so an error in the
+    Sentry dashboard is debuggable without reproducing it blind.
+    """
+    dsn = app.config.get("SENTRY_DSN") or os.environ.get("SENTRY_DSN", "")
+    if not dsn:
+        return
+
+    sentry_sdk.init(dsn=dsn, integrations=[FlaskIntegration()], traces_sample_rate=0.0)
+
+    @app.before_request
+    def _tag_sentry_scope():
+        sentry_sdk.set_tag("request_id", g.get("request_id", ""))
+        sentry_sdk.set_tag("route", request.path)
+        farmer_id = app.config.get("FARMER_ID")
+        if farmer_id:
+            sentry_sdk.set_tag("farmer_id", farmer_id)
 
 
 def _rate_limit_key() -> str:
@@ -91,6 +114,7 @@ def create_app(config: dict | None = None) -> Flask:
     app.config["DATABASE_URL"] = os.environ.get("DATABASE_URL", "agro_mirai.db")
     app.config["TESTING"] = os.environ.get("FLASK_ENV") == "testing"
     app.config["RATE_LIMIT"] = os.environ.get("RATE_LIMIT", "60 per minute")
+    app.config["SENTRY_DSN"] = os.environ.get("SENTRY_DSN", "")
     if config:
         app.config.update(config)
 
@@ -113,6 +137,7 @@ def create_app(config: dict | None = None) -> Flask:
     register_error_handlers(app)
     _configure_logging(app)
     init_request_logging(app)
+    _configure_sentry(app)
     limiter = _configure_rate_limit(app)
 
     from agro_mirai.api.routes.advisory import advisory_bp
