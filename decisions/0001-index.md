@@ -43,3 +43,9 @@ One entry per architectural decision record.
   against 7-day rainfall, replacing ADR 0008's fixed urgency-keyed depth
   lookup (which it partially supersedes); `urgency` still gates the
   advisory window length.
+- `0016-regional-crop-suitability.md` — No usable India/Karnataka-specific
+  crop-recommendation dataset was found, so `CropRecommendationModel` is
+  not retrained; a small, cited Bellary/Karnataka regional-suitability
+  table flags (never overrides) a top prediction outside the known
+  regionally-grown crop set via two new additive `CropRecommendation`
+  fields, `out_of_region`/`regional_alternative`.
