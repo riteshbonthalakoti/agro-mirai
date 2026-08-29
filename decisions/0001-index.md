@@ -38,3 +38,8 @@ One entry per architectural decision record.
   is server-rendered Flask templates in the same process as Module 11's
   API (not a separate SPA service), calling the JSON API in-process with
   a server-held `API_KEY` rather than exposing it client-side.
+- `0015-et0-water-balance.md` — `recommended_depth_mm` is now derived
+  from an ET0 (Hargreaves-Samani) x Kc (FAO-56 Table 12) water balance
+  against 7-day rainfall, replacing ADR 0008's fixed urgency-keyed depth
+  lookup (which it partially supersedes); `urgency` still gates the
+  advisory window length.
