@@ -295,6 +295,10 @@ components:
         season:
           type: string
           enum: [kharif, rabi, zaid]
+        out_of_region: { type: boolean }
+        regional_alternative:
+          type: string
+          enum: [rice, maize, chickpea, kidneybeans, pigeonpeas, mothbeans, mungbean, blackgram, lentil, pomegranate, banana, mango, grapes, watermelon, muskmelon, apple, orange, papaya, coconut, cotton, jute, coffee]
 
     IrrigationAdvice:
       type: object
