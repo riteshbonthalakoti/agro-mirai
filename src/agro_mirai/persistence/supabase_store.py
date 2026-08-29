@@ -85,12 +85,70 @@ class SupabaseDataStore:
             "phone": farmer.phone,
             "district": farmer.district,
             "state": farmer.state,
+            "email": farmer.email,
+            "password_hash": farmer.password_hash,
+            "role": farmer.role or "farmer",
         }
         try:
             self._client.table("farmers").upsert(payload).execute()
         except Exception as e:  # pragma: no cover - network/PostgREST errors
             raise ConflictError(str(e)) from e
         return self.get_farmer(farmer.id)  # type: ignore[return-value]
+
+    def get_farmer_by_email(self, email: str) -> Farmer | None:
+        """Module 19. See sqlite_store.py's twin for the contract."""
+        res = self._client.table("farmers").select("*").eq("email", email).execute()
+        rows = res.data
+        return self._row_to_farmer(rows[0]) if rows else None
+
+    def list_all_farmers(self, limit: int = 500) -> list[Farmer]:
+        """Module 19. Admin-only, unscoped -- see repository-interface.md."""
+        res = (
+            self._client.table("farmers")
+            .select("*")
+            .order("created_at", desc=True)
+            .limit(limit)
+            .execute()
+        )
+        return [self._row_to_farmer(r) for r in res.data]
+
+    def list_all_fields(self, limit: int = 1000) -> list[Field_]:
+        """Module 19. Admin-only, unscoped -- see repository-interface.md."""
+        res = (
+            self._client.table("fields")
+            .select("*")
+            .order("created_at", desc=True)
+            .limit(limit)
+            .execute()
+        )
+        return [self._row_to_field(r) for r in res.data]
+
+    def list_all_feedback_with_advisories(
+        self, limit: int = 2000
+    ) -> list[tuple[FeedbackEntry, Advisory]]:
+        """Module 19. Admin-only. No PostgREST cross-table join helper is
+        used here (keeps this store's PostgREST usage consistent with
+        every other method); fetches feedback then advisories by id and
+        joins client-side."""
+        res = (
+            self._client.table("feedback_entries")
+            .select("*")
+            .order("created_at", desc=True)
+            .limit(limit)
+            .execute()
+        )
+        entries = [self._row_to_feedback(r) for r in res.data]
+        if not entries:
+            return []
+        advisory_ids = sorted({e.advisory_id for e in entries})
+        adv_res = self._client.table("advisories").select("*").in_("id", advisory_ids).execute()
+        advisories = {r["id"]: self._row_to_advisory(r) for r in adv_res.data}
+        pairs = []
+        for e in entries:
+            adv = advisories.get(e.advisory_id)
+            if adv is not None:
+                pairs.append((e, adv))
+        return pairs
 
     @staticmethod
     def _row_to_farmer(row: dict) -> Farmer:
@@ -103,6 +161,9 @@ class SupabaseDataStore:
             phone=row.get("phone"),
             district=row.get("district"),
             state=row.get("state"),
+            email=row.get("email"),
+            password_hash=row.get("password_hash"),
+            role=row.get("role") or "farmer",
         )
 
     # --- Field ---

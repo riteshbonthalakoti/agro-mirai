@@ -24,6 +24,26 @@ entities:
       phone: { type: string, required: false, note: "E.164 format, optional" }
       district: { type: string, required: false }
       state: { type: string, required: false }
+      email:
+        type: string
+        required: false
+        note: >
+          Module 19. Unique when present (enforced by a partial unique
+          index, not by this schema). Required for /v2 login; absent on
+          farmers created only via the /v1 shared-key flow.
+      password_hash:
+        type: string
+        required: false
+        note: >
+          Module 19. A bcrypt hash — never plaintext. Never returned by
+          any API response; excluded in the public serializer.
+      role:
+        type: string
+        enum: user_role
+        required: false
+        note: >
+          Module 19. Defaults to "farmer" when absent (pre-Module-19
+          records). "admin" gates the read-only /v2/admin surface.
 
   Field:
     description: |

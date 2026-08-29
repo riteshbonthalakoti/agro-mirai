@@ -46,6 +46,28 @@ class DataStore(Protocol):
 
     def save_farmer(self, farmer: Farmer) -> Farmer: ...
 
+    def get_farmer_by_email(self, email: str) -> Farmer | None:
+        """Module 19. Lookup for login/registration; None if no farmer
+        has this email (or email was never set, e.g. a /v1-only record)."""
+        ...
+
+    def list_all_farmers(self, limit: int = 500) -> list[Farmer]:
+        """Module 19. Admin-only, unscoped across every farmer -- callers
+        must gate this behind an admin role check, the store does not."""
+        ...
+
+    def list_all_fields(self, limit: int = 1000) -> list[Field_]:
+        """Module 19. Admin-only, unscoped across every farmer's fields."""
+        ...
+
+    def list_all_feedback_with_advisories(
+        self, limit: int = 2000
+    ) -> list[tuple[FeedbackEntry, Advisory]]:
+        """Module 19. Admin-only. Every (FeedbackEntry, Advisory) pair
+        system-wide, for FeedbackAggregator.aggregate scoped to
+        "all farmers" instead of one."""
+        ...
+
     # --- Field ---
     def get_field(self, farmer_id: str, field_id: str) -> Field_ | None: ...
 

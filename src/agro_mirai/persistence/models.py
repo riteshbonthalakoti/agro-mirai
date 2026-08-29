@@ -24,6 +24,10 @@ class Farmer:
     phone: str | None = None
     district: str | None = None
     state: str | None = None
+    # Module 19 — multi-tenant auth (additive, see decisions/0017).
+    email: str | None = None
+    password_hash: str | None = None
+    role: str = "farmer"
 
 
 @dataclass
