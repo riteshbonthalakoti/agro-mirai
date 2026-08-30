@@ -79,7 +79,7 @@ demoed from the developer's own machine.
 ## Tests
 
 ```bash
-python -m pytest --ignore=tests/voice --ignore=tests/e2e -q   # everything except voice + the deployed-instance smoke test
+python -m pytest --ignore=tests/voice --ignore=tests/vision --ignore=tests/e2e -q   # everything except voice, vision + the deployed-instance smoke test
 python tools/check_specs.py                                    # contract/fixture validation
 .venv/Scripts/python.exe -m pytest tests/voice -q               # voice stack, needs the pinned .venv
 ```

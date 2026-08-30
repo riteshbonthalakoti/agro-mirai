@@ -443,7 +443,54 @@ function, no Flask context needed for the expiry check) and
 `test_admin_routes.py`, `test_admin_ui.py`, `test_login_rate_limit.py`).
 Full regression (`pytest --ignore=tests/voice`): 284 passed, 0 failed,
 25 skipped. `check_specs.py`: OK. `tools/seed_fixture.py` and the
-existing farm-001/farm-002 golden fixtures verified unaffected. Module
-20 (CNN disease model on PlantVillage) can start now — see
-`docs/ROADMAP_PRODUCTION.md` and `PROGRESS.md`'s Module 19 entry for the
-full handoff.
+existing farm-001/farm-002 golden fixtures verified unaffected.
+
+Module 20 (CNN disease model on PlantVillage) landed 2026-08-30.
+`ImageDiseaseRiskModel.predict(image, field_id) -> DiseaseRiskAlert`
+(`src/agro_mirai/models/image_disease_risk_model.py`) is the additive
+CNN upgrade path ADR 0009 sketched out: a MobileNetV2 (torchvision,
+ImageNet-pretrained, last 3 feature blocks fine-tuned) trained on Kaggle
+`abdallahalidev/plantvillage-dataset`'s `color/` split (38 classes,
+~54k images) — best held-out val accuracy 0.9924
+(`docs/eval/disease_cnn_eval.json`). Training ran on a live Google Colab
+T4 GPU session, driven entirely through the `colab` CLI (installed and
+authenticated inside WSL — the CLI's own `termios` import makes it
+Windows-incompatible outside WSL/Linux) rather than the notebook UI:
+`colab new`/`colab exec`/`colab download` end to end, no manual
+notebook interaction. `tools/train_disease_cnn.py` documents the exact
+reproduction steps; it is not runnable locally (Colab `/content/...`
+paths, and torch/torchvision are deliberately excluded from the main
+venv, same policy as Module 12's voice stack — decisions/0014). Trained
+artifacts (`models/disease_cnn_mobilenetv2.pt`,
+`models/disease_cnn_class_names.json`) are gitignored, same convention
+as `crop_rf.joblib`/`irrigation_rf.joblib`.
+
+Two honest, documented gaps, not hidden behind the accuracy number (full
+writeup in `decisions/0018-disease-cnn.md`): only 4 of PlantVillage's 38
+classes' crops (apple, corn/maize, grape, orange) are in AGRO MIRAI's
+22-value `crop_type` enum — the other 34 (pepper, potato, tomato,
+etc.) are real trained classes with no `crop_type` label anywhere else
+in this codebase; and the 99.24% validation accuracy is against a
+random hold-out from PlantVillage's own lab-condition images, not real
+field photos, which published research suggests generalizes
+substantially worse. `src/agro_mirai/models/disease_cnn_labels.py`
+holds the class-name parsing, the crop-enum overlap check, and the
+risk-level heuristic (no per-disease severity ground truth exists, so
+healthy -> `low`, any disease call floors at `moderate` and scales to
+`high`/`severe` off the model's own softmax confidence — a
+classification-certainty signal, not a severity signal, documented as
+such). `disease_risk_scoring.py`'s `RISK_ACTION`/`RISK_WINDOW_DAYS`
+lookups were exported as public aliases so both the rule-based and CNN
+paths share one risk-level -> action/window mapping.
+
+**Not yet wired into `DecisionEngine` or the API** — no `Field`/API
+contract anywhere in this codebase carries an image upload today (the
+same gap ADR 0009 identified as the real blocker, not the model itself);
+adding an upload endpoint/storage and the `DecisionEngine`-side
+image-vs-environmental choice is real follow-on scope, deliberately left
+for later rather than forced in here. `tests/vision/` (new, mirrors
+`tests/voice/`'s exclusion — both run separately under `.venv/`, both
+excluded from the default `pytest`/CI run) has 2 tests: a missing-weights
+`FileNotFoundError` check and a real end-to-end prediction against the
+trained artifact confirming a schema-valid `DiseaseRiskAlert`. Full main
+suite unaffected: 294 passed, 0 failed, 25 skipped.

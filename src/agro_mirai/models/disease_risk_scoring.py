@@ -42,6 +42,12 @@ _RISK_WINDOW_DAYS = {
     "severe": 1,
 }
 
+# Public aliases — reused by ImageDiseaseRiskModel (Module 20) so the
+# risk-level -> action/window lookup stays single-sourced across the
+# rule-based and CNN-based disease paths, per ADR 0009's CNN upgrade path.
+RISK_ACTION = _RISK_ACTION
+RISK_WINDOW_DAYS = _RISK_WINDOW_DAYS
+
 
 @dataclass
 class DiseaseRiskScore:
