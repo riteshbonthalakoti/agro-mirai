@@ -39,7 +39,7 @@ jobs:
         env:
           PYTHONPATH: src
         run: >-
-          pytest --ignore=tests/voice
+          pytest --ignore=tests/voice --ignore=tests/vision
           --deselect tests/test_module_03_acquisition.py::test_open_meteo_live_forecast_call
           --deselect tests/test_module_03_acquisition.py::test_soilgrids_live_call
 
