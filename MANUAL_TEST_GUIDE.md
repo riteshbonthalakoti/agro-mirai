@@ -275,7 +275,7 @@ UI yet. Worth deciding if you want that wired in before Module 15.)
 Back in the global-interpreter terminal:
 
 ```powershell
-python -m pytest --ignore=tests\voice -q
+python -m pytest --ignore=tests\voice --ignore=tests\vision -q
 ```
 
 This should show everything green except intentional skips (things

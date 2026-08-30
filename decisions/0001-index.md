@@ -55,3 +55,9 @@ One entry per architectural decision record.
   bcrypt-hashed passwords, Flask signed-session login (not JWT/OAuth), a
   read-only Admin dashboard. `/v1` stays alive unmodified for demo/
   backward-compat, a deliberate decision, not an accident.
+- `0018-disease-cnn.md` — MobileNetV2 transfer-learned on PlantVillage
+  (`color/` split, 38 classes) via `ImageDiseaseRiskModel`, additive
+  alongside ADR 0009's rule-based `DiseaseRiskModel` behind the same
+  `DiseaseRiskAlert` shape. Only 4 of 38 PlantVillage crops are in the
+  22-value `crop_type` enum; not yet wired into `DecisionEngine` since no
+  image-upload path exists anywhere in the API/schema yet.
