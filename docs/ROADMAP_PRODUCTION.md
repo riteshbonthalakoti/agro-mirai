@@ -72,16 +72,22 @@ Row 6 is a framing note for the final report. Row 10 stays parked.
    creation.
 
 ### C. Close remaining PPT gaps
-1. **CNN disease model**: train a real MobileNet-based image classifier
-   on a Kaggle plant-disease dataset (PlantVillage is the standard
-   choice), behind the same `DiseaseRiskModel` interface so the rule-based
-   version can stay as a documented fallback rather than being thrown
-   away. This is realistically the largest single item — image upload
-   handling, a new endpoint or extension to the existing one, model
-   training/eval, and updating ADR 0009 to reflect the upgrade actually
-   happening.
-2. Update `decisions/0009-*.md` to record the CNN as shipped, not just
-   planned.
+1. [x] **CNN disease model**: MobileNetV2 on PlantVillage, trained in
+   Module 20 (`decisions/0018-disease-cnn.md`). Wired into the API and
+   `DecisionEngine` in Module 21 (`decisions/0019-deployment-architecture.md`)
+   via a new `POST /fields/{field_id}/disease-risk/image` endpoint that
+   calls a standalone `services/cnn-inference` container, with a hard
+   fallback to the rule-based `DiseaseRiskModel` on any CNN service
+   failure — never a 500.
+2. [x] Update `decisions/0009-*.md` — superseded by
+   `decisions/0018-disease-cnn.md` (the CNN model) and
+   `decisions/0019-deployment-architecture.md` (the wiring), both
+   recording the CNN as shipped, not just planned.
+3. [x] **Deployment architecture** (Module 21): Render (API) + a single
+   Oracle Ampere A1 VM (heavy inference: CNN + voice), `docker-compose.yml`,
+   `docs/deploy/oracle-vm-setup.md`. Real infra provisioning is Ritesh's
+   own next step (blocked on Oracle account creation) — everything code/
+   Docker/docs-side that will work once that VM exists is done.
 
 ---
 
