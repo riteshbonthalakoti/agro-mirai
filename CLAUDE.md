@@ -494,3 +494,106 @@ excluded from the default `pytest`/CI run) has 2 tests: a missing-weights
 `FileNotFoundError` check and a real end-to-end prediction against the
 trained artifact confirming a schema-valid `DiseaseRiskAlert`. Full main
 suite unaffected: 294 passed, 0 failed, 25 skipped.
+
+Module 21 (Deployment architecture) landed 2026-09-01 — closes Module
+20's real gap (no image-upload path anywhere) and answers where the
+project's heavy inference (CNN + AI4Bharat voice) actually runs in
+production, without touching any real Oracle infra (blocked on Ritesh
+creating an Oracle account, entering payment card details, per this
+module's explicit scope note). Two new standalone Flask services live
+under `services/`, each with its own `Dockerfile`/`requirements.txt`/
+`README.md`, deliberately separate processes from the main
+`agro_mirai` app because torch/torchvision stay out of the main
+`requirements.txt` (same isolation policy as the Module 12 voice
+stack, `decisions/0014`): `services/cnn-inference` wraps Module 20's
+`ImageDiseaseRiskModel` (`POST /predict`, `GET /health`, lazy model
+load so health responds before weights are mounted); `services/voice`
+wraps Module 12's `AI4BharatVoiceService` (`POST /translate`,
+`/speech-to-text`, `/text-to-speech`, `GET /health`). Both Dockerfiles
+pin CPU-only torch wheels and explicitly flag an unverified ARM64/
+aarch64 wheel-availability risk for Oracle's Ampere A1 target — a real
+open question, not silently assumed to work.
+
+`POST /fields/{field_id}/disease-risk/image`
+(`src/agro_mirai/api/routes/disease_image.py`, additive path in
+`specs/core/openapi.yaml`) closes ADR 0018's "additive, not integrated
+yet" gap: real upload validation (10MB cap + Pillow
+`Image.verify()` content-sniffing, not filename/Content-Type trust —
+`src/agro_mirai/api/image_validation.py`), then calls
+`services/cnn-inference` over HTTP via a configurable `CNN_SERVICE_URL`
++ timeout (`src/agro_mirai/api/cnn_client.py`, using `requests` like
+the Module 03 acquisition adapters). Per Ritesh's hard fallback
+requirement, any CNN-service failure (unreachable, timeout, error)
+falls back to the existing rule-based `DiseaseRiskModel` and still
+returns a valid 200 `DiseaseRiskAlert` — never a 500. The choice logic
+lives in exactly one place,
+`src/agro_mirai/models/image_or_environmental_disease.py`, shared by
+both this route and `DecisionEngine.recommend`'s new optional
+`image_bytes` parameter (non-breaking — existing callers without an
+image see identical behavior to before). `DiseaseRiskAlert` gained an
+additive `source` field (`"cnn"` | `"environmental"` |
+`"environmental_fallback"`, new `disease_alert_source` enum in
+`specs/core/enums.md`) so a response records which path actually
+produced it; `migrations/{sqlite,postgres}/003_disease_alert_source.sql`
+is the upgrade path for pre-Module-21 databases, same ADD-COLUMN-
+tolerant pattern Module 19's `002_auth_fields.sql` established.
+
+The voice-stack question (keep AI4Bharat vs. switch to faster-whisper +
+Kokoro) was resolved with a real web search, not assumed: Kokoro TTS
+does not support Kannada (8 languages in its set, none of them `kn`) —
+a hard blocker given `specs/core/voice-interface.md`'s
+`V1_LANGUAGES = {en, kn}` — and faster-whisper adds nothing for this
+project's actual ASR gap (it has the same language coverage as the
+`whisper-tiny.en` Module 12 already uses for English; Kannada ASR
+already comes from IndicConformer, which faster-whisper doesn't
+replace). Decision: kept AI4Bharat, and solved the real problem a
+lighter stack would have solved anyway — the `transformers==4.49.0`
+`.venv/` isolation workaround from Module 15 — by containerizing it
+instead (`services/voice`), a genuine production improvement over a
+local dev workaround. `src/agro_mirai/voice/remote_voice.py`'s new
+`RemoteVoiceService` implements the existing `VoiceService` Protocol by
+calling this container, a third adapter alongside
+`AI4BharatVoiceService`/`BhashiniVoiceAdapter` requiring zero caller
+changes to swap in.
+
+`docker-compose.yml` runs both services on one Oracle Ampere A1 VM with
+explicit `mem_limit`/`cpus` and a worked resource budget in its own
+comment block, grounded in a web-search-verified fact that matters:
+Oracle silently cut the Always Free A1 allocation from 4 OCPU/24GB to
+**2 OCPU/12GB** effective June 2026 — the budget targets that smaller
+number, not the old one, and honestly flags itself as an estimate, not
+a `docker stats` measurement, since no VM exists yet to measure against.
+`docs/deploy/oracle-vm-setup.md` is the full runbook Ritesh follows
+himself once his Oracle account exists — provisioning, a security list
+that opens only the two service ports (not a blanket rule), Docker/
+Compose install for Ubuntu ARM64, a recommended swap file given the
+tight memory budget, and an explicit "verified vs. needs Ritesh to
+confirm" closing section rather than blurring the two.
+`decisions/0019-deployment-architecture.md` has the full reasoning for
+all of the above plus honest limitations: Oracle's free tier could
+shrink again, no autoscaling, a single Oracle VM is a real SPOF for the
+CNN/voice paths specifically — but the core API, crop/irrigation
+recommendations, the rule-based disease path, and all `/v1`/`/v2`
+auth/admin routes have zero dependency on that VM and keep working
+independently on Render/Supabase if it's ever down, a deliberate split
+rather than an accident. The two Oracle-hosted services currently have
+no authentication of their own — flagged as a real, not-yet-closed gap,
+not hidden.
+
+27 new tests: 7 in `services/cnn-inference/tests` and 7 in
+`services/voice/tests` (both stub-model route tests, no torch needed,
+run as their own CI steps), 6 in `tests/voice_remote/test_remote_voice.py`
+(HTTP boundary mocked, runs in the main suite), and 7 in
+`tests/api/test_disease_image_route.py` (upload validation, the CNN-
+success path, and the CNN-unreachable-falls-back-to-200-not-500 path,
+all with the CNN HTTP call mocked). Full main regression
+(`pytest --ignore=tests/voice --ignore=tests/vision --ignore=services/cnn-inference --ignore=services/voice`):
+301 passed, 25 skipped, plus 4 pre-existing failures confirmed
+unrelated to this module (reproduce identically on a clean stash of
+this module's diff — an existing ET0 water-balance seed-data gap in
+`tests/api/test_integration.py`/`tests/frontend/test_frontend_integration.py`,
+untouched by Module 21). `check_specs.py`: OK. Nothing in this module
+required live Oracle infra, a live CNN service, or a live voice service
+to pass — every HTTP boundary is mocked, verified by grepping for any
+outbound call to a non-localhost, non-mocked host in the new test
+files (none found).
