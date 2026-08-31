@@ -113,3 +113,13 @@ why a `role` field was chosen over a separate `AdminUser` entity).
 
 - `ok` — data store reachable, service healthy
 - `degraded` — data store ping failed; service is up but persistence is unavailable
+
+## `disease_alert_source`
+
+Module 21. Which path produced a given `DiseaseRiskAlert`.
+
+- `cnn` — `ImageDiseaseRiskModel` via `POST /fields/{field_id}/disease-risk/image`
+- `environmental` — the rule-based `DiseaseRiskModel`, called directly
+- `environmental_fallback` — an image was submitted but the CNN inference
+  service was unreachable/timed out/errored, so the rule-based model was
+  used instead (the hard fallback requirement — never a 500)

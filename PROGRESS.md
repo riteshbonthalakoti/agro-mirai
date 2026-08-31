@@ -75,6 +75,8 @@ is now Module 19 and the CNN disease model is now Module 20.)*
 <!-- STATE:START -->
 
 ### Recent commits
+- `26bae80 Module 21: standalone CNN inference service (services/cnn-inference)`
+- `196078d Module 20: CNN disease detection (MobileNetV2 on PlantVillage)`
 - `e1c2f66 PROGRESS.md: regenerate state block (recent-commits list)`
 - `cd1b205 Module 19: document /v2 auth + admin paths in openapi.yaml`
 - `7486c06 Module 19: doctrine updates (CLAUDE.md, PROGRESS.md, modules/19 STATUS)`
@@ -82,9 +84,7 @@ is now Module 19 and the CNN disease model is now Module 20.)*
 - `430b025 Module 19: server-rendered /admin dashboard (Jinja2, ADR 0013 pattern)`
 - `2a8c5e1 Module 19: tests (password/validation/session unit, cross-tenant integration, admin, login rate limit)`
 - `9c78a91 Module 19: read-only Admin dashboard API (/v2/admin)`
-- `b8c4cd9 Module 19: real login/session auth (/v2/auth) — bcrypt hashing, signed session, login rate limit`
-- `4b99d2b Module 19: multi-tenant data model — email/password_hash/role on Farmer`
-- `fff78ae Module 18: doctrine updates (CLAUDE.md, PROGRESS.md, roadmap checkbox)`
+- `b8c4cd9 Module 19: real login/session auth (/v2/auth) â€” bcrypt hashing, signed session, login rate limit`
 
 ### Module status
 - **01-foundation**: done
@@ -409,6 +409,7 @@ WSGI config, gunicorn verification, docs, regression) is done.
 - **18-crop-localization**: done
 - **19-multi-tenant-auth-admin**: done
 - **20-disease-cnn**: done
+- **21-deployment-architecture**: unknown
 
 ### Latest test run
 - no test report found (.report.json missing — run pytest --json-report)

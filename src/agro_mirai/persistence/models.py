@@ -123,6 +123,7 @@ class DiseaseRiskAlert:
     window_start_at: datetime | None = None
     window_end_at: datetime | None = None
     recommended_action: str | None = None
+    source: str | None = None  # Module 21: "cnn" | "environmental" | "environmental_fallback"
 
 
 @dataclass

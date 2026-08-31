@@ -151,6 +151,7 @@ def create_app(config: dict | None = None) -> Flask:
     from agro_mirai.api.routes.admin_ui import admin_ui_bp
     from agro_mirai.api.routes.advisory import advisory_bp
     from agro_mirai.api.routes.auth_v2 import auth_v2_bp
+    from agro_mirai.api.routes.disease_image import disease_image_bp
     from agro_mirai.api.routes.farms import farms_bp
     from agro_mirai.api.routes.farms_v2 import farms_v2_bp
     from agro_mirai.api.routes.feedback import feedback_bp
@@ -162,6 +163,7 @@ def create_app(config: dict | None = None) -> Flask:
     app.register_blueprint(health_bp)
     app.register_blueprint(farms_bp)
     app.register_blueprint(advisory_bp)
+    app.register_blueprint(disease_image_bp)
     app.register_blueprint(feedback_bp)
     app.register_blueprint(frontend_bp)
     app.register_blueprint(auth_v2_bp)
