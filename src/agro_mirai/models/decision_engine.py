@@ -46,10 +46,23 @@ class DecisionEngine:
             voice_service=voice_service,
         )
 
-    def recommend(self, field, features: FeatureVector) -> Advisory:
+    def recommend(self, field, features: FeatureVector, image_bytes: bytes | None = None) -> Advisory:
+        """``image_bytes``: Module 21, optional. When given, the disease
+        leg tries the CNN image path first (via
+        ``image_or_environmental_disease.resolve_disease_alert``), falling
+        back to the existing rule-based ``disease_model`` path on any CNN
+        service failure — never raises, matches the hard fallback
+        requirement. Existing callers that don't pass an image are
+        unaffected: behavior is identical to before this parameter
+        existed."""
         crop = self._crop_model.predict(features)
         irrigation = self._irrigation_model.predict(features)
-        disease = self._disease_model.predict(features)
+
+        from agro_mirai.models.image_or_environmental_disease import resolve_disease_alert
+
+        disease = resolve_disease_alert(
+            self._disease_model, features, features.field_id, image_bytes=image_bytes
+        )
 
         crop_explanation = self._explanation_service.explain_crop(crop, features)
         irrigation_explanation = self._explanation_service.explain_irrigation(

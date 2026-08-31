@@ -498,6 +498,7 @@ class SupabaseDataStore:
             "window_start_at": _dt(alert.window_start_at),
             "window_end_at": _dt(alert.window_end_at),
             "recommended_action": alert.recommended_action,
+            "source": alert.source,
         }
         try:
             self._client.table("disease_risk_alerts").upsert(payload).execute()
@@ -528,6 +529,7 @@ class SupabaseDataStore:
             window_start_at=_parse_dt(row["window_start_at"]) if row.get("window_start_at") else None,
             window_end_at=_parse_dt(row["window_end_at"]) if row.get("window_end_at") else None,
             recommended_action=row.get("recommended_action"),
+            source=row.get("source"),
         )
 
     # --- Advisory ---

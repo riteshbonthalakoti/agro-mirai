@@ -169,6 +169,19 @@ entities:
       window_start_at: { type: timestamp, required: false }
       window_end_at: { type: timestamp, required: false }
       recommended_action: { type: string, required: false }
+      source:
+        type: string
+        required: false
+        enum: disease_alert_source
+        note: |
+          Module 21 additive field. "cnn" = ImageDiseaseRiskModel via the
+          POST /fields/{field_id}/disease-risk/image endpoint;
+          "environmental" = the rule-based DiseaseRiskModel called
+          directly; "environmental_fallback" = an image was submitted but
+          the CNN inference service was unreachable/timed out/errored, so
+          this alert was computed from the field's current FeatureVector
+          instead per the hard fallback requirement (never a 500). Absent
+          on any DiseaseRiskAlert produced before this module.
 
   Advisory:
     description: |

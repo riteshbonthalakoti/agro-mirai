@@ -33,6 +33,7 @@ from agro_mirai.persistence.store import ConflictError, NotFoundError
 ROOT = Path(__file__).resolve().parent.parent.parent.parent
 MIGRATION_PATH = ROOT / "migrations" / "sqlite" / "001_init.sql"
 AUTH_MIGRATION_PATH = ROOT / "migrations" / "sqlite" / "002_auth_fields.sql"
+DISEASE_SOURCE_MIGRATION_PATH = ROOT / "migrations" / "sqlite" / "003_disease_alert_source.sql"
 
 
 # --------------------------------------------------------------------------
@@ -88,6 +89,24 @@ class SQLiteDataStore:
         conn.executescript(sql)
         conn.commit()
         self._apply_auth_migration()
+        self._apply_disease_source_migration()
+
+    def _apply_disease_source_migration(self) -> None:
+        """Module 21: same ADD-COLUMN-tolerating pattern as
+        _apply_auth_migration -- see
+        migrations/sqlite/003_disease_alert_source.sql's header."""
+        sql = DISEASE_SOURCE_MIGRATION_PATH.read_text(encoding="utf-8")
+        conn = self._conn
+        for statement in sql.split(";"):
+            statement = statement.strip()
+            if not statement:
+                continue
+            try:
+                conn.execute(statement)
+            except sqlite3.OperationalError as e:
+                if "duplicate column name" not in str(e):
+                    raise
+        conn.commit()
 
     def _apply_auth_migration(self) -> None:
         """Module 19: ALTER TABLE ADD COLUMN has no IF NOT EXISTS in
@@ -601,8 +620,8 @@ class SQLiteDataStore:
             self._conn.execute(
                 """
                 INSERT INTO disease_risk_alerts (id, field_id, created_at, disease, risk_level,
-                    confidence, window_start_at, window_end_at, recommended_action)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    confidence, window_start_at, window_end_at, recommended_action, source)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     alert.id,
@@ -614,6 +633,7 @@ class SQLiteDataStore:
                     _dt_to_text(alert.window_start_at) if alert.window_start_at else None,
                     _dt_to_text(alert.window_end_at) if alert.window_end_at else None,
                     alert.recommended_action,
+                    alert.source,
                 ),
             )
             self._conn.commit()
@@ -653,6 +673,7 @@ class SQLiteDataStore:
             window_start_at=_text_to_dt(row["window_start_at"]) if row["window_start_at"] else None,
             window_end_at=_text_to_dt(row["window_end_at"]) if row["window_end_at"] else None,
             recommended_action=row["recommended_action"],
+            source=row["source"] if "source" in row.keys() else None,
         )
 
     # --- Advisory ---

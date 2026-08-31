@@ -131,6 +131,41 @@ paths:
                     items: { $ref: '#/components/schemas/DiseaseRiskAlert' }
                 required: [items]
 
+  /fields/{field_id}/disease-risk/image:
+    parameters:
+      - $ref: '#/components/parameters/FieldId'
+    post:
+      summary: |
+        Module 21. Submit a leaf photo for CNN-based disease-risk
+        classification. Calls the standalone CNN inference service
+        (CNN_SERVICE_URL) with a bounded timeout; on any failure to
+        reach it (unreachable, timeout, error), falls back to the
+        existing rule-based environmental DiseaseRiskModel and still
+        returns a valid 200 DiseaseRiskAlert — never a 500. The
+        resulting alert's `source` field ("cnn" |
+        "environmental_fallback") records which path was actually used.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                image:
+                  type: string
+                  format: binary
+                  description: JPEG/PNG/WEBP leaf photo, max 10MB.
+              required: [image]
+      responses:
+        '200':
+          description: The resulting alert (CNN or environmental-fallback path).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DiseaseRiskAlert' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/UnprocessableEntity' }
+
   /fields/{field_id}/advisories:
     parameters:
       - $ref: '#/components/parameters/FieldId'
@@ -383,6 +418,11 @@ components:
       content:
         application/json:
           schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+    UnprocessableEntity:
+      description: Well-formed request, but the field's data isn't sufficient to compute a result (e.g. no weather data yet).
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorEnvelope' }
 
   schemas:
 
@@ -553,6 +593,10 @@ components:
         window_start_at: { type: string, format: date-time }
         window_end_at: { type: string, format: date-time }
         recommended_action: { type: string }
+        source:
+          type: string
+          description: Module 21 additive. Which path produced this alert.
+          enum: [cnn, environmental, environmental_fallback]
 
     Advisory:
       type: object

@@ -122,6 +122,7 @@ CREATE TABLE IF NOT EXISTS "disease_risk_alerts" (
   "window_start_at" timestamptz,
   "window_end_at" timestamptz,
   "recommended_action" text,
+  "source" text,
   PRIMARY KEY ("id")
 );
 
