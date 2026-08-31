@@ -40,6 +40,7 @@ jobs:
           PYTHONPATH: src
         run: >-
           pytest --ignore=tests/voice --ignore=tests/vision
+          --ignore=services/cnn-inference --ignore=services/voice
           --deselect tests/test_module_03_acquisition.py::test_open_meteo_live_forecast_call
           --deselect tests/test_module_03_acquisition.py::test_soilgrids_live_call
 
@@ -48,6 +49,12 @@ jobs:
       # docs/architecture.md. Installing and running it in CI within a
       # reasonable time/cost budget wasn't attempted; tests/voice/ is
       # skipped here deliberately, not silently dropped.
+
+      # Module 21 — the CNN inference service's own route tests use a
+      # stub model (no torch dependency), so they can run in the same job
+      # as the main suite without installing torch/torchvision here.
+      - name: Run CNN inference service tests
+        run: pytest services/cnn-inference/tests -q
 
       - name: Lint (non-blocking)
         continue-on-error: true

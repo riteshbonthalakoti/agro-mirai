@@ -1,0 +1,19 @@
+# CNN inference service — separate from the main repo's requirements.txt
+# on purpose (torch/torchvision are deliberately excluded there, same
+# policy as the voice stack — decisions/0014). Pinned to match what
+# tests/vision/ was verified against in Module 20.
+#
+# CPU-only torch/torchvision wheels, explicitly from the CPU index so we
+# never accidentally pull a multi-GB CUDA build — see README.md for the
+# open ARM64/aarch64 wheel-availability question (Oracle's Ampere A1 free
+# tier is aarch64, and this is NOT fully confirmed — documented as a risk,
+# not asserted as working).
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch==2.5.1
+torchvision==0.20.1
+
+Flask==3.1.3
+Werkzeug==3.1.8
+Pillow==11.0.0
+gunicorn==26.2.0
+numpy==2.5.2
