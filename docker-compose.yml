@@ -1,0 +1,86 @@
+# AGRO MIRAI — Module 21 heavy-inference services, deployed together on
+# a single Oracle Cloud Ampere A1 "Always Free" VM (2 OCPU / 12GB RAM as
+# of the June 2026 allocation cut — see docs/deploy/oracle-vm-setup.md).
+# The main Flask API + rule-based DiseaseRiskModel path stay on Render
+# and do NOT depend on this VM — see decisions/0019-deployment-architecture.md.
+#
+# --- Resource arithmetic (2 OCPU / 12288 MB total free-tier budget) ---
+#
+# Host OS + Docker daemon overhead on a minimal Ubuntu Server install:
+#   ~500-800MB RAM, effectively 0 dedicated OCPU (bursty). Budget 1GB.
+#
+# cnn-inference (MobileNetV2, CPU inference):
+#   - Model + PyTorch runtime resident: ~600-900MB (MobileNetV2 itself is
+#     small, ~14MB of weights, but the torch/torchvision Python runtime
+#     plus CPU BLAS buffers dominate). Budget 1.5GB to leave headroom for
+#     concurrent request batching without OOM.
+#   - CPU: single MobileNetV2 forward pass on 2 modest Ampere cores is
+#     bounded, not CPU-bound continuously — 1 OCPU is generous for a
+#     single-worker gunicorn process (see its own Dockerfile's -w 1).
+#
+# voice (AI4Bharat: IndicTrans2 200M + IndicConformer 600M + Piper/
+# vits_rasa_13):
+#   - This is the heavy one. IndicConformer alone is ~600M params;
+#     IndicTrans2 distilled is ~200M. Loaded together in fp32 on CPU,
+#     realistic resident memory is 4-6GB (Module 12's docs/TOOLING.md
+#     notes ~6.8GB of weights on disk, though not all are resident
+#     simultaneously per-request). Budget 6GB, the majority of the
+#     remaining envelope, and accept this is tight.
+#   - CPU: transformer inference on CPU is genuinely core-bound during a
+#     request; budget the remaining ~1 OCPU.
+#
+# Total: 1 (OS) + 1.5 (cnn) + 6 (voice) = 8.5GB of 12GB, 2 of 2 OCPU
+# fully allocated across both services combined (mem_limit/cpus below are
+# soft caps, not reservations — Docker's CFS quota still lets a service
+# burst into the other's idle share). This leaves ~3.5GB as swap/cache
+# headroom, which matters because Ampere A1 free-tier instances have no
+# swap configured by default (docs/deploy/oracle-vm-setup.md recommends
+# adding a swap file, since running both services simultaneously without
+# ANY memory slack is a real OOM risk, not a theoretical one).
+#
+# HONEST CAVEAT: this arithmetic is a budget, not a measurement — no
+# Oracle VM exists yet in this project (per scope), so these numbers were
+# not verified against real `docker stats` output. Before trusting this
+# in production: `docker compose up`, run `docker stats` under a real
+# translate+ASR+TTS round trip AND a real image classification
+# concurrently, and adjust mem_limit/cpus to match reality, not this
+# estimate.
+
+services:
+  cnn-inference:
+    build:
+      context: .
+      dockerfile: services/cnn-inference/Dockerfile
+    ports:
+      - "8001:8001"
+    volumes:
+      - ${AGRO_MIRAI_MODELS_DIR:-./models}:/models:ro
+    mem_limit: 1536m
+    cpus: 1.0
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8001/health', timeout=5)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  voice:
+    build:
+      context: .
+      dockerfile: services/voice/Dockerfile
+    ports:
+      - "8002:8002"
+    volumes:
+      - agro-mirai-hf-cache:/hf-cache
+    mem_limit: 6144m
+    cpus: 1.0
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8002/health', timeout=5)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 180s  # first boot downloads ~6.8GB of weights
+
+volumes:
+  agro-mirai-hf-cache:
