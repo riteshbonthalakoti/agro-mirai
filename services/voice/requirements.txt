@@ -1,0 +1,26 @@
+# Voice inference service — packages the Module 12 AI4Bharat stack that
+# was previously confined to the project-local .venv/ (transformers
+# pinned to 4.49.0 — see docs/architecture.md and
+# decisions/0014-deploy-target-and-voice-scope.md). This container is
+# the production-grade replacement for that workaround: the isolation
+# boundary moves from "a venv on Ritesh's machine" to "a separate
+# process on the Oracle VM."
+#
+# NOTE: exact upstream pins (torch/transformers/IndicTransToolkit/piper/
+# etc.) must match what tests/voice/'s .venv/ was verified against in
+# Module 12 — copy the frozen versions from that environment
+# (`.venv/Scripts/python.exe -m pip freeze`) rather than re-pinning
+# blind here; not re-derived in this session since it requires the real
+# .venv/ to inspect, which this task's scope note says to work around
+# without live infra. Treat this file as a starting point to verify
+# against the real .venv/ freeze before the first real container build.
+
+Flask==3.1.3
+Werkzeug==3.1.8
+gunicorn==26.2.0
+
+transformers==4.49.0
+torch==2.5.1
+sentencepiece==0.2.0
+sacremoses==0.1.1
+soundfile==0.13.1
