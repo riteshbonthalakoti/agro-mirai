@@ -56,6 +56,11 @@ jobs:
       - name: Run CNN inference service tests
         run: pytest services/cnn-inference/tests -q
 
+      # Module 21 — voice inference service route tests, stub model, no
+      # torch/AI4Bharat weights needed here either.
+      - name: Run voice inference service tests
+        run: pytest services/voice/tests -q
+
       - name: Lint (non-blocking)
         continue-on-error: true
         run: |
