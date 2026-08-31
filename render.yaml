@@ -32,3 +32,15 @@ services:
         sync: false
       - key: LOGIN_RATE_LIMIT
         value: 5 per minute
+      # Module 21 — Oracle VM heavy-inference services. Optional; unset
+      # degrades to "CNN image path / remote voice unavailable" rather
+      # than failing. Set once the Oracle VM (docs/deploy/oracle-vm-setup.md)
+      # exists.
+      - key: CNN_SERVICE_URL
+        sync: false
+      - key: CNN_SERVICE_TIMEOUT_S
+        value: "15"
+      - key: VOICE_SERVICE_URL
+        sync: false
+      - key: VOICE_SERVICE_TIMEOUT_S
+        value: "30"

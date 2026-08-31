@@ -61,3 +61,11 @@ One entry per architectural decision record.
   `DiseaseRiskAlert` shape. Only 4 of 38 PlantVillage crops are in the
   22-value `crop_type` enum; not yet wired into `DecisionEngine` since no
   image-upload path exists anywhere in the API/schema yet.
+- `0019-deployment-architecture.md` — Render keeps the main API; a
+  single Oracle Ampere A1 VM (2 OCPU/12GB, the shrunken 2026 Always Free
+  allocation) hosts two new standalone containers,
+  `services/cnn-inference` and `services/voice`, closing Module 20's CNN
+  wiring gap with a hard fallback-to-rule-based requirement on any CNN
+  service failure. Voice stack decision: kept AI4Bharat over
+  faster-whisper/Kokoro (Kokoro has no Kannada support), containerized
+  instead of switched.
