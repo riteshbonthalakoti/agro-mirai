@@ -32,6 +32,18 @@ def _features_or_422(store, field):
         raise ApiError(422, "NO_WEATHER_DATA", str(exc)) from None
 
 
+def _predict_or_422(fn, *args):
+    """Runs a model's ``predict`` (or ``DecisionEngine.recommend``),
+    turning the water-balance/scoring ``ValueError``s some models raise
+    on genuinely insufficient data (e.g. every temperature window empty)
+    into a 422 instead of an uncaught 500 — the same boundary
+    ``_features_or_422`` already applies to feature-building itself."""
+    try:
+        return fn(*args)
+    except ValueError as exc:
+        raise ApiError(422, "INSUFFICIENT_DATA", str(exc)) from None
+
+
 @advisory_bp.get("/fields/<field_id>/recommendation")
 @require_auth
 def get_recommendation(field_id: str):
@@ -51,7 +63,7 @@ def get_irrigation(field_id: str):
     field = _get_field_or_404(store, field_id)
     features = _features_or_422(store, field)
 
-    advice = current_app.extensions["irrigation_model"].predict(features)
+    advice = _predict_or_422(current_app.extensions["irrigation_model"].predict, features)
     saved = store.save_irrigation_advice(g.farmer_id, advice)
     return jsonify(to_json(saved)), 200
 
@@ -63,7 +75,7 @@ def get_disease_risk(field_id: str):
     field = _get_field_or_404(store, field_id)
     features = _features_or_422(store, field)
 
-    alert = current_app.extensions["disease_model"].predict(features)
+    alert = _predict_or_422(current_app.extensions["disease_model"].predict, features)
     store.save_disease_risk_alert(g.farmer_id, alert)
 
     alerts = store.list_disease_risk_alerts(g.farmer_id, field_id)
@@ -77,7 +89,9 @@ def get_advisories(field_id: str):
     field = _get_field_or_404(store, field_id)
     features = _features_or_422(store, field)
 
-    advisory = current_app.extensions["decision_engine"].recommend(field, features)
+    advisory = _predict_or_422(
+        current_app.extensions["decision_engine"].recommend, field, features
+    )
     store.save_advisory(g.farmer_id, advisory)
 
     advisories = store.list_advisories_for_field(g.farmer_id, field_id)

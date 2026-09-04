@@ -130,3 +130,74 @@ def test_recommendation_endpoint_end_to_end(seeded_app):
     body = resp.get_json()
     assert body["field_id"] == field_id
     assert 0.0 <= body["confidence"] <= 1.0
+
+
+def test_irrigation_endpoint_end_to_end(seeded_app):
+    """Module 22: this is the route a live curl repro found 500ing on
+    farm-001 — the fixture's fixed Aug-2026 weather dates aged out of
+    the 7-day window `_water_balance` needs, and the resulting
+    ValueError wasn't caught anywhere. `seeded_app` uses the real
+    current date (no `as_of` override), so this genuinely exercises the
+    same failure mode a live server call would hit, not just a frozen
+    date that happens to still be "recent"."""
+    application, field_id = seeded_app
+    client = application.test_client()
+    resp = client.get(f"/fields/{field_id}/irrigation", headers=_auth())
+    assert resp.status_code == 200
+    body = resp.get_json()
+    assert body["field_id"] == field_id
+    assert body["recommended_depth_mm"] > 0
+
+
+def test_disease_risk_endpoint_end_to_end(seeded_app):
+    application, field_id = seeded_app
+    client = application.test_client()
+    resp = client.get(f"/fields/{field_id}/disease-risk", headers=_auth())
+    assert resp.status_code == 200
+    items = resp.get_json()["items"]
+    assert len(items) >= 1
+
+
+def test_advisories_endpoint_live_against_real_current_date(seeded_app):
+    """Module 22 regression: `GET /fields/{id}/advisories` against the
+    real, unfrozen golden fixture and the real current date — the exact
+    live repro that originally 500'd. If the fixture's weather ever
+    ages out of every window again, this fails loudly instead of
+    silently passing because some other test froze `as_of` to a date
+    inside the fixture's original window."""
+    application, field_id = seeded_app
+    client = application.test_client()
+    resp = client.get(f"/fields/{field_id}/advisories", headers=_auth())
+    assert resp.status_code == 200
+    assert len(resp.get_json()["items"]) >= 1
+
+
+def test_irrigation_endpoint_returns_422_not_500_when_all_temp_windows_empty(
+    client, seeded_app, monkeypatch
+):
+    """A field with a genuine multi-week weather gap (not just the
+    fixture staleness this module fixed) must get a handled 422, never
+    an uncaught 500 — proves the route-level ``_predict_or_422`` catch
+    added in Module 22, independent of the fixture-shift fix. Forces the
+    real condition (every temperature window ``None``) by monkeypatching
+    ``FeatureBuilder.build`` to null out the temperature aggregates on an
+    otherwise-real feature vector, rather than relying on fragile
+    fixture date arithmetic."""
+    application, field_id = seeded_app
+
+    import agro_mirai.api.features as features_module
+
+    real_build = features_module.FeatureBuilder.build
+
+    def _build_with_no_temp_data(*args, **kwargs):
+        vector = real_build(*args, **kwargs)
+        vector.temp_c_mean_7d = None
+        vector.temp_c_mean_14d = None
+        vector.temp_c_mean_30d = None
+        return vector
+
+    monkeypatch.setattr(features_module.FeatureBuilder, "build", staticmethod(_build_with_no_temp_data))
+
+    resp = client.get(f"/fields/{field_id}/irrigation", headers=_auth())
+    assert resp.status_code == 422
+    assert resp.get_json()["error"]["code"] == "INSUFFICIENT_DATA"
