@@ -146,6 +146,21 @@ def get_field(field_id: str):
     return jsonify(to_json(field)), 200
 
 
+@farms_v2_bp.delete("/fields/<field_id>")
+@require_session_auth
+def delete_field(field_id: str):
+    """Remove a Field the farmer owns, along with all linked data (advisories,
+    soil samples, weather readings, etc. — ON DELETE CASCADE in the migration).
+    Returns 204 on success, 404 if not found or not owned by this farmer.
+    """
+    store = current_app.extensions["data_store"]
+    deleted = store.delete_field(g.farmer_id, field_id)
+    if not deleted:
+        raise ApiError(404, "NOT_FOUND", "Field not found")
+    from flask import make_response
+    return make_response("", 204)
+
+
 @farms_v2_bp.patch("/fields/<field_id>")
 @require_session_auth
 def update_field(field_id: str):
