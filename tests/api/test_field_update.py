@@ -1,0 +1,94 @@
+"""Module 23 (A5): ``PATCH /v2/fields/{field_id}`` — partial field update.
+
+Real Flask test client + real ``SQLiteDataStore`` (``:memory:``), same
+style as ``test_v2_auth_integration.py``.
+"""
+from __future__ import annotations
+
+import pytest
+
+from agro_mirai.api.app import create_app
+from agro_mirai.persistence.sqlite_store import SQLiteDataStore
+
+
+@pytest.fixture
+def app():
+    store = SQLiteDataStore(":memory:")
+    return create_app({"TESTING": True, "DATA_STORE": store, "API_KEY": "x", "FARMER_ID": "y"})
+
+
+@pytest.fixture
+def client(app):
+    return app.test_client()
+
+
+def _register_and_login(client, email="farmer@example.com", password="Sup3rSecret1"):
+    client.post(
+        "/v2/auth/register",
+        json={"email": email, "password": password, "name": "F", "preferred_language": "en"},
+    )
+    assert client.post("/v2/auth/login", json={"email": email, "password": password}).status_code == 200
+
+
+def _create_field(client) -> str:
+    resp = client.post(
+        "/v2/fields",
+        json={"name": "Plot", "latitude": 15.0, "longitude": 76.0, "area_ha": 1.0},
+    )
+    assert resp.status_code == 201
+    return resp.get_json()["id"]
+
+
+def test_patch_updates_only_given_fields(client):
+    _register_and_login(client)
+    field_id = _create_field(client)
+
+    resp = client.patch(f"/v2/fields/{field_id}", json={"current_crop": "rice", "sown_on": "2026-07-01"})
+    assert resp.status_code == 200
+    body = resp.get_json()
+    assert body["current_crop"] == "rice"
+    assert body["sown_on"] == "2026-07-01"
+    assert body["name"] == "Plot"  # unchanged
+    assert body["latitude"] == 15.0  # unchanged
+
+
+def test_patch_requires_session(client):
+    resp = client.patch("/v2/fields/does-not-matter", json={"name": "X"})
+    assert resp.status_code == 401
+
+
+def test_patch_unknown_field_404(client):
+    _register_and_login(client)
+    resp = client.patch("/v2/fields/does-not-exist", json={"name": "X"})
+    assert resp.status_code == 404
+
+
+def test_patch_invalid_current_crop_400(client):
+    _register_and_login(client)
+    field_id = _create_field(client)
+    resp = client.patch(f"/v2/fields/{field_id}", json={"current_crop": "unobtainium"})
+    assert resp.status_code == 400
+
+
+def test_patch_empty_body_400(client):
+    _register_and_login(client)
+    field_id = _create_field(client)
+    resp = client.patch(f"/v2/fields/{field_id}", json={})
+    assert resp.status_code == 400
+
+
+def test_patch_unknown_key_400(client):
+    _register_and_login(client)
+    field_id = _create_field(client)
+    resp = client.patch(f"/v2/fields/{field_id}", json={"farmer_id": "hijack-attempt"})
+    assert resp.status_code == 400
+
+
+def test_patch_cross_tenant_404(client):
+    _register_and_login(client, "farmerA@example.com", "Sup3rSecret1")
+    field_id = _create_field(client)
+    client.post("/v2/auth/logout")
+
+    _register_and_login(client, "farmerB@example.com", "Sup3rSecret2")
+    resp = client.patch(f"/v2/fields/{field_id}", json={"name": "Hijacked"})
+    assert resp.status_code == 404

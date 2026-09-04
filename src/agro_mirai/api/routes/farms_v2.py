@@ -17,7 +17,7 @@ from flask import Blueprint, current_app, g, jsonify, request
 from agro_mirai.api.errors import ApiError
 from agro_mirai.api.serializers import farmer_to_public_json, to_json
 from agro_mirai.api.session_auth import require_session_auth
-from agro_mirai.api.validation import validate_field_create
+from agro_mirai.api.validation import validate_field_create, validate_field_update
 from agro_mirai.persistence.models import Field_
 
 farms_v2_bp = Blueprint("farms_v2", __name__, url_prefix="/v2")
@@ -85,3 +85,44 @@ def get_field(field_id: str):
     if field is None:
         raise ApiError(404, "NOT_FOUND", "Field not found")
     return jsonify(to_json(field)), 200
+
+
+@farms_v2_bp.patch("/fields/<field_id>")
+@require_session_auth
+def update_field(field_id: str):
+    """Module 23 (A5): the mobile app needs to edit a field it already
+    created (change ``current_crop`` at re-sowing, correct ``sown_on``,
+    etc.) — decided to add this now rather than let it surface as a third
+    mid-UI-build blocker the way A/B were found. Partial update
+    (``PATCH``, not ``PUT``): only the keys present in the body are
+    changed. ``/v1`` deliberately does NOT get this route — it stays
+    frozen per ADR 0017, and no ``/v1`` caller has ever needed field
+    mutation.
+    """
+    store = current_app.extensions["data_store"]
+    field = store.get_field(g.farmer_id, field_id)
+    if field is None:
+        raise ApiError(404, "NOT_FOUND", "Field not found")
+
+    body = request.get_json(silent=True)
+    if not isinstance(body, dict):
+        raise ApiError(400, "BAD_REQUEST", "Request body must be a JSON object")
+    validate_field_update(body)
+
+    sown_on = body["sown_on"] if "sown_on" in body else (field.sown_on.isoformat() if field.sown_on else None)
+    updated = Field_(
+        id=field.id,
+        farmer_id=field.farmer_id,
+        created_at=field.created_at,
+        updated_at=datetime.now(timezone.utc),
+        name=body.get("name", field.name),
+        latitude=body.get("latitude", field.latitude),
+        longitude=body.get("longitude", field.longitude),
+        area_ha=body.get("area_ha", field.area_ha),
+        elevation_m=body.get("elevation_m", field.elevation_m),
+        soil_type=body.get("soil_type", field.soil_type),
+        current_crop=body.get("current_crop", field.current_crop),
+        sown_on=date.fromisoformat(sown_on) if sown_on else None,
+    )
+    saved = store.save_field(g.farmer_id, updated)
+    return jsonify(to_json(saved)), 200

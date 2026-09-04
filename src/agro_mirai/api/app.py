@@ -121,6 +121,11 @@ def create_app(config: dict | None = None) -> Flask:
     # this; no new secret was introduced. LOGIN_RATE_LIMIT is specific to
     # /v2/auth/login, on top of the general per-key RATE_LIMIT above.
     app.config["LOGIN_RATE_LIMIT"] = os.environ.get("LOGIN_RATE_LIMIT", "5 per minute")
+    # Module 23 — voice endpoints (/v2/advisories/{id}/audio, /v2/stt) are
+    # far more expensive per call than a JSON read, so they get their own,
+    # tighter limits on top of the general RATE_LIMIT above.
+    app.config["TTS_RATE_LIMIT"] = os.environ.get("TTS_RATE_LIMIT", "20 per minute")
+    app.config["STT_RATE_LIMIT"] = os.environ.get("STT_RATE_LIMIT", "10 per minute")
     app.permanent_session_lifetime = timedelta(hours=24)
     if config:
         app.config.update(config)
@@ -157,6 +162,8 @@ def create_app(config: dict | None = None) -> Flask:
     from agro_mirai.api.routes.feedback import feedback_bp
     from agro_mirai.api.routes.frontend import frontend_bp
     from agro_mirai.api.routes.health import health_bp
+    from agro_mirai.api.routes.value_v2 import value_v2_bp
+    from agro_mirai.api.routes.voice_v2 import voice_v2_bp
 
     limiter.exempt(health_bp)
 
@@ -170,6 +177,8 @@ def create_app(config: dict | None = None) -> Flask:
     app.register_blueprint(farms_v2_bp)
     app.register_blueprint(admin_bp)
     app.register_blueprint(admin_ui_bp)
+    app.register_blueprint(value_v2_bp)
+    app.register_blueprint(voice_v2_bp)
 
     # Module 19 — login-specific rate limit, on top of the general
     # per-key limit above. The @login_limiter.limit(...) decorator lives
@@ -179,5 +188,10 @@ def create_app(config: dict | None = None) -> Flask:
     from agro_mirai.api.login_rate_limit import login_limiter
 
     login_limiter.init_app(app)
+
+    # Module 23 — same pattern as login_limiter, for the two voice routes.
+    from agro_mirai.api.voice_rate_limit import voice_limiter
+
+    voice_limiter.init_app(app)
 
     return app
