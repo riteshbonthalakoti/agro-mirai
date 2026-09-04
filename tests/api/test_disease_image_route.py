@@ -9,7 +9,7 @@ import io
 
 from conftest import FIELD_ID, _auth_headers
 
-import agro_mirai.api.routes.disease_image as disease_image_route
+import agro_mirai.api.value_endpoints as value_endpoints
 
 
 def _png_bytes() -> bytes:
@@ -26,7 +26,8 @@ def _png_bytes() -> bytes:
 def _patch_features(monkeypatch):
     from conftest import _VECTOR
 
-    monkeypatch.setattr(disease_image_route, "build_features_for_field", lambda *a, **k: _VECTOR)
+    # Module 23: moved to value_endpoints.py, shared by /v1 and /v2.
+    monkeypatch.setattr(value_endpoints, "build_features_for_field", lambda *a, **k: _VECTOR)
 
 
 def test_missing_image_returns_400(client, monkeypatch):
