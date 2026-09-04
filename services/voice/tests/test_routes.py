@@ -18,7 +18,20 @@ class _StubVoice:
         return "recognized text", expected_lang or "en"
 
     def text_to_speech(self, text, lang):
-        return b"RIFF-fake-wav-bytes"
+        # A real, valid (tiny, silent) WAV — Module 23's /text-to-speech
+        # route genuinely transcodes this through ffmpeg to OGG, so the
+        # stub has to hand it real WAV bytes, not a fake RIFF-prefixed
+        # string ffmpeg would reject.
+        import io
+        import wave
+
+        buf = io.BytesIO()
+        with wave.open(buf, "wb") as w:
+            w.setnchannels(1)
+            w.setsampwidth(2)
+            w.setframerate(16000)
+            w.writeframes(b"\x00\x00" * 100)
+        return buf.getvalue()
 
 
 def _client(service_factory):
@@ -66,7 +79,20 @@ def test_text_to_speech_success():
     client = _client(lambda: _StubVoice())
     resp = client.post("/text-to-speech", json={"text": "hello", "lang": "en"})
     assert resp.status_code == 200
-    assert resp.data.startswith(b"RIFF")
+    assert resp.content_type == "audio/ogg"
+    # OGG's magic bytes ("OggS") — proves this genuinely went through
+    # ffmpeg's WAV->OGG transcode, not just a relabeled WAV.
+    assert resp.data.startswith(b"OggS")
+
+
+def test_text_to_speech_ffmpeg_missing_returns_422_not_500(monkeypatch):
+    import app as app_module
+
+    monkeypatch.setattr(app_module.shutil, "which", lambda name: None)
+    client = _client(lambda: _StubVoice())
+    resp = client.post("/text-to-speech", json={"text": "hello", "lang": "en"})
+    assert resp.status_code == 422
+    assert resp.get_json()["error"]["code"] == "VOICE_ERROR"
 
 
 def test_model_unavailable_returns_503_not_500():
