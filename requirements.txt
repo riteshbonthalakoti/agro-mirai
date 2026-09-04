@@ -78,3 +78,8 @@ Pillow==11.0.0
 # bcrypt for password hashing (established KDF library, not hand-rolled) —
 # see decisions/0017-multi-tenant-v2.md.
 bcrypt==5.0.0
+
+# Module 24 (compatibility hardening) — CORS headers so browser clients
+# (Next.js landing page, React Native web build) can reach the /v2 API.
+# Configured with CORS_ORIGINS env var; unset means same-origin only.
+Flask-Cors==6.0.5

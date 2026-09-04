@@ -276,6 +276,36 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/Farmer' }
         '401': { $ref: '#/components/responses/Unauthorized' }
+    patch:
+      summary: Update the session-authenticated Farmer's own profile.
+      description: |
+        Partial update — only keys present in the body are changed.
+        Mutable fields: ``name``, ``preferred_language``.
+        Email and password changes are out of scope for v1 (see ADR 0017 known limitations).
+      security: [ { sessionCookie: [] } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  minLength: 1
+                  maxLength: 100
+                preferred_language:
+                  type: string
+                  enum: [en, kn]
+              minProperties: 1
+      responses:
+        '200':
+          description: Updated Farmer profile.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Farmer' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
 
   /v2/fields:
     get:
