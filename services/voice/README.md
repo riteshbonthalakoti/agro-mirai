@@ -41,7 +41,11 @@ Short version, grounded in a web search rather than asserted:
   `{"text"}`.
 - `POST /speech-to-text` — multipart `audio` file + optional
   `expected_lang` form field -> `{"text", "detected_lang"}`.
-- `POST /text-to-speech` — `{"text", "lang"}` -> raw `audio/wav` bytes.
+- `POST /text-to-speech` — `{"text", "lang"}` -> `audio/ogg` bytes
+  (Module 23: transcoded from Piper's native WAV via `ffmpeg`, installed
+  in this container's Dockerfile, so the main API's
+  `GET /v2/advisories/{id}/audio` never has to ship raw WAV to a mobile
+  client).
 
 `src/agro_mirai/voice/remote_voice.py`'s `RemoteVoiceService` is the
 `VoiceService`-Protocol-conforming HTTP client for this container —
