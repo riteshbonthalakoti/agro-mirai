@@ -75,13 +75,18 @@ def test_speech_to_text_missing_audio_400():
     assert resp.status_code == 400
 
 
-def test_text_to_speech_success():
+def test_text_to_speech_success(monkeypatch):
+    # Mock the transcode so this test verifies route wiring (stub TTS →
+    # transcode → audio/ogg response), not whether ffmpeg is installed on
+    # the test machine. The transcode function itself is covered by the
+    # ffmpeg-missing test below and by CI's explicit ffmpeg install step.
+    import app as app_module
+
+    monkeypatch.setattr(app_module, "_transcode_wav_to_ogg", lambda wav: b"OggS\x00fake")
     client = _client(lambda: _StubVoice())
     resp = client.post("/text-to-speech", json={"text": "hello", "lang": "en"})
     assert resp.status_code == 200
     assert resp.content_type == "audio/ogg"
-    # OGG's magic bytes ("OggS") — proves this genuinely went through
-    # ffmpeg's WAV->OGG transcode, not just a relabeled WAV.
     assert resp.data.startswith(b"OggS")
 
 
