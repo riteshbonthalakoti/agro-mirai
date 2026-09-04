@@ -12,8 +12,12 @@
 
 FROM python:3.12-slim
 
+# ffmpeg — Module 23: transcodes Piper's native WAV output to OGG/Vorbis
+# before /text-to-speech responds, so the main API's TTS endpoint never
+# has to ship raw WAV to a mobile client.
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libsndfile1 \
+    ffmpeg \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app

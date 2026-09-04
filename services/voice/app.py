@@ -20,7 +20,9 @@ Endpoints adapt to the VoiceService Protocol shape 1:1:
 - POST /translate      {text, source_lang, target_lang} -> {text}
 - POST /speech-to-text  multipart audio file + expected_lang (optional)
                         -> {text, detected_lang}
-- POST /text-to-speech  {text, lang} -> raw audio bytes (audio/wav)
+- POST /text-to-speech  {text, lang} -> OGG/Vorbis audio bytes (audio/ogg,
+                        transcoded here from Piper's native WAV via
+                        ffmpeg — Module 23)
 - GET /health           mirrors the main API's health route shape
 
 The model is loaded lazily (first request), same pattern as the CNN
@@ -30,12 +32,43 @@ have finished downloading/caching on first boot.
 from __future__ import annotations
 
 import os
+import shutil
+import subprocess
 import tempfile
+from pathlib import Path
 
 from flask import Flask, Response, jsonify, request
 
 _service = None
 _service_load_error: str | None = None
+
+
+def _transcode_wav_to_ogg(wav_bytes: bytes) -> bytes:
+    """Module 23: the main API's ``/v2/advisories/{id}/audio`` needs a
+    mobile-friendly compressed format, not raw WAV — transcoding happens
+    here, in this already-heavy container, rather than adding an audio
+    dependency to the main API process (decisions/0019's isolation
+    boundary). OGG/Vorbis was chosen over MP3: ffmpeg's built-in libvorbis
+    encoder needs no extra codec install, unlike libmp3lame — see
+    decisions/0020's "TTS endpoint shape" section. Raises ``RuntimeError``
+    if ``ffmpeg`` isn't on ``PATH`` (this container's Dockerfile always
+    installs it — see the ``apt-get install ffmpeg`` line there); a bare
+    local run without it fails loudly instead of silently mislabeling WAV
+    bytes as OGG.
+    """
+    if shutil.which("ffmpeg") is None:
+        raise RuntimeError("ffmpeg is required to transcode TTS audio to OGG but is not on PATH")
+
+    with tempfile.TemporaryDirectory() as tmp:
+        wav_path = Path(tmp) / "in.wav"
+        ogg_path = Path(tmp) / "out.ogg"
+        wav_path.write_bytes(wav_bytes)
+        subprocess.run(
+            ["ffmpeg", "-y", "-i", str(wav_path), "-c:a", "libvorbis", "-q:a", "4", str(ogg_path)],
+            check=True,
+            capture_output=True,
+        )
+        return ogg_path.read_bytes()
 
 
 def _get_service():
@@ -110,10 +143,11 @@ def create_app(service_factory=None) -> Flask:
                 return jsonify({"error": {"code": "BAD_REQUEST", "message": f"{field} is required"}}), 400
         try:
             service = get_service()
-            audio_bytes = service.text_to_speech(body["text"], body["lang"])
+            wav_bytes = service.text_to_speech(body["text"], body["lang"])
+            ogg_bytes = _transcode_wav_to_ogg(wav_bytes)
         except Exception as exc:  # noqa: BLE001
             return jsonify({"error": {"code": "VOICE_ERROR", "message": str(exc)}}), 422
-        return Response(audio_bytes, mimetype="audio/wav"), 200
+        return Response(ogg_bytes, mimetype="audio/ogg"), 200
 
     return app
 
