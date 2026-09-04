@@ -58,3 +58,10 @@ services:
         value: 20 per minute
       - key: STT_RATE_LIMIT
         value: 10 per minute
+      # Module 24 — CORS + session cookie hardening for browser/mobile clients.
+      # CORS_ORIGINS: comma-separated allowed origins for /v2/* endpoints; set
+      # in Render dashboard to your frontend domain(s) once deployed.
+      - key: CORS_ORIGINS
+        sync: false
+      - key: SESSION_COOKIE_SAMESITE
+        value: None
