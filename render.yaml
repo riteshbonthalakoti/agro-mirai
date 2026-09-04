@@ -52,3 +52,9 @@ services:
         sync: false
       - key: VOICE_SERVICE_TIMEOUT_S
         value: "30"
+      # Module 23 — /v2/advisories/{id}/audio and /v2/stt rate limits,
+      # tighter than the general RATE_LIMIT (decisions/0020, section 7).
+      - key: TTS_RATE_LIMIT
+        value: 20 per minute
+      - key: STT_RATE_LIMIT
+        value: 10 per minute
