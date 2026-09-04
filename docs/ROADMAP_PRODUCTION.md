@@ -88,6 +88,13 @@ Row 6 is a framing note for the final report. Row 10 stays parked.
    `docs/deploy/oracle-vm-setup.md`. Real infra provisioning is Ritesh's
    own next step (blocked on Oracle account creation) — everything code/
    Docker/docs-side that will work once that VM exists is done.
+4. [x] **`/v2` value endpoints + voice API** (Module 23): closed the two
+   blockers that would have made the mobile frontend unbuildable —
+   `/v2` had auth but no product-value endpoints, and the voice stack had
+   no client-facing API at all. See
+   `decisions/0020-v2-value-endpoints-and-voice-api.md`. This is the
+   **last backend module** — `specs/core/openapi.yaml` is now the frozen
+   contract the frontend phase builds against.
 
 ---
 

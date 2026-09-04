@@ -77,6 +77,8 @@ is now Module 19 and the CNN disease model is now Module 20.)*
 <!-- STATE:START -->
 
 ### Recent commits
+- `326c097 Pin Render Python version to 3.12.10, fixing the first live deploy`
+- `723e5f4 Module 22: fix advisory endpoints 500ing on stale fixture weather dates`
 - `b1664ba Module 21: ADR 0019 + doctrine updates (CLAUDE.md, PROGRESS.md, roadmap)`
 - `6fd3b31 Module 21: docker-compose.yml + Oracle VM setup runbook`
 - `a11a038 Module 21: voice stack decision - keep AI4Bharat, containerize it`
@@ -85,8 +87,6 @@ is now Module 19 and the CNN disease model is now Module 20.)*
 - `196078d Module 20: CNN disease detection (MobileNetV2 on PlantVillage)`
 - `e1c2f66 PROGRESS.md: regenerate state block (recent-commits list)`
 - `cd1b205 Module 19: document /v2 auth + admin paths in openapi.yaml`
-- `7486c06 Module 19: doctrine updates (CLAUDE.md, PROGRESS.md, modules/19 STATUS)`
-- `38bd0eb Module 19: ADR 0017 (supersedes 0003), /v1 vs /v2 decision, docs updated`
 
 ### Module status
 - **01-foundation**: done
@@ -412,6 +412,7 @@ WSGI config, gunicorn verification, docs, regression) is done.
 - **19-multi-tenant-auth-admin**: done
 - **20-disease-cnn**: done
 - **21-deployment-architecture**: done
+- **23-v2-value-and-voice-api**: done
 
 ### Latest test run
 - no test report found (.report.json missing — run pytest --json-report)

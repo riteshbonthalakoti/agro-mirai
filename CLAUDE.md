@@ -58,7 +58,7 @@ to build the phase table in `PROGRESS.md`.
 
 ## Current phase
 
-**Modules 01–15 (the original capstone scope) are complete. A second, explicitly non-academic-pace push — Modules 16–19 — is now underway to take the project from "capstone MVP" toward "production grade"; see `docs/ROADMAP_PRODUCTION.md` for why and what's in scope.** Module 16 (Reliability & CI Hardening — workstream A) landed 2026-08-29: GitHub Actions CI (`.github/workflows/ci.yml`, gates on `pytest --ignore=tests/voice` + `check_specs.py`, non-blocking `ruff` lint), Sentry error monitoring (`sentry-sdk[flask]`, no-op without `SENTRY_DSN`), request-id structured logging, an input-validation audit of `POST /fields`/`POST /feedback` (real gaps found and fixed — see `src/agro_mirai/api/validation.py`), `tools/backup_supabase.py` + `docs/BACKUPS.md`, and per-API-key rate limiting (Flask-Limiter, 60/min default).
+**Modules 01–23 are complete. The backend/production-hardening push (Modules 16–23, `docs/ROADMAP_PRODUCTION.md`) that took the project from "capstone MVP" toward "production grade" is now finished — Module 23 froze `specs/core/openapi.yaml` as the contract the frontend gets built against. Next: the frontend phase (PRD, then Antigravity — React Native + Expo mobile app, Next.js landing page, Module 19's Jinja2 admin kept as-is), not yet started.** Module 16 (Reliability & CI Hardening — workstream A) landed 2026-08-29: GitHub Actions CI (`.github/workflows/ci.yml`, gates on `pytest --ignore=tests/voice` + `check_specs.py`, non-blocking `ruff` lint), Sentry error monitoring (`sentry-sdk[flask]`, no-op without `SENTRY_DSN`), request-id structured logging, an input-validation audit of `POST /fields`/`POST /feedback` (real gaps found and fixed — see `src/agro_mirai/api/validation.py`), `tools/backup_supabase.py` + `docs/BACKUPS.md`, and per-API-key rate limiting (Flask-Limiter, 60/min default).
 
 Module 17 (ET0-based irrigation water balance) landed 2026-08-29, ahead
 of multi-tenant/Admin per Ritesh's explicit sequencing call (model/
@@ -649,3 +649,91 @@ gone. `check_specs.py`: OK. Verified live, not just in pytest: a fresh
 today's real date returns 200 on `/recommendation`, `/irrigation`,
 `/disease-risk`, and `/advisories` — the exact repro that originally
 found this bug.
+
+Module 23 (`/v2` value endpoints + a client-facing voice API — the last
+backend module before the frontend phase) landed 2026-09-04, closing two
+blockers confirmed by inspecting the actual route registrations before
+any React Native/Antigravity work started, not taken on trust from the
+module brief. **Blocker A**: `/v2` (Module 19's session-authenticated
+surface) had real per-farmer auth but no product — every endpoint
+carrying actual value (recommendation/irrigation/disease-risk/
+disease-risk-image/advisories/feedback) existed only under `/v1`'s
+single shared `FARMER_ID`, so a farmer registered via `/v2` had no
+authenticated path to their own advisory. Not a Module 19 defect (`/v1`
+staying alive was deliberate, ADR 0017) — an unnoticed gap between
+modules, invisible to `test_full_cross_tenant_isolation_flow` because
+that test only ever exercised `/v2/fields`. **Blocker B**: `grep -rn
+"voice\|tts\|speech" src/agro_mirai/api/` returned nothing — the voice
+stack (Module 12, containerized in Module 21) had no client-facing HTTP
+route at all, making the decided mobile design (pre-cached TTS audio +
+Android on-device TTS fallback) unbuildable with nothing to cache from.
+
+Part A: the six `/v1` handler bodies
+(`src/agro_mirai/api/routes/advisory.py`/`feedback.py`/
+`disease_image.py`) moved into
+`src/agro_mirai/api/value_endpoints.py` — auth-agnostic functions taking
+an explicit `farmer_id` — so `/v1` (`@require_auth`) and the new
+`routes/value_v2.py` (`/v2`, `@require_session_auth`) are both thin
+wrappers around the same code, never duplicated, closing off the exact
+drift risk that made Module 22's bug possible in the first place;
+Module 22's degrade-not-fail contracts (422 on data-exhaustion,
+`environmental_fallback` on an unreachable CNN service) now live in
+`value_endpoints.py` itself, verified intact on both surfaces in
+`tests/api/test_v2_value_endpoints.py`. Ownership reuses the store's
+existing farmer-scoped `get_field`/`get_advisory` (Module 19), so every
+new route gets 404-not-403-not-leaked cross-tenant isolation for free —
+tested individually per endpoint (`test_v2_value_endpoints.py`), the
+specific blind spot Blocker A exposed. `PATCH /v2/fields/{field_id}`
+(A5, `routes/farms_v2.py`) was added in this module rather than deferred
+— a partial update, `/v2`-only, since `/v1` stays frozen per ADR 0017.
+
+Part B: `src/agro_mirai/api/voice_client.py` (mirrors `cnn_client.py`'s
+never-raise contract over `RemoteVoiceService`) backs two new `/v2`
+routes (`src/agro_mirai/api/routes/voice_v2.py`) — `GET
+/v2/advisories/{advisory_id}/audio` (per-advisory, not generic TTS: a
+stable, ETag-cacheable URL that matches the decided pre-cache design;
+translates via the voice service first when `?language=` differs from
+the advisory's own language) and `POST /v2/stt`
+(`agro_mirai/api/stt_validation.py` does real magic-byte content
+sniffing on the upload, mirroring — with a documented, smaller-scope
+gap than — `image_validation.py`'s full Pillow decode-verify). Both
+return a specific 503 `VOICE_UNAVAILABLE` on any voice-service failure —
+never a 500, never a silent empty body — so the mobile client can
+reliably fall back to on-device TTS/STT; both have their own
+Flask-Limiter instance (`voice_rate_limit.py`, same "decorate at
+blueprint-import-time" pattern `login_rate_limit.py` established in
+Module 19) since these calls are far more expensive than a JSON read.
+`services/voice/app.py`'s `/text-to-speech` now transcodes Piper's
+native WAV to OGG/Vorbis via a real `ffmpeg` subprocess call (chosen
+over MP3 — no extra codec install needed for `libvorbis`), with `ffmpeg`
+added to that container's own Dockerfile — the main API process still
+never imports AI4Bharat/torch (ADR 0019 unchanged). This transcode step
+is unverified locally in this session (the Windows dev machine has no
+system `ffmpeg`) but is expected to pass in CI, which already runs
+`services/voice/tests` on `ubuntu-latest` (ships `ffmpeg` preinstalled)
+— an honest, documented gap, the same class Module 21 already flagged
+for its own Dockerfiles' ARM64 risk, not a silently-assumed pass.
+
+`specs/core/openapi.yaml` gained 9 new paths and is treated as the
+frozen frontend contract from this commit forward, the same way ADR
+0017 froze `/v1`. `decisions/0020-v2-value-endpoints-and-voice-api.md`
+has the full reasoning for every decision above. 46 new/updated tests
+across `tests/api/test_v2_value_endpoints.py` (19 — per-endpoint
+cross-tenant isolation, session-required 401s, success paths, Module 22
+behavior preserved), `tests/api/test_field_update.py` (7),
+`tests/api/test_voice_routes.py` (16), and
+`tests/api/test_voice_rate_limit.py` (4); `services/voice/tests` gained
+a real-ffmpeg-transcode assertion and an ffmpeg-missing-returns-422
+case. Full main regression
+(`pytest --ignore=tests/voice --ignore=tests/vision --ignore=services/cnn-inference --ignore=services/voice`):
+358 passed, 25 skipped, 0 failed (up from 312 — no regressions);
+`services/cnn-inference/tests`: 7 passed;
+`services/voice/tests`: 7 passed, 1 failed locally (the ffmpeg-dependent
+transcode test, expected — see above). `check_specs.py`: OK. Live
+curl-verified end to end against a real seeded SQLite DB and a real
+`create_app()` server (not just pytest): register two farmers -> login A
+-> real 200 recommendation/irrigation/advisories with genuine content ->
+farmer B gets 404 (not leaked) on A's field advisories *and* A's advisory
+audio -> A's own audio request correctly 503s (no local voice service
+running) -> logout -> session genuinely dead (401) on the next request.
+Next: frontend phase — PRD, then Antigravity (React Native + Expo).

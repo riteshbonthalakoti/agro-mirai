@@ -69,3 +69,13 @@ One entry per architectural decision record.
   service failure. Voice stack decision: kept AI4Bharat over
   faster-whisper/Kokoro (Kokoro has no Kannada support), containerized
   instead of switched.
+- `0020-v2-value-endpoints-and-voice-api.md` — Closes two blockers found
+  before frontend work started: `/v2` had auth but no product
+  (recommendation/irrigation/disease-risk/advisories/feedback existed
+  only under `/v1`), and the voice stack had no client-facing API at all.
+  Six `/v1` handlers moved into `value_endpoints.py`, shared by both auth
+  surfaces rather than duplicated; `PATCH /v2/fields/{id}` added; a
+  per-advisory `GET /v2/advisories/{id}/audio` (OGG, ETag-cached,
+  transcoded in `services/voice` via ffmpeg) and `POST /v2/stt` added,
+  both returning a distinguishable 503 `VOICE_UNAVAILABLE` — never a
+  500 — so the mobile client can fall back to on-device TTS/STT.

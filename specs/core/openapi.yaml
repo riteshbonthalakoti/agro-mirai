@@ -325,6 +325,249 @@ paths:
               schema: { $ref: '#/components/schemas/Field' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '404': { $ref: '#/components/responses/NotFound' }
+    patch:
+      summary: |
+        Module 23 (A5). Partial update of a Field owned by the
+        session-authenticated Farmer — only the keys present in the body
+        are changed. /v1 deliberately does not get this route (frozen
+        per ADR 0017); no /v1 caller has ever needed field mutation.
+      security: [ { sessionCookie: [] } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/FieldUpdate' }
+      responses:
+        '200':
+          description: The updated Field.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Field' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  # --- v2: value endpoints + voice (Module 23) ---
+  # Blocker A: everything below /v2/fields/{field_id}/... and /v2/feedback
+  # carries the product's actual value and previously existed only under
+  # /v1's single shared FARMER_ID — these are the session-authenticated
+  # equivalents, sharing their handler bodies with /v1 (never their route
+  # registration) via agro_mirai.api.value_endpoints — see
+  # decisions/0020-v2-value-endpoints-and-voice-api.md.
+
+  /v2/fields/{field_id}/recommendation:
+    parameters:
+      - $ref: '#/components/parameters/FieldId'
+    get:
+      summary: Get the most recent CropRecommendation for a Field owned by the session-authenticated Farmer.
+      security: [ { sessionCookie: [] } ]
+      responses:
+        '200':
+          description: The recommendation.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CropRecommendation' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/UnprocessableEntity' }
+
+  /v2/fields/{field_id}/irrigation:
+    parameters:
+      - $ref: '#/components/parameters/FieldId'
+    get:
+      summary: Get the most recent IrrigationAdvice for a Field owned by the session-authenticated Farmer.
+      security: [ { sessionCookie: [] } ]
+      responses:
+        '200':
+          description: The advice.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/IrrigationAdvice' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/UnprocessableEntity' }
+
+  /v2/fields/{field_id}/disease-risk:
+    parameters:
+      - $ref: '#/components/parameters/FieldId'
+    get:
+      summary: List DiseaseRiskAlerts for a Field owned by the session-authenticated Farmer.
+      security: [ { sessionCookie: [] } ]
+      responses:
+        '200':
+          description: A list of alerts.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: '#/components/schemas/DiseaseRiskAlert' }
+                required: [items]
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/UnprocessableEntity' }
+
+  /v2/fields/{field_id}/disease-risk/image:
+    parameters:
+      - $ref: '#/components/parameters/FieldId'
+    post:
+      summary: Session-authenticated equivalent of POST /fields/{field_id}/disease-risk/image (Module 21). Same CNN-vs-environmental-fallback contract — see that path's description.
+      security: [ { sessionCookie: [] } ]
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                image:
+                  type: string
+                  format: binary
+                  description: JPEG/PNG/WEBP leaf photo, max 10MB.
+              required: [image]
+      responses:
+        '200':
+          description: The resulting alert (CNN or environmental-fallback path).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DiseaseRiskAlert' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/UnprocessableEntity' }
+
+  /v2/fields/{field_id}/advisories:
+    parameters:
+      - $ref: '#/components/parameters/FieldId'
+    get:
+      summary: List Advisories for a Field owned by the session-authenticated Farmer.
+      security: [ { sessionCookie: [] } ]
+      responses:
+        '200':
+          description: A list of advisories.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: '#/components/schemas/Advisory' }
+                required: [items]
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/UnprocessableEntity' }
+
+  /v2/feedback:
+    post:
+      summary: Submit farmer feedback on an Advisory owned by the session-authenticated Farmer.
+      security: [ { sessionCookie: [] } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/FeedbackEntryCreate' }
+      responses:
+        '201':
+          description: The stored feedback entry.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/FeedbackEntry' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /v2/advisories/{advisory_id}/audio:
+    parameters:
+      - name: advisory_id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+      - name: language
+        in: query
+        required: false
+        description: Overrides the farmer's preferred_language for this request. Must be one of V1_LANGUAGES (en, kn).
+        schema: { type: string, enum: [en, kn] }
+    get:
+      summary: |
+        Module 23 (Blocker B). Spoken audio for one Advisory, in the
+        farmer's preferred_language unless overridden by ?language=.
+        Translates first (via the voice service) when the requested
+        language differs from the language the Advisory was generated
+        in. Calls the standalone Oracle-hosted voice service
+        (VOICE_SERVICE_URL) with a bounded timeout; on any failure to
+        reach it, returns 503 VOICE_UNAVAILABLE — never a 500, never a
+        silent empty body — so the mobile client can fall back to
+        on-device TTS. Response is OGG/Vorbis audio
+        (services/voice transcodes from Piper's native WAV) with an
+        ETag/Cache-Control pair so the client can cache aggressively and
+        revalidate cheaply, matching the decided pre-cache design.
+      security: [ { sessionCookie: [] } ]
+      responses:
+        '200':
+          description: Spoken audio for the advisory.
+          headers:
+            ETag: { schema: { type: string } }
+            Cache-Control: { schema: { type: string } }
+          content:
+            audio/ogg:
+              schema: { type: string, format: binary }
+        '304':
+          description: Not modified — the client's If-None-Match ETag still matches.
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '503':
+          description: Voice service unreachable/unconfigured. The client should fall back to on-device TTS. Body uses ErrorEnvelope with code VOICE_UNAVAILABLE.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+
+  /v2/stt:
+    post:
+      summary: |
+        Module 23 (Blocker B). Speech-to-text: uploads an audio clip
+        (WAV/OGG/MP3, max 10MB), returns the transcribed text and
+        detected language. Same VOICE_UNAVAILABLE 503 degradation
+        contract as the audio endpoint above — the client should fall
+        back to on-device STT or manual text entry.
+      security: [ { sessionCookie: [] } ]
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                audio:
+                  type: string
+                  format: binary
+                  description: WAV/OGG/MP3 clip, max 10MB.
+                expected_lang:
+                  type: string
+                  enum: [en, kn]
+                  description: Optional hint for the ASR model.
+              required: [audio]
+      responses:
+        '200':
+          description: Transcription result.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [text, detected_lang]
+                properties:
+                  text: { type: string }
+                  detected_lang: { type: string, enum: [en, hi, kn, ta, te, mr, bn, gu] }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '503':
+          description: Voice service unreachable/unconfigured. The client should fall back to on-device STT/text entry. Body uses ErrorEnvelope with code VOICE_UNAVAILABLE.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorEnvelope' }
 
   /v2/admin/farmers:
     get:
@@ -537,6 +780,46 @@ components:
           type: string
           enum: [rice, maize, chickpea, kidneybeans, pigeonpeas, mothbeans, mungbean, blackgram, lentil, pomegranate, banana, mango, grapes, watermelon, muskmelon, apple, orange, papaya, coconut, cotton, jute, coffee]
         sown_on: { type: string, format: date }
+
+    FieldUpdate:
+      description: Module 23 (A5). Every property optional (partial update); at least one must be present.
+      type: object
+      minProperties: 1
+      properties:
+        name: { type: string }
+        latitude: { type: number, minimum: -90, maximum: 90 }
+        longitude: { type: number, minimum: -180, maximum: 180 }
+        area_ha: { type: number, minimum: 0 }
+        elevation_m: { type: number, nullable: true }
+        soil_type:
+          type: string
+          nullable: true
+          enum: [alluvial, black, red, laterite, mountain, desert, saline, peaty, unknown]
+        current_crop:
+          type: string
+          nullable: true
+          enum: [rice, maize, chickpea, kidneybeans, pigeonpeas, mothbeans, mungbean, blackgram, lentil, pomegranate, banana, mango, grapes, watermelon, muskmelon, apple, orange, papaya, coconut, cotton, jute, coffee]
+        sown_on: { type: string, format: date, nullable: true }
+
+    FieldUpdate:
+      description: Module 23 (A5). Every property optional (partial update); at least one must be present.
+      type: object
+      minProperties: 1
+      properties:
+        name: { type: string }
+        latitude: { type: number, minimum: -90, maximum: 90 }
+        longitude: { type: number, minimum: -180, maximum: 180 }
+        area_ha: { type: number, minimum: 0 }
+        elevation_m: { type: number, nullable: true }
+        soil_type:
+          type: string
+          nullable: true
+          enum: [alluvial, black, red, laterite, mountain, desert, saline, peaty, unknown]
+        current_crop:
+          type: string
+          nullable: true
+          enum: [rice, maize, chickpea, kidneybeans, pigeonpeas, mothbeans, mungbean, blackgram, lentil, pomegranate, banana, mango, grapes, watermelon, muskmelon, apple, orange, papaya, coconut, cotton, jute, coffee]
+        sown_on: { type: string, format: date, nullable: true }
 
     CropRecommendation:
       type: object
