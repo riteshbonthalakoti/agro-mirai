@@ -18,7 +18,7 @@ import argparse
 import json
 import sys
 from dataclasses import asdict, fields as dc_fields
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
@@ -40,16 +40,44 @@ ROOT = Path(__file__).resolve().parent.parent
 FIXTURE_PATH = ROOT / "specs" / "domains" / "fixtures" / "farm-001.json"
 
 
-def _pdt(value: str | None) -> datetime | None:
+def _parse_dt(value: str | None, shift: timedelta = timedelta()) -> datetime | None:
     if value is None:
         return None
-    return datetime.strptime(value, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
+    return datetime.strptime(value, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc) + shift
 
 
-def _pdate(value: str | None):
+def _parse_date(value: str | None, shift: timedelta = timedelta()):
     if value is None:
         return None
-    return datetime.strptime(value, "%Y-%m-%d").date()
+    return (datetime.strptime(value, "%Y-%m-%d") + shift).date()
+
+
+def _fixture_time_shift(data: dict) -> timedelta:
+    """How far to shift every timestamp in the fixture so its weather
+    data is never stale relative to "now".
+
+    The fixture's dates are fixed calendar dates (e.g. a week ending
+    2026-08-24). ``FeatureBuilder`` windows (7d/14d/30d) are computed
+    relative to the real current date at request time
+    (``api/features.py``), so as real time passes the fixture's weather
+    readings age out of those windows and every temperature/rainfall
+    aggregate silently comes back ``None`` — this is exactly what caused
+    a live 500 on ``GET /fields/{id}/advisories`` against an otherwise
+    correctly-seeded ``farm-001`` (see ``decisions/`` Module 22 notes).
+
+    Anchoring the shift to the fixture's *latest weather reading* date,
+    landing it on today, keeps every other timestamp's relative offset
+    from that reading intact (soil sample still ~2 months before it,
+    NDVI reading still mid-week, advisories still same-day) while
+    guaranteeing the 7-day window is never empty, today or on any future
+    run.
+    """
+    readings = data.get("weather_readings") or []
+    if not readings:
+        return timedelta()
+    latest = max(_parse_dt(r["observed_at"]) for r in readings)
+    today = datetime.now(timezone.utc)
+    return timedelta(days=(today.date() - latest.date()).days)
 
 
 def build_store(backend: str, db_path: str | None):
@@ -66,8 +94,21 @@ def build_store(backend: str, db_path: str | None):
 
 def load_fixture(store, data: dict) -> dict[str, list]:
     """Loads every record via the DataStore interface. Returns what was
-    loaded, keyed by collection name, for the verification pass."""
+    loaded, keyed by collection name, for the verification pass.
+
+    Every timestamp in the fixture is shifted by ``_fixture_time_shift``
+    so the weather data is never stale relative to "now" — see that
+    function's docstring. ``_pdt``/``_pdate`` are shadowed here (same
+    names, shift baked in) so every call site below is unchanged.
+    """
     loaded: dict[str, list] = {}
+    _shift = _fixture_time_shift(data)
+
+    def _pdt(value):
+        return _parse_dt(value, _shift)
+
+    def _pdate(value):
+        return _parse_date(value, _shift)
 
     farmer_ids = []
     loaded["farmers"] = []

@@ -79,13 +79,27 @@ def _water_balance(features: FeatureVector) -> tuple[float, float, float, float]
     received -> net deficit, floored at 0 (a rainfall surplus doesn't
     produce a negative recommended depth).
     """
-    temp_mean = features.temp_c_mean_7d
+    # Degrade-not-fail: prefer the 7-day mean, but a field whose weather
+    # history has a gap in the last 7 days (new farmer, an acquisition
+    # outage, or — as discovered live — a golden fixture whose dates
+    # aged out of the window) still has a usable, just-less-precise
+    # temperature signal in the 14d/30d aggregates. Same fallback
+    # philosophy as the tmin/tmax diurnal-range approximation below and
+    # the GEE/CNN fallback paths elsewhere in this project — only raise
+    # once every window is genuinely empty.
+    temp_mean = (
+        features.temp_c_mean_7d
+        if features.temp_c_mean_7d is not None
+        else features.temp_c_mean_14d
+        if features.temp_c_mean_14d is not None
+        else features.temp_c_mean_30d
+    )
     temp_min = features.temp_c_min_7d
     temp_max = features.temp_c_max_7d
     if temp_mean is None:
         raise ValueError(
-            "FeatureVector.temp_c_mean_7d is required for the ET0 water "
-            "balance and was None"
+            "FeatureVector has no usable temperature mean (7d/14d/30d all "
+            "None) — the ET0 water balance cannot run"
         )
     if temp_min is None or temp_max is None:
         # Documented fallback: approximate the missing extreme(s) with a
