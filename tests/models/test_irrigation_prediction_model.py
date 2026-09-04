@@ -154,3 +154,34 @@ def test_predict_raises_on_missing_soil(model):
     vector = _full_vector(soil_data_available=False, soil_ph=None, soil_moisture_pct=None)
     with pytest.raises(ValueError):
         model.predict(vector)
+
+
+def test_predict_falls_back_to_14d_mean_when_7d_temp_is_none(model):
+    # Module 22: a field with a gap in the last 7 days of weather (new
+    # farmer, acquisition outage, or a golden fixture whose dates aged
+    # out of the window — the exact live 500 this module fixed) should
+    # still get a real water-balance depth via the 14d aggregate, not a
+    # raised ValueError. Same degrade-not-fail policy as the tmin/tmax
+    # fallback above.
+    vector = _full_vector(temp_c_mean_7d=None, temp_c_min_7d=None, temp_c_max_7d=None)
+    rec = model.predict(vector)
+    assert rec.recommended_depth_mm > 0.0
+
+
+def test_predict_raises_when_every_temp_window_is_none(model):
+    # The genuine "nothing to fall back to" case must still raise —
+    # verifies the fallback chain has a real floor, not that it always
+    # succeeds — so the route-level 422 handler (tests/api/test_integration.py)
+    # has something real to catch. Also nulls humidity_pct_mean_14d since
+    # map_features' own pre-existing gate (unrelated to this module,
+    # ADR 0008) would otherwise raise there first for a different reason.
+    vector = _full_vector(
+        temp_c_mean_7d=None,
+        temp_c_mean_14d=None,
+        temp_c_mean_30d=None,
+        humidity_pct_mean_14d=None,
+        temp_c_min_7d=None,
+        temp_c_max_7d=None,
+    )
+    with pytest.raises(ValueError):
+        model.predict(vector)

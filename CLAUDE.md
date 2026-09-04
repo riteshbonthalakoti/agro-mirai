@@ -597,3 +597,55 @@ required live Oracle infra, a live CNN service, or a live voice service
 to pass — every HTTP boundary is mocked, verified by grepping for any
 outbound call to a non-localhost, non-mocked host in the new test
 files (none found).
+
+Module 22 (bug fix: advisory endpoints 500ing on stale fixture weather)
+landed 2026-09-04, closing the "4 pre-existing failures ... an existing
+ET0 water-balance seed-data gap" Module 21 flagged above as unrelated
+and deferred. Found by a real live-server repro, not a test run:
+`GET /fields/{id}/advisories` against a correctly-seeded `farm-001`
+500'd. Root cause, traced through the live traceback:
+`feature_builder.py`'s weather-window aggregates are computed relative
+to the real current date (`api/features.py`'s `as_of` default), but
+`specs/domains/fixtures/farm-001.json`'s weather readings carry fixed
+calendar dates (2026-08-18 to 24) — as real time moved past that
+window, `temp_c_mean_7d` correctly (per its own documented "skip and
+return None" policy) came back `None`, but
+`irrigation_prediction_model.py`'s `_water_balance` (Module 17) raised
+an uncaught `ValueError` on that `None` instead of degrading, and
+nothing at the route boundary caught it. Two independent fixes, not
+one: (1) `_water_balance` now falls back `temp_c_mean_7d` ->
+`temp_c_mean_14d` -> `temp_c_mean_30d` before raising — degrade-not-
+fail, the same philosophy already used for the tmin/tmax diurnal-range
+fallback in the same function and for GEE/CNN elsewhere in this
+project — and `advisory.py`'s three affected routes
+(`/irrigation`, `/disease-risk`, `/advisories`) now wrap their
+`predict`/`recommend` calls in a `_predict_or_422` helper, turning any
+remaining genuine-data-exhaustion `ValueError` into a handled 422
+(`INSUFFICIENT_DATA`) instead of a bare 500; (2) `tools/seed_fixture.py`
+now shifts every timestamp in a loaded fixture by an anchor computed
+from that fixture's own latest weather reading landing on today
+(`_fixture_time_shift`), so `farm-001`/`farm-002` never age out of the
+7-day window again, on this run or any future one — done by shadowing
+`_pdt`/`_pdate` inside `load_fixture` rather than editing the fixture
+JSON's absolute dates, so the fixture stays human-readable and every
+other timestamp's relative offset (soil sample ~2 months before the
+weather week, NDVI reading mid-week, advisories same-day) stays intact.
+
+7 new/updated tests: `tests/models/test_irrigation_prediction_model.py`
+gained two unit tests (7d->14d fallback succeeds; every window `None`
+still raises, so the route-level 422 has something real to catch) and
+`tests/api/test_integration.py` gained four (`/irrigation` and
+`/disease-risk` end-to-end alongside the existing `/advisories` and
+`/recommendation` coverage, a `test_advisories_endpoint_live_against_real_current_date`
+regression test that exercises the exact live-repro path — real
+current date, no frozen `as_of` — and a 422-not-500 test that forces
+every temperature window empty via a monkeypatched `FeatureBuilder.build`
+rather than fragile date arithmetic). Full main regression
+(`pytest --ignore=tests/voice --ignore=tests/vision --ignore=services/cnn-inference --ignore=services/voice`):
+312 passed, 25 skipped, 0 failed — the 4 pre-existing failures are
+gone. `check_specs.py`: OK. Verified live, not just in pytest: a fresh
+`tools/seed_fixture.py` seed plus a real `create_app()` + Flask
+`test_client()` call (the same code path `app.run()` uses) against
+today's real date returns 200 on `/recommendation`, `/irrigation`,
+`/disease-risk`, and `/advisories` — the exact repro that originally
+found this bug.
