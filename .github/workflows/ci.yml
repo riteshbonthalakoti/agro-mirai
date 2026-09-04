@@ -57,7 +57,11 @@ jobs:
         run: pytest services/cnn-inference/tests -q
 
       # Module 21 — voice inference service route tests, stub model, no
-      # torch/AI4Bharat weights needed here either.
+      # torch/AI4Bharat weights needed here either. ffmpeg is required by
+      # test_text_to_speech_success (the route genuinely transcodes WAV→OGG);
+      # ubuntu-latest does NOT ship it by default.
+      - name: Install ffmpeg for voice tests
+        run: sudo apt-get install -y ffmpeg
       - name: Run voice inference service tests
         run: pytest services/voice/tests -q
 
