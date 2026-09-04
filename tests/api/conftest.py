@@ -111,8 +111,12 @@ def app(monkeypatch):
         severity="moderate", source_refs=["c1", "i1", "d1"],
     )
 
+    # Module 23: the recommendation/irrigation/disease-risk/advisories
+    # handler bodies moved to value_endpoints.py, shared by /v1 and /v2 —
+    # patch it there once so both surfaces' unit tests get the same fixed
+    # feature vector.
     monkeypatch.setattr(
-        "agro_mirai.api.routes.advisory.build_features_for_field",
+        "agro_mirai.api.value_endpoints.build_features_for_field",
         lambda *a, **k: _VECTOR,
     )
 
