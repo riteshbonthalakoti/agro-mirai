@@ -376,6 +376,19 @@ paths:
         '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '404': { $ref: '#/components/responses/NotFound' }
+    delete:
+      summary: |
+        Delete a Field owned by the session-authenticated Farmer.
+        All linked data (advisories, soil samples, weather readings, NDVI
+        readings, irrigation advice, disease risk alerts, feedback) is
+        cascade-deleted per the SQLite/Postgres migration's ON DELETE CASCADE.
+        Returns 204 on success, 404 if not found or owned by a different Farmer.
+      security: [ { sessionCookie: [] } ]
+      responses:
+        '204':
+          description: Field deleted successfully. No response body.
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
 
   # --- v2: value endpoints + voice (Module 23) ---
   # Blocker A: everything below /v2/fields/{field_id}/... and /v2/feedback
