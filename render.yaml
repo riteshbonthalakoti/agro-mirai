@@ -17,6 +17,14 @@ services:
         value: production
       - key: PYTHONPATH
         value: src
+      # Without this, Render defaults to its rolling latest Python
+      # (observed: 3.14.3), which broke the first deploy — scikit-learn
+      # ==1.4.2 (requirements.txt) has no build path there (its own
+      # build-time numpy==2.0.0rc1 pin has no cp314 wheel). Pinned to
+      # match the interpreter this project is actually built/tested
+      # against, per docs/TOOLING.md's verified "python 3.12.10".
+      - key: PYTHON_VERSION
+        value: 3.12.10
       # Set these in the Render dashboard, never commit real values:
       - key: API_KEY
         sync: false
