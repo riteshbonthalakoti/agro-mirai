@@ -18,11 +18,15 @@ from agro_mirai.api.errors import ApiError
 from agro_mirai.api.serializers import farmer_to_public_json, to_json
 from agro_mirai.api.session_auth import require_session_auth
 from agro_mirai.api.validation import validate_field_create, validate_field_update
-from agro_mirai.persistence.models import Field_
+from agro_mirai.auth.validation import validate_name
+from agro_mirai.persistence.models import Field_, Farmer
 
 farms_v2_bp = Blueprint("farms_v2", __name__, url_prefix="/v2")
 
 _REQUIRED_FIELD_KEYS = ("name", "latitude", "longitude", "area_ha")
+
+
+_ALLOWED_LANGUAGE_CODES = {"en", "kn"}
 
 
 @farms_v2_bp.get("/farmers/me")
@@ -33,6 +37,61 @@ def get_me():
     if farmer is None:
         raise ApiError(404, "NOT_FOUND", "Farmer not found")
     return jsonify(farmer_to_public_json(farmer)), 200
+
+
+@farms_v2_bp.patch("/farmers/me")
+@require_session_auth
+def update_me():
+    """Allow farmers to update their display name and preferred language.
+
+    Only ``name`` and ``preferred_language`` are mutable post-registration
+    (email and password changes are out of scope for v1 — noted in ADR 0017's
+    known limitations). At least one key must be present.
+    """
+    body = request.get_json(silent=True)
+    if not isinstance(body, dict):
+        raise ApiError(400, "BAD_REQUEST", "Request body must be a JSON object")
+
+    allowed_keys = {"name", "preferred_language"}
+    unknown = set(body) - allowed_keys
+    if unknown:
+        raise ApiError(400, "BAD_REQUEST", f"Unknown fields: {', '.join(sorted(unknown))}")
+    if not body:
+        raise ApiError(400, "BAD_REQUEST", "Request body must contain at least one field")
+
+    store = current_app.extensions["data_store"]
+    farmer = store.get_farmer(g.farmer_id)
+    if farmer is None:
+        raise ApiError(404, "NOT_FOUND", "Farmer not found")
+
+    new_name = body.get("name", farmer.name)
+    new_lang = body.get("preferred_language", farmer.preferred_language)
+
+    if "name" in body:
+        try:
+            validate_name(new_name)
+        except ValueError as e:
+            raise ApiError(400, "BAD_REQUEST", str(e)) from e
+
+    if "preferred_language" in body and new_lang not in _ALLOWED_LANGUAGE_CODES:
+        raise ApiError(
+            400,
+            "BAD_REQUEST",
+            f"preferred_language must be one of: {', '.join(sorted(_ALLOWED_LANGUAGE_CODES))}",
+        )
+
+    updated = Farmer(
+        id=farmer.id,
+        created_at=farmer.created_at,
+        updated_at=datetime.now(timezone.utc),
+        name=new_name,
+        preferred_language=new_lang,
+        email=farmer.email,
+        password_hash=farmer.password_hash,
+        role=farmer.role,
+    )
+    saved = store.save_farmer(updated)
+    return jsonify(farmer_to_public_json(saved)), 200
 
 
 @farms_v2_bp.get("/fields")

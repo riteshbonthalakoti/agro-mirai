@@ -13,6 +13,7 @@ from datetime import timedelta
 
 import sentry_sdk
 from flask import Flask, g, request
+from flask_cors import CORS
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from sentry_sdk.integrations.flask import FlaskIntegration
@@ -127,6 +128,17 @@ def create_app(config: dict | None = None) -> Flask:
     app.config["TTS_RATE_LIMIT"] = os.environ.get("TTS_RATE_LIMIT", "20 per minute")
     app.config["STT_RATE_LIMIT"] = os.environ.get("STT_RATE_LIMIT", "10 per minute")
     app.permanent_session_lifetime = timedelta(hours=24)
+    # Session cookie hardening — safe defaults that work for both the
+    # browser frontend and React Native mobile client.
+    # SameSite=None + Secure is required for cross-origin cookie delivery
+    # (e.g. Next.js SPA on a different domain calling the Render API).
+    # In dev (no FLASK_SECRET_KEY set), these still apply but the cookie
+    # is only sent over HTTP, which is fine for localhost.
+    app.config["SESSION_COOKIE_HTTPONLY"] = True
+    app.config["SESSION_COOKIE_SAMESITE"] = os.environ.get(
+        "SESSION_COOKIE_SAMESITE", "None"
+    )
+    app.config["SESSION_COOKIE_SECURE"] = os.environ.get("FLASK_ENV") == "production"
     if config:
         app.config.update(config)
 
@@ -151,6 +163,22 @@ def create_app(config: dict | None = None) -> Flask:
     init_request_logging(app)
     _configure_sentry(app)
     limiter = _configure_rate_limit(app)
+
+    # CORS — allow browser clients (Next.js landing page, React Native web
+    # build) to reach the /v2 API. CORS_ORIGINS env var is a comma-separated
+    # list of allowed origins (e.g. "https://agro-mirai.vercel.app"). Unset
+    # means no CORS headers are emitted — same-origin only, safe default for
+    # curl/mobile. supports_credentials=True so the session cookie is sent
+    # cross-origin; this requires an explicit origin list (not "*").
+    cors_origins_raw = os.environ.get("CORS_ORIGINS", "")
+    if cors_origins_raw:
+        origins = [o.strip() for o in cors_origins_raw.split(",") if o.strip()]
+        CORS(
+            app,
+            origins=origins,
+            supports_credentials=True,
+            resources={r"/v2/*": {}},
+        )
 
     from agro_mirai.api.routes.admin import admin_bp
     from agro_mirai.api.routes.admin_ui import admin_ui_bp
