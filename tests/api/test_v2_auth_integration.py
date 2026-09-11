@@ -51,6 +51,39 @@ def test_register_rejects_weak_password():
     assert resp.status_code == 400
 
 
+@pytest.mark.parametrize("lang", ["en", "kn", "te", "hi"])
+def test_register_accepts_each_v1_language(lang):
+    app = _app()
+    client = app.test_client()
+    resp = client.post(
+        "/v2/auth/register",
+        json={
+            "email": f"{lang}@example.com",
+            "password": "Sup3rSecret1",
+            "name": "Farmer",
+            "preferred_language": lang,
+        },
+    )
+    assert resp.status_code == 201
+    assert resp.get_json()["preferred_language"] == lang
+
+
+def test_register_rejects_unsupported_language():
+    app = _app()
+    client = app.test_client()
+    resp = client.post(
+        "/v2/auth/register",
+        json={
+            "email": "unsupported@example.com",
+            "password": "Sup3rSecret1",
+            "name": "Farmer",
+            "preferred_language": "ta",
+        },
+    )
+    assert resp.status_code == 400
+    assert "preferred_language" in resp.get_json()["error"]["message"]
+
+
 def test_register_rejects_duplicate_email():
     app = _app()
     client = app.test_client()

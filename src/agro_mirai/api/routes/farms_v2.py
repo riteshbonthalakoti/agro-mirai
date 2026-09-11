@@ -20,13 +20,17 @@ from agro_mirai.api.session_auth import require_session_auth
 from agro_mirai.api.validation import validate_field_create, validate_field_update
 from agro_mirai.auth.validation import validate_name
 from agro_mirai.persistence.models import Field_, Farmer
+from agro_mirai.voice.interface import V1_LANGUAGES
 
 farms_v2_bp = Blueprint("farms_v2", __name__, url_prefix="/v2")
 
 _REQUIRED_FIELD_KEYS = ("name", "latitude", "longitude", "area_ha")
 
 
-_ALLOWED_LANGUAGE_CODES = {"en", "kn"}
+#: Module 25: was a locally-duplicated {"en", "kn"} that had silently
+#: drifted stale from V1_LANGUAGES — now the single source of truth
+#: instead of a second hardcoded copy.
+_ALLOWED_LANGUAGE_CODES = V1_LANGUAGES
 
 
 @farms_v2_bp.get("/farmers/me")

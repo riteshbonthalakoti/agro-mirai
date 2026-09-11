@@ -79,3 +79,14 @@ One entry per architectural decision record.
   transcoded in `services/voice` via ffmpeg) and `POST /v2/stt` added,
   both returning a distinguishable 503 `VOICE_UNAVAILABLE` — never a
   500 — so the mobile client can fall back to on-device TTS/STT.
+- `0021-language-expansion-te-hi.md` — Widens `V1_LANGUAGES` from
+  `{en, kn}` to `{en, kn, te, hi}` for the mobile app's new language
+  picker options. Translation (IndicTrans2) and STT (IndicConformer)
+  verified to already cover `te`/`hi` with no new downloads; TTS splits
+  across two real backends per language (`kn`/`te` -> `vits_rasa_13`,
+  `en`/`hi` -> Piper — `vits_rasa_13` has no Hindi voice, Piper has no
+  Kannada/Telugu voice), with the Hindi Piper voice file a real,
+  not-yet-downloaded step (documented command, not faked). Fixed a
+  second hardcoded `{en, kn}` allowlist in `farms_v2.py` that had
+  drifted from `V1_LANGUAGES`, and added registration-time
+  `preferred_language` validation that never existed before.

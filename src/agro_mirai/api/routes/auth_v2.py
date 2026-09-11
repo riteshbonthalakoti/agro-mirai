@@ -23,6 +23,7 @@ from agro_mirai.auth.password import hash_password, verify_password
 from agro_mirai.auth.validation import validate_email, validate_name, validate_password_strength
 from agro_mirai.persistence.models import Farmer
 from agro_mirai.persistence.store import ConflictError
+from agro_mirai.voice.interface import V1_LANGUAGES
 
 auth_v2_bp = Blueprint("auth_v2", __name__, url_prefix="/v2/auth")
 
@@ -44,6 +45,18 @@ def register():
         validate_name(name)
     except ValueError as e:
         raise ApiError(400, "BAD_REQUEST", str(e)) from e
+
+    # Module 25: registration previously accepted any string here
+    # unvalidated (a real gap — the Farmer/RegisterRequest openapi schema
+    # already declared an enum). Validated against V1_LANGUAGES, the set
+    # this backend's voice stack can actually act on, not the broader
+    # aspirational enums.md/openapi language_code list.
+    if preferred_language not in V1_LANGUAGES:
+        raise ApiError(
+            400,
+            "BAD_REQUEST",
+            f"preferred_language must be one of: {', '.join(sorted(V1_LANGUAGES))}",
+        )
 
     store = current_app.extensions["data_store"]
     if store.get_farmer_by_email(email) is not None:

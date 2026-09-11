@@ -69,13 +69,16 @@ class ExplanationService:
         self._irrigation_model = irrigation_model
         self._voice_service = voice_service
 
-    def _translate(self, summary_en: str) -> str | None:
+    def _translate(self, summary_en: str, target_lang: str = "kn") -> str | None:
         if self._voice_service is None:
             return None
-        return self._voice_service.translate(summary_en, "en", "kn")
+        return self._voice_service.translate(summary_en, "en", target_lang)
 
     def explain_crop(
-        self, recommendation: CropRecommendation, features: FeatureVector
+        self,
+        recommendation: CropRecommendation,
+        features: FeatureVector,
+        target_lang: str = "kn",
     ) -> Explanation:
         import shap
 
@@ -110,6 +113,7 @@ class ExplanationService:
             f"recommendation of {recommendation.recommended_crop}", top
         )
         summary_en += _regional_fit_note(recommendation)
+        summary_kn = self._translate(summary_en)
         return Explanation(
             id=str(uuid.uuid4()),
             field_id=recommendation.field_id,
@@ -119,11 +123,13 @@ class ExplanationService:
             method="shap_tree",
             top_contributions=top,
             summary_en=summary_en,
-            summary_kn=self._translate(summary_en),
+            summary_kn=summary_kn,
+            summary_translated=summary_kn if target_lang == "kn" else self._translate(summary_en, target_lang),
+            summary_translated_lang=target_lang if self._voice_service is not None else None,
         )
 
     def explain_irrigation(
-        self, advice: IrrigationAdvice, features: FeatureVector
+        self, advice: IrrigationAdvice, features: FeatureVector, target_lang: str = "kn"
     ) -> Explanation:
         import shap
 
@@ -153,6 +159,7 @@ class ExplanationService:
         top = sorted(contributions, key=lambda c: -abs(c.contribution))[:_TOP_K]
 
         summary_en = _summary_en(f"{advice.urgency} irrigation urgency", top)
+        summary_kn = self._translate(summary_en)
         return Explanation(
             id=str(uuid.uuid4()),
             field_id=advice.field_id,
@@ -162,11 +169,13 @@ class ExplanationService:
             method="shap_tree",
             top_contributions=top,
             summary_en=summary_en,
-            summary_kn=self._translate(summary_en),
+            summary_kn=summary_kn,
+            summary_translated=summary_kn if target_lang == "kn" else self._translate(summary_en, target_lang),
+            summary_translated_lang=target_lang if self._voice_service is not None else None,
         )
 
     def explain_disease(
-        self, alert: DiseaseRiskAlert, features: FeatureVector
+        self, alert: DiseaseRiskAlert, features: FeatureVector, target_lang: str = "kn"
     ) -> Explanation:
         score_disease_risk(features)  # validates required weather fields, raises if missing
 
@@ -176,6 +185,7 @@ class ExplanationService:
         summary_en = _summary_en(
             f"{alert.risk_level} disease risk", top, factor_label="contributing factors"
         )
+        summary_kn = self._translate(summary_en)
         return Explanation(
             id=str(uuid.uuid4()),
             field_id=alert.field_id,
@@ -185,7 +195,9 @@ class ExplanationService:
             method="rule_weight",
             top_contributions=top,
             summary_en=summary_en,
-            summary_kn=self._translate(summary_en),
+            summary_kn=summary_kn,
+            summary_translated=summary_kn if target_lang == "kn" else self._translate(summary_en, target_lang),
+            summary_translated_lang=target_lang if self._voice_service is not None else None,
         )
 
 

@@ -53,6 +53,17 @@ _MODELS_PRESENT = (
     and (MODEL_DIR / "piper" / "en" / "en_US" / "lessac" / "medium" / "en_US-lessac-medium.onnx").exists()
 )
 
+#: Module 25: Telugu TTS reuses the same vits_rasa_13 weights the kn
+#: tests already require (just a different speaker id), so no extra
+#: model-presence gate is needed for `te` beyond `_MODELS_PRESENT`.
+#: Hindi TTS is a genuinely new Piper voice download
+#: (rhasspy/piper-voices' hi_IN-rohan-medium) — gated separately so the
+#: en/kn/te tests still run on a machine that hasn't fetched it yet, same
+#: "auto-skip, never fail for absence" pattern as the rest of this file.
+_HINDI_PIPER_VOICE_PRESENT = (
+    MODEL_DIR / "piper" / "hi" / "hi_IN" / "rohan" / "medium" / "hi_IN-rohan-medium.onnx"
+).exists()
+
 pytestmark = pytest.mark.skipif(
     not (_DEPS_AVAILABLE and _MODELS_PRESENT),
     reason=(
@@ -61,6 +72,11 @@ pytestmark = pytest.mark.skipif(
         "not downloaded — run with .venv/Scripts/python.exe per "
         "docs/TOOLING.md"
     ),
+)
+
+_requires_hindi_voice = pytest.mark.skipif(
+    not _HINDI_PIPER_VOICE_PRESENT,
+    reason="Hindi Piper voice (hi_IN-rohan-medium) not downloaded under models/voice/piper/hi/",
 )
 
 
@@ -122,3 +138,66 @@ def test_language_identification_without_expected_lang(voice_service):
     en_audio = voice_service.text_to_speech("Apply irrigation now.", "en")
     _, detected = voice_service.speech_to_text(en_audio, expected_lang=None)
     assert detected == "en"
+
+
+# -- Module 25: te/hi, same shape as the en/kn tests above ------------
+
+
+def test_translate_round_trip_en_te_en(voice_service):
+    original = "Apply irrigation to your field today because soil moisture is low."
+
+    telugu = voice_service.translate(original, "en", "te")
+    assert telugu != original
+    assert any("ఀ" <= c <= "౿" for c in telugu)  # Telugu Unicode block
+
+    back_to_english = voice_service.translate(telugu, "te", "en")
+    assert "irrigation" in back_to_english.lower()
+    assert "soil" in back_to_english.lower() or "moisture" in back_to_english.lower()
+
+
+def test_translate_round_trip_en_hi_en(voice_service):
+    original = "Apply irrigation to your field today because soil moisture is low."
+
+    hindi = voice_service.translate(original, "en", "hi")
+    assert hindi != original
+    assert any("ऀ" <= c <= "ॿ" for c in hindi)  # Devanagari Unicode block
+
+    back_to_english = voice_service.translate(hindi, "hi", "en")
+    assert "irrigation" in back_to_english.lower()
+    assert "soil" in back_to_english.lower() or "moisture" in back_to_english.lower()
+
+
+def test_tts_then_stt_round_trip_te(voice_service):
+    text = "ఇప్పుడు నీటిపారుదల చేయండి."  # "Apply irrigation now."
+    audio = voice_service.text_to_speech(text, "te")
+    assert len(audio) > 1000
+
+    transcript, detected_lang = voice_service.speech_to_text(audio, expected_lang="te")
+    assert detected_lang == "te"
+    assert len(transcript.strip()) > 0
+    assert any("ఀ" <= c <= "౿" for c in transcript)
+
+
+@_requires_hindi_voice
+def test_tts_then_stt_round_trip_hi(voice_service):
+    text = "अभी सिंचाई करें।"  # "Apply irrigation now."
+    audio = voice_service.text_to_speech(text, "hi")
+    assert len(audio) > 1000
+
+    transcript, detected_lang = voice_service.speech_to_text(audio, expected_lang="hi")
+    assert detected_lang == "hi"
+    assert len(transcript.strip()) > 0
+    assert any("ऀ" <= c <= "ॿ" for c in transcript)
+
+
+def test_language_identification_te_vs_en(voice_service):
+    te_audio = voice_service.text_to_speech("ఇప్పుడు నీటిపారుదల చేయండి.", "te")
+    _, detected = voice_service.speech_to_text(te_audio, expected_lang=None)
+    assert detected == "te"
+
+
+@_requires_hindi_voice
+def test_language_identification_hi_vs_en(voice_service):
+    hi_audio = voice_service.text_to_speech("अभी सिंचाई करें।", "hi")
+    _, detected = voice_service.speech_to_text(hi_audio, expected_lang=None)
+    assert detected == "hi"

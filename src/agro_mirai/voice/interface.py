@@ -13,8 +13,15 @@ from typing import Protocol, runtime_checkable
 
 #: v1 scope — see specs/core/voice-interface.md "Supported language set
 #: for v1". Adapters may support a subset of this; they must not support
-#: more than the full enums.md language_code list.
-V1_LANGUAGES = frozenset({"en", "kn"})
+#: more than the full enums.md language_code list. Widened from {en, kn}
+#: to {en, kn, te, hi} in Module 25 — every one of translation/STT/TTS
+#: was individually verified against the real AI4Bharat model cards
+#: before this widened, not assumed; see
+#: decisions/0021-language-expansion-te-hi.md for the evidence and the
+#: one real per-language TTS-backend asymmetry it documents (kn/te use
+#: ai4bharat/vits_rasa_13, en/hi use Piper — vits_rasa_13 has no Hindi
+#: voice, Piper has no Kannada/Telugu voice).
+V1_LANGUAGES = frozenset({"en", "kn", "te", "hi"})
 
 #: Full enums.md language_code list, for validating adapter-declared
 #: supported sets and building clear "not yet implemented" errors.
