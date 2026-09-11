@@ -28,3 +28,15 @@ class Explanation:
     top_contributions: list[FeatureContribution]
     summary_en: str
     summary_kn: str | None = None
+    #: Module 25, additive: a translation into any V1_LANGUAGES target
+    #: (not just Kannada), paired with the language it's actually in.
+    #: summary_kn above is frozen at its existing en->kn meaning per the
+    #: additive-only contract rule — this is the general-purpose sibling,
+    #: not a replacement. Neither field is currently exposed via any API
+    #: response (Explanation is internal-only — Advisory.body concatenates
+    #: summary_en per ADR 0011); real end-user audio localization for
+    #: te/hi already flows through GET /v2/advisories/{id}/audio's
+    #: generic translate-then-synthesize path (voice_client.py), which
+    #: needed no changes beyond V1_LANGUAGES widening.
+    summary_translated: str | None = None
+    summary_translated_lang: str | None = None

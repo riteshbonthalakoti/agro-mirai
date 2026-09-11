@@ -116,6 +116,29 @@ def test_audio_translates_when_language_override_differs(app, client, monkeypatc
     fake_service.text_to_speech.assert_called_once_with("ಬೇಗ ನೀರಾವರಿ ಮಾಡಿ.", "kn")
 
 
+@pytest.mark.parametrize("lang", ["te", "hi"])
+def test_audio_translates_for_new_v1_languages(app, client, monkeypatch, lang):
+    # Module 25: te/hi weren't valid overrides before V1_LANGUAGES widened.
+    _register_and_login(client)
+    field_id = _create_field(client)
+    farmer_id = client.get("/v2/farmers/me").get_json()["id"]
+    advisory_id = _seed_advisory(app, farmer_id, field_id)
+
+    fake_service = MagicMock()
+    fake_service.translate.return_value = "translated"
+    fake_service.text_to_speech.return_value = b"fake-ogg-bytes"
+    monkeypatch.setattr(
+        "agro_mirai.api.voice_client.get_remote_voice_service", lambda: fake_service
+    )
+
+    resp = client.get(f"/v2/advisories/{advisory_id}/audio?language={lang}")
+    assert resp.status_code == 200
+    fake_service.translate.assert_called_once_with(
+        "Irrigate soon. Apply 12mm within 3 days.", "en", lang
+    )
+    fake_service.text_to_speech.assert_called_once_with("translated", lang)
+
+
 def test_audio_invalid_language_override_400(app, client):
     _register_and_login(client)
     field_id = _create_field(client)
@@ -241,6 +264,24 @@ def test_stt_success(client, monkeypatch):
     body = resp.get_json()
     assert body["text"] == "water the field"
     assert body["detected_lang"] == "en"
+
+
+@pytest.mark.parametrize("lang", ["te", "hi"])
+def test_stt_accepts_new_v1_expected_lang(client, monkeypatch, lang):
+    _register_and_login(client)
+    fake_service = MagicMock()
+    fake_service.speech_to_text.return_value = ("recognized", lang)
+    monkeypatch.setattr(
+        "agro_mirai.api.voice_client.get_remote_voice_service", lambda: fake_service
+    )
+
+    resp = client.post(
+        "/v2/stt",
+        data={"audio": (io.BytesIO(_wav_bytes()), "clip.wav"), "expected_lang": lang},
+        content_type="multipart/form-data",
+    )
+    assert resp.status_code == 200
+    assert resp.get_json()["detected_lang"] == lang
 
 
 def test_stt_invalid_expected_lang_400(client):

@@ -296,7 +296,8 @@ paths:
                   maxLength: 100
                 preferred_language:
                   type: string
-                  enum: [en, kn]
+                  enum: [en, kn, te, hi]
+                  description: Must be one of V1_LANGUAGES — the languages the voice stack can act on (Module 25).
               minProperties: 1
       responses:
         '200':
@@ -531,8 +532,8 @@ paths:
       - name: language
         in: query
         required: false
-        description: Overrides the farmer's preferred_language for this request. Must be one of V1_LANGUAGES (en, kn).
-        schema: { type: string, enum: [en, kn] }
+        description: Overrides the farmer's preferred_language for this request. Must be one of V1_LANGUAGES (en, kn, te, hi).
+        schema: { type: string, enum: [en, kn, te, hi] }
     get:
       summary: |
         Module 23 (Blocker B). Spoken audio for one Advisory, in the
@@ -590,8 +591,8 @@ paths:
                   description: WAV/OGG/MP3 clip, max 10MB.
                 expected_lang:
                   type: string
-                  enum: [en, kn]
-                  description: Optional hint for the ASR model.
+                  enum: [en, kn, te, hi]
+                  description: Optional hint for the ASR model. Must be one of V1_LANGUAGES.
               required: [audio]
       responses:
         '200':
