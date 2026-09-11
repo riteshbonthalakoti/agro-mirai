@@ -34,6 +34,7 @@ ROOT = Path(__file__).resolve().parent.parent.parent.parent
 MIGRATION_PATH = ROOT / "migrations" / "sqlite" / "001_init.sql"
 AUTH_MIGRATION_PATH = ROOT / "migrations" / "sqlite" / "002_auth_fields.sql"
 DISEASE_SOURCE_MIGRATION_PATH = ROOT / "migrations" / "sqlite" / "003_disease_alert_source.sql"
+SUPABASE_AUTH_MIGRATION_PATH = ROOT / "migrations" / "sqlite" / "004_supabase_auth.sql"
 
 
 # --------------------------------------------------------------------------
@@ -90,6 +91,7 @@ class SQLiteDataStore:
         conn.commit()
         self._apply_auth_migration()
         self._apply_disease_source_migration()
+        self._apply_supabase_auth_migration()
 
     def _apply_disease_source_migration(self) -> None:
         """Module 21: same ADD-COLUMN-tolerating pattern as
@@ -106,6 +108,35 @@ class SQLiteDataStore:
             except sqlite3.OperationalError as e:
                 if "duplicate column name" not in str(e):
                     raise
+        conn.commit()
+
+    def _apply_supabase_auth_migration(self) -> None:
+        """Module 26. Unlike the ADD-COLUMN migrations above, this one
+        contains a DELETE (the decided clean-slate reset) and a DROP
+        COLUMN, neither of which is safe to blindly re-run on every app
+        boot the way "tolerate duplicate column" is -- re-running DELETE
+        FROM farmers on an already-migrated database would silently wipe
+        real post-migration signups. So this checks whether password_hash
+        still exists first and only applies migrations/sqlite/
+        004_supabase_auth.sql's statements (read from that file, not
+        hand-duplicated here) when it does -- making the whole thing
+        idempotent in practice, not just individually-tolerant."""
+        conn = self._conn
+        columns = {row["name"] for row in conn.execute("PRAGMA table_info(farmers)").fetchall()}
+        if "password_hash" not in columns:
+            return
+        sql = SUPABASE_AUTH_MIGRATION_PATH.read_text(encoding="utf-8")
+        # Strip comment lines from the whole file FIRST, then split on ";"
+        # -- comment prose in this file contains semicolons of its own
+        # (e.g. "...wiped; farmers re-register...") that would otherwise
+        # be mistaken for statement terminators by a naive split-then-strip.
+        sql_no_comments = "\n".join(
+            line for line in sql.splitlines() if not line.strip().startswith("--")
+        )
+        for statement in sql_no_comments.split(";"):
+            statement = statement.strip()
+            if statement:
+                conn.execute(statement)
         conn.commit()
 
     def _apply_auth_migration(self) -> None:
@@ -151,13 +182,13 @@ class SQLiteDataStore:
             self._conn.execute(
                 """
                 INSERT INTO farmers (id, created_at, updated_at, name, preferred_language, phone,
-                    district, state, email, password_hash, role)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    district, state, email, role)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(id) DO UPDATE SET
                     updated_at=excluded.updated_at, name=excluded.name,
                     preferred_language=excluded.preferred_language, phone=excluded.phone,
                     district=excluded.district, state=excluded.state, email=excluded.email,
-                    password_hash=excluded.password_hash, role=excluded.role
+                    role=excluded.role
                 """,
                 (
                     farmer.id,
@@ -169,7 +200,6 @@ class SQLiteDataStore:
                     farmer.district,
                     farmer.state,
                     farmer.email,
-                    farmer.password_hash,
                     farmer.role or "farmer",
                 ),
             )
@@ -180,8 +210,8 @@ class SQLiteDataStore:
 
     def get_farmer_by_email(self, email: str) -> Farmer | None:
         """Module 19. Case-sensitive on the stored value -- callers
-        normalise (lowercase) email before calling, per
-        api/routes/auth_v2.py."""
+        normalise (lowercase) email before calling. Module 26: no longer
+        used for login (Supabase Auth owns that), kept for admin lookups."""
         row = self._conn.execute(
             "SELECT * FROM farmers WHERE email = ?", (email,)
         ).fetchone()
@@ -252,7 +282,6 @@ class SQLiteDataStore:
             district=row["district"],
             state=row["state"],
             email=row["email"] if "email" in keys else None,
-            password_hash=row["password_hash"] if "password_hash" in keys else None,
             role=(row["role"] if "role" in keys and row["role"] else "farmer"),
         )
 

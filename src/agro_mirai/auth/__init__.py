@@ -1,7 +1,6 @@
-"""Module 19 — real login/session auth (multi-tenant v2).
+"""Local input validation surviving Module 26's Supabase Auth migration.
 
-``password.py`` hashes/verifies via bcrypt (an established KDF, not a
-hand-rolled hash). ``validation.py`` is registration input validation
-(email shape, password strength). Neither module touches Flask or the
-DataStore — pure functions, easy to unit test in isolation.
+``password.py`` (bcrypt hashing) was removed — Supabase Auth owns
+credentials now. ``validation.py`` keeps only ``validate_name``, the one
+rule ``/v2`` still checks locally (``PATCH /v2/farmers/me``).
 """
