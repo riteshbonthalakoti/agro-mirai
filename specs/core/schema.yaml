@@ -16,7 +16,13 @@ entities:
       A user of the system. One-to-one with an authenticated account
       (see docs/conventions.md §4). Owns zero or more Fields.
     fields:
-      id: { type: uuid, required: true }
+      id:
+        type: uuid
+        required: true
+        note: >
+          Module 26: IS the Supabase auth.users.id for any farmer
+          registered since the migration — not a separately-generated
+          app id. See decisions/0022-supabase-auth-migration.md.
       created_at: { type: timestamp, required: true }
       updated_at: { type: timestamp, required: true }
       name: { type: string, required: true }
@@ -29,14 +35,11 @@ entities:
         required: false
         note: >
           Module 19. Unique when present (enforced by a partial unique
-          index, not by this schema). Required for /v2 login; absent on
-          farmers created only via the /v1 shared-key flow.
-      password_hash:
-        type: string
-        required: false
-        note: >
-          Module 19. A bcrypt hash — never plaintext. Never returned by
-          any API response; excluded in the public serializer.
+          index, not by this schema). Mirrors the Supabase auth.users
+          email at profile-creation time for display; absent on farmers
+          created only via the /v1 shared-key flow. Module 26:
+          credentials themselves live entirely in Supabase Auth —
+          password_hash was removed from this table.
       role:
         type: string
         enum: user_role

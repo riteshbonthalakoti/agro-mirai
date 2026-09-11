@@ -13,7 +13,6 @@ CREATE TABLE IF NOT EXISTS "farmers" (
   "district" text,
   "state" text,
   "email" text,
-  "password_hash" text,
   "role" text,
   PRIMARY KEY ("id")
 );

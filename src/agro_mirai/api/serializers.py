@@ -21,9 +21,9 @@ def to_json(record) -> dict:
 
 
 def farmer_to_public_json(farmer) -> dict:
-    """Module 19: like to_json, but drops password_hash. Every /v2 route
-    that returns a Farmer uses this, never the raw to_json, so a hash
-    can't leak into a response by accident."""
-    data = to_json(farmer)
-    data.pop("password_hash", None)
-    return data
+    """Module 19: like to_json, but strips any auth-material fields.
+    Module 26 removed password_hash from Farmer entirely (Supabase Auth
+    owns credentials now), but every /v2 route that returns a Farmer
+    still goes through this helper rather than raw to_json, so a future
+    auth-related field added to Farmer doesn't leak by default."""
+    return to_json(farmer)

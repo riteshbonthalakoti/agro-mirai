@@ -1,20 +1,20 @@
-"""Module 23 Part A: the six new /v2 value endpoints
+"""Module 23 Part A / Module 26: the six /v2 value endpoints
 (recommendation/irrigation/disease-risk/disease-risk-image/advisories/
-feedback), session-authenticated.
+feedback), Supabase-JWT-authenticated.
 
 This closes the specific coverage blind spot that let Blocker A ship
 unnoticed: Module 19's ``test_full_cross_tenant_isolation_flow`` only
 ever exercised ``/v2/fields`` — never the endpoints that actually carry
 the product's value. Every endpoint here gets its own cross-tenant
-(404-not-403-not-leaked) proof and its own no-session 401 proof, plus a
+(404-not-403-not-leaked) proof and its own no-token 401 proof, plus a
 check that the shared ``value_endpoints.py`` refactor kept Module 22's
 degrade-not-fail contracts (422 on exhausted weather,
 ``environmental_fallback`` on an unreachable CNN service) intact on the
 /v2 copies specifically, not just on /v1.
 
 Real Flask test client + real ``SQLiteDataStore`` (``:memory:``) + real
-session cookies (no mocked auth), same as
-``test_v2_auth_integration.py``. The crop/irrigation/disease/
+JWT verification (HS256 test-secret path, see conftest.py's
+jwt_headers) — no mocked auth decorator. The crop/irrigation/disease/
 decision-engine models are mocked (same style as ``conftest.py``'s ``app``
 fixture) so this doesn't need ``models/*.joblib`` on disk.
 """
@@ -37,7 +37,12 @@ from agro_mirai.persistence.models import (
 from agro_mirai.persistence.sqlite_store import SQLiteDataStore
 from agro_mirai.processing.feature_builder import FeatureVector
 
+from conftest import jwt_headers
+
 _NOW = datetime(2026, 8, 25, 9, 0, 0, tzinfo=timezone.utc)
+
+FARMER_A = "aaaaaaaa-0000-4000-8000-0000000000a1"
+FARMER_B = "bbbbbbbb-0000-4000-8000-0000000000b1"
 
 _VECTOR = FeatureVector(
     field_id="placeholder",
@@ -113,26 +118,17 @@ def client(app):
     return app.test_client()
 
 
-def _register_and_login(client, email: str, password: str = "Sup3rSecret1"):
-    r = client.post(
-        "/v2/auth/register",
-        json={"email": email, "password": password, "name": "Farmer", "preferred_language": "en"},
-    )
-    assert r.status_code == 201
-    r = client.post("/v2/auth/login", json={"email": email, "password": password})
-    assert r.status_code == 200
-
-
-def _create_field(client) -> str:
+def _create_field(client, headers) -> str:
     resp = client.post(
         "/v2/fields",
         json={"name": "Plot", "latitude": 15.0, "longitude": 76.0, "area_ha": 1.0},
+        headers=headers,
     )
     assert resp.status_code == 201
     return resp.get_json()["id"]
 
 
-# --- Session-required (401 with no session) on every new endpoint ---
+# --- Auth-required (401 with no token) on every new endpoint ---
 
 def test_recommendation_requires_session(client):
     resp = client.get("/v2/fields/does-not-matter/recommendation")
@@ -171,25 +167,25 @@ def test_feedback_requires_session(client):
 # --- Success paths (proves the six endpoints actually exist and work) ---
 
 def test_recommendation_success(client):
-    _register_and_login(client, "a1@example.com")
-    field_id = _create_field(client)
-    resp = client.get(f"/v2/fields/{field_id}/recommendation")
+    headers = jwt_headers(FARMER_A, email="a1@example.com")
+    field_id = _create_field(client, headers)
+    resp = client.get(f"/v2/fields/{field_id}/recommendation", headers=headers)
     assert resp.status_code == 200
     assert resp.get_json()["recommended_crop"] == "cotton"
 
 
 def test_irrigation_success(client):
-    _register_and_login(client, "a2@example.com")
-    field_id = _create_field(client)
-    resp = client.get(f"/v2/fields/{field_id}/irrigation")
+    headers = jwt_headers(FARMER_A, email="a2@example.com")
+    field_id = _create_field(client, headers)
+    resp = client.get(f"/v2/fields/{field_id}/irrigation", headers=headers)
     assert resp.status_code == 200
     assert resp.get_json()["urgency"] == "moderate"
 
 
 def test_disease_risk_success(client):
-    _register_and_login(client, "a3@example.com")
-    field_id = _create_field(client)
-    resp = client.get(f"/v2/fields/{field_id}/disease-risk")
+    headers = jwt_headers(FARMER_A, email="a3@example.com")
+    field_id = _create_field(client, headers)
+    resp = client.get(f"/v2/fields/{field_id}/disease-risk", headers=headers)
     assert resp.status_code == 200
     assert "items" in resp.get_json()
 
@@ -198,12 +194,13 @@ def test_disease_risk_image_falls_back_to_environmental_never_500(client):
     # cnn_client.call_cnn_service is monkeypatched to return None (no CNN
     # service configured) — this is the exact Module 21/22 hard-fallback
     # contract, verified on the /v2 copy specifically.
-    _register_and_login(client, "a4@example.com")
-    field_id = _create_field(client)
+    headers = jwt_headers(FARMER_A, email="a4@example.com")
+    field_id = _create_field(client, headers)
     resp = client.post(
         f"/v2/fields/{field_id}/disease-risk/image",
         data={"image": (io.BytesIO(_png_bytes()), "leaf.png")},
         content_type="multipart/form-data",
+        headers=headers,
     )
     assert resp.status_code == 200
     body = resp.get_json()
@@ -211,21 +208,22 @@ def test_disease_risk_image_falls_back_to_environmental_never_500(client):
 
 
 def test_advisories_success(client):
-    _register_and_login(client, "a5@example.com")
-    field_id = _create_field(client)
-    resp = client.get(f"/v2/fields/{field_id}/advisories")
+    headers = jwt_headers(FARMER_A, email="a5@example.com")
+    field_id = _create_field(client, headers)
+    resp = client.get(f"/v2/fields/{field_id}/advisories", headers=headers)
     assert resp.status_code == 200
     assert len(resp.get_json()["items"]) >= 1
 
 
 def test_feedback_success(client):
-    _register_and_login(client, "a6@example.com")
-    field_id = _create_field(client)
-    advisories = client.get(f"/v2/fields/{field_id}/advisories").get_json()["items"]
+    headers = jwt_headers(FARMER_A, email="a6@example.com")
+    field_id = _create_field(client, headers)
+    advisories = client.get(f"/v2/fields/{field_id}/advisories", headers=headers).get_json()["items"]
     advisory_id = advisories[0]["id"]
     resp = client.post(
         "/v2/feedback",
         json={"advisory_id": advisory_id, "rating": 4, "helpful": True},
+        headers=headers,
     )
     assert resp.status_code == 201
     assert resp.get_json()["rating"] == 4
@@ -234,14 +232,14 @@ def test_feedback_success(client):
 # --- Module 22 behaviour preserved: 422 on exhausted weather ---
 
 def test_irrigation_returns_422_not_500_when_no_weather_data(client, monkeypatch):
-    _register_and_login(client, "a7@example.com")
-    field_id = _create_field(client)
+    headers = jwt_headers(FARMER_A, email="a7@example.com")
+    field_id = _create_field(client, headers)
 
     def _raise(*args, **kwargs):
         raise ValueError("no temperature data available in any window")
 
     monkeypatch.setattr("agro_mirai.api.value_endpoints.build_features_for_field", _raise)
-    resp = client.get(f"/v2/fields/{field_id}/irrigation")
+    resp = client.get(f"/v2/fields/{field_id}/irrigation", headers=headers)
     assert resp.status_code == 422
     assert resp.get_json()["error"]["code"] == "NO_WEATHER_DATA"
 
@@ -251,56 +249,57 @@ def test_irrigation_returns_422_not_500_when_no_weather_data(client, monkeypatch
 
 @pytest.fixture
 def two_farmers(client):
-    _register_and_login(client, "farmerA@example.com", password="Sup3rSecret1")
-    field_id = _create_field(client)
-    advisories = client.get(f"/v2/fields/{field_id}/advisories").get_json()["items"]
+    headers_a = jwt_headers(FARMER_A, email="farmerA@example.com")
+    field_id = _create_field(client, headers_a)
+    advisories = client.get(f"/v2/fields/{field_id}/advisories", headers=headers_a).get_json()["items"]
     advisory_id = advisories[0]["id"]
-    client.post("/v2/auth/logout")
 
-    _register_and_login(client, "farmerB@example.com", password="Sup3rSecret2")
-    return field_id, advisory_id
+    headers_b = jwt_headers(FARMER_B, email="farmerB@example.com")
+    return field_id, advisory_id, headers_b
 
 
 def test_recommendation_cross_tenant_404(client, two_farmers):
-    field_id, _ = two_farmers
-    resp = client.get(f"/v2/fields/{field_id}/recommendation")
+    field_id, _, headers_b = two_farmers
+    resp = client.get(f"/v2/fields/{field_id}/recommendation", headers=headers_b)
     assert resp.status_code == 404
     assert resp.get_json()["error"]["code"] == "NOT_FOUND"
 
 
 def test_irrigation_cross_tenant_404(client, two_farmers):
-    field_id, _ = two_farmers
-    resp = client.get(f"/v2/fields/{field_id}/irrigation")
+    field_id, _, headers_b = two_farmers
+    resp = client.get(f"/v2/fields/{field_id}/irrigation", headers=headers_b)
     assert resp.status_code == 404
 
 
 def test_disease_risk_cross_tenant_404(client, two_farmers):
-    field_id, _ = two_farmers
-    resp = client.get(f"/v2/fields/{field_id}/disease-risk")
+    field_id, _, headers_b = two_farmers
+    resp = client.get(f"/v2/fields/{field_id}/disease-risk", headers=headers_b)
     assert resp.status_code == 404
 
 
 def test_disease_risk_image_cross_tenant_404(client, two_farmers):
-    field_id, _ = two_farmers
+    field_id, _, headers_b = two_farmers
     resp = client.post(
         f"/v2/fields/{field_id}/disease-risk/image",
         data={"image": (io.BytesIO(_png_bytes()), "leaf.png")},
         content_type="multipart/form-data",
+        headers=headers_b,
     )
     assert resp.status_code == 404
 
 
 def test_advisories_cross_tenant_404(client, two_farmers):
-    field_id, _ = two_farmers
-    resp = client.get(f"/v2/fields/{field_id}/advisories")
+    field_id, _, headers_b = two_farmers
+    resp = client.get(f"/v2/fields/{field_id}/advisories", headers=headers_b)
     assert resp.status_code == 404
 
 
 def test_feedback_cross_tenant_404(client, two_farmers):
-    _, advisory_id = two_farmers
+    _, advisory_id, headers_b = two_farmers
     resp = client.post(
         "/v2/feedback",
         json={"advisory_id": advisory_id, "rating": 3, "helpful": True},
+        headers=headers_b,
     )
     assert resp.status_code == 404
     assert resp.get_json()["error"]["code"] == "NOT_FOUND"
