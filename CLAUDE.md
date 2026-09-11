@@ -58,7 +58,7 @@ to build the phase table in `PROGRESS.md`.
 
 ## Current phase
 
-**Modules 01–23 are complete. The backend/production-hardening push (Modules 16–23, `docs/ROADMAP_PRODUCTION.md`) that took the project from "capstone MVP" toward "production grade" is now finished — Module 23 froze `specs/core/openapi.yaml` as the contract the frontend gets built against. Next: the frontend phase (PRD, then Antigravity — React Native + Expo mobile app, Next.js landing page, Module 19's Jinja2 admin kept as-is), not yet started.** Module 16 (Reliability & CI Hardening — workstream A) landed 2026-08-29: GitHub Actions CI (`.github/workflows/ci.yml`, gates on `pytest --ignore=tests/voice` + `check_specs.py`, non-blocking `ruff` lint), Sentry error monitoring (`sentry-sdk[flask]`, no-op without `SENTRY_DSN`), request-id structured logging, an input-validation audit of `POST /fields`/`POST /feedback` (real gaps found and fixed — see `src/agro_mirai/api/validation.py`), `tools/backup_supabase.py` + `docs/BACKUPS.md`, and per-API-key rate limiting (Flask-Limiter, 60/min default).
+**Modules 01–25 are complete. The backend/production-hardening push (Modules 16–23, `docs/ROADMAP_PRODUCTION.md`) that took the project from "capstone MVP" toward "production grade" is now finished — Module 23 froze `specs/core/openapi.yaml` as the contract the frontend gets built against. Next: the frontend phase (PRD, then Antigravity — React Native + Expo mobile app, Next.js landing page, Module 19's Jinja2 admin kept as-is), not yet started.** Module 16 (Reliability & CI Hardening — workstream A) landed 2026-08-29: GitHub Actions CI (`.github/workflows/ci.yml`, gates on `pytest --ignore=tests/voice` + `check_specs.py`, non-blocking `ruff` lint), Sentry error monitoring (`sentry-sdk[flask]`, no-op without `SENTRY_DSN`), request-id structured logging, an input-validation audit of `POST /fields`/`POST /feedback` (real gaps found and fixed — see `src/agro_mirai/api/validation.py`), `tools/backup_supabase.py` + `docs/BACKUPS.md`, and per-API-key rate limiting (Flask-Limiter, 60/min default).
 
 Module 17 (ET0-based irrigation water balance) landed 2026-08-29, ahead
 of multi-tenant/Admin per Ritesh's explicit sequencing call (model/
@@ -737,3 +737,89 @@ farmer B gets 404 (not leaked) on A's field advisories *and* A's advisory
 audio -> A's own audio request correctly 503s (no local voice service
 running) -> logout -> session genuinely dead (401) on the next request.
 Next: frontend phase — PRD, then Antigravity (React Native + Expo).
+
+Module 25 (language expansion: `V1_LANGUAGES` `{en, kn}` -> `{en, kn,
+te, hi}`) landed 2026-09-11, driven by the separately-built Antigravity
+mobile app's language picker growing Telugu/Hindi options. Verified
+before writing any code, not assumed: translation (IndicTrans2
+dist-200M, already loaded for `en`/`kn`) and STT
+(`ai4bharat/indic-conformer-600m-multilingual`, already loaded) both
+genuinely cover `te`/`hi` per their real model cards — no new downloads,
+just new FLORES-200 tags (`tel_Telu`/`hin_Deva`) and passing the
+language code through to IndicConformer generically instead of a
+hardcoded kn/en branch. TTS is the one place with a real per-language
+backend split, confirmed against both model cards before wiring:
+`ai4bharat/vits_rasa_13` (already used for `kn`) covers Telugu too
+(`TEL_F`, speaker id 19) but has no Hindi voice in its 13-language set;
+Piper (already used for `en`) covers Hindi (`hi_IN-rohan-medium`) but
+has no Kannada/Telugu voice — so `kn`/`te` route to vits_rasa_13 and
+`en`/`hi` route to Piper, mirrored in
+`src/agro_mirai/voice/ai4bharat_voice.py`'s `_synthesize_vits`/
+`_synthesize_piper` dispatch. Language ID (`_identify_language`)
+widened from a binary en-vs-kn Whisper-tiny logit comparison to a 4-way
+one — Whisper's standard language-token vocabulary already had
+`<|hi|>`/`<|te|>` alongside the `<|en|>`/`<|kn|>` tokens already
+compared, so no new model was needed there either.
+
+Two real, pre-existing hardcoded gaps were found and fixed while wiring
+this through, not invented to pad scope: `farms_v2.py`'s
+`_ALLOWED_LANGUAGE_CODES` was a second, locally-duplicated `{"en",
+"kn"}` allowlist that had silently drifted from `V1_LANGUAGES` (fixed
+by importing the shared constant directly), and `POST
+/v2/auth/register` had **zero** `preferred_language` validation despite
+`openapi.yaml`'s `RegisterRequest` schema already declaring an enum —
+added real validation against `V1_LANGUAGES` (the voice-operational
+set, not the broader 8-language aspirational `enums.md` list, since
+accepting e.g. `ta` today would register farmers whose
+`preferred_language` the voice stack can never actually honor — exactly
+the "silently expand past what's working" failure mode this module was
+told to avoid). `PATCH /v2/farmers/me`'s inline openapi enum (`[en,
+kn]`, narrower than `Farmer`'s own 8-value schema enum) was widened to
+match. `Explanation.summary_kn` (internal-only — never persisted, never
+API-exposed, `Advisory.body` concatenates `summary_en` unmodified per
+ADR 0011) was left frozen at its existing en->kn meaning per the
+additive-only contract rule; two new optional fields
+(`summary_translated`, `summary_translated_lang`) and an optional
+`target_lang: str = "kn"` parameter on `explain_crop`/
+`explain_irrigation`/`explain_disease` were added instead, default
+preserving every existing caller's behavior exactly. Real end-user audio
+localization for `te`/`hi` needed no `Explanation`-level changes at all
+— `GET /v2/advisories/{id}/audio`'s translate-then-synthesize path
+(`voice_client.py`) already derived its language handling generically
+from `V1_LANGUAGES`/the farmer's `preferred_language`, so it widened
+automatically. `specs/core/voice-interface.md`'s "Supported language set
+for v1" section (the canonical source for this scope decision — there
+was never a standalone ADR for the original Module 12 `{en, kn}` call)
+was updated alongside `decisions/0021-language-expansion-te-hi.md`,
+which has the full per-language capability evidence table.
+
+One real, honestly-documented, not-yet-closed gap: the Hindi Piper voice
+(`hi_IN-rohan-medium`) has never been downloaded on any machine — Module
+12 only fetched the `en` Piper voice. `text_to_speech(text, "hi")`
+raises `VoiceUnavailableError` until `hf download rhasspy/piper-voices
+hi/hi_IN/rohan/medium/hi_IN-rohan-medium.onnx ...` is run (exact command
+in `docs/TOOLING.md`) — the existing lazy-load degrade-not-fail pattern,
+not a crash, and nothing here fakes that step as done.
+`en`/`kn`/`te` need no new downloads. 25 new/updated tests: 3 in
+`tests/voice/test_interface_conformance.py` (rejection cases moved off
+`hi`/`te` onto genuinely-still-unsupported `ta`/`mr`/`bn`), 8 new
+integration tests in `tests/voice/test_ai4bharat_integration.py`
+(te/hi translate/TTS/STT/LID round trips, the Hindi ones gated behind
+their own voice-file-presence check so the file auto-skips until that
+download happens), 6 in `services/voice/tests/test_routes.py` (te/hi
+route-level pass-through), 3 in `tests/models/test_explanation_service.py`
+(the new additive fields), 2 in `tests/api/test_v2_auth_integration.py`
+(register accept-all-four / reject-unsupported), 2 in the new
+`tests/api/test_farmer_profile_update.py` (PATCH accept-all-four /
+reject-unsupported), and 4 in `tests/api/test_voice_routes.py` (te/hi
+through the `/v2` audio/stt routes). Full main regression
+(`pytest --ignore=tests/voice --ignore=tests/vision --ignore=services/cnn-inference --ignore=services/voice`):
+374 passed, 25 skipped, 0 failed (up from 358 — no regressions);
+`tests/voice`: 19 passed, 12 skipped (auto-skip, no torch/weights in
+this environment); `services/voice/tests`: 13 passed. `check_specs.py`:
+OK. Next recommended step: run the `hf download` command above for the
+Hindi Piper voice on a machine with the `.venv/` voice stack, then run
+`tests/voice/test_ai4bharat_integration.py` for real (not just
+auto-skipped) end-to-end confirmation of all four languages — after
+that, the frontend phase (PRD, then Antigravity) is unblocked to ship
+`te`/`hi` in the mobile app for real.

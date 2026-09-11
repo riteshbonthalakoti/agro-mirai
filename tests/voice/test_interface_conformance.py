@@ -26,25 +26,25 @@ def test_adapter_implements_voice_service_protocol(adapter_cls):
 def test_translate_rejects_unsupported_source_language(adapter_cls):
     adapter = adapter_cls()
     with pytest.raises(UnsupportedLanguageError) as exc_info:
-        adapter.translate("hello", "hi", "en")
-    assert exc_info.value.language_code == "hi"
-    assert exc_info.value.supported == frozenset({"en", "kn"})
+        adapter.translate("hello", "ta", "en")
+    assert exc_info.value.language_code == "ta"
+    assert exc_info.value.supported == frozenset({"en", "kn", "te", "hi"})
 
 
 @pytest.mark.parametrize("adapter_cls", ADAPTERS)
 def test_translate_rejects_unsupported_target_language(adapter_cls):
     adapter = adapter_cls()
     with pytest.raises(UnsupportedLanguageError) as exc_info:
-        adapter.translate("hello", "en", "ta")
-    assert exc_info.value.language_code == "ta"
+        adapter.translate("hello", "en", "mr")
+    assert exc_info.value.language_code == "mr"
 
 
 @pytest.mark.parametrize("adapter_cls", ADAPTERS)
 def test_speech_to_text_rejects_unsupported_expected_lang(adapter_cls):
     adapter = adapter_cls()
     with pytest.raises(UnsupportedLanguageError) as exc_info:
-        adapter.speech_to_text(b"not-real-audio", expected_lang="te")
-    assert exc_info.value.language_code == "te"
+        adapter.speech_to_text(b"not-real-audio", expected_lang="bn")
+    assert exc_info.value.language_code == "bn"
 
 
 @pytest.mark.parametrize("adapter_cls", ADAPTERS)

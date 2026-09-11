@@ -53,6 +53,25 @@ def test_translate_success():
     assert resp.get_json()["text"] == "[kn] hello"
 
 
+def test_translate_success_te():
+    # Module 25: this route is language-agnostic — it hands whatever
+    # target_lang it's given straight to the VoiceService, which is where
+    # real V1_LANGUAGES gating lives (tests/voice/test_interface_conformance.py).
+    # Confirms te/hi aren't rejected at the HTTP layer for some unrelated
+    # reason (stale allowlist, etc).
+    client = _client(lambda: _StubVoice())
+    resp = client.post("/translate", json={"text": "hello", "source_lang": "en", "target_lang": "te"})
+    assert resp.status_code == 200
+    assert resp.get_json()["text"] == "[te] hello"
+
+
+def test_translate_success_hi():
+    client = _client(lambda: _StubVoice())
+    resp = client.post("/translate", json={"text": "hello", "source_lang": "en", "target_lang": "hi"})
+    assert resp.status_code == 200
+    assert resp.get_json()["text"] == "[hi] hello"
+
+
 def test_translate_missing_field_400():
     client = _client(lambda: _StubVoice())
     resp = client.post("/translate", json={"text": "hello"})
@@ -67,6 +86,22 @@ def test_speech_to_text_success():
     body = resp.get_json()
     assert body["text"] == "recognized text"
     assert body["detected_lang"] == "en"
+
+
+def test_speech_to_text_success_te_expected_lang():
+    client = _client(lambda: _StubVoice())
+    data = {"audio": (io.BytesIO(b"fake"), "clip.wav"), "expected_lang": "te"}
+    resp = client.post("/speech-to-text", data=data, content_type="multipart/form-data")
+    assert resp.status_code == 200
+    assert resp.get_json()["detected_lang"] == "te"
+
+
+def test_speech_to_text_success_hi_expected_lang():
+    client = _client(lambda: _StubVoice())
+    data = {"audio": (io.BytesIO(b"fake"), "clip.wav"), "expected_lang": "hi"}
+    resp = client.post("/speech-to-text", data=data, content_type="multipart/form-data")
+    assert resp.status_code == 200
+    assert resp.get_json()["detected_lang"] == "hi"
 
 
 def test_speech_to_text_missing_audio_400():
@@ -88,6 +123,16 @@ def test_text_to_speech_success(monkeypatch):
     assert resp.status_code == 200
     assert resp.content_type == "audio/ogg"
     assert resp.data.startswith(b"OggS")
+
+
+def test_text_to_speech_success_hi(monkeypatch):
+    import app as app_module
+
+    monkeypatch.setattr(app_module, "_transcode_wav_to_ogg", lambda wav: b"OggS\x00fake")
+    client = _client(lambda: _StubVoice())
+    resp = client.post("/text-to-speech", json={"text": "hello", "lang": "hi"})
+    assert resp.status_code == 200
+    assert resp.content_type == "audio/ogg"
 
 
 def test_text_to_speech_ffmpeg_missing_returns_422_not_500(monkeypatch):

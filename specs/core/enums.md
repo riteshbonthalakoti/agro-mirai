@@ -61,8 +61,13 @@ ladder everywhere so the UI can render it uniformly.
 
 ## `language_code`
 
-ISO 639-1 two-letter codes. Bundled set tracks what the AI4Bharat stack
-covers when Module 12 wires it up.
+ISO 639-1 two-letter codes. Full set this project may eventually reach;
+not all of these are voice-operational today. As of Module 25,
+`V1_LANGUAGES` (`src/agro_mirai/voice/interface.py`) — the subset the
+AI4Bharat voice stack (translation/STT/TTS) actually covers and that
+registration/`preferred_language` validation enforces — is
+`{en, kn, te, hi}`. `ta`/`mr`/`bn`/`gu` remain listed here as future
+scope, not yet wired to any voice adapter.
 
 - `en` — English
 - `hi` — Hindi

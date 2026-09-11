@@ -102,9 +102,11 @@
           <p>{{ advisory.body }}</p>
           <p class="muted">{{ advisory.created_at }} &middot; language: {{ advisory.language }}</p>
           <p class="limitation-note">
-            "Listen in Kannada" is a known limitation — no API endpoint
-            currently exposes a Kannada summary or TTS audio for this
-            advisory (see decisions/0013).
+            "Listen in Kannada" is a known limitation of this legacy /v1
+            dashboard specifically — GET /v2/advisories/{id}/audio (Module 23)
+            now serves real TTS audio in en/kn/te/hi for session-authenticated
+            farmers, this page just doesn't wire it up (see decisions/0013,
+            0020, 0021).
           </p>
 
           <form class="feedback-form" method="post" action="{{ url_for('frontend.submit_feedback') }}" data-feedback-form>

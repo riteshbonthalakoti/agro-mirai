@@ -99,6 +99,23 @@ Verified on: 2026-08-25, Windows 11.
   Reproduce with `hf download <repo> --local-dir models/voice/<name>`
   per repo (see `src/agro_mirai/voice/ai4bharat_voice.py` for exact repo
   ids/paths) or regenerate via the model card usage snippets.
+- **Module 25 (te/hi expansion)**: translation (IndicTrans2) and STT
+  (IndicConformer) need no new downloads — the already-downloaded
+  weights above cover `te`/`hi` too, confirmed against both model cards
+  before wiring (`decisions/0021-language-expansion-te-hi.md`). TTS does
+  need one new download — Telugu reuses the already-downloaded
+  `vits_rasa_13` weights (just a different speaker id), but Hindi is on
+  a different backend (Piper) with no Hindi voice downloaded yet:
+
+  ```bash
+  hf download rhasspy/piper-voices hi/hi_IN/rohan/medium/hi_IN-rohan-medium.onnx hi/hi_IN/rohan/medium/hi_IN-rohan-medium.onnx.json --local-dir models/voice/piper
+  ```
+
+  Until that command is run, `text_to_speech(text, "hi")` raises
+  `VoiceUnavailableError` (the existing lazy-load-with-clear-error
+  pattern, not a crash) — this is a real, not-yet-completed step, not
+  silently faked. `en`/`kn`/`te` need no action beyond what Module 12
+  already downloaded.
 - **Project-local virtualenv required**: `.venv/` (gitignored), created
   with `python -m venv .venv`, pinned to `transformers==4.49.0` +
   `torch==2.4.1`/`torchaudio==2.4.1` (CPU wheels from

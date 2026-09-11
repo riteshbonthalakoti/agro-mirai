@@ -86,31 +86,45 @@ list, not a redefinition of it. Adding a language later means an adapter
 starts supporting a code already in the enum — additive, no version bump
 needed on the enum itself.
 
-**v1 implemented (both adapters must support these two, all three
-methods):**
+**v1 implemented (both adapters must support these four, all three
+methods) — widened from `{en, kn}` in Module 25:**
 
 - `en` — English
 - `kn` — Kannada — matches the golden fixture farmer's
   `preferred_language: kn` (`specs/domains/fixtures/farm-001.json`,
   `farm-002.json`) and the project's Bellary/Karnataka setting.
+- `te` — Telugu — added when the mobile app's language picker grew a
+  Telugu option; translation (IndicTrans2), STT (IndicConformer), and
+  TTS (`ai4bharat/vits_rasa_13`, same model already used for `kn`, a
+  different speaker id) were each individually confirmed against their
+  real model cards before this widened, not assumed. See
+  `decisions/0021-language-expansion-te-hi.md`.
+- `hi` — Hindi — added alongside `te` for the same reason. Translation
+  and STT use the same models as `kn`/`te`; TTS is the one place Hindi
+  takes a genuinely different path than `te` — `vits_rasa_13` has no
+  Hindi voice, so Hindi TTS uses Piper (`hi_IN-rohan-medium`) instead,
+  the same backend already used for `en`. See ADR 0021 for the full
+  per-language capability table and the one still-open gap (the Hindi
+  Piper voice file needs a real, not-yet-done download — never faked as
+  present).
 
 **Not yet implemented (present in `enums.md`, no adapter supports them
 in v1 — calling any `VoiceService` method with one of these raises
 `UnsupportedLanguageError`, not a silent failure):**
 
-- `hi` — Hindi
 - `ta` — Tamil
-- `te` — Telugu
 - `mr` — Marathi
 - `bn` — Bengali
 - `gu` — Gujarati
 
-Rationale for starting at two: every AI4Bharat model in the v1 stack
-(IndicTrans2, IndicConformer, VITS/Piper — see
-`docs/architecture.md` for the per-capability model choice) supports all
-eight `enums.md` languages to varying degrees, so widening past `en`+`kn`
-is a config/testing change, not a rewrite, once there's fixture and
-review bandwidth to verify quality in the other six.
+Rationale for stopping at four for now: the four `V1_LANGUAGES` above
+were each individually verified against the real AI4Bharat/Piper model
+cards (ADR 0021). The remaining four are plausible — the same model
+families cover most of `enums.md`'s language set to varying degrees —
+but "plausible" isn't "verified," and this project's standing rule is
+to verify before widening a language, not extrapolate from a pattern.
+Widening further needs the same verify-then-wire pass Module 25 did, not
+an assumption that AI4Bharat coverage is uniform across all eight.
 
 ## Per-capability implementation notes (informative, not part of the contract)
 

@@ -267,3 +267,52 @@ def test_summary_kn_populated_when_voice_service_injected():
 
     voice.translate.assert_called_once_with(explanation.summary_en, "en", "kn")
     assert explanation.summary_kn == "ಕನ್ನಡ ಸಾರಾಂಶ"
+    # Module 25, additive: default target_lang="kn" means the new field
+    # mirrors summary_kn exactly, no extra translate() call.
+    assert explanation.summary_translated == "ಕನ್ನಡ ಸಾರಾಂಶ"
+    assert explanation.summary_translated_lang == "kn"
+
+
+def test_summary_translated_uses_target_lang_when_given():
+    voice = MagicMock()
+    voice.translate.side_effect = lambda text, src, tgt: f"[{tgt}] {text}"
+    service = ExplanationService(voice_service=voice)
+    alert = DiseaseRiskAlert(
+        id=str(uuid.uuid4()),
+        field_id="ff000001-0000-4000-8000-000000000001",
+        created_at=datetime.now(timezone.utc),
+        disease="Generic fungal disease risk",
+        risk_level="low",
+        confidence=0.5,
+        window_start_at=datetime.now(timezone.utc),
+        window_end_at=datetime.now(timezone.utc),
+        recommended_action="monitor",
+    )
+
+    explanation = service.explain_disease(alert, _vector(), target_lang="te")
+
+    # summary_kn is frozen at en->kn regardless of target_lang.
+    assert explanation.summary_kn == f"[kn] {explanation.summary_en}"
+    assert explanation.summary_translated == f"[te] {explanation.summary_en}"
+    assert explanation.summary_translated_lang == "te"
+    assert voice.translate.call_count == 2
+
+
+def test_summary_translated_none_when_no_voice_service():
+    service = ExplanationService()
+    alert = DiseaseRiskAlert(
+        id=str(uuid.uuid4()),
+        field_id="ff000001-0000-4000-8000-000000000001",
+        created_at=datetime.now(timezone.utc),
+        disease="Generic fungal disease risk",
+        risk_level="low",
+        confidence=0.5,
+        window_start_at=datetime.now(timezone.utc),
+        window_end_at=datetime.now(timezone.utc),
+        recommended_action="monitor",
+    )
+
+    explanation = service.explain_disease(alert, _vector(), target_lang="hi")
+
+    assert explanation.summary_translated is None
+    assert explanation.summary_translated_lang is None
