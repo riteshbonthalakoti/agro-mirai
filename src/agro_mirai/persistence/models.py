@@ -25,8 +25,13 @@ class Farmer:
     district: str | None = None
     state: str | None = None
     # Module 19 — multi-tenant auth (additive, see decisions/0017).
+    # Module 26: password_hash removed — Supabase Auth (auth.users) now
+    # owns credentials entirely; this id IS the Supabase user id, and
+    # role is authoritative from the verified JWT's app_metadata, not
+    # this column (kept here only for admin-listing display convenience
+    # and to stay in sync when a role is changed out-of-band). See
+    # decisions/0022-supabase-auth-migration.md.
     email: str | None = None
-    password_hash: str | None = None
     role: str = "farmer"
 
 

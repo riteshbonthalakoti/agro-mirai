@@ -86,7 +86,6 @@ class SupabaseDataStore:
             "district": farmer.district,
             "state": farmer.state,
             "email": farmer.email,
-            "password_hash": farmer.password_hash,
             "role": farmer.role or "farmer",
         }
         try:
@@ -162,7 +161,6 @@ class SupabaseDataStore:
             district=row.get("district"),
             state=row.get("state"),
             email=row.get("email"),
-            password_hash=row.get("password_hash"),
             role=row.get("role") or "farmer",
         )
 

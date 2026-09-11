@@ -91,7 +91,6 @@ def update_me():
         name=new_name,
         preferred_language=new_lang,
         email=farmer.email,
-        password_hash=farmer.password_hash,
         role=farmer.role,
     )
     saved = store.save_farmer(updated)
