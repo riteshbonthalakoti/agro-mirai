@@ -29,7 +29,7 @@ def _app_and_client():
 
 
 def _register_and_login(client, phone, name="Someone"):
-    from tests.api._otp_helpers import register_and_login
+    from _otp_helpers import register_and_login
 
     assert register_and_login(client, phone, name=name).status_code == 200
 
@@ -78,7 +78,7 @@ def test_admin_sees_all_farmers_and_fields():
     admin_farmer.role = "admin"
     store.save_farmer(admin_farmer)
 
-    from tests.api._otp_helpers import register_and_login
+    from _otp_helpers import register_and_login
 
     assert register_and_login(client, "+919000000023", name="B").status_code == 200
 

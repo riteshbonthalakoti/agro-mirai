@@ -11,7 +11,7 @@ from unittest.mock import MagicMock
 from agro_mirai.api.app import create_app
 from agro_mirai.persistence.models import Advisory
 from agro_mirai.persistence.sqlite_store import SQLiteDataStore
-from tests.api._otp_helpers import register_and_login
+from _otp_helpers import register_and_login
 
 _NOW = datetime(2026, 8, 25, 9, 0, 0, tzinfo=timezone.utc)
 
