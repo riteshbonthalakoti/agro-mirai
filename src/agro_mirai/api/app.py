@@ -119,9 +119,11 @@ def create_app(config: dict | None = None) -> Flask:
     app.config["SENTRY_DSN"] = os.environ.get("SENTRY_DSN", "")
     # Module 19 — /v2 session auth. FLASK_SECRET_KEY (already required by
     # Module 15's Procfile/render.yaml for Flask's session signing) covers
-    # this; no new secret was introduced. LOGIN_RATE_LIMIT is specific to
-    # /v2/auth/login, on top of the general per-key RATE_LIMIT above.
-    app.config["LOGIN_RATE_LIMIT"] = os.environ.get("LOGIN_RATE_LIMIT", "5 per minute")
+    # this. Module 27: OTP_RATE_LIMIT is specific to /v2/auth/request-otp,
+    # on top of the general per-key RATE_LIMIT above (env var renamed from
+    # LOGIN_RATE_LIMIT since Module 27 replaced email+password login with
+    # Name+Phone+OTP; see decisions/0023-name-phone-otp-auth.md).
+    app.config["OTP_RATE_LIMIT"] = os.environ.get("OTP_RATE_LIMIT", "5 per minute")
     # Module 23 — voice endpoints (/v2/advisories/{id}/audio, /v2/stt) are
     # far more expensive per call than a JSON read, so they get their own,
     # tighter limits on top of the general RATE_LIMIT above.
@@ -208,14 +210,14 @@ def create_app(config: dict | None = None) -> Flask:
     app.register_blueprint(value_v2_bp)
     app.register_blueprint(voice_v2_bp)
 
-    # Module 19 — login-specific rate limit, on top of the general
-    # per-key limit above. The @login_limiter.limit(...) decorator lives
-    # on the view function itself in routes/auth_v2.py (must be applied
-    # before blueprint registration, see login_rate_limit.py's
+    # Module 27 — OTP-request-specific rate limit, on top of the general
+    # per-key limit above. The @otp_request_limiter.limit(...) decorator
+    # lives on the view function itself in routes/auth_v2.py (must be
+    # applied before blueprint registration, see login_rate_limit.py's
     # docstring); this just binds that limiter to this app instance.
-    from agro_mirai.api.login_rate_limit import login_limiter
+    from agro_mirai.api.login_rate_limit import otp_request_limiter
 
-    login_limiter.init_app(app)
+    otp_request_limiter.init_app(app)
 
     # Module 23 — same pattern as login_limiter, for the two voice routes.
     from agro_mirai.api.voice_rate_limit import voice_limiter

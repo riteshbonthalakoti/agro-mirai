@@ -34,6 +34,7 @@ ROOT = Path(__file__).resolve().parent.parent.parent.parent
 MIGRATION_PATH = ROOT / "migrations" / "sqlite" / "001_init.sql"
 AUTH_MIGRATION_PATH = ROOT / "migrations" / "sqlite" / "002_auth_fields.sql"
 DISEASE_SOURCE_MIGRATION_PATH = ROOT / "migrations" / "sqlite" / "003_disease_alert_source.sql"
+PHONE_UNIQUE_MIGRATION_PATH = ROOT / "migrations" / "sqlite" / "005_phone_unique.sql"
 
 
 # --------------------------------------------------------------------------
@@ -90,6 +91,15 @@ class SQLiteDataStore:
         conn.commit()
         self._apply_auth_migration()
         self._apply_disease_source_migration()
+        self._apply_phone_unique_migration()
+
+    def _apply_phone_unique_migration(self) -> None:
+        """Module 27: index-only, safe to re-run (CREATE UNIQUE INDEX IF
+        NOT EXISTS) -- see migrations/sqlite/005_phone_unique.sql."""
+        sql = PHONE_UNIQUE_MIGRATION_PATH.read_text(encoding="utf-8")
+        conn = self._conn
+        conn.executescript(sql)
+        conn.commit()
 
     def _apply_disease_source_migration(self) -> None:
         """Module 21: same ADD-COLUMN-tolerating pattern as
@@ -181,9 +191,18 @@ class SQLiteDataStore:
     def get_farmer_by_email(self, email: str) -> Farmer | None:
         """Module 19. Case-sensitive on the stored value -- callers
         normalise (lowercase) email before calling, per
-        api/routes/auth_v2.py."""
+        api/routes/admin_ui.py."""
         row = self._conn.execute(
             "SELECT * FROM farmers WHERE email = ?", (email,)
+        ).fetchone()
+        return self._row_to_farmer(row) if row else None
+
+    def get_farmer_by_phone(self, phone: str) -> Farmer | None:
+        """Module 27. Exact match on the stored value -- callers
+        normalise phone (strip whitespace) before calling, per
+        api/routes/auth_v2.py."""
+        row = self._conn.execute(
+            "SELECT * FROM farmers WHERE phone = ?", (phone,)
         ).fetchone()
         return self._row_to_farmer(row) if row else None
 

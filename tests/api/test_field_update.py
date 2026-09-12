@@ -22,12 +22,10 @@ def client(app):
     return app.test_client()
 
 
-def _register_and_login(client, email="farmer@example.com", password="Sup3rSecret1"):
-    client.post(
-        "/v2/auth/register",
-        json={"email": email, "password": password, "name": "F", "preferred_language": "en"},
-    )
-    assert client.post("/v2/auth/login", json={"email": email, "password": password}).status_code == 200
+def _register_and_login(client, phone="+919000000001"):
+    from tests.api._otp_helpers import register_and_login
+
+    assert register_and_login(client, phone).status_code == 200
 
 
 def _create_field(client) -> str:
@@ -85,10 +83,10 @@ def test_patch_unknown_key_400(client):
 
 
 def test_patch_cross_tenant_404(client):
-    _register_and_login(client, "farmerA@example.com", "Sup3rSecret1")
+    _register_and_login(client, "+919111111111")
     field_id = _create_field(client)
     client.post("/v2/auth/logout")
 
-    _register_and_login(client, "farmerB@example.com", "Sup3rSecret2")
+    _register_and_login(client, "+919222222222")
     resp = client.patch(f"/v2/fields/{field_id}", json={"name": "Hijacked"})
     assert resp.status_code == 404

@@ -101,6 +101,12 @@ class SupabaseDataStore:
         rows = res.data
         return self._row_to_farmer(rows[0]) if rows else None
 
+    def get_farmer_by_phone(self, phone: str) -> Farmer | None:
+        """Module 27. See sqlite_store.py's twin for the contract."""
+        res = self._client.table("farmers").select("*").eq("phone", phone).execute()
+        rows = res.data
+        return self._row_to_farmer(rows[0]) if rows else None
+
     def list_all_farmers(self, limit: int = 500) -> list[Farmer]:
         """Module 19. Admin-only, unscoped -- see repository-interface.md."""
         res = (

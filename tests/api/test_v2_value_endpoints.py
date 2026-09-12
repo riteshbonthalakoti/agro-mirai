@@ -113,13 +113,10 @@ def client(app):
     return app.test_client()
 
 
-def _register_and_login(client, email: str, password: str = "Sup3rSecret1"):
-    r = client.post(
-        "/v2/auth/register",
-        json={"email": email, "password": password, "name": "Farmer", "preferred_language": "en"},
-    )
-    assert r.status_code == 201
-    r = client.post("/v2/auth/login", json={"email": email, "password": password})
+def _register_and_login(client, phone: str):
+    from tests.api._otp_helpers import register_and_login
+
+    r = register_and_login(client, phone)
     assert r.status_code == 200
 
 
@@ -171,7 +168,7 @@ def test_feedback_requires_session(client):
 # --- Success paths (proves the six endpoints actually exist and work) ---
 
 def test_recommendation_success(client):
-    _register_and_login(client, "a1@example.com")
+    _register_and_login(client, "+919000000001")
     field_id = _create_field(client)
     resp = client.get(f"/v2/fields/{field_id}/recommendation")
     assert resp.status_code == 200
@@ -179,7 +176,7 @@ def test_recommendation_success(client):
 
 
 def test_irrigation_success(client):
-    _register_and_login(client, "a2@example.com")
+    _register_and_login(client, "+919000000002")
     field_id = _create_field(client)
     resp = client.get(f"/v2/fields/{field_id}/irrigation")
     assert resp.status_code == 200
@@ -187,7 +184,7 @@ def test_irrigation_success(client):
 
 
 def test_disease_risk_success(client):
-    _register_and_login(client, "a3@example.com")
+    _register_and_login(client, "+919000000003")
     field_id = _create_field(client)
     resp = client.get(f"/v2/fields/{field_id}/disease-risk")
     assert resp.status_code == 200
@@ -198,7 +195,7 @@ def test_disease_risk_image_falls_back_to_environmental_never_500(client):
     # cnn_client.call_cnn_service is monkeypatched to return None (no CNN
     # service configured) — this is the exact Module 21/22 hard-fallback
     # contract, verified on the /v2 copy specifically.
-    _register_and_login(client, "a4@example.com")
+    _register_and_login(client, "+919000000004")
     field_id = _create_field(client)
     resp = client.post(
         f"/v2/fields/{field_id}/disease-risk/image",
@@ -211,7 +208,7 @@ def test_disease_risk_image_falls_back_to_environmental_never_500(client):
 
 
 def test_advisories_success(client):
-    _register_and_login(client, "a5@example.com")
+    _register_and_login(client, "+919000000005")
     field_id = _create_field(client)
     resp = client.get(f"/v2/fields/{field_id}/advisories")
     assert resp.status_code == 200
@@ -219,7 +216,7 @@ def test_advisories_success(client):
 
 
 def test_feedback_success(client):
-    _register_and_login(client, "a6@example.com")
+    _register_and_login(client, "+919000000006")
     field_id = _create_field(client)
     advisories = client.get(f"/v2/fields/{field_id}/advisories").get_json()["items"]
     advisory_id = advisories[0]["id"]
@@ -234,7 +231,7 @@ def test_feedback_success(client):
 # --- Module 22 behaviour preserved: 422 on exhausted weather ---
 
 def test_irrigation_returns_422_not_500_when_no_weather_data(client, monkeypatch):
-    _register_and_login(client, "a7@example.com")
+    _register_and_login(client, "+919000000007")
     field_id = _create_field(client)
 
     def _raise(*args, **kwargs):
@@ -251,13 +248,13 @@ def test_irrigation_returns_422_not_500_when_no_weather_data(client, monkeypatch
 
 @pytest.fixture
 def two_farmers(client):
-    _register_and_login(client, "farmerA@example.com", password="Sup3rSecret1")
+    _register_and_login(client, "+919111111111")
     field_id = _create_field(client)
     advisories = client.get(f"/v2/fields/{field_id}/advisories").get_json()["items"]
     advisory_id = advisories[0]["id"]
     client.post("/v2/auth/logout")
 
-    _register_and_login(client, "farmerB@example.com", password="Sup3rSecret2")
+    _register_and_login(client, "+919222222222")
     return field_id, advisory_id
 
 
