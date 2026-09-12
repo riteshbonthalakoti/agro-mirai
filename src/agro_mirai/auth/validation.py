@@ -1,14 +1,24 @@
-"""Registration input validation — email shape and password strength.
+"""Registration input validation.
 
 Pure functions, no Flask/DataStore dependency. Each raises ``ValueError``
-with a human-readable message on failure; ``api/routes/auth_v2.py``
-catches that and maps it to a 400 ``ApiError``.
+with a human-readable message on failure; callers map that to a 400
+``ApiError``. ``validate_phone``/``validate_otp_code`` back Module 27's
+Name+Phone+OTP auth (``api/routes/auth_v2.py``); ``validate_email``/
+``validate_password_strength`` are kept for the out-of-band admin-account
+path (``api/routes/admin_ui.py``), which still authenticates via
+email+password since admin accounts are provisioned directly against the
+DataStore, not through farmer self-registration.
 """
 from __future__ import annotations
 
 import re
 
 _EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+# E.164-ish: optional leading '+', 7-15 digits total. Loose on purpose —
+# real E.164 validation needs a country-code table this project has no
+# use for yet; this just rejects obvious garbage ("abc", "1", "").
+_PHONE_RE = re.compile(r"^\+?[0-9]{7,15}$")
+_OTP_RE = re.compile(r"^[0-9]{6}$")
 
 MIN_PASSWORD_LENGTH = 8
 
@@ -35,3 +45,13 @@ def validate_password_strength(password: str) -> None:
 def validate_name(name: str) -> None:
     if not name or not isinstance(name, str) or not name.strip():
         raise ValueError("name is required")
+
+
+def validate_phone(phone: str) -> None:
+    if not phone or not isinstance(phone, str) or not _PHONE_RE.match(phone):
+        raise ValueError("phone must be a valid phone number (7-15 digits, optional leading +)")
+
+
+def validate_otp_code(code: str) -> None:
+    if not code or not isinstance(code, str) or not _OTP_RE.match(code):
+        raise ValueError(f"otp must be a {6}-digit code")

@@ -21,7 +21,14 @@ entities:
       updated_at: { type: timestamp, required: true }
       name: { type: string, required: true }
       preferred_language: { type: string, enum: language_code, required: true }
-      phone: { type: string, required: false, note: "E.164 format, optional" }
+      phone:
+        type: string
+        required: false
+        note: >
+          E.164-ish (loose validation, see auth/validation.py). Unique
+          when present (enforced by a partial unique index, not by this
+          schema). Module 27: required for /v2 Name+Phone+OTP auth;
+          absent on farmers created only via the /v1 shared-key flow.
       district: { type: string, required: false }
       state: { type: string, required: false }
       email:
@@ -29,14 +36,19 @@ entities:
         required: false
         note: >
           Module 19. Unique when present (enforced by a partial unique
-          index, not by this schema). Required for /v2 login; absent on
-          farmers created only via the /v1 shared-key flow.
+          index, not by this schema). Module 27: no longer used by
+          farmer self-registration (that's phone+OTP now) — kept only
+          for the out-of-band-provisioned admin-account email+password
+          login path (api/routes/admin_ui.py). Absent on farmers created
+          via /v1 or /v2 self-registration.
       password_hash:
         type: string
         required: false
         note: >
           Module 19. A bcrypt hash — never plaintext. Never returned by
-          any API response; excluded in the public serializer.
+          any API response; excluded in the public serializer. Module
+          27: only ever set on admin accounts now (see `email` above) —
+          farmer accounts created via /v2 auth have no password at all.
       role:
         type: string
         enum: user_role

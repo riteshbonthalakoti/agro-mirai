@@ -2,7 +2,13 @@ from __future__ import annotations
 
 import pytest
 
-from agro_mirai.auth.validation import validate_email, validate_name, validate_password_strength
+from agro_mirai.auth.validation import (
+    validate_email,
+    validate_name,
+    validate_otp_code,
+    validate_password_strength,
+    validate_phone,
+)
 
 
 @pytest.mark.parametrize("email", ["a@b.com", "ritesh@dharanova.com", "x.y+z@sub.domain.co"])
@@ -46,3 +52,25 @@ def test_validate_name_requires_non_blank():
         validate_name("")
     with pytest.raises(ValueError):
         validate_name("   ")
+
+
+@pytest.mark.parametrize("phone", ["+919876543210", "9876543210", "+14155552671"])
+def test_valid_phones_pass(phone):
+    validate_phone(phone)  # no raise
+
+
+@pytest.mark.parametrize("phone", ["", "abc", "123", "+", "1" * 16, None])
+def test_invalid_phones_raise(phone):
+    with pytest.raises(ValueError):
+        validate_phone(phone)
+
+
+@pytest.mark.parametrize("code", ["000000", "123456", "999999"])
+def test_valid_otp_codes_pass(code):
+    validate_otp_code(code)  # no raise
+
+
+@pytest.mark.parametrize("code", ["", "12345", "1234567", "abcdef", None])
+def test_invalid_otp_codes_raise(code):
+    with pytest.raises(ValueError):
+        validate_otp_code(code)

@@ -24,12 +24,10 @@ def client(app):
     return app.test_client()
 
 
-def _register_and_login(client, email="farmer@example.com", password="Sup3rSecret1"):
-    client.post(
-        "/v2/auth/register",
-        json={"email": email, "password": password, "name": "F", "preferred_language": "en"},
-    )
-    assert client.post("/v2/auth/login", json={"email": email, "password": password}).status_code == 200
+def _register_and_login(client, phone="+919000000001"):
+    from tests.api._otp_helpers import register_and_login
+
+    assert register_and_login(client, phone).status_code == 200
 
 
 @pytest.mark.parametrize("lang", ["en", "kn", "te", "hi"])

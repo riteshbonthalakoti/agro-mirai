@@ -1,12 +1,14 @@
-"""Module 19 integration: register -> login -> access own data -> CANNOT
-access another farmer's data -> logout -> session invalidated. Real
-Flask test client, real SQLiteDataStore (:memory:), real session
-cookies (no mocked auth) — this is the genuine cross-tenant isolation
-proof the module spec asks for, not just a happy-path test.
+"""Module 27 integration: request-otp -> verify-otp -> access own data ->
+CANNOT access another farmer's data -> logout -> session invalidated.
+Real Flask test client, real SQLiteDataStore (:memory:), real session
+cookies (no mocked auth) — the same genuine cross-tenant isolation proof
+Module 19 established, now against Name+Phone+OTP auth instead of
+email+password.
 """
 from __future__ import annotations
 
 from agro_mirai.api.app import create_app
+from agro_mirai.auth.otp import otp_store
 from agro_mirai.persistence.sqlite_store import SQLiteDataStore
 from agro_mirai.models.crop_recommendation_model import (
     DEFAULT_MODEL_PATH as CROP_MODEL_PATH,
@@ -27,94 +29,104 @@ def _app():
     return create_app({"TESTING": True, "DATA_STORE": store, "API_KEY": "x", "FARMER_ID": "y"})
 
 
-def _register(client, email, password="Sup3rSecret1", name="Farmer"):
+def _request_otp(client, phone, name="Farmer", preferred_language="en"):
     return client.post(
-        "/v2/auth/register",
-        json={"email": email, "password": password, "name": name, "preferred_language": "en"},
+        "/v2/auth/request-otp",
+        json={"phone": phone, "name": name, "preferred_language": preferred_language},
     )
 
 
-def test_register_creates_farmer_without_leaking_hash():
+def _login(client, phone, name="Farmer"):
+    """request-otp -> read the real code straight out of the process-local
+    OtpStore (standing in for "read it off the server logs", which is
+    where a human tester would get it per decisions/0023) -> verify-otp."""
+    resp = _request_otp(client, phone, name=name)
+    assert resp.status_code == 200
+    code = otp_store._pending[phone].code
+    return client.post("/v2/auth/verify-otp", json={"phone": phone, "otp": code})
+
+
+def test_request_otp_creates_farmer_without_leaking_hash():
     app = _app()
     client = app.test_client()
-    resp = _register(client, "alice@example.com")
-    assert resp.status_code == 201
+    resp = _request_otp(client, "+919876543210", name="Alice")
+    assert resp.status_code == 200
     body = resp.get_json()
-    assert body["email"] == "alice@example.com"
+    assert body["otp_sent"] is True
     assert "password_hash" not in body
 
 
-def test_register_rejects_weak_password():
+def test_request_otp_rejects_missing_name_for_new_phone():
     app = _app()
     client = app.test_client()
-    resp = _register(client, "weak@example.com", password="short")
+    resp = client.post(
+        "/v2/auth/request-otp", json={"phone": "+919876543211", "name": ""}
+    )
+    assert resp.status_code == 400
+
+
+def test_request_otp_rejects_invalid_phone():
+    app = _app()
+    client = app.test_client()
+    resp = _request_otp(client, "abc", name="Farmer")
     assert resp.status_code == 400
 
 
 @pytest.mark.parametrize("lang", ["en", "kn", "te", "hi"])
-def test_register_accepts_each_v1_language(lang):
+def test_request_otp_accepts_each_v1_language(lang):
     app = _app()
     client = app.test_client()
     resp = client.post(
-        "/v2/auth/register",
-        json={
-            "email": f"{lang}@example.com",
-            "password": "Sup3rSecret1",
-            "name": "Farmer",
-            "preferred_language": lang,
-        },
+        "/v2/auth/request-otp",
+        json={"phone": f"+91900000{ord(lang[0]):04d}", "name": "Farmer", "preferred_language": lang},
     )
-    assert resp.status_code == 201
-    assert resp.get_json()["preferred_language"] == lang
+    assert resp.status_code == 200
 
 
-def test_register_rejects_unsupported_language():
+def test_request_otp_rejects_unsupported_language():
     app = _app()
     client = app.test_client()
     resp = client.post(
-        "/v2/auth/register",
-        json={
-            "email": "unsupported@example.com",
-            "password": "Sup3rSecret1",
-            "name": "Farmer",
-            "preferred_language": "ta",
-        },
+        "/v2/auth/request-otp",
+        json={"phone": "+919000000002", "name": "Farmer", "preferred_language": "ta"},
     )
     assert resp.status_code == 400
     assert "preferred_language" in resp.get_json()["error"]["message"]
 
 
-def test_register_rejects_duplicate_email():
+def test_verify_otp_wrong_code_401():
     app = _app()
     client = app.test_client()
-    _register(client, "dup@example.com")
-    resp = _register(client, "dup@example.com")
-    assert resp.status_code == 409
-
-
-def test_login_wrong_password_401():
-    app = _app()
-    client = app.test_client()
-    _register(client, "bob@example.com", password="Sup3rSecret1")
+    _request_otp(client, "+919000000003", name="Bob")
     resp = client.post(
-        "/v2/auth/login", json={"email": "bob@example.com", "password": "WrongPass1"}
+        "/v2/auth/verify-otp", json={"phone": "+919000000003", "otp": "000000"}
     )
     assert resp.status_code == 401
+
+
+def test_verify_otp_wrong_code_does_not_consume_pending_otp():
+    """A wrong guess doesn't burn the real code -- the farmer can still
+    retry with the correct one within MAX_VERIFY_ATTEMPTS."""
+    app = _app()
+    client = app.test_client()
+    _request_otp(client, "+919000000004", name="Carl")
+    real_code = otp_store._pending["+919000000004"].code
+    wrong = client.post(
+        "/v2/auth/verify-otp", json={"phone": "+919000000004", "otp": "111111"}
+    )
+    assert wrong.status_code == 401
+    right = client.post(
+        "/v2/auth/verify-otp", json={"phone": "+919000000004", "otp": real_code}
+    )
+    assert right.status_code == 200
 
 
 def test_full_cross_tenant_isolation_flow():
     app = _app()
     client = app.test_client()
 
-    # Register two farmers.
-    r1 = _register(client, "farmer1@example.com", password="Sup3rSecret1")
-    r2 = _register(client, "farmer2@example.com", password="Sup3rSecret2")
-    assert r1.status_code == 201 and r2.status_code == 201
-
-    # --- Farmer 1 logs in, creates a field, can read it back.
-    login1 = client.post(
-        "/v2/auth/login", json={"email": "farmer1@example.com", "password": "Sup3rSecret1"}
-    )
+    # Farmer 1 requests+verifies OTP, creates a field, can read it back.
+    login1 = _login(client, "+919111111111", name="Farmer One")
     assert login1.status_code == 200
 
     create = client.post(
@@ -142,9 +154,7 @@ def test_full_cross_tenant_isolation_flow():
     assert denied_after_logout.status_code == 401
 
     # --- Farmer 2 logs in: CANNOT see or fetch farmer 1's field.
-    login2 = client.post(
-        "/v2/auth/login", json={"email": "farmer2@example.com", "password": "Sup3rSecret2"}
-    )
+    login2 = _login(client, "+919222222222", name="Farmer Two")
     assert login2.status_code == 200
 
     list_other = client.get("/v2/fields")
@@ -171,8 +181,20 @@ def test_unauthenticated_v2_request_401():
 def test_v2_farmers_me_matches_logged_in_farmer():
     app = _app()
     client = app.test_client()
-    _register(client, "carol@example.com", password="Sup3rSecret1")
-    client.post("/v2/auth/login", json={"email": "carol@example.com", "password": "Sup3rSecret1"})
+    login = _login(client, "+919333333333", name="Carol")
+    assert login.status_code == 200
     resp = client.get("/v2/farmers/me")
     assert resp.status_code == 200
-    assert resp.get_json()["email"] == "carol@example.com"
+    assert resp.get_json()["phone"] == "+919333333333"
+    assert resp.get_json()["name"] == "Carol"
+
+
+def test_request_otp_for_existing_phone_does_not_require_name():
+    """Second (and later) OTP requests for an already-registered phone
+    don't need name/preferred_language again -- only first-time
+    registration does."""
+    app = _app()
+    client = app.test_client()
+    _request_otp(client, "+919444444444", name="Dave")
+    resp = client.post("/v2/auth/request-otp", json={"phone": "+919444444444"})
+    assert resp.status_code == 200

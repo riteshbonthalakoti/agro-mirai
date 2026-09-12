@@ -28,12 +28,10 @@ def _app_and_client():
     return app, app.test_client()
 
 
-def _register_and_login(client, email, password="Sup3rSecret1", name="Someone"):
-    client.post(
-        "/v2/auth/register",
-        json={"email": email, "password": password, "name": name, "preferred_language": "en"},
-    )
-    client.post("/v2/auth/login", json={"email": email, "password": password})
+def _register_and_login(client, phone, name="Someone"):
+    from tests.api._otp_helpers import register_and_login
+
+    assert register_and_login(client, phone, name=name).status_code == 200
 
 
 def test_admin_routes_are_read_only_no_write_methods_registered():
@@ -46,7 +44,7 @@ def test_admin_routes_are_read_only_no_write_methods_registered():
 
 def test_non_admin_gets_403():
     app, client = _app_and_client()
-    _register_and_login(client, "plain@example.com")
+    _register_and_login(client, "+919000000021")
     resp = client.get("/v2/admin/farmers")
     assert resp.status_code == 403
 
@@ -61,32 +59,34 @@ def test_admin_sees_all_farmers_and_fields():
     app, client = _app_and_client()
     store = app.extensions["data_store"]
 
-    _register_and_login(client, "farmer_a@example.com", name="A")
+    _register_and_login(client, "+919000000022", name="A")
     client.post(
         "/v2/fields", json={"name": "Plot A", "latitude": 1.0, "longitude": 1.0, "area_ha": 1.0}
     )
     client.post("/v2/auth/logout")
 
-    _register_and_login(client, "farmer_b@example.com", name="B")
+    _register_and_login(client, "+919000000023", name="B")
     client.post(
         "/v2/fields", json={"name": "Plot B", "latitude": 2.0, "longitude": 2.0, "area_ha": 2.0}
     )
     client.post("/v2/auth/logout")
 
-    # Promote farmer_b to admin directly via the store (no admin-signup
+    # Promote farmer B to admin directly via the store (no admin-signup
     # endpoint exists — provisioning an admin is an out-of-band step,
-    # documented as a known limitation in decisions/0017).
-    admin_farmer = store.get_farmer_by_email("farmer_b@example.com")
+    # documented as a known limitation, see decisions/0023).
+    admin_farmer = store.get_farmer_by_phone("+919000000023")
     admin_farmer.role = "admin"
     store.save_farmer(admin_farmer)
 
-    client.post("/v2/auth/login", json={"email": "farmer_b@example.com", "password": "Sup3rSecret1"})
+    from tests.api._otp_helpers import register_and_login
+
+    assert register_and_login(client, "+919000000023", name="B").status_code == 200
 
     farmers_resp = client.get("/v2/admin/farmers")
     assert farmers_resp.status_code == 200
     farmers = farmers_resp.get_json()["items"]
-    emails = {f["email"] for f in farmers}
-    assert {"farmer_a@example.com", "farmer_b@example.com"} <= emails
+    phones = {f["phone"] for f in farmers}
+    assert {"+919000000022", "+919000000023"} <= phones
     assert all("password_hash" not in f for f in farmers)
     assert all("field_count" in f for f in farmers)
 

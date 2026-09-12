@@ -47,8 +47,14 @@ class DataStore(Protocol):
     def save_farmer(self, farmer: Farmer) -> Farmer: ...
 
     def get_farmer_by_email(self, email: str) -> Farmer | None:
-        """Module 19. Lookup for login/registration; None if no farmer
-        has this email (or email was never set, e.g. a /v1-only record)."""
+        """Module 19. Lookup for the admin-account email+password login
+        path (api/routes/admin_ui.py); None if no farmer has this email
+        (or email was never set, e.g. a /v1-only record)."""
+        ...
+
+    def get_farmer_by_phone(self, phone: str) -> Farmer | None:
+        """Module 27. Lookup for the Name+Phone+OTP auth flow; None if no
+        farmer has this phone number yet."""
         ...
 
     def list_all_farmers(self, limit: int = 500) -> list[Farmer]:

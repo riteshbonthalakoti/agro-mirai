@@ -11,6 +11,7 @@ from unittest.mock import MagicMock
 from agro_mirai.api.app import create_app
 from agro_mirai.persistence.models import Advisory
 from agro_mirai.persistence.sqlite_store import SQLiteDataStore
+from tests.api._otp_helpers import register_and_login
 
 _NOW = datetime(2026, 8, 25, 9, 0, 0, tzinfo=timezone.utc)
 
@@ -23,11 +24,7 @@ def _app(**rate_limits):
 
 
 def _login_and_seed_advisory(client, app):
-    client.post(
-        "/v2/auth/register",
-        json={"email": "f@example.com", "password": "Sup3rSecret1", "name": "F", "preferred_language": "en"},
-    )
-    client.post("/v2/auth/login", json={"email": "f@example.com", "password": "Sup3rSecret1"})
+    assert register_and_login(client, "+919000000010").status_code == 200
     field_id = client.post(
         "/v2/fields", json={"name": "P", "latitude": 15.0, "longitude": 76.0, "area_ha": 1.0}
     ).get_json()["id"]
@@ -75,11 +72,7 @@ def test_tts_exceeding_limit_returns_429(monkeypatch):
 def test_stt_exceeding_limit_returns_429(monkeypatch):
     app = _app(STT_RATE_LIMIT="2 per minute")
     client = app.test_client()
-    client.post(
-        "/v2/auth/register",
-        json={"email": "f2@example.com", "password": "Sup3rSecret1", "name": "F", "preferred_language": "en"},
-    )
-    client.post("/v2/auth/login", json={"email": "f2@example.com", "password": "Sup3rSecret1"})
+    register_and_login(client, "+919000000011")
 
     monkeypatch.setattr("agro_mirai.api.voice_client.get_remote_voice_service", lambda: None)
 
