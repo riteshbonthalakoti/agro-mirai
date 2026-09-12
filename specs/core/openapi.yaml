@@ -205,39 +205,53 @@ paths:
   # Session-cookie authenticated, not bearerAuth — see sessionCookie below.
   # decisions/0017-multi-tenant-v2.md. /v1 above is unchanged and stays
   # live for demo/backward-compat; these are additive new paths, not a
-  # revision of the /v1 ones.
+  # revision of the /v1 ones. Module 27: farmer auth is Name+Phone+OTP
+  # (request-otp/verify-otp), not email+password — see
+  # decisions/0023-name-phone-otp-auth.md. The admin-account
+  # email+password login stays on /admin/login (server-rendered, not in
+  # this API surface) since admin accounts are provisioned out-of-band.
 
-  /v2/auth/register:
+  /v2/auth/request-otp:
     post:
-      summary: Register a new Farmer account (email + password).
+      summary: >
+        Find-or-create a Farmer by phone and issue a 6-digit OTP. New
+        phone numbers require name (+ optional preferred_language);
+        an already-registered phone can omit them. The OTP is not sent
+        anywhere yet — it is written to the server's own log output
+        (OTP_DELIVERY=log, dev/demo posture, see decisions/0023).
+        Rate-limited per remote address (OTP_RATE_LIMIT).
       security: []
       requestBody:
         required: true
         content:
           application/json:
-            schema: { $ref: '#/components/schemas/RegisterRequest' }
+            schema: { $ref: '#/components/schemas/RequestOtpRequest' }
       responses:
-        '201':
-          description: The created Farmer (public fields only — never password_hash).
+        '200':
+          description: OTP issued (delivery is via server logs today).
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/Farmer' }
+              schema:
+                type: object
+                properties:
+                  phone: { type: string }
+                  otp_sent: { type: boolean }
         '400': { $ref: '#/components/responses/BadRequest' }
-        '409':
-          description: Email already registered.
+        '429':
+          description: Too many OTP requests.
           content:
             application/json:
               schema: { $ref: '#/components/schemas/ErrorEnvelope' }
 
-  /v2/auth/login:
+  /v2/auth/verify-otp:
     post:
-      summary: Log in with email + password; issues a signed session cookie. Rate-limited per remote address.
+      summary: Verify the OTP for a phone number; issues a signed session cookie.
       security: []
       requestBody:
         required: true
         content:
           application/json:
-            schema: { $ref: '#/components/schemas/LoginRequest' }
+            schema: { $ref: '#/components/schemas/VerifyOtpRequest' }
       responses:
         '200':
           description: Logged in; session cookie set.
@@ -245,9 +259,8 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/Farmer' }
         '400': { $ref: '#/components/responses/BadRequest' }
-        '401': { $ref: '#/components/responses/Unauthorized' }
-        '429':
-          description: Too many login attempts.
+        '401':
+          description: Invalid or expired OTP.
           content:
             application/json:
               schema: { $ref: '#/components/schemas/ErrorEnvelope' }
@@ -758,23 +771,28 @@ components:
           nullable: true
           description: Module 19. Absent/defaults to "farmer" for pre-Module-19 records.
 
-    RegisterRequest:
+    RequestOtpRequest:
       type: object
-      required: [email, password, name]
+      required: [phone]
       properties:
-        email: { type: string, format: email }
-        password: { type: string, description: Must satisfy the strength policy in agro_mirai.auth.validation (min length + composition). }
-        name: { type: string }
+        phone: { type: string, description: "E.164-ish, 7-15 digits, optional leading +." }
+        name: { type: string, description: Required only the first time this phone requests an OTP. }
         preferred_language:
           type: string
-          enum: [en, hi, kn, ta, te, mr, bn, gu]
+          enum: [en, kn, te, hi]
+          description: >
+            Only consulted the first time this phone requests an OTP
+            (new-farmer creation); ignored on later requests for an
+            already-registered phone. Restricted to V1_LANGUAGES (the
+            voice-operational set), not the broader 8-language
+            enums.md list.
 
-    LoginRequest:
+    VerifyOtpRequest:
       type: object
-      required: [email, password]
+      required: [phone, otp]
       properties:
-        email: { type: string, format: email }
-        password: { type: string }
+        phone: { type: string }
+        otp: { type: string, description: The 6-digit code issued by /v2/auth/request-otp. }
 
     AdminFarmerSummary:
       description: A Farmer plus the one admin-only aggregate field.
