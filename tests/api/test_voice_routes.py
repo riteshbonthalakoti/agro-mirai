@@ -31,7 +31,7 @@ def client(app):
 
 
 def _register_and_login(client, phone="+919000000001", _unused=None):
-    from tests.api._otp_helpers import register_and_login
+    from _otp_helpers import register_and_login
 
     resp = register_and_login(client, phone)
     assert resp.status_code == 200
