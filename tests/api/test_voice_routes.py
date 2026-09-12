@@ -16,12 +16,7 @@ from agro_mirai.persistence.models import Advisory
 from agro_mirai.persistence.sqlite_store import SQLiteDataStore
 from agro_mirai.voice.interface import VoiceUnavailableError
 
-from conftest import make_jwt
-
 _NOW = datetime(2026, 8, 25, 9, 0, 0, tzinfo=timezone.utc)
-_next_farmer_id = iter(
-    f"dddddddd-{n:04d}-4000-8000-0000000000d1" for n in range(1, 1000)
-)
 
 
 @pytest.fixture
@@ -36,16 +31,11 @@ def client(app):
 
 
 def _register_and_login(client, email="farmer@example.com", password="Sup3rSecret1"):
-    """Module 26: no more /v2/auth/register|login — mints a JWT for a
-    fresh Supabase-user-id and sets it as the test client's default
-    Authorization header (Werkzeug's environ_base), so every subsequent
-    request from this client authenticates as this farmer without
-    threading headers through every call site individually — the same
-    "log in once, stay logged in" ergonomics the old cookie-jar gave
-    these tests, now backed by a bearer token instead of a session
-    cookie."""
-    token = make_jwt(next(_next_farmer_id), email=email)
-    client.environ_base["HTTP_AUTHORIZATION"] = f"Bearer {token}"
+    client.post(
+        "/v2/auth/register",
+        json={"email": email, "password": password, "name": "F", "preferred_language": "en"},
+    )
+    assert client.post("/v2/auth/login", json={"email": email, "password": password}).status_code == 200
 
 
 def _create_field(client) -> str:
@@ -185,6 +175,7 @@ def test_audio_cross_tenant_404(app, client):
     field_id = _create_field(client)
     farmer_a_id = client.get("/v2/farmers/me").get_json()["id"]
     advisory_id = _seed_advisory(app, farmer_a_id, field_id)
+    client.post("/v2/auth/logout")
 
     _register_and_login(client, "farmerB@example.com", "Sup3rSecret2")
     resp = client.get(f"/v2/advisories/{advisory_id}/audio")

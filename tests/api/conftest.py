@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import sys
-from datetime import date, datetime, timedelta, timezone
+from datetime import date, datetime, timezone
 from pathlib import Path
 from unittest.mock import MagicMock
 
@@ -143,47 +143,3 @@ def client(app):
 
 def _auth_headers():
     return {"Authorization": f"Bearer {API_KEY}"}
-
-
-# --- Module 26: Supabase Auth JWT test helpers ---------------------------
-# Real Supabase-issued tokens are ES256, verified via a live JWKS fetch;
-# tests instead exercise the HS256 fallback path (jwt_auth._decode) with a
-# fixed test secret -- the same claim-validation code, no network call or
-# fake JWKS server needed per test run. A real end-to-end round trip
-# against the live Supabase Auth project was verified manually (see
-# decisions/0022-supabase-auth-migration.md's handoff notes), not on every
-# CI run.
-JWT_TEST_SECRET = "test-only-hs256-secret-for-pytest"
-
-
-@pytest.fixture(autouse=True)
-def _supabase_jwt_secret(monkeypatch):
-    monkeypatch.setenv("SUPABASE_JWT_SECRET", JWT_TEST_SECRET)
-    monkeypatch.delenv("SUPABASE_URL", raising=False)
-    from agro_mirai.api.jwt_auth import _jwks_client
-
-    _jwks_client.cache_clear()
-    yield
-    _jwks_client.cache_clear()
-
-
-def make_jwt(sub: str, role: str = "farmer", email: str | None = None) -> str:
-    """Mints an HS256 test token verify_token() will accept as if it were
-    a real Supabase-issued one (see _supabase_jwt_secret above)."""
-    import jwt as pyjwt
-
-    now = datetime.now(timezone.utc)
-    payload = {
-        "sub": sub,
-        "aud": "authenticated",
-        "iat": now,
-        "exp": now + timedelta(hours=1),
-        "app_metadata": {"role": role},
-    }
-    if email:
-        payload["email"] = email
-    return pyjwt.encode(payload, JWT_TEST_SECRET, algorithm="HS256")
-
-
-def jwt_headers(sub: str, role: str = "farmer", email: str | None = None) -> dict:
-    return {"Authorization": f"Bearer {make_jwt(sub, role=role, email=email)}"}

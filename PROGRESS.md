@@ -80,7 +80,6 @@ is now Module 19 and the CNN disease model is now Module 20.)*
 <!-- STATE:START -->
 
 ### Recent commits
-- `6553af4 Module 25: extend language support to {en, kn, te, hi}`
 - `85864a4 Fix CI: voice TTS test failure (ffmpeg not on ubuntu-latest by default)`
 - `d23ed03 PROGRESS.md: add missing Module 22, 23, 24 entries and phase table rows`
 - `66b003d Add DELETE /v2/fields/{id} â€” expose already-implemented DataStore method`
@@ -90,6 +89,7 @@ is now Module 19 and the CNN disease model is now Module 20.)*
 - `c78177f Module 23 Part A: /v2 value endpoints, session-authenticated`
 - `326c097 Pin Render Python version to 3.12.10, fixing the first live deploy`
 - `723e5f4 Module 22: fix advisory endpoints 500ing on stale fixture weather dates`
+- `b1664ba Module 21: ADR 0019 + doctrine updates (CLAUDE.md, PROGRESS.md, roadmap)`
 
 ### Module status
 - **01-foundation**: done
@@ -409,115 +409,6 @@ Remaining risk: the Render Blueprint apply + Supabase seed + live e2e
 smoke test are the one piece that needed a human in a browser and could
 not be completed in this session. Everything else (dependency pinning,
 WSGI config, gunicorn verification, docs, regression) is done.
-
-Module 26 (**BREAKING MIGRATION, not a feature add** — replaces Module
-19's custom bcrypt+signed-session `/v2` auth with real Supabase Auth)
-landed 2026-09-11. Confirmed with Ritesh before implementation (per the
-module's own "stop and report" requirement): (1) **direct-SDK-from-
-mobile** — the mobile app talks to Supabase Auth directly via the
-Supabase JS/RN SDK; Flask becomes a pure resource server verifying
-incoming JWTs, not an auth server. No project-specific reason (the old
-login rate limiter, the mobile offline-queue retry logic) argued against
-this — Supabase Auth's own rate limiting supersedes the removed 5/min
-login limiter, and the offline queue treats auth as a precondition, not
-something it retries through. (2) **clean-slate reset** — every existing
-farmer row's bcrypt hash became permanently unusable the moment
-Supabase Auth owns credentials, and this project has only seeded/test
-data at this stage, so every farmer row (and everything cascading from
-it) was wiped rather than migrated with a forced reset.
-
-`src/agro_mirai/api/jwt_auth.py` (new) verifies tokens via `PyJWT` +
-`PyJWKClient` against this project's live JWKS endpoint — confirmed live
-and using the current asymmetric ES256 signing-key default (not the
-legacy HS256 secret) via a direct `curl` against
-`https://yzsemdauwafxssaknlzr.supabase.co/auth/v1/.well-known/
-jwks.json` during this module's investigation, not assumed. Local
-verification was chosen over `supabase-py`'s `auth.get_user(token)`
-specifically to avoid a network round trip on every authenticated
-request. `role` is read from the verified token's `app_metadata.role`
-claim only (never client-writable `user_metadata`) — the authorization
-source of truth moved entirely off the stored `Farmer.role` column
-(now display-only) onto the JWT itself, re-checked on every request.
-
-`Farmer.id` now **is** the Supabase-issued `auth.users.id` — no separate
-mapping column was added, made possible by the clean-slate reset leaving
-no pre-existing rows to reconcile. Every existing foreign key already
-pointing at `Farmer.id` (`Field.farmer_id`, and everything cascading
-from a Field) needed zero schema changes. `migrations/postgres/
-004_supabase_auth.sql` adds a real `FOREIGN KEY (id) REFERENCES
-auth.users(id) ON DELETE CASCADE` — **applied for real** against the
-live linked Supabase project (`yzsemdauwafxssaknlzr`) via `supabase db
-query --file ... --linked`, verified afterward by querying
-`information_schema.columns`/`pg_constraint`/`SELECT count(*) FROM
-farmers` directly against the live database (0 rows, FK present,
-`password_hash` gone). The SQLite twin
-(`SQLiteDataStore._apply_supabase_auth_migration`) is guarded on whether
-`password_hash` still exists as a column, since — unlike every earlier
-ADD-COLUMN migration in this chain — it contains a real `DELETE` that
-would be unsafe to blindly re-run on every app boot.
-
-Dead code removed, not left half-wired alongside the new path (per this
-module's explicit instruction): `Farmer.password_hash` (dataclass,
-`schema.yaml`, both `DataStore` implementations, the `farmers` table),
-`src/agro_mirai/auth/password.py` (bcrypt, deleted; `bcrypt` dropped
-from `requirements.txt`, replaced by `PyJWT`), `validate_email`/
-`validate_password_strength` (Supabase Auth enforces its own password
-policy now), `routes/auth_v2.py` (the whole `/v2/auth/register|login|
-logout` blueprint), and `login_rate_limit.py`. `session_auth.py`'s
-decorator names (`require_session_auth`, `require_admin`) were kept
-identical on purpose so `farms_v2.py`/`value_v2.py`/`voice_v2.py`/
-`admin.py` needed zero changes beyond the auth internals themselves —
-only their contract (verify a JWT instead of a session dict) changed.
-One session-cookie consumer survives deliberately: the server-rendered
-`/admin` browser dashboard, whose login now makes a server-side
-`supabase-py` `auth.sign_in_with_password` call and stores the resulting
-JWT inside Flask's own cookie purely as same-origin browser storage —
-verified through the exact same `jwt_auth.verify_token` as every other
-route, not a resurrected credential check. `SESSION_COOKIE_SAMESITE`
-simplified from the cross-origin `None` Module 19/24 needed for the
-now-removed cookie-based `/v2` API auth down to a plain same-origin
-`Lax`.
-
-`specs/core/openapi.yaml` was updated as the deliberate breaking change
-it is: `/v2/auth/register|login|logout` removed entirely (not
-deprecated-but-present), every other `/v2` route's security scheme
-changed from `sessionCookie` to a new `supabaseAuth` bearer scheme with
-the full old-vs-new flow documented inline. `/v1` (Module 19's shared-
-`API_KEY` surface) is completely untouched. `decisions/
-0022-supabase-auth-migration.md` has the full reasoning, including a
-known limitation this module did not touch: the two Oracle-hosted
-services from Module 21 still have no authentication of their own
-(already flagged open by ADR 0019).
-
-Every `/v2` auth/session/ownership test was rewritten against JWT auth,
-not left pointing at removed code: `tests/api/test_jwt_auth.py` (new,
-12 tests, HS256 test-secret path — the same claim-validation code real
-ES256 tokens go through, no live network call per test run),
-`test_v2_auth_integration.py` (rewritten — profile auto-provisioning,
-tampered/missing-token rejection, full cross-tenant isolation, admin
-role sourced from the token not the stored row), `test_admin_routes.py`,
-`test_admin_ui.py` (mocked `supabase.create_client`/
-`sign_in_with_password`, real JWT verification downstream),
-`test_v2_value_endpoints.py`, `test_field_update.py`,
-`test_farmer_profile_update.py`, `test_voice_routes.py`,
-`test_voice_rate_limit.py` (all switched from register+login cookie
-flows to minted test JWTs, either passed per-request via a
-`jwt_headers()` helper or attached once via the test client's
-`environ_base["HTTP_AUTHORIZATION"]` where many call sites shared one
-identity). `test_login_rate_limit.py` and `tests/auth/
-test_session_auth.py`/`test_password.py` were deleted (the features
-they tested no longer exist); `tests/auth/test_validation.py` trimmed to
-just `validate_name`. Full regression
-(`pytest --ignore=tests/voice --ignore=tests/vision`): **351 passed, 0
-failed, 25 skipped** (down from 374 passed before this module — expected
-and reported honestly: the removed register/login/session-expiry tests
-outweigh the new JWT/admin tests added, a real count change from a real
-breaking migration, not a suspiciously-unchanged number).
-`check_specs.py`: OK.
-
-No `Co-Authored-By` line on this module's commits, per this module's
-explicit instruction (standing rule, not defaulted).
-
 - **16-reliability-ci**: done
 - **17-et0-water-balance**: done
 - **18-crop-localization**: done
@@ -526,9 +417,8 @@ explicit instruction (standing rule, not defaulted).
 - **21-deployment-architecture**: done
 - **23-v2-value-and-voice-api**: done
 - **25-language-expansion**: done
-- **26-supabase-auth-migration**: done
 
 ### Latest test run
-- 351/376 passed, 0 failed, 25 skipped
+- 374/399 passed, 0 failed
 
 <!-- STATE:END -->

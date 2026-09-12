@@ -12,10 +12,6 @@ import pytest
 from agro_mirai.api.app import create_app
 from agro_mirai.persistence.sqlite_store import SQLiteDataStore
 
-from conftest import jwt_headers
-
-FARMER_ID = "cccccccc-1111-4000-8000-0000000000c1"
-
 
 @pytest.fixture
 def app():
@@ -28,16 +24,24 @@ def client(app):
     return app.test_client()
 
 
+def _register_and_login(client, email="farmer@example.com", password="Sup3rSecret1"):
+    client.post(
+        "/v2/auth/register",
+        json={"email": email, "password": password, "name": "F", "preferred_language": "en"},
+    )
+    assert client.post("/v2/auth/login", json={"email": email, "password": password}).status_code == 200
+
+
 @pytest.mark.parametrize("lang", ["en", "kn", "te", "hi"])
 def test_patch_accepts_each_v1_language(client, lang):
-    headers = jwt_headers(FARMER_ID)
-    resp = client.patch("/v2/farmers/me", json={"preferred_language": lang}, headers=headers)
+    _register_and_login(client)
+    resp = client.patch("/v2/farmers/me", json={"preferred_language": lang})
     assert resp.status_code == 200
     assert resp.get_json()["preferred_language"] == lang
 
 
 def test_patch_rejects_unsupported_language(client):
-    headers = jwt_headers(FARMER_ID)
-    resp = client.patch("/v2/farmers/me", json={"preferred_language": "gu"}, headers=headers)
+    _register_and_login(client)
+    resp = client.patch("/v2/farmers/me", json={"preferred_language": "gu"})
     assert resp.status_code == 400
     assert "preferred_language" in resp.get_json()["error"]["message"]

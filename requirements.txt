@@ -74,10 +74,10 @@ sentry-sdk==2.68.1
 # trusting the filename extension or Content-Type header).
 Pillow==11.0.0
 
-# Module 26 — Supabase Auth JWT verification (replaces Module 19's
-# bcrypt+signed-session model; bcrypt dropped, see
-# decisions/0022-supabase-auth-migration.md).
-PyJWT==2.13.0
+# Module 19 — real login/session auth (multi-tenant v2).
+# bcrypt for password hashing (established KDF library, not hand-rolled) —
+# see decisions/0017-multi-tenant-v2.md.
+bcrypt==5.0.0
 
 # Module 24 (compatibility hardening) — CORS headers so browser clients
 # (Next.js landing page, React Native web build) can reach the /v2 API.

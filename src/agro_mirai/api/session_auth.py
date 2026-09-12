@@ -1,113 +1,87 @@
-"""JWT-based auth for the ``/v2`` multi-tenant surface (Module 26).
+"""Session-based auth for the /v2 multi-tenant surface (Module 19).
 
-Supersedes the bcrypt+Flask-signed-session model built in Module 19 —
-see decisions/0022-supabase-auth-migration.md. The mobile app talks
-directly to Supabase Auth (via the Supabase SDK) and sends the resulting
-JWT as ``Authorization: Bearer <token>`` on every ``/v2`` request;
-``require_session_auth``/``require_admin`` verify that token
-(``jwt_auth.verify_bearer_token``) and scope ``g.farmer_id`` to the
-token's ``sub`` claim — the real Supabase-issued user id, not a value a
-client could ever forge without Supabase's own signing key.
+Distinct from ``auth.py``'s ``require_auth`` (the /v1 shared-``API_KEY``
+decorator, which maps every request to the single ``FARMER_ID`` per ADR
+0003). This module authenticates via Flask's signed session cookie —
+issued at login (``issue_session``), read back on every ``/v2`` request
+(``require_session_auth``), and scopes ``g.farmer_id`` to whoever is
+actually logged in, enforcing ADR 0003's ownership rule per-farmer for
+real instead of via the single-shared-identity shortcut. See
+decisions/0017-multi-tenant-v2.md.
 
-No custom session cookie is issued for API callers any more. The one
-exception is the server-rendered ``/admin`` browser dashboard
-(``routes/admin_ui.py``), which has no SDK of its own to hold a token in
-JS state between page loads: it stores the Supabase-issued access token
-inside Flask's own signed session cookie (itsdangerous-signed, so a
-client still can't forge or read it) purely as browser-side storage —
-the token itself is still verified the same way, through
-``jwt_auth.verify_token``, on every request. ``require_session_auth``
-checks the ``Authorization`` header first (the API/mobile path) and
-falls back to the session-stored token (the browser path) so both
-surfaces share one verification function.
+No separate session store: Flask's session cookie is itsdangerous-signed
+and already tamper-proof; a client cannot forge ``farmer_id``/``role``
+without ``FLASK_SECRET_KEY``. Expiry is enforced two ways — Flask's own
+cookie ``max-age`` (``PERMANENT_SESSION_LIFETIME``, cookie stops being
+sent/accepted after that) and an explicit ``issued_at`` timestamp check
+here (``is_expired``), which is what makes expiry unit-testable without
+needing to forge or wait out an actual signed cookie.
 """
 from __future__ import annotations
 
+from datetime import datetime, timedelta, timezone
 from functools import wraps
 
-from flask import g, request, session
+from flask import g, session
 
 from agro_mirai.api.errors import ApiError
-from agro_mirai.api.jwt_auth import VerifiedUser, verify_token
+
+SESSION_LIFETIME = timedelta(hours=24)
 
 
-def issue_browser_session(access_token: str) -> None:
-    """Called after a successful /admin login (routes/admin_ui.py), which
-    obtains the token via a server-side Supabase password-grant call, not
-    via any custom credential check of our own."""
+def issue_session(farmer_id: str, role: str) -> None:
+    """Called on successful login. Overwrites any prior session content."""
     session.clear()
-    session["access_token"] = access_token
+    session["farmer_id"] = farmer_id
+    session["role"] = role or "farmer"
+    session["issued_at"] = datetime.now(timezone.utc).isoformat()
     session.permanent = True
 
 
 def clear_session() -> None:
+    """Called on logout. Also called internally when a session is found
+    expired, so a stale cookie doesn't keep re-triggering the same 401
+    check every request."""
     session.clear()
 
 
-def _resolve_token() -> str | None:
-    header = request.headers.get("Authorization", "")
-    if header.startswith("Bearer "):
-        return header[len("Bearer "):].strip()
-    return session.get("access_token")
-
-
-def _ensure_farmer_profile(verified: VerifiedUser):
-    """Auto-provisions a Farmer row on first authenticated request for a
-    Supabase user this backend has never seen — registration now happens
-    entirely on the Supabase side (direct SDK), so Flask has no
-    /v2/auth/register hook to create the profile row at signup time.
-    Farmer.id IS the Supabase auth.users.id (Module 26 re-keying — see
-    the ADR): no separate mapping column was needed.
-    """
-    from datetime import datetime, timezone
-
-    from flask import current_app
-
-    from agro_mirai.persistence.models import Farmer
-
-    store = current_app.extensions["data_store"]
-    farmer = store.get_farmer(verified.user_id)
-    if farmer is not None:
-        return farmer
-
-    now = datetime.now(timezone.utc)
-    farmer = Farmer(
-        id=verified.user_id,
-        created_at=now,
-        updated_at=now,
-        name=(verified.email or "").split("@")[0] or "Farmer",
-        preferred_language="en",
-        email=verified.email,
-        role=verified.role,
-    )
-    return store.save_farmer(farmer)
+def is_expired(
+    issued_at_iso: str, lifetime: timedelta = SESSION_LIFETIME, now: datetime | None = None
+) -> bool:
+    """Pure function, unit-testable without a real Flask request/response
+    cycle or needing to sleep out a real expiry window."""
+    now = now or datetime.now(timezone.utc)
+    try:
+        issued_at = datetime.fromisoformat(issued_at_iso)
+    except (TypeError, ValueError):
+        return True
+    if issued_at.tzinfo is None:
+        issued_at = issued_at.replace(tzinfo=timezone.utc)
+    return (now - issued_at) > lifetime
 
 
 def require_session_auth(view):
-    """Requires a valid Supabase-issued JWT (header or browser session).
-    Sets g.farmer_id and g.role from the verified token, auto-provisioning
-    the Farmer profile row on first sight of a given Supabase user."""
+    """Requires a valid, non-expired session cookie. Sets g.farmer_id and
+    g.role. Every /v2 route (other than register/login) that touches
+    farmer-owned data uses this, never the raw session dict directly, so
+    the expiry check can't accidentally be skipped."""
 
     @wraps(view)
     def wrapped(*args, **kwargs):
-        token = _resolve_token()
-        if not token:
-            raise ApiError(401, "UNAUTHORIZED", "Not logged in, or session expired")
-        try:
-            verified = verify_token(token)
-        except ApiError:
+        farmer_id = session.get("farmer_id")
+        issued_at = session.get("issued_at")
+        if not farmer_id or not issued_at or is_expired(issued_at):
             clear_session()
-            raise
-        _ensure_farmer_profile(verified)
-        g.farmer_id = verified.user_id
-        g.role = verified.role
+            raise ApiError(401, "UNAUTHORIZED", "Not logged in, or session expired")
+        g.farmer_id = farmer_id
+        g.role = session.get("role", "farmer")
         return view(*args, **kwargs)
 
     return wrapped
 
 
 def require_admin(view):
-    """Requires a valid token (see require_session_auth) AND role ==
+    """Requires a valid session (see require_session_auth) AND role ==
     "admin". A logged-in non-admin farmer gets 403, not 401 — they are
     authenticated, just not authorized for this surface."""
 
