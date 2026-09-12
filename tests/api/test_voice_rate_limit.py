@@ -1,7 +1,6 @@
 """Module 23: ``/v2/advisories/{id}/audio`` and ``/v2/stt`` each have
 their own rate limit, tighter than and independent of the general
-per-API-key limit. Module 26: authenticates via a minted Supabase-style
-JWT (see conftest.py's make_jwt), not the removed /v2/auth/* routes.
+per-API-key limit — same pattern as ``test_login_rate_limit.py``.
 """
 from __future__ import annotations
 
@@ -12,8 +11,6 @@ from unittest.mock import MagicMock
 from agro_mirai.api.app import create_app
 from agro_mirai.persistence.models import Advisory
 from agro_mirai.persistence.sqlite_store import SQLiteDataStore
-
-from conftest import make_jwt
 
 _NOW = datetime(2026, 8, 25, 9, 0, 0, tzinfo=timezone.utc)
 
@@ -26,8 +23,11 @@ def _app(**rate_limits):
 
 
 def _login_and_seed_advisory(client, app):
-    token = make_jwt("eeeeeeee-0000-4000-8000-000000000001", email="f@example.com")
-    client.environ_base["HTTP_AUTHORIZATION"] = f"Bearer {token}"
+    client.post(
+        "/v2/auth/register",
+        json={"email": "f@example.com", "password": "Sup3rSecret1", "name": "F", "preferred_language": "en"},
+    )
+    client.post("/v2/auth/login", json={"email": "f@example.com", "password": "Sup3rSecret1"})
     field_id = client.post(
         "/v2/fields", json={"name": "P", "latitude": 15.0, "longitude": 76.0, "area_ha": 1.0}
     ).get_json()["id"]
@@ -75,8 +75,11 @@ def test_tts_exceeding_limit_returns_429(monkeypatch):
 def test_stt_exceeding_limit_returns_429(monkeypatch):
     app = _app(STT_RATE_LIMIT="2 per minute")
     client = app.test_client()
-    token = make_jwt("eeeeeeee-0000-4000-8000-000000000002", email="f2@example.com")
-    client.environ_base["HTTP_AUTHORIZATION"] = f"Bearer {token}"
+    client.post(
+        "/v2/auth/register",
+        json={"email": "f2@example.com", "password": "Sup3rSecret1", "name": "F", "preferred_language": "en"},
+    )
+    client.post("/v2/auth/login", json={"email": "f2@example.com", "password": "Sup3rSecret1"})
 
     monkeypatch.setattr("agro_mirai.api.voice_client.get_remote_voice_service", lambda: None)
 
