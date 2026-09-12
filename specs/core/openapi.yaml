@@ -201,26 +201,74 @@ paths:
         '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
 
-  # --- v2: multi-tenant Supabase Auth + read-only Admin ---
-  # Module 26 BREAKING CHANGE — Supabase-JWT-bearer authenticated
-  # (supabaseAuth scheme above), not Module 19's session cookie. There is
-  # no /v2/auth/register, /v2/auth/login, or /v2/auth/logout any more:
-  # registration/login/logout/token-refresh happen entirely client-side
-  # against Supabase Auth via the Supabase SDK (direct-SDK-from-mobile
-  # decision — Flask is a resource server, not an auth server). The
-  # client sends the resulting JWT as `Authorization: Bearer <token>` on
-  # every /v2 request below. A Farmer profile row is auto-provisioned by
-  # Flask on that user's first authenticated request — there is no
-  # explicit "create profile" call. See
-  # decisions/0022-supabase-auth-migration.md for the full old-vs-new
-  # flow (this supersedes decisions/0017-multi-tenant-v2.md's session
-  # design) and decisions/0017 for why /v1 (unchanged, still shared-
-  # API_KEY, still bearerAuth) stays alive alongside this.
+  # --- v2: multi-tenant session auth + read-only Admin (Module 19) ---
+  # Session-cookie authenticated, not bearerAuth — see sessionCookie below.
+  # decisions/0017-multi-tenant-v2.md. /v1 above is unchanged and stays
+  # live for demo/backward-compat; these are additive new paths, not a
+  # revision of the /v1 ones.
+
+  /v2/auth/register:
+    post:
+      summary: Register a new Farmer account (email + password).
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RegisterRequest' }
+      responses:
+        '201':
+          description: The created Farmer (public fields only — never password_hash).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Farmer' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '409':
+          description: Email already registered.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+
+  /v2/auth/login:
+    post:
+      summary: Log in with email + password; issues a signed session cookie. Rate-limited per remote address.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/LoginRequest' }
+      responses:
+        '200':
+          description: Logged in; session cookie set.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Farmer' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '429':
+          description: Too many login attempts.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+
+  /v2/auth/logout:
+    post:
+      summary: Clear the current session.
+      security: []
+      responses:
+        '200':
+          description: Logged out.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: { ok: { type: boolean } }
 
   /v2/farmers/me:
     get:
-      summary: Get the Supabase-JWT-authenticated Farmer's own profile.
-      security: [ { supabaseAuth: [] } ]
+      summary: Get the session-authenticated Farmer's own profile.
+      security: [ { sessionCookie: [] } ]
       responses:
         '200':
           description: Farmer profile.
@@ -234,7 +282,7 @@ paths:
         Partial update — only keys present in the body are changed.
         Mutable fields: ``name``, ``preferred_language``.
         Email and password changes are out of scope for v1 (see ADR 0017 known limitations).
-      security: [ { supabaseAuth: [] } ]
+      security: [ { sessionCookie: [] } ]
       requestBody:
         required: true
         content:
@@ -263,7 +311,7 @@ paths:
   /v2/fields:
     get:
       summary: List Fields owned by the session-authenticated Farmer.
-      security: [ { supabaseAuth: [] } ]
+      security: [ { sessionCookie: [] } ]
       responses:
         '200':
           description: A list of Fields.
@@ -279,7 +327,7 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
     post:
       summary: Create a Field owned by the session-authenticated Farmer.
-      security: [ { supabaseAuth: [] } ]
+      security: [ { sessionCookie: [] } ]
       requestBody:
         required: true
         content:
@@ -299,7 +347,7 @@ paths:
       - $ref: '#/components/parameters/FieldId'
     get:
       summary: Get a Field by id. 404 (not 403) if it exists but is owned by a different Farmer — no cross-tenant existence leak.
-      security: [ { supabaseAuth: [] } ]
+      security: [ { sessionCookie: [] } ]
       responses:
         '200':
           description: The Field.
@@ -314,7 +362,7 @@ paths:
         session-authenticated Farmer — only the keys present in the body
         are changed. /v1 deliberately does not get this route (frozen
         per ADR 0017); no /v1 caller has ever needed field mutation.
-      security: [ { supabaseAuth: [] } ]
+      security: [ { sessionCookie: [] } ]
       requestBody:
         required: true
         content:
@@ -336,7 +384,7 @@ paths:
         readings, irrigation advice, disease risk alerts, feedback) is
         cascade-deleted per the SQLite/Postgres migration's ON DELETE CASCADE.
         Returns 204 on success, 404 if not found or owned by a different Farmer.
-      security: [ { supabaseAuth: [] } ]
+      security: [ { sessionCookie: [] } ]
       responses:
         '204':
           description: Field deleted successfully. No response body.
@@ -356,7 +404,7 @@ paths:
       - $ref: '#/components/parameters/FieldId'
     get:
       summary: Get the most recent CropRecommendation for a Field owned by the session-authenticated Farmer.
-      security: [ { supabaseAuth: [] } ]
+      security: [ { sessionCookie: [] } ]
       responses:
         '200':
           description: The recommendation.
@@ -372,7 +420,7 @@ paths:
       - $ref: '#/components/parameters/FieldId'
     get:
       summary: Get the most recent IrrigationAdvice for a Field owned by the session-authenticated Farmer.
-      security: [ { supabaseAuth: [] } ]
+      security: [ { sessionCookie: [] } ]
       responses:
         '200':
           description: The advice.
@@ -388,7 +436,7 @@ paths:
       - $ref: '#/components/parameters/FieldId'
     get:
       summary: List DiseaseRiskAlerts for a Field owned by the session-authenticated Farmer.
-      security: [ { supabaseAuth: [] } ]
+      security: [ { sessionCookie: [] } ]
       responses:
         '200':
           description: A list of alerts.
@@ -410,7 +458,7 @@ paths:
       - $ref: '#/components/parameters/FieldId'
     post:
       summary: Session-authenticated equivalent of POST /fields/{field_id}/disease-risk/image (Module 21). Same CNN-vs-environmental-fallback contract — see that path's description.
-      security: [ { supabaseAuth: [] } ]
+      security: [ { sessionCookie: [] } ]
       requestBody:
         required: true
         content:
@@ -439,7 +487,7 @@ paths:
       - $ref: '#/components/parameters/FieldId'
     get:
       summary: List Advisories for a Field owned by the session-authenticated Farmer.
-      security: [ { supabaseAuth: [] } ]
+      security: [ { sessionCookie: [] } ]
       responses:
         '200':
           description: A list of advisories.
@@ -459,7 +507,7 @@ paths:
   /v2/feedback:
     post:
       summary: Submit farmer feedback on an Advisory owned by the session-authenticated Farmer.
-      security: [ { supabaseAuth: [] } ]
+      security: [ { sessionCookie: [] } ]
       requestBody:
         required: true
         content:
@@ -500,7 +548,7 @@ paths:
         (services/voice transcodes from Piper's native WAV) with an
         ETag/Cache-Control pair so the client can cache aggressively and
         revalidate cheaply, matching the decided pre-cache design.
-      security: [ { supabaseAuth: [] } ]
+      security: [ { sessionCookie: [] } ]
       responses:
         '200':
           description: Spoken audio for the advisory.
@@ -529,7 +577,7 @@ paths:
         detected language. Same VOICE_UNAVAILABLE 503 degradation
         contract as the audio endpoint above — the client should fall
         back to on-device STT or manual text entry.
-      security: [ { supabaseAuth: [] } ]
+      security: [ { sessionCookie: [] } ]
       requestBody:
         required: true
         content:
@@ -568,7 +616,7 @@ paths:
   /v2/admin/farmers:
     get:
       summary: 'Admin only: list every Farmer with their field count. Read-only.'
-      security: [ { supabaseAuth: [] } ]
+      security: [ { sessionCookie: [] } ]
       responses:
         '200':
           description: A list of Farmers, each with an additional field_count.
@@ -587,7 +635,7 @@ paths:
   /v2/admin/fields:
     get:
       summary: 'Admin only: list every Field across every Farmer. Read-only.'
-      security: [ { supabaseAuth: [] } ]
+      security: [ { sessionCookie: [] } ]
       responses:
         '200':
           description: A list of Fields.
@@ -606,7 +654,7 @@ paths:
   /v2/admin/feedback:
     get:
       summary: 'Admin only: system-wide feedback aggregates (all Farmers). Read-only.'
-      security: [ { supabaseAuth: [] } ]
+      security: [ { sessionCookie: [] } ]
       responses:
         '200':
           description: Aggregated feedback report (same shape as Module 13's per-farmer aggregator, scoped to everyone).
@@ -623,20 +671,11 @@ components:
       type: http
       scheme: bearer
       bearerFormat: JWT
-    supabaseAuth:
-      type: http
-      scheme: bearer
-      bearerFormat: JWT
-      description: |
-        Module 26. A real Supabase Auth JWT, obtained by the client
-        directly from Supabase (via the Supabase JS/RN SDK's
-        sign-up/sign-in/refresh — Flask has no /v2/auth/* endpoints of
-        its own any more). Sent as `Authorization: Bearer <token>`.
-        Verified server-side against the project's JWKS
-        (`{SUPABASE_URL}/auth/v1/.well-known/jwks.json`); `farmer_id` is
-        the token's `sub` claim. Supersedes Module 19's `sessionCookie`
-        scheme — see decisions/0022-supabase-auth-migration.md for the
-        full old-vs-new flow.
+    sessionCookie:
+      type: apiKey
+      in: cookie
+      name: session
+      description: Flask signed session cookie issued by POST /v2/auth/login (Module 19). Not a bearer token — the cookie is opaque and itsdangerous-signed.
 
   parameters:
     FieldId:
@@ -718,6 +757,24 @@ components:
           enum: [farmer, admin]
           nullable: true
           description: Module 19. Absent/defaults to "farmer" for pre-Module-19 records.
+
+    RegisterRequest:
+      type: object
+      required: [email, password, name]
+      properties:
+        email: { type: string, format: email }
+        password: { type: string, description: Must satisfy the strength policy in agro_mirai.auth.validation (min length + composition). }
+        name: { type: string }
+        preferred_language:
+          type: string
+          enum: [en, hi, kn, ta, te, mr, bn, gu]
+
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email: { type: string, format: email }
+        password: { type: string }
 
     AdminFarmerSummary:
       description: A Farmer plus the one admin-only aggregate field.

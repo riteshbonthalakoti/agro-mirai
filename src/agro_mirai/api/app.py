@@ -117,22 +117,27 @@ def create_app(config: dict | None = None) -> Flask:
     app.config["TESTING"] = os.environ.get("FLASK_ENV") == "testing"
     app.config["RATE_LIMIT"] = os.environ.get("RATE_LIMIT", "60 per minute")
     app.config["SENTRY_DSN"] = os.environ.get("SENTRY_DSN", "")
+    # Module 19 — /v2 session auth. FLASK_SECRET_KEY (already required by
+    # Module 15's Procfile/render.yaml for Flask's session signing) covers
+    # this; no new secret was introduced. LOGIN_RATE_LIMIT is specific to
+    # /v2/auth/login, on top of the general per-key RATE_LIMIT above.
+    app.config["LOGIN_RATE_LIMIT"] = os.environ.get("LOGIN_RATE_LIMIT", "5 per minute")
     # Module 23 — voice endpoints (/v2/advisories/{id}/audio, /v2/stt) are
     # far more expensive per call than a JSON read, so they get their own,
     # tighter limits on top of the general RATE_LIMIT above.
     app.config["TTS_RATE_LIMIT"] = os.environ.get("TTS_RATE_LIMIT", "20 per minute")
     app.config["STT_RATE_LIMIT"] = os.environ.get("STT_RATE_LIMIT", "10 per minute")
     app.permanent_session_lifetime = timedelta(hours=24)
-    # Module 26: the /v2 API is now JWT-bearer-token authenticated (see
-    # jwt_auth.py/session_auth.py) — it needs no cookie at all, so the
-    # cross-origin SameSite=None cookie config Module 19/24 added for it
-    # is dead weight and was removed. The ONE remaining cookie consumer is
-    # the server-rendered /admin browser dashboard (routes/admin_ui.py),
-    # which is same-origin (the browser talks to the same Flask process
-    # that set the cookie), so a plain Lax/Secure-in-prod cookie is enough
-    # — no cross-origin delivery requirement to solve for any more.
+    # Session cookie hardening — safe defaults that work for both the
+    # browser frontend and React Native mobile client.
+    # SameSite=None + Secure is required for cross-origin cookie delivery
+    # (e.g. Next.js SPA on a different domain calling the Render API).
+    # In dev (no FLASK_SECRET_KEY set), these still apply but the cookie
+    # is only sent over HTTP, which is fine for localhost.
     app.config["SESSION_COOKIE_HTTPONLY"] = True
-    app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
+    app.config["SESSION_COOKIE_SAMESITE"] = os.environ.get(
+        "SESSION_COOKIE_SAMESITE", "None"
+    )
     app.config["SESSION_COOKIE_SECURE"] = os.environ.get("FLASK_ENV") == "production"
     if config:
         app.config.update(config)
@@ -178,6 +183,7 @@ def create_app(config: dict | None = None) -> Flask:
     from agro_mirai.api.routes.admin import admin_bp
     from agro_mirai.api.routes.admin_ui import admin_ui_bp
     from agro_mirai.api.routes.advisory import advisory_bp
+    from agro_mirai.api.routes.auth_v2 import auth_v2_bp
     from agro_mirai.api.routes.disease_image import disease_image_bp
     from agro_mirai.api.routes.farms import farms_bp
     from agro_mirai.api.routes.farms_v2 import farms_v2_bp
@@ -195,11 +201,21 @@ def create_app(config: dict | None = None) -> Flask:
     app.register_blueprint(disease_image_bp)
     app.register_blueprint(feedback_bp)
     app.register_blueprint(frontend_bp)
+    app.register_blueprint(auth_v2_bp)
     app.register_blueprint(farms_v2_bp)
     app.register_blueprint(admin_bp)
     app.register_blueprint(admin_ui_bp)
     app.register_blueprint(value_v2_bp)
     app.register_blueprint(voice_v2_bp)
+
+    # Module 19 — login-specific rate limit, on top of the general
+    # per-key limit above. The @login_limiter.limit(...) decorator lives
+    # on the view function itself in routes/auth_v2.py (must be applied
+    # before blueprint registration, see login_rate_limit.py's
+    # docstring); this just binds that limiter to this app instance.
+    from agro_mirai.api.login_rate_limit import login_limiter
+
+    login_limiter.init_app(app)
 
     # Module 23 — same pattern as login_limiter, for the two voice routes.
     from agro_mirai.api.voice_rate_limit import voice_limiter
