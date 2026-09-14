@@ -251,7 +251,6 @@ class AI4BharatVoiceService:
         a v2 language expansion beyond V1_LANGUAGES.
         """
         import torch
-        import torchaudio
 
         if self._whisper_lid_model is None:
             try:

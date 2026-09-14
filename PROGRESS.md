@@ -80,6 +80,7 @@ is now Module 19 and the CNN disease model is now Module 20.)*
 <!-- STATE:START -->
 
 ### Recent commits
+- `221e975 Backup snapshot: full working tree before aggressive cleanup sweep`
 - `b395534 Fix CI: tests.api._otp_helpers import fails under plain pytest invocation`
 - `3fb976a Module 27: replace email+password /v2 auth with Name+Phone+OTP`
 - `73ae5af Revert "Module 26: migrate /v2 auth from custom sessions to Supabase Auth"`
@@ -89,7 +90,6 @@ is now Module 19 and the CNN disease model is now Module 20.)*
 - `d23ed03 PROGRESS.md: add missing Module 22, 23, 24 entries and phase table rows`
 - `66b003d Add DELETE /v2/fields/{id} â€” expose already-implemented DataStore method`
 - `5033a28 Module 24: backend compatibility hardening for browser/mobile clients`
-- `f874bf6 Module 23: doctrine + freeze openapi.yaml as the frontend contract`
 
 ### Module status
 - **01-foundation**: done
@@ -420,6 +420,6 @@ WSGI config, gunicorn verification, docs, regression) is done.
 - **27-name-phone-otp-auth**: done
 
 ### Latest test run
-- 374/399 passed, 0 failed
+- no test report found (.report.json missing — run pytest --json-report)
 
 <!-- STATE:END -->
