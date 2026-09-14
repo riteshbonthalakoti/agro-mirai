@@ -4,7 +4,6 @@
   "main": "index.ts",
   "dependencies": {
     "@expo/metro-runtime": "~57.0.15",
-    "caniuse-lite": "^1.0.30001810",
     "expo": "~57.0.21",
     "expo-audio": "~57.0.5",
     "expo-blur": "~57.0.3",
@@ -13,12 +12,9 @@
     "expo-image-picker": "~57.0.17",
     "expo-location": "~57.0.17",
     "expo-speech": "^57.0.2",
-    "expo-status-bar": "~57.0.1",
     "react": "19.2.3",
-    "react-dom": "19.2.3",
     "react-native": "0.86.3",
-    "react-native-safe-area-context": "^5.9.1",
-    "react-native-web": "^0.21.2"
+    "react-native-safe-area-context": "^5.9.1"
   },
   "devDependencies": {
     "@types/react": "~19.2.2",
@@ -27,8 +23,7 @@
   "scripts": {
     "start": "expo start",
     "android": "expo run:android",
-    "ios": "expo run:ios",
-    "web": "expo start --web"
+    "ios": "expo run:ios"
   },
   "private": true
 }

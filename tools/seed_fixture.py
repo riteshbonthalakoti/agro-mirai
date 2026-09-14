@@ -17,7 +17,6 @@ from __future__ import annotations
 import argparse
 import json
 import sys
-from dataclasses import asdict, fields as dc_fields
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
