@@ -19,7 +19,7 @@ from flask_limiter.util import get_remote_address
 from sentry_sdk.integrations.flask import FlaskIntegration
 
 from agro_mirai.api.errors import register_error_handlers
-from agro_mirai.api.request_context import init_request_logging
+from agro_mirai.api.request_context import _RequestIdLogFilter, init_request_logging
 from agro_mirai.models.crop_recommendation_model import CropRecommendationModel
 from agro_mirai.models.decision_engine import DecisionEngine
 from agro_mirai.models.disease_risk_model import DiseaseRiskModel
@@ -93,9 +93,24 @@ def _configure_rate_limit(app: Flask) -> Limiter:
 
 
 def _configure_logging(app: Flask) -> None:
-    """Standard-library ``logging`` only — no new dependency. Each handler
-    gets a formatter that includes ``request_id`` (populated by the
-    ``_RequestIdLogFilter`` installed in ``init_request_logging``).
+    """Standard-library ``logging`` only — no new dependency. The handler's
+    formatter includes ``request_id``, populated by ``_RequestIdLogFilter``
+    attached to the handler itself (not to one specific logger) so it
+    applies uniformly regardless of which module's logger emitted the
+    record.
+
+    The handler and INFO level are set on the shared ``agro_mirai`` package
+    logger, not just ``app.logger`` -- every module in this codebase logs
+    via ``logging.getLogger(__name__)`` under that namespace (e.g.
+    ``agro_mirai.auth.otp``, whose OTP-to-server-logs delivery is the only
+    thing that makes Module 27's OTP auth testable at all), and without
+    this they'd inherit the root logger's default WARNING level and no
+    handler, silently dropping every INFO log line. Module 27 shipped with
+    exactly that bug -- request-otp returned 200 but the OTP itself never
+    appeared anywhere, found via live testing, not a code review guess.
+    ``app.logger`` (name ``agro_mirai.api.app``) gets no handler of its own
+    and propagates up to this one, so request/response logging and OTP
+    logging end up in the same stream with the same format, not duplicated.
     """
     handler = logging.StreamHandler()
     handler.setFormatter(
@@ -103,8 +118,13 @@ def _configure_logging(app: Flask) -> None:
             "[%(asctime)s] %(levelname)s request_id=%(request_id)s %(name)s: %(message)s"
         )
     )
-    app.logger.handlers = [handler]
-    app.logger.setLevel(logging.INFO)
+    handler.addFilter(_RequestIdLogFilter())
+    package_logger = logging.getLogger("agro_mirai")
+    package_logger.handlers = [handler]
+    package_logger.setLevel(logging.INFO)
+    package_logger.propagate = False
+    app.logger.handlers = []
+    app.logger.propagate = True
 
 
 def create_app(config: dict | None = None) -> Flask:
@@ -171,16 +191,25 @@ def create_app(config: dict | None = None) -> Flask:
     # list of allowed origins (e.g. "https://agro-mirai.vercel.app"). Unset
     # means no CORS headers are emitted — same-origin only, safe default for
     # curl/mobile. supports_credentials=True so the session cookie is sent
-    # cross-origin; this requires an explicit origin list (not "*").
+    # cross-origin; this requires an explicit origin list (not "*") in
+    # production.
+    #
+    # Dev-only exception: the Expo web build's dev-server origin changes
+    # with the runtime host (see mobile/src/config.ts's dynamic
+    # API_BASE_URL, itself the fix for this exact problem's IP side) --
+    # there is no fixed origin to list. Outside production, fall back to
+    # origins="*", which flask-cors (unlike a hand-rolled "Access-Control-
+    # Allow-Origin: *" header) correctly reflects the request's actual
+    # Origin rather than emitting a literal "*" when supports_credentials
+    # is True — the one combination browsers accept with credentialed
+    # requests. Never used when FLASK_ENV=production.
     cors_origins_raw = os.environ.get("CORS_ORIGINS", "")
+    is_production = os.environ.get("FLASK_ENV") == "production"
     if cors_origins_raw:
         origins = [o.strip() for o in cors_origins_raw.split(",") if o.strip()]
-        CORS(
-            app,
-            origins=origins,
-            supports_credentials=True,
-            resources={r"/v2/*": {}},
-        )
+        CORS(app, origins=origins, supports_credentials=True, resources={r"/v2/*": {}})
+    elif not is_production:
+        CORS(app, origins="*", supports_credentials=True, resources={r"/v2/*": {}})
 
     from agro_mirai.api.routes.admin import admin_bp
     from agro_mirai.api.routes.admin_ui import admin_ui_bp

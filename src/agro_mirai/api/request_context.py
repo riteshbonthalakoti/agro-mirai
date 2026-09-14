@@ -22,7 +22,10 @@ class _RequestIdLogFilter(logging.Filter):
 
 
 def init_request_logging(app: Flask) -> None:
-    app.logger.addFilter(_RequestIdLogFilter())
+    # The request_id filter is attached to the shared handler in
+    # app.py's _configure_logging (runs before this), not to app.logger
+    # specifically -- that way every module's logger (not just Flask's
+    # own) gets request_id populated on its records.
 
     @app.before_request
     def _assign_request_id():

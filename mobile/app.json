@@ -1,0 +1,33 @@
+{
+  "expo": {
+    "name": "Agro Mirai",
+    "slug": "mobile",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/Agro_Mirai_Logo.png",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#FDF8EE",
+        "foregroundImage": "./assets/Agro_Mirai_Logo.png"
+      },
+      "predictiveBackGestureEnabled": false,
+      "package": "com.ritesh1918.mobile"
+    },
+    "web": {
+      "favicon": "./assets/Agro_Mirai_Logo.png"
+    },
+    "plugins": [
+      "expo-audio",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Agro Mirai needs camera access to scan crop leaves for disease detection."
+        }
+      ]
+    ]
+  }
+}

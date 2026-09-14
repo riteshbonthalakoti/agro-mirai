@@ -80,6 +80,8 @@ is now Module 19 and the CNN disease model is now Module 20.)*
 <!-- STATE:START -->
 
 ### Recent commits
+- `b395534 Fix CI: tests.api._otp_helpers import fails under plain pytest invocation`
+- `3fb976a Module 27: replace email+password /v2 auth with Name+Phone+OTP`
 - `73ae5af Revert "Module 26: migrate /v2 auth from custom sessions to Supabase Auth"`
 - `dc97804 Module 26: migrate /v2 auth from custom sessions to Supabase Auth`
 - `6553af4 Module 25: extend language support to {en, kn, te, hi}`
@@ -88,8 +90,6 @@ is now Module 19 and the CNN disease model is now Module 20.)*
 - `66b003d Add DELETE /v2/fields/{id} â€” expose already-implemented DataStore method`
 - `5033a28 Module 24: backend compatibility hardening for browser/mobile clients`
 - `f874bf6 Module 23: doctrine + freeze openapi.yaml as the frontend contract`
-- `567e19a Module 23 Part B: client-facing voice API (TTS + STT)`
-- `c78177f Module 23 Part A: /v2 value endpoints, session-authenticated`
 
 ### Module status
 - **01-foundation**: done
@@ -419,74 +419,7 @@ WSGI config, gunicorn verification, docs, regression) is done.
 - **25-language-expansion**: done
 - **27-name-phone-otp-auth**: done
 
-Module 27 reverted Module 26's Supabase Auth migration
-(`git revert dc97804`, clean, no conflicts) and discarded two
-uncommitted regressions found in a parallel Antigravity mobile session
-on top of it: a `demo_` token backdoor in `session_auth.py` that skipped
-JWT verification entirely, and a `get_field_or_404` change in
-`value_endpoints.py` that fabricated a fake "North Field" instead of
-404ing on a missing/cross-tenant field (neither was ever committed).
-Baseline after the revert, before any new work: 374 passed, 25 skipped,
-0 failed — exact match to the Module 25 baseline, confirming the revert
-was clean.
-
-On top of the reverted (Module 19) email+password auth, Ritesh asked for
-something simpler for a farmer with no email: Name+Phone+OTP.
-`POST /v2/auth/request-otp {phone, name?, preferred_language?}` finds-
-or-creates the Farmer by phone and issues a 6-digit OTP via
-`agro_mirai.auth.otp.OtpStore` (process-local, in-memory, one-shot
-verify, 10-minute TTL, 5 wrong-attempt lockout); `send_otp` only logs the
-code today (`OTP_DELIVERY=log` — no SMS provider wired up, a stated
-dev/demo posture per decisions/0023, not a hidden gap). `POST
-/v2/auth/verify-otp {phone, otp}` checks it and issues the same signed
-Flask session every other `/v2` route already expects — zero changes to
-`require_session_auth`/`require_admin` or any downstream route.
-`Farmer.phone` is now unique (`migrations/{sqlite,postgres}/005_phone_unique.sql`,
-mirrors Module 19's `idx_farmers_email` pattern). `email`/`password_hash`
-stay in the schema but are now admin-only — the `/admin` dashboard's
-email+password login (out-of-band-provisioned admin accounts) is
-untouched. `LOGIN_RATE_LIMIT` renamed to `OTP_RATE_LIMIT` (same
-`Limiter` instance, `login_rate_limit.py`'s filename kept to avoid an
-unrelated import-path churn), now guarding `/v2/auth/request-otp`
-instead of `/v2/auth/login`.
-
-decisions/0023-name-phone-otp-auth.md has the full reasoning; 0022 is
-kept (not deleted) with a superseded-status note pointing at 0023, per
-the project's decision-history convention. Every test that previously
-drove `/v2/auth/register`+`/v2/auth/login` was rewritten against the OTP
-flow (`tests/api/_otp_helpers.py` is the shared
-request-otp-then-read-the-code-back-off-OtpStore-then-verify-otp
-helper): `test_v2_auth_integration.py`, `test_voice_routes.py`,
-`test_voice_rate_limit.py`, `test_v2_value_endpoints.py`,
-`test_field_update.py`, `test_farmer_profile_update.py`,
-`test_admin_routes.py` (the `/v2/admin` JSON API, farmer promoted to
-admin then re-logs-in via OTP); `test_admin_ui.py` (the `/admin`
-dashboard) was rewritten to provision its email+password accounts
-directly against the store rather than through `/v2/auth`, since that
-surface no longer speaks email+password at all.
-`test_login_rate_limit.py` was rewritten in place as an OTP-request rate
-limit test (same file, same mechanism, new endpoint). New: `tests/auth/test_otp.py`
-(9 tests: issue/verify/expiry/one-shot-replay/wrong-guess-doesn't-consume/
-attempts-lockout), extended `tests/auth/test_validation.py`
-(`validate_phone`/`validate_otp_code`).
-
-**Known limitation, stated not hidden**: no SMS provider is wired up
-(`send_otp` only logs), and `verify-otp` has no rate limit of its own
-beyond the general per-key `RATE_LIMIT` — both fine for this project's
-current dev/demo stage, both real gaps before any real farmer uses this.
-The live Supabase Postgres schema change Module 26 applied (dropping
-`password_hash`, adding a FK to `auth.users`) was **not** reversed
-against the live linked project in this session — this module's actual
-scope turned out to be a fresh OTP auth build rather than the originally
-planned full live-database reversal, and no farmer data beyond seed
-fixtures exists there to protect. Reversing it (a straightforward
-`ALTER TABLE` re-adding `password_hash` nullable and dropping the FK to
-`auth.users`) is a clean follow-up whenever the Supabase-backed deploy
-path is actually exercised again — SQLite (this project's default
-local/test backend) never had Module 26's migration applied at all, so
-`pytest`/`check_specs.py` are unaffected.
-
 ### Latest test run
-- 399 passed, 26 skipped, 0 failed (`pytest --ignore=tests/voice --ignore=tests/vision --ignore=services/cnn-inference --ignore=services/voice`) — up from the Module 25/post-revert baseline of 374 passed, 25 skipped
+- 374/399 passed, 0 failed
 
 <!-- STATE:END -->
