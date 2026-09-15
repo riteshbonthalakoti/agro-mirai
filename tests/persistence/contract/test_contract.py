@@ -66,17 +66,27 @@ def store(request):
 
 @pytest.fixture
 def farmer(store) -> Farmer:
+    # Phone must be unique per test run against a backend with a live
+    # unique constraint on phone (migrations/postgres/005_phone_unique.sql) —
+    # a fixed phone here would collide across tests within the same run.
     f = Farmer(
         id=_new_uuid(),
         created_at=_now(),
         updated_at=_now(),
         name="Ravi Kumar",
         preferred_language="kn",
-        phone="+919812345678",
+        phone=f"+91{_new_uuid().replace('-', '')[:10]}",
         district="Bellary",
         state="Karnataka",
     )
-    return store.save_farmer(f)
+    saved = store.save_farmer(f)
+    yield saved
+    # No delete_farmer in the repository interface (farmers aren't meant to
+    # be deleted via the app) -- for the Supabase backend specifically,
+    # clean up the raw row directly so live test runs don't accumulate data.
+    client = getattr(store, "_client", None)
+    if client is not None:
+        client.table("farmers").delete().eq("id", saved.id).execute()
 
 
 @pytest.fixture
