@@ -28,6 +28,9 @@ class Farmer:
     email: str | None = None
     password_hash: str | None = None
     role: str = "farmer"
+    # Module 30 — profile photo, stored as a base64 data URI (no
+    # file-storage service exists yet).
+    photo_url: str | None = None
 
 
 @dataclass

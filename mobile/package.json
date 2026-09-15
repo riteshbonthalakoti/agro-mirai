@@ -3,18 +3,26 @@
   "version": "1.0.0",
   "main": "index.ts",
   "dependencies": {
+    "@expo-google-fonts/fraunces": "^0.4.1",
+    "@expo-google-fonts/ibm-plex-mono": "^0.4.1",
+    "@expo-google-fonts/poppins": "^0.4.1",
     "@expo/metro-runtime": "~57.0.15",
+    "@react-native-async-storage/async-storage": "2.2.0",
     "expo": "~57.0.21",
+    "expo-asset": "~57.0.17",
     "expo-audio": "~57.0.5",
     "expo-blur": "~57.0.3",
     "expo-camera": "~57.0.5",
     "expo-constants": "~57.0.18",
+    "expo-dev-client": "~57.0.19",
+    "expo-font": "~57.0.4",
     "expo-image-picker": "~57.0.17",
     "expo-location": "~57.0.17",
     "expo-speech": "^57.0.2",
     "react": "19.2.3",
     "react-native": "0.86.3",
-    "react-native-safe-area-context": "^5.9.1"
+    "react-native-safe-area-context": "~5.7.0",
+    "react-native-svg": "15.15.4"
   },
   "devDependencies": {
     "@types/react": "~19.2.2",

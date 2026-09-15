@@ -80,16 +80,16 @@ is now Module 19 and the CNN disease model is now Module 20.)*
 <!-- STATE:START -->
 
 ### Recent commits
-- `221e975 Backup snapshot: full working tree before aggressive cleanup sweep`
-- `b395534 Fix CI: tests.api._otp_helpers import fails under plain pytest invocation`
-- `3fb976a Module 27: replace email+password /v2 auth with Name+Phone+OTP`
-- `73ae5af Revert "Module 26: migrate /v2 auth from custom sessions to Supabase Auth"`
-- `dc97804 Module 26: migrate /v2 auth from custom sessions to Supabase Auth`
-- `6553af4 Module 25: extend language support to {en, kn, te, hi}`
-- `85864a4 Fix CI: voice TTS test failure (ffmpeg not on ubuntu-latest by default)`
-- `d23ed03 PROGRESS.md: add missing Module 22, 23, 24 entries and phase table rows`
-- `66b003d Add DELETE /v2/fields/{id} â€” expose already-implemented DataStore method`
-- `5033a28 Module 24: backend compatibility hardening for browser/mobile clients`
+- `60b80fe Cleanup sweep: remove repo-root junk, stale worktree, unused deps/imports; rewrite README`
+- `0cd11b9 Backup snapshot: full working tree before aggressive cleanup sweep`
+- `744d27f Fix CI: tests.api._otp_helpers import fails under plain pytest invocation`
+- `8d8740b Module 27: replace email+password /v2 auth with Name+Phone+OTP`
+- `858b1dc Revert "Module 26: migrate /v2 auth from custom sessions to Supabase Auth"`
+- `539243c Module 26: migrate /v2 auth from custom sessions to Supabase Auth`
+- `19a576f Module 25: extend language support to {en, kn, te, hi}`
+- `17a7936 Fix CI: voice TTS test failure (ffmpeg not on ubuntu-latest by default)`
+- `a419ee4 PROGRESS.md: add missing Module 22, 23, 24 entries and phase table rows`
+- `854f513 Add DELETE /v2/fields/{id} â€” expose already-implemented DataStore method`
 
 ### Module status
 - **01-foundation**: done

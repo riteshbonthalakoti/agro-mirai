@@ -88,6 +88,7 @@ class SupabaseDataStore:
             "email": farmer.email,
             "password_hash": farmer.password_hash,
             "role": farmer.role or "farmer",
+            "photo_url": farmer.photo_url,
         }
         try:
             self._client.table("farmers").upsert(payload).execute()
@@ -170,6 +171,7 @@ class SupabaseDataStore:
             email=row.get("email"),
             password_hash=row.get("password_hash"),
             role=row.get("role") or "farmer",
+            photo_url=row.get("photo_url"),
         )
 
     # --- Field ---
@@ -404,6 +406,8 @@ class SupabaseDataStore:
             "alternatives": recommendation.alternatives,
             "rationale": recommendation.rationale,
             "season": recommendation.season,
+            "out_of_region": recommendation.out_of_region,
+            "regional_alternative": recommendation.regional_alternative,
         }
         try:
             self._client.table("crop_recommendations").upsert(payload).execute()
@@ -442,6 +446,8 @@ class SupabaseDataStore:
             alternatives=row.get("alternatives"),
             rationale=row.get("rationale"),
             season=row.get("season"),
+            out_of_region=row.get("out_of_region"),
+            regional_alternative=row.get("regional_alternative"),
         )
 
     # --- IrrigationAdvice ---

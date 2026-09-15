@@ -236,6 +236,9 @@ paths:
                 properties:
                   phone: { type: string }
                   otp_sent: { type: boolean }
+                  is_new_farmer:
+                    type: boolean
+                    description: True if this phone had no existing farmer record (a fresh registration); false for a returning farmer. Lets the client route to a short profile-completion step only for first-time signups.
         '400': { $ref: '#/components/responses/BadRequest' }
         '429':
           description: Too many OTP requests.
@@ -293,7 +296,7 @@ paths:
       summary: Update the session-authenticated Farmer's own profile.
       description: |
         Partial update — only keys present in the body are changed.
-        Mutable fields: ``name``, ``preferred_language``.
+        Mutable fields: ``name``, ``preferred_language``, ``photo_url``.
         Email and password changes are out of scope for v1 (see ADR 0017 known limitations).
       security: [ { sessionCookie: [] } ]
       requestBody:
@@ -311,6 +314,9 @@ paths:
                   type: string
                   enum: [en, kn, te, hi]
                   description: Must be one of V1_LANGUAGES — the languages the voice stack can act on (Module 25).
+                photo_url:
+                  type: string
+                  description: Module 30. A base64 data URI (e.g. "data:image/jpeg;base64,..."). Small images only, downscaled/compressed client-side.
               minProperties: 1
       responses:
         '200':
@@ -626,6 +632,60 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/ErrorEnvelope' }
 
+  /v2/voice/ask:
+    post:
+      summary: |
+        Module 30, candidate (a) (decisions/0024-realtime-voice-ai-research.md).
+        A farmer asks a question by voice; the answer is grounded in this
+        farmer's own real fields/advisories, not a generic LLM reply.
+        Composes existing STT (Module 12) with one new Gemini text call
+        (scoped to this farmer's own DataStore rows only — never another
+        farmer's data) and existing TTS (Module 12/25). If the voice
+        service is reachable but Gemini isn't, returns 503
+        LLM_UNAVAILABLE; if the reverse, returns 503 VOICE_UNAVAILABLE.
+        If Gemini succeeds but TTS fails, still returns 200 with
+        answer_audio_base64: null so the client can speak answer_text via
+        on-device TTS instead of losing the answer outright.
+      security: [ { sessionCookie: [] } ]
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                audio:
+                  type: string
+                  format: binary
+                  description: WAV/OGG/MP3 clip of the farmer's spoken question, max 10MB.
+                expected_lang:
+                  type: string
+                  enum: [en, kn, te, hi]
+                  description: Optional hint for the ASR model. Must be one of V1_LANGUAGES.
+              required: [audio]
+      responses:
+        '200':
+          description: The transcribed question, the grounded answer, and (if TTS succeeded) spoken audio for the answer.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [question_text, detected_lang, answer_text, language]
+                properties:
+                  question_text: { type: string }
+                  detected_lang: { type: string, enum: [en, hi, kn, ta, te, mr, bn, gu] }
+                  answer_text: { type: string }
+                  language: { type: string, enum: [en, kn, te, hi] }
+                  answer_audio_base64: { type: string, nullable: true, description: Base64-encoded OGG/Vorbis audio, or null if TTS was unavailable. }
+                  answer_audio_mimetype: { type: string, nullable: true }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '503':
+          description: Voice service or LLM unreachable/unconfigured. Body uses ErrorEnvelope with code VOICE_UNAVAILABLE or LLM_UNAVAILABLE.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+
   /v2/admin/farmers:
     get:
       summary: 'Admin only: list every Farmer with their field count. Read-only.'
@@ -770,6 +830,10 @@ components:
           enum: [farmer, admin]
           nullable: true
           description: Module 19. Absent/defaults to "farmer" for pre-Module-19 records.
+        photo_url:
+          type: string
+          nullable: true
+          description: Module 30. A base64 data URI -- no file-storage service exists yet, so the profile photo is stored directly rather than as a link to one.
 
     RequestOtpRequest:
       type: object

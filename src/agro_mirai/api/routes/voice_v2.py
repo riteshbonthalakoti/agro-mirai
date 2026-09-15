@@ -19,6 +19,7 @@ decisions/0020-v2-value-endpoints-and-voice-api.md).
 """
 from __future__ import annotations
 
+import base64
 import hashlib
 
 from flask import Blueprint, Response, current_app, g, jsonify, request
@@ -26,7 +27,12 @@ from flask import Blueprint, Response, current_app, g, jsonify, request
 from agro_mirai.api.errors import ApiError
 from agro_mirai.api.session_auth import require_session_auth
 from agro_mirai.api.stt_validation import validate_audio_upload
-from agro_mirai.api.voice_client import synthesize_advisory_audio, transcribe_audio
+from agro_mirai.api.voice_client import (
+    answer_farmer_question,
+    synthesize_advisory_audio,
+    synthesize_answer_audio,
+    transcribe_audio,
+)
 from agro_mirai.api.voice_rate_limit import voice_limiter
 from agro_mirai.voice.interface import V1_LANGUAGES
 
@@ -106,3 +112,59 @@ def post_stt():
 
     text, detected_lang = result
     return jsonify({"text": text, "detected_lang": detected_lang}), 200
+
+
+@voice_v2_bp.post("/voice/ask")
+@require_session_auth
+@voice_limiter.limit(lambda: current_app.config["ASK_RATE_LIMIT"])
+def post_voice_ask():
+    """Module 30, candidate (a): a farmer asks a question by voice, gets a
+    spoken answer grounded in their own real field/advisory data. Composes
+    three already-verified-independently steps — existing STT (Module 12),
+    a new Gemini text call scoped to this farmer's own DataStore rows
+    (``voice_client.answer_farmer_question``), existing TTS (Module
+    12/25) — rather than a single "realtime" voice API, per
+    decisions/0024-realtime-voice-ai-research.md's recommendation. Any
+    single step's unavailability degrades to a specific 503, never a bare
+    500, same contract as every other voice route."""
+    store = current_app.extensions["data_store"]
+    audio_bytes = validate_audio_upload(request.files.get("audio"))
+
+    expected_lang = request.form.get("expected_lang") or None
+    if expected_lang and expected_lang not in V1_LANGUAGES:
+        raise ApiError(
+            400, "BAD_REQUEST", f"expected_lang must be one of: {', '.join(sorted(V1_LANGUAGES))}"
+        )
+
+    stt_result = transcribe_audio(audio_bytes, expected_lang)
+    if stt_result is None:
+        raise ApiError(503, "VOICE_UNAVAILABLE", _VOICE_UNAVAILABLE_MESSAGE)
+    question_text, detected_lang = stt_result
+
+    language = detected_lang if detected_lang in V1_LANGUAGES else _resolve_language(store, g.farmer_id)
+
+    answer_text = answer_farmer_question(store, g.farmer_id, question_text, language)
+    if answer_text is None:
+        raise ApiError(
+            503,
+            "LLM_UNAVAILABLE",
+            "Question-answering service is unreachable; the client should show the "
+            "transcribed question and let the farmer retry or fall back to browsing advisories.",
+        )
+
+    answer_audio = synthesize_answer_audio(answer_text, language)
+    audio_b64 = base64.b64encode(answer_audio).decode("ascii") if answer_audio is not None else None
+
+    return (
+        jsonify(
+            {
+                "question_text": question_text,
+                "detected_lang": detected_lang,
+                "answer_text": answer_text,
+                "language": language,
+                "answer_audio_base64": audio_b64,
+                "answer_audio_mimetype": ADVISORY_AUDIO_MIMETYPE if audio_b64 else None,
+            }
+        ),
+        200,
+    )

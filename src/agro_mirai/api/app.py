@@ -149,6 +149,10 @@ def create_app(config: dict | None = None) -> Flask:
     # tighter limits on top of the general RATE_LIMIT above.
     app.config["TTS_RATE_LIMIT"] = os.environ.get("TTS_RATE_LIMIT", "20 per minute")
     app.config["STT_RATE_LIMIT"] = os.environ.get("STT_RATE_LIMIT", "10 per minute")
+    # Module 30 — /v2/voice/ask chains STT + a Gemini call + TTS per
+    # request, the most expensive voice route yet, so it gets the
+    # tightest limit of the three.
+    app.config["ASK_RATE_LIMIT"] = os.environ.get("ASK_RATE_LIMIT", "6 per minute")
     app.permanent_session_lifetime = timedelta(hours=24)
     # Session cookie hardening — safe defaults that work for both the
     # browser frontend and React Native mobile client.
