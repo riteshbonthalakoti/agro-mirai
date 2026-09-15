@@ -18,6 +18,7 @@ provisioned out-of-band with a real password, per
 """
 from __future__ import annotations
 
+import re
 import uuid
 from datetime import datetime, timezone
 
@@ -37,7 +38,27 @@ auth_v2_bp = Blueprint("auth_v2", __name__, url_prefix="/v2/auth")
 
 
 def _normalize_phone(raw) -> str:
-    return (raw or "").strip()
+    """Real bug found live: the mobile client sent whatever the farmer
+    typed verbatim (e.g. a bare "9123456780") with no country code, while
+    every fixture/seeded farmer is stored E.164-style ("+919812345678").
+    Two farmers typing the "same" number differently -- with or without
+    +91, with spaces/dashes -- would silently become two different
+    accounts, and a returning farmer who once registered with +91 could
+    never log back in by typing the bare 10 digits. Normalize here, once,
+    so request-otp and verify-otp (both call this) always resolve to the
+    same key regardless of how it was typed.
+
+    Loose on purpose: only handles the common case (a 10-digit Indian
+    mobile number, optionally with spaces/dashes, no country code) --
+    anything already carrying a "+" or that doesn't match this shape is
+    left alone rather than guessed at.
+    """
+    phone = (raw or "").strip()
+    has_plus = phone.startswith("+")
+    cleaned = re.sub(r"[\s\-()]", "", phone)
+    if not has_plus and re.fullmatch(r"[6-9]\d{9}", cleaned):
+        return f"+91{cleaned}"
+    return cleaned
 
 
 @auth_v2_bp.post("/request-otp")
@@ -61,6 +82,7 @@ def request_otp():
 
     store = current_app.extensions["data_store"]
     farmer = store.get_farmer_by_phone(phone)
+    is_new_farmer = farmer is None
 
     if farmer is None:
         # First time this phone has ever requested an OTP: name is
@@ -95,7 +117,11 @@ def request_otp():
     code = otp_store.issue(phone)
     send_otp(phone, code)
 
-    return jsonify({"phone": phone, "otp_sent": True}), 200
+    # Additive field (ADR 0017/0023's additive-only rule): lets the client
+    # route a first-time phone to a short profile-completion step after OTP
+    # verification, and a returning phone straight to the dashboard, without
+    # a second round trip to guess which case it is.
+    return jsonify({"phone": phone, "otp_sent": True, "is_new_farmer": is_new_farmer}), 200
 
 
 @auth_v2_bp.post("/verify-otp")

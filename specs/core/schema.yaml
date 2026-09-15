@@ -56,6 +56,14 @@ entities:
         note: >
           Module 19. Defaults to "farmer" when absent (pre-Module-19
           records). "admin" gates the read-only /v2/admin surface.
+      photo_url:
+        type: string
+        required: false
+        note: >
+          Module 30. A base64 data URI (e.g. "data:image/jpeg;base64,...")
+          — no file-storage service exists yet, so the profile photo is
+          stored directly rather than as a link to one. Small images only
+          (the mobile client compresses/downscales before upload).
 
   Field:
     description: |

@@ -217,6 +217,23 @@ class TestCropRecommendation:
         assert latest.id == saved.id
         assert latest.alternatives == ["maize", "pigeonpeas"]
 
+    def test_regional_suitability_fields_round_trip(self, store, farmer, field):
+        # Real bug found live (Module 18's out_of_region/regional_alternative
+        # silently dropped on every save) -- explicit round-trip coverage so
+        # it can't regress silently again.
+        rec = CropRecommendation(
+            id=_new_uuid(), field_id=field.id, created_at=_now(),
+            recommended_crop="grapes", confidence=0.25,
+            alternatives=["muskmelon", "mothbeans"], season="kharif",
+            out_of_region=True, regional_alternative="cotton",
+        )
+        saved = store.save_crop_recommendation(farmer.id, rec)
+        assert saved.out_of_region is True
+        assert saved.regional_alternative == "cotton"
+        latest = store.get_latest_crop_recommendation(farmer.id, field.id)
+        assert latest.out_of_region is True
+        assert latest.regional_alternative == "cotton"
+
 
 class TestIrrigationAdvice:
     def test_save_and_get_latest(self, store, farmer, field):

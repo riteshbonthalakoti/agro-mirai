@@ -35,6 +35,7 @@ MIGRATION_PATH = ROOT / "migrations" / "sqlite" / "001_init.sql"
 AUTH_MIGRATION_PATH = ROOT / "migrations" / "sqlite" / "002_auth_fields.sql"
 DISEASE_SOURCE_MIGRATION_PATH = ROOT / "migrations" / "sqlite" / "003_disease_alert_source.sql"
 PHONE_UNIQUE_MIGRATION_PATH = ROOT / "migrations" / "sqlite" / "005_phone_unique.sql"
+FARMER_PHOTO_MIGRATION_PATH = ROOT / "migrations" / "sqlite" / "006_farmer_photo.sql"
 
 
 # --------------------------------------------------------------------------
@@ -92,6 +93,23 @@ class SQLiteDataStore:
         self._apply_auth_migration()
         self._apply_disease_source_migration()
         self._apply_phone_unique_migration()
+        self._apply_farmer_photo_migration()
+
+    def _apply_farmer_photo_migration(self) -> None:
+        """Module 30: same ADD-COLUMN-tolerating pattern as
+        _apply_auth_migration -- see migrations/sqlite/006_farmer_photo.sql."""
+        sql = FARMER_PHOTO_MIGRATION_PATH.read_text(encoding="utf-8")
+        conn = self._conn
+        for statement in sql.split(";"):
+            statement = statement.strip()
+            if not statement:
+                continue
+            try:
+                conn.execute(statement)
+            except sqlite3.OperationalError as e:
+                if "duplicate column name" not in str(e):
+                    raise
+        conn.commit()
 
     def _apply_phone_unique_migration(self) -> None:
         """Module 27: index-only, safe to re-run (CREATE UNIQUE INDEX IF
@@ -161,13 +179,14 @@ class SQLiteDataStore:
             self._conn.execute(
                 """
                 INSERT INTO farmers (id, created_at, updated_at, name, preferred_language, phone,
-                    district, state, email, password_hash, role)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    district, state, email, password_hash, role, photo_url)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(id) DO UPDATE SET
                     updated_at=excluded.updated_at, name=excluded.name,
                     preferred_language=excluded.preferred_language, phone=excluded.phone,
                     district=excluded.district, state=excluded.state, email=excluded.email,
-                    password_hash=excluded.password_hash, role=excluded.role
+                    password_hash=excluded.password_hash, role=excluded.role,
+                    photo_url=excluded.photo_url
                 """,
                 (
                     farmer.id,
@@ -181,10 +200,22 @@ class SQLiteDataStore:
                     farmer.email,
                     farmer.password_hash,
                     farmer.role or "farmer",
+                    farmer.photo_url,
                 ),
             )
             self._conn.commit()
         except sqlite3.IntegrityError as e:
+            # Without this rollback, the failed INSERT/UPDATE leaves this
+            # thread-local connection's transaction open (never committed,
+            # never rolled back) -- every later statement on this same
+            # connection then runs inside that stale transaction and can't
+            # see rows other connections have since committed, including
+            # the very row that caused this conflict. Real bug found live:
+            # a request-otp retry kept 409ing "already registered" even
+            # though the farmer row demonstrably existed on disk, because
+            # the server's own connection never rolled back its dangling
+            # transaction after the first conflict.
+            self._conn.rollback()
             raise ConflictError(str(e)) from e
         return self.get_farmer(farmer.id)  # type: ignore[return-value]
 
@@ -273,6 +304,7 @@ class SQLiteDataStore:
             email=row["email"] if "email" in keys else None,
             password_hash=row["password_hash"] if "password_hash" in keys else None,
             role=(row["role"] if "role" in keys and row["role"] else "farmer"),
+            photo_url=row["photo_url"] if "photo_url" in keys else None,
         )
 
     # --- Field ---
@@ -381,6 +413,17 @@ class SQLiteDataStore:
             )
             self._conn.commit()
         except sqlite3.IntegrityError as e:
+            # Without this rollback, the failed INSERT/UPDATE leaves this
+            # thread-local connection's transaction open (never committed,
+            # never rolled back) -- every later statement on this same
+            # connection then runs inside that stale transaction and can't
+            # see rows other connections have since committed, including
+            # the very row that caused this conflict. Real bug found live:
+            # a request-otp retry kept 409ing "already registered" even
+            # though the farmer row demonstrably existed on disk, because
+            # the server's own connection never rolled back its dangling
+            # transaction after the first conflict.
+            self._conn.rollback()
             raise ConflictError(str(e)) from e
         row = self._conn.execute(
             "SELECT * FROM weather_readings WHERE id = ?", (reading.id,)
@@ -445,6 +488,17 @@ class SQLiteDataStore:
             )
             self._conn.commit()
         except sqlite3.IntegrityError as e:
+            # Without this rollback, the failed INSERT/UPDATE leaves this
+            # thread-local connection's transaction open (never committed,
+            # never rolled back) -- every later statement on this same
+            # connection then runs inside that stale transaction and can't
+            # see rows other connections have since committed, including
+            # the very row that caused this conflict. Real bug found live:
+            # a request-otp retry kept 409ing "already registered" even
+            # though the farmer row demonstrably existed on disk, because
+            # the server's own connection never rolled back its dangling
+            # transaction after the first conflict.
+            self._conn.rollback()
             raise ConflictError(str(e)) from e
         row = self._conn.execute("SELECT * FROM soil_samples WHERE id = ?", (sample.id,)).fetchone()
         return self._row_to_soil(row)
@@ -493,6 +547,17 @@ class SQLiteDataStore:
             )
             self._conn.commit()
         except sqlite3.IntegrityError as e:
+            # Without this rollback, the failed INSERT/UPDATE leaves this
+            # thread-local connection's transaction open (never committed,
+            # never rolled back) -- every later statement on this same
+            # connection then runs inside that stale transaction and can't
+            # see rows other connections have since committed, including
+            # the very row that caused this conflict. Real bug found live:
+            # a request-otp retry kept 409ing "already registered" even
+            # though the farmer row demonstrably existed on disk, because
+            # the server's own connection never rolled back its dangling
+            # transaction after the first conflict.
+            self._conn.rollback()
             raise ConflictError(str(e)) from e
         row = self._conn.execute("SELECT * FROM ndvi_readings WHERE id = ?", (reading.id,)).fetchone()
         return self._row_to_ndvi(row)
@@ -535,8 +600,8 @@ class SQLiteDataStore:
             self._conn.execute(
                 """
                 INSERT INTO crop_recommendations (id, field_id, created_at, recommended_crop, confidence,
-                    alternatives, rationale, season)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    alternatives, rationale, season, out_of_region, regional_alternative)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     recommendation.id,
@@ -547,10 +612,23 @@ class SQLiteDataStore:
                     json.dumps(recommendation.alternatives) if recommendation.alternatives else None,
                     recommendation.rationale,
                     recommendation.season,
+                    recommendation.out_of_region,
+                    recommendation.regional_alternative,
                 ),
             )
             self._conn.commit()
         except sqlite3.IntegrityError as e:
+            # Without this rollback, the failed INSERT/UPDATE leaves this
+            # thread-local connection's transaction open (never committed,
+            # never rolled back) -- every later statement on this same
+            # connection then runs inside that stale transaction and can't
+            # see rows other connections have since committed, including
+            # the very row that caused this conflict. Real bug found live:
+            # a request-otp retry kept 409ing "already registered" even
+            # though the farmer row demonstrably existed on disk, because
+            # the server's own connection never rolled back its dangling
+            # transaction after the first conflict.
+            self._conn.rollback()
             raise ConflictError(str(e)) from e
         row = self._conn.execute(
             "SELECT * FROM crop_recommendations WHERE id = ?", (recommendation.id,)
@@ -578,6 +656,8 @@ class SQLiteDataStore:
             alternatives=json.loads(row["alternatives"]) if row["alternatives"] else None,
             rationale=row["rationale"],
             season=row["season"],
+            out_of_region=bool(row["out_of_region"]) if row["out_of_region"] is not None else None,
+            regional_alternative=row["regional_alternative"],
         )
 
     # --- IrrigationAdvice ---
@@ -603,6 +683,17 @@ class SQLiteDataStore:
             )
             self._conn.commit()
         except sqlite3.IntegrityError as e:
+            # Without this rollback, the failed INSERT/UPDATE leaves this
+            # thread-local connection's transaction open (never committed,
+            # never rolled back) -- every later statement on this same
+            # connection then runs inside that stale transaction and can't
+            # see rows other connections have since committed, including
+            # the very row that caused this conflict. Real bug found live:
+            # a request-otp retry kept 409ing "already registered" even
+            # though the farmer row demonstrably existed on disk, because
+            # the server's own connection never rolled back its dangling
+            # transaction after the first conflict.
+            self._conn.rollback()
             raise ConflictError(str(e)) from e
         row = self._conn.execute(
             "SELECT * FROM irrigation_advices WHERE id = ?", (advice.id,)
@@ -657,6 +748,17 @@ class SQLiteDataStore:
             )
             self._conn.commit()
         except sqlite3.IntegrityError as e:
+            # Without this rollback, the failed INSERT/UPDATE leaves this
+            # thread-local connection's transaction open (never committed,
+            # never rolled back) -- every later statement on this same
+            # connection then runs inside that stale transaction and can't
+            # see rows other connections have since committed, including
+            # the very row that caused this conflict. Real bug found live:
+            # a request-otp retry kept 409ing "already registered" even
+            # though the farmer row demonstrably existed on disk, because
+            # the server's own connection never rolled back its dangling
+            # transaction after the first conflict.
+            self._conn.rollback()
             raise ConflictError(str(e)) from e
         row = self._conn.execute(
             "SELECT * FROM disease_risk_alerts WHERE id = ?", (alert.id,)
@@ -717,6 +819,17 @@ class SQLiteDataStore:
             )
             self._conn.commit()
         except sqlite3.IntegrityError as e:
+            # Without this rollback, the failed INSERT/UPDATE leaves this
+            # thread-local connection's transaction open (never committed,
+            # never rolled back) -- every later statement on this same
+            # connection then runs inside that stale transaction and can't
+            # see rows other connections have since committed, including
+            # the very row that caused this conflict. Real bug found live:
+            # a request-otp retry kept 409ing "already registered" even
+            # though the farmer row demonstrably existed on disk, because
+            # the server's own connection never rolled back its dangling
+            # transaction after the first conflict.
+            self._conn.rollback()
             raise ConflictError(str(e)) from e
         row = self._conn.execute("SELECT * FROM advisories WHERE id = ?", (advisory.id,)).fetchone()
         return self._row_to_advisory(row)
@@ -779,6 +892,17 @@ class SQLiteDataStore:
             )
             self._conn.commit()
         except sqlite3.IntegrityError as e:
+            # Without this rollback, the failed INSERT/UPDATE leaves this
+            # thread-local connection's transaction open (never committed,
+            # never rolled back) -- every later statement on this same
+            # connection then runs inside that stale transaction and can't
+            # see rows other connections have since committed, including
+            # the very row that caused this conflict. Real bug found live:
+            # a request-otp retry kept 409ing "already registered" even
+            # though the farmer row demonstrably existed on disk, because
+            # the server's own connection never rolled back its dangling
+            # transaction after the first conflict.
+            self._conn.rollback()
             raise ConflictError(str(e)) from e
         row = self._conn.execute(
             "SELECT * FROM feedback_entries WHERE id = ?", (entry.id,)

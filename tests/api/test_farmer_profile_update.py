@@ -43,3 +43,33 @@ def test_patch_rejects_unsupported_language(client):
     resp = client.patch("/v2/farmers/me", json={"preferred_language": "gu"})
     assert resp.status_code == 400
     assert "preferred_language" in resp.get_json()["error"]["message"]
+
+
+def test_patch_does_not_wipe_phone_district_state(client):
+    # Real bug found live: update_me() rebuilt the Farmer object without
+    # carrying over phone/district/state, so any profile update (even just
+    # changing preferred_language) silently blanked the farmer's phone --
+    # breaking their ability to ever log back in via phone+OTP.
+    phone = "+919000000099"
+    _register_and_login(client, phone=phone)
+
+    before = client.get("/v2/farmers/me").get_json()
+    assert before["phone"] == phone
+
+    resp = client.patch("/v2/farmers/me", json={"preferred_language": "hi"})
+    assert resp.status_code == 200
+    assert resp.get_json()["phone"] == phone
+
+    after = client.get("/v2/farmers/me").get_json()
+    assert after["phone"] == phone
+
+
+def test_patch_photo_url_round_trips(client):
+    _register_and_login(client)
+    data_uri = "data:image/jpeg;base64,/9j/fakejpegbytes=="
+    resp = client.patch("/v2/farmers/me", json={"photo_url": data_uri})
+    assert resp.status_code == 200
+    assert resp.get_json()["photo_url"] == data_uri
+
+    after = client.get("/v2/farmers/me").get_json()
+    assert after["photo_url"] == data_uri

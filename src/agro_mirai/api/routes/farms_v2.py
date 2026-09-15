@@ -56,7 +56,7 @@ def update_me():
     if not isinstance(body, dict):
         raise ApiError(400, "BAD_REQUEST", "Request body must be a JSON object")
 
-    allowed_keys = {"name", "preferred_language"}
+    allowed_keys = {"name", "preferred_language", "photo_url"}
     unknown = set(body) - allowed_keys
     if unknown:
         raise ApiError(400, "BAD_REQUEST", f"Unknown fields: {', '.join(sorted(unknown))}")
@@ -70,6 +70,7 @@ def update_me():
 
     new_name = body.get("name", farmer.name)
     new_lang = body.get("preferred_language", farmer.preferred_language)
+    new_photo_url = body.get("photo_url", farmer.photo_url)
 
     if "name" in body:
         try:
@@ -90,9 +91,17 @@ def update_me():
         updated_at=datetime.now(timezone.utc),
         name=new_name,
         preferred_language=new_lang,
+        # Real bug found live: this reconstruction previously dropped
+        # phone/district/state entirely, so every profile update silently
+        # wiped the farmer's phone number -- breaking their ability to log
+        # back in via OTP (login is phone-based). Carry them over.
+        phone=farmer.phone,
+        district=farmer.district,
+        state=farmer.state,
         email=farmer.email,
         password_hash=farmer.password_hash,
         role=farmer.role,
+        photo_url=new_photo_url,
     )
     saved = store.save_farmer(updated)
     return jsonify(farmer_to_public_json(saved)), 200

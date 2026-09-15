@@ -46,6 +46,36 @@ def _login(client, phone, name="Farmer"):
     return client.post("/v2/auth/verify-otp", json={"phone": phone, "otp": code})
 
 
+def test_request_otp_normalizes_bare_phone_to_e164():
+    # Real bug found live: the mobile client sent a bare 10-digit number
+    # with no country code, and it went to the backend verbatim -- meaning
+    # "9123456780" and "+919123456780" would silently be two different
+    # farmer accounts. request-otp and verify-otp must agree on the same
+    # normalized key regardless of how the phone was typed.
+    app = _app()
+    client = app.test_client()
+
+    resp = _request_otp(client, "9123456780", name="Bare Number")
+    assert resp.status_code == 200
+    assert resp.get_json()["phone"] == "+919123456780"
+
+    code = otp_store._pending["+919123456780"].code
+    verify = client.post(
+        "/v2/auth/verify-otp", json={"phone": "9123456780", "otp": code}
+    )
+    assert verify.status_code == 200
+    assert verify.get_json()["phone"] == "+919123456780"
+
+
+def test_request_otp_normalizes_phone_with_spaces_and_dashes():
+    app = _app()
+    client = app.test_client()
+
+    resp = _request_otp(client, "+91 981-234-5678", name="Formatted")
+    assert resp.status_code == 200
+    assert resp.get_json()["phone"] == "+919812345678"
+
+
 def test_request_otp_creates_farmer_without_leaking_hash():
     app = _app()
     client = app.test_client()
@@ -54,6 +84,18 @@ def test_request_otp_creates_farmer_without_leaking_hash():
     body = resp.get_json()
     assert body["otp_sent"] is True
     assert "password_hash" not in body
+
+
+def test_request_otp_is_new_farmer_true_on_first_call_false_on_repeat():
+    app = _app()
+    client = app.test_client()
+    phone = "+919876500001"
+
+    first = _request_otp(client, phone, name="Bob")
+    assert first.get_json()["is_new_farmer"] is True
+
+    second = _request_otp(client, phone, name="Bob")
+    assert second.get_json()["is_new_farmer"] is False
 
 
 def test_request_otp_rejects_missing_name_for_new_phone():

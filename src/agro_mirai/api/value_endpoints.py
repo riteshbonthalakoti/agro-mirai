@@ -22,7 +22,7 @@ service), which both surfaces get "for free" from calling the same code.
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from agro_mirai.api.errors import ApiError
 from agro_mirai.api.features import build_features_for_field
@@ -74,11 +74,33 @@ def compute_irrigation(store, ext: dict, farmer_id: str, field_id: str) -> dict:
     return to_json(saved)
 
 
+_DISEASE_RISK_DEDUP_WINDOW = timedelta(hours=1)
+
+
 def compute_disease_risk(store, ext: dict, farmer_id: str, field_id: str) -> dict:
+    """List is real history (openapi.yaml), so recompute-on-read must still
+    persist a new alert each call -- but the environmental-proxy scorer
+    reruns against the same underlying weather/soil window on every GET, so
+    a client that polls this a few times in a row (a dashboard refresh, a
+    retry) was getting several near-identical alerts seconds apart with no
+    new information in them. Skip the insert when the most recent existing
+    alert already says the same thing and is still fresh -- a real change
+    in disease/risk_level, or enough time passing, still creates a new row."""
     field = get_field_or_404(store, farmer_id, field_id)
     features = features_or_422(store, farmer_id, field)
     alert = predict_or_422(ext["disease_model"].predict, features)
-    store.save_disease_risk_alert(farmer_id, alert)
+
+    existing = store.list_disease_risk_alerts(farmer_id, field_id, limit=1)
+    latest = existing[0] if existing else None
+    is_duplicate = (
+        latest is not None
+        and latest.disease == alert.disease
+        and latest.risk_level == alert.risk_level
+        and abs(alert.created_at - latest.created_at) < _DISEASE_RISK_DEDUP_WINDOW
+    )
+    if not is_duplicate:
+        store.save_disease_risk_alert(farmer_id, alert)
+
     alerts = store.list_disease_risk_alerts(farmer_id, field_id)
     return {"items": [to_json(a) for a in alerts]}
 

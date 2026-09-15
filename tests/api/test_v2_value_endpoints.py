@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import dataclasses
 import io
+import uuid
 from datetime import date, datetime, timezone
 from unittest.mock import MagicMock
 
@@ -79,8 +80,11 @@ def app(monkeypatch):
         urgency="moderate",
     )
     disease_model = MagicMock()
+    # A fresh id per call, like the real model (uuid4 each predict()) --
+    # a fixed id here previously masked a real bug: compute_disease_risk
+    # crashing on a duplicate-id insert instead of degrading gracefully.
     disease_model.predict.side_effect = lambda features: DiseaseRiskAlert(
-        id="d1", field_id=features.field_id, created_at=_NOW,
+        id=str(uuid.uuid4()), field_id=features.field_id, created_at=_NOW,
         disease="fungal_generic", risk_level="low", confidence=0.8,
     )
     decision_engine = MagicMock()
@@ -189,6 +193,21 @@ def test_disease_risk_success(client):
     resp = client.get(f"/v2/fields/{field_id}/disease-risk")
     assert resp.status_code == 200
     assert "items" in resp.get_json()
+
+
+def test_disease_risk_repeated_polling_does_not_spam_duplicate_alerts(client):
+    # Real bug found live: every GET recomputed the environmental-proxy
+    # score and inserted a new row even when nothing about the field's
+    # weather/soil data had changed, so a client polling this a few times
+    # in a row got several near-identical alerts seconds apart.
+    _register_and_login(client, "+919000000103")
+    field_id = _create_field(client)
+
+    first = client.get(f"/v2/fields/{field_id}/disease-risk").get_json()
+    second = client.get(f"/v2/fields/{field_id}/disease-risk").get_json()
+    third = client.get(f"/v2/fields/{field_id}/disease-risk").get_json()
+
+    assert len(first["items"]) == len(second["items"]) == len(third["items"])
 
 
 def test_disease_risk_image_falls_back_to_environmental_never_500(client):

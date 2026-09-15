@@ -15,6 +15,7 @@ CREATE TABLE IF NOT EXISTS "farmers" (
   "email" TEXT,
   "password_hash" TEXT,
   "role" TEXT,
+  "photo_url" TEXT,
   PRIMARY KEY ("id")
 );
 
