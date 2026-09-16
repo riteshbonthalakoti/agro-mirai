@@ -47,7 +47,12 @@ def get_irrigation(field_id: str):
 @require_session_auth
 def get_disease_risk(field_id: str):
     store = current_app.extensions["data_store"]
-    body = value_endpoints.compute_disease_risk(store, current_app.extensions, g.farmer_id, field_id)
+    target_lang = value_endpoints.resolve_disease_target_lang(
+        store, g.farmer_id, request.args.get("language")
+    )
+    body = value_endpoints.compute_disease_risk(
+        store, current_app.extensions, g.farmer_id, field_id, target_lang
+    )
     return jsonify(body), 200
 
 
@@ -55,8 +60,11 @@ def get_disease_risk(field_id: str):
 @require_session_auth
 def post_disease_risk_image(field_id: str):
     store = current_app.extensions["data_store"]
+    target_lang = value_endpoints.resolve_disease_target_lang(
+        store, g.farmer_id, request.args.get("language")
+    )
     body = value_endpoints.compute_disease_risk_image(
-        store, current_app.extensions, g.farmer_id, field_id, request.files.get("image")
+        store, current_app.extensions, g.farmer_id, field_id, request.files.get("image"), target_lang
     )
     return jsonify(body), 200
 
@@ -75,4 +83,17 @@ def submit_feedback():
     store = current_app.extensions["data_store"]
     body = request.get_json(silent=True)
     saved = value_endpoints.submit_feedback(store, g.farmer_id, body)
+    return jsonify(saved), 201
+
+
+@value_v2_bp.post("/bug-reports")
+@require_session_auth
+def submit_bug_report():
+    """Farmer-facing "what went wrong" report from the mobile app's
+    Settings screen -- see value_endpoints.submit_bug_report for the
+    validation rules and decisions note on why this is a new record
+    instead of a bend of the existing /feedback contract."""
+    store = current_app.extensions["data_store"]
+    body = request.get_json(silent=True)
+    saved = value_endpoints.submit_bug_report(store, g.farmer_id, body)
     return jsonify(saved), 201

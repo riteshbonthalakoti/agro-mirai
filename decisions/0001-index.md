@@ -90,3 +90,11 @@ One entry per architectural decision record.
   second hardcoded `{en, kn}` allowlist in `farms_v2.py` that had
   drifted from `V1_LANGUAGES`, and added registration-time
   `preferred_language` validation that never existed before.
+- `0024-user-entered-content-i18n.md` — Fixed-enum fields
+  (`current_crop`/`soil_type`) were already stored as stable
+  language-independent keys; the real bug was the mobile app displaying
+  the raw English key on every UI language, fixed with display-only
+  label maps in `App.tsx`. Genuinely free-text fields (`Field.name`)
+  are shown as the farmer entered them regardless of UI language,
+  deliberately not auto-translated (a considered, reversible default,
+  not an oversight).

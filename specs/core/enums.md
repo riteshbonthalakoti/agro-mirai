@@ -128,3 +128,30 @@ Module 21. Which path produced a given `DiseaseRiskAlert`.
 - `environmental_fallback` — an image was submitted but the CNN inference
   service was unreachable/timed out/errored, so the rule-based model was
   used instead (the hard fallback requirement — never a 500)
+
+## `field_data_acquisition_status`
+
+Module 34 follow-up 2. Per-source status returned by `POST /v2/fields`
+and `POST /v2/fields/{field_id}/refresh-data` describing whether each
+Module 03 acquisition adapter's data is available for the field.
+
+- `ready` — the adapter ran synchronously and its data was persisted
+- `unavailable` — the adapter failed (degrade-not-fail); field creation
+  still succeeded, this source's data simply isn't there yet
+- `gathering` — NDVI only; fetched in a background thread (GEE latency
+  measured close to its own 20s timeout), never known synchronously at
+  response time
+
+## `bug_report_category`
+
+Mobile bug-report flow (`BugReport`, `POST /v2/bug-reports`). Preset
+reason the farmer tapped in the app; `other` covers anything not listed.
+A report is valid with only a category (no typed message) or only a
+message (no category), but not neither.
+
+- `crash` — "App crashed"
+- `wrong_info` — "Wrong information shown"
+- `unclear_advice` — "Couldn't understand the advice"
+- `photo_scan_failed` — AI Scan-specific: the leaf photo scan failed or gave a nonsensical result
+- `login_failed` — OTP/login couldn't be completed
+- `other` — anything else, typically paired with a typed `message`

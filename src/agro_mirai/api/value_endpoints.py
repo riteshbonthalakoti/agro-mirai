@@ -29,8 +29,24 @@ from agro_mirai.api.features import build_features_for_field
 from agro_mirai.api.image_validation import validate_image_upload
 from agro_mirai.api.serializers import to_json
 from agro_mirai.api.validation import validate_feedback_create
+from agro_mirai.api.voice_client import translate_text
 from agro_mirai.models.image_or_environmental_disease import resolve_disease_alert
-from agro_mirai.persistence.models import FeedbackEntry
+from agro_mirai.persistence.models import BugReport, FeedbackEntry
+from agro_mirai.voice.interface import V1_LANGUAGES
+
+_BUG_REPORT_CATEGORIES = {
+    "crash",
+    "wrong_info",
+    "unclear_advice",
+    "photo_scan_failed",
+    "login_failed",
+    "other",
+}
+_MAX_BUG_MESSAGE_LEN = 2000
+# Photos are sent inline as a base64 data: URI (no separate upload/storage
+# pipeline exists yet — see Module note in decisions/). ~10MB raw image ->
+# ~13.4M base64 chars; capped a bit under that.
+_MAX_BUG_PHOTO_DATA_URI_LEN = 14_000_000
 
 
 def get_field_or_404(store, farmer_id: str, field_id: str):
@@ -77,7 +93,55 @@ def compute_irrigation(store, ext: dict, farmer_id: str, field_id: str) -> dict:
 _DISEASE_RISK_DEDUP_WINDOW = timedelta(hours=1)
 
 
-def compute_disease_risk(store, ext: dict, farmer_id: str, field_id: str) -> dict:
+def resolve_disease_target_lang(store, farmer_id: str, language_override: str | None) -> str:
+    """Same resolution order as ``voice_v2._resolve_language`` (explicit
+    ``?language=`` query override, else the farmer's own
+    ``preferred_language``, else ``en``) -- kept here rather than imported
+    from ``routes/voice_v2.py`` so ``value_endpoints.py`` (used by both
+    ``/v1`` and ``/v2``) doesn't depend on a route module. An unrecognized
+    override silently falls back to ``en`` rather than a 400, since
+    disease-risk display language is a client convenience, not a strict
+    API contract the way ``/v2/stt``'s ``language`` param is."""
+    if language_override and language_override in V1_LANGUAGES:
+        return language_override
+    farmer = store.get_farmer(farmer_id)
+    lang = (farmer.preferred_language if farmer else None) or "en"
+    return lang if lang in V1_LANGUAGES else "en"
+
+
+def _with_disease_translation(alert_json: dict, target_lang: str) -> dict:
+    """Module 34 follow-up: the disease-scan headline (``disease``) and
+    rationale (``recommended_action``) were server-generated English
+    sentences the mobile app displayed as-is regardless of active
+    language -- CNN-vs-environmental ``source`` was already localized
+    client-side, but this text never was. Rather than restructure
+    ``DiseaseRiskAlert`` (``recommended_action`` is already fully
+    structured -- exactly 4 fixed strings keyed by ``risk_level``, see
+    ``disease_risk_scoring.RISK_ACTION`` -- so the mobile client can and
+    now does translate that one from ``risk_level`` alone with no backend
+    change), only ``disease`` is genuinely free text (a fixed proxy
+    string for the environmental path, or a PlantVillage
+    crop+condition label built by ``disease_cnn_labels.disease_display_name``
+    for the CNN path) that a client-side lookup table can't cover. This
+    reuses the existing IndicTrans2 MT path (``voice_client.translate_text``
+    -> ``RemoteVoiceService`` -> ``services/voice``), the same one
+    ``synthesize_advisory_audio`` already uses for advisory audio,
+    per the "acceptable fallback" documented in this module's brief.
+    Additive only: adds ``disease_translated``/``translated_lang`` next to
+    the existing ``disease`` field; never modifies ``disease`` itself, and
+    both fields are omitted (falls back silently) when ``target_lang`` is
+    English or the voice service is unavailable -- the same degrade-not-
+    fail contract every other voice-service call in this project follows.
+    """
+    if target_lang == "en":
+        return alert_json
+    translated = translate_text(alert_json["disease"], "en", target_lang)
+    if translated is None:
+        return alert_json
+    return {**alert_json, "disease_translated": translated, "translated_lang": target_lang}
+
+
+def compute_disease_risk(store, ext: dict, farmer_id: str, field_id: str, target_lang: str = "en") -> dict:
     """List is real history (openapi.yaml), so recompute-on-read must still
     persist a new alert each call -- but the environmental-proxy scorer
     reruns against the same underlying weather/soil window on every GET, so
@@ -102,7 +166,7 @@ def compute_disease_risk(store, ext: dict, farmer_id: str, field_id: str) -> dic
         store.save_disease_risk_alert(farmer_id, alert)
 
     alerts = store.list_disease_risk_alerts(farmer_id, field_id)
-    return {"items": [to_json(a) for a in alerts]}
+    return {"items": [_with_disease_translation(to_json(a), target_lang) for a in alerts]}
 
 
 def compute_advisories(store, ext: dict, farmer_id: str, field_id: str) -> dict:
@@ -114,7 +178,9 @@ def compute_advisories(store, ext: dict, farmer_id: str, field_id: str) -> dict:
     return {"items": [to_json(a) for a in advisories]}
 
 
-def compute_disease_risk_image(store, ext: dict, farmer_id: str, field_id: str, file_storage) -> dict:
+def compute_disease_risk_image(
+    store, ext: dict, farmer_id: str, field_id: str, file_storage, target_lang: str = "en"
+) -> dict:
     field = get_field_or_404(store, farmer_id, field_id)
     image_bytes = validate_image_upload(file_storage)
 
@@ -127,7 +193,7 @@ def compute_disease_risk_image(store, ext: dict, farmer_id: str, field_id: str, 
     alert = resolve_disease_alert(disease_model, features, field_id, image_bytes=image_bytes)
 
     saved = store.save_disease_risk_alert(farmer_id, alert)
-    return to_json(saved)
+    return _with_disease_translation(to_json(saved), target_lang)
 
 
 def submit_feedback(store, farmer_id: str, body) -> dict:
@@ -153,4 +219,56 @@ def submit_feedback(store, farmer_id: str, body) -> dict:
         comment=body.get("comment"),
     )
     saved = store.save_feedback_entry(farmer_id, entry)
+    return to_json(saved)
+
+
+def submit_bug_report(store, farmer_id: str, body) -> dict:
+    """Low-friction "what went wrong" bug report from the mobile app.
+    Deliberately its own record (see BugReport's docstring / migration
+    009's header), not a bend of the existing star-rating feedback
+    contract -- every field here is optional except that at least one of
+    category/message must be present, so a one-tap preset-only submit
+    (no typing at all) still counts as a valid report."""
+    if not isinstance(body, dict):
+        raise ApiError(400, "BAD_REQUEST", "Request body must be a JSON object")
+
+    category = body.get("category")
+    message = body.get("message")
+    if category is None and not message:
+        raise ApiError(400, "BAD_REQUEST", "Provide a category or a message")
+    if category is not None:
+        if not isinstance(category, str) or category not in _BUG_REPORT_CATEGORIES:
+            raise ApiError(
+                400,
+                "BAD_REQUEST",
+                f"category must be one of: {', '.join(sorted(_BUG_REPORT_CATEGORIES))}",
+            )
+    if message is not None:
+        if not isinstance(message, str) or len(message) > _MAX_BUG_MESSAGE_LEN:
+            raise ApiError(400, "BAD_REQUEST", f"message must be a string up to {_MAX_BUG_MESSAGE_LEN} chars")
+
+    for optional_str_field in ("photo_url", "app_version", "platform"):
+        value = body.get(optional_str_field)
+        if value is not None and not isinstance(value, str):
+            raise ApiError(400, "BAD_REQUEST", f"{optional_str_field} must be a string")
+    photo_url = body.get("photo_url")
+    if photo_url is not None and len(photo_url) > _MAX_BUG_PHOTO_DATA_URI_LEN:
+        raise ApiError(
+            400,
+            "BAD_REQUEST",
+            f"photo_url exceeds the {_MAX_BUG_PHOTO_DATA_URI_LEN} char limit "
+            "(photos are sent as a base64 data: URI, capped well under 10MB raw)",
+        )
+
+    report = BugReport(
+        id=str(uuid.uuid4()),
+        farmer_id=farmer_id,
+        created_at=datetime.now(timezone.utc),
+        category=category,
+        message=message,
+        photo_url=body.get("photo_url"),
+        app_version=body.get("app_version"),
+        platform=body.get("platform"),
+    )
+    saved = store.save_bug_report(farmer_id, report)
     return to_json(saved)

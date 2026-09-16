@@ -1,0 +1,1 @@
+{"error":{"code":"VOICE_UNAVAILABLE","details":{},"message":"Voice service is unreachable; the client should fall back to on-device TTS/STT."}}

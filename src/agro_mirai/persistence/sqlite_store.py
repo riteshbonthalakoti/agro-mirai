@@ -18,6 +18,7 @@ from pathlib import Path
 
 from agro_mirai.persistence.models import (
     Advisory,
+    BugReport,
     CropRecommendation,
     DiseaseRiskAlert,
     Farmer,
@@ -36,6 +37,7 @@ AUTH_MIGRATION_PATH = ROOT / "migrations" / "sqlite" / "002_auth_fields.sql"
 DISEASE_SOURCE_MIGRATION_PATH = ROOT / "migrations" / "sqlite" / "003_disease_alert_source.sql"
 PHONE_UNIQUE_MIGRATION_PATH = ROOT / "migrations" / "sqlite" / "005_phone_unique.sql"
 FARMER_PHOTO_MIGRATION_PATH = ROOT / "migrations" / "sqlite" / "006_farmer_photo.sql"
+BUG_REPORTS_MIGRATION_PATH = ROOT / "migrations" / "sqlite" / "009_bug_reports.sql"
 
 
 # --------------------------------------------------------------------------
@@ -94,6 +96,15 @@ class SQLiteDataStore:
         self._apply_disease_source_migration()
         self._apply_phone_unique_migration()
         self._apply_farmer_photo_migration()
+        self._apply_bug_reports_migration()
+
+    def _apply_bug_reports_migration(self) -> None:
+        """Mobile bug-report flow: brand new table, CREATE TABLE/INDEX IF
+        NOT EXISTS -- see migrations/sqlite/009_bug_reports.sql."""
+        sql = BUG_REPORTS_MIGRATION_PATH.read_text(encoding="utf-8")
+        conn = self._conn
+        conn.executescript(sql)
+        conn.commit()
 
     def _apply_farmer_photo_migration(self) -> None:
         """Module 30: same ADD-COLUMN-tolerating pattern as
@@ -940,6 +951,58 @@ class SQLiteDataStore:
             rating=row["rating"],
             helpful=bool(row["helpful"]),
             comment=row["comment"],
+        )
+
+    # --- BugReport ---
+    def save_bug_report(self, farmer_id: str, report: "BugReport") -> "BugReport":
+        try:
+            self._conn.execute(
+                """
+                INSERT INTO bug_reports
+                    (id, farmer_id, created_at, category, message, photo_url, app_version, platform)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    report.id,
+                    farmer_id,
+                    _dt_to_text(report.created_at),
+                    report.category,
+                    report.message,
+                    report.photo_url,
+                    report.app_version,
+                    report.platform,
+                ),
+            )
+            self._conn.commit()
+        except sqlite3.IntegrityError as e:
+            self._conn.rollback()
+            raise ConflictError(str(e)) from e
+        row = self._conn.execute(
+            "SELECT * FROM bug_reports WHERE id = ?", (report.id,)
+        ).fetchone()
+        return self._row_to_bug_report(row)
+
+    def list_bug_reports_for_farmer(
+        self, farmer_id: str, limit: int = 200
+    ) -> list["BugReport"]:
+        rows = self._conn.execute(
+            "SELECT * FROM bug_reports WHERE farmer_id = ? "
+            "ORDER BY created_at DESC LIMIT ?",
+            (farmer_id, limit),
+        ).fetchall()
+        return [self._row_to_bug_report(r) for r in rows]
+
+    @staticmethod
+    def _row_to_bug_report(row: sqlite3.Row) -> "BugReport":
+        return BugReport(
+            id=row["id"],
+            farmer_id=row["farmer_id"],
+            created_at=_text_to_dt(row["created_at"]),
+            category=row["category"],
+            message=row["message"],
+            photo_url=row["photo_url"],
+            app_version=row["app_version"],
+            platform=row["platform"],
         )
 
     # --- Health ---

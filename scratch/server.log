@@ -1,0 +1,369 @@
+C:\Users\bonth\AppData\Local\Programs\Python\Python312\Lib\site-packages\sklearn\base.py:376: InconsistentVersionWarning: Trying to unpickle estimator DecisionTreeClassifier from version 1.7.2 when using version 1.4.2. This might lead to breaking code or invalid results. Use at your own risk. For more info please refer to:
+https://scikit-learn.org/stable/model_persistence.html#security-maintainability-limitations
+  warnings.warn(
+C:\Users\bonth\AppData\Local\Programs\Python\Python312\Lib\site-packages\sklearn\base.py:376: InconsistentVersionWarning: Trying to unpickle estimator RandomForestClassifier from version 1.7.2 when using version 1.4.2. This might lead to breaking code or invalid results. Use at your own risk. For more info please refer to:
+https://scikit-learn.org/stable/model_persistence.html#security-maintainability-limitations
+  warnings.warn(
+ * Serving Flask app 'agro_mirai.api.app'
+ * Debug mode: off
+WARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://10.105.30.89:5000
+Press CTRL+C to quit
+[2026-09-16 00:49:16,728] INFO request_id=b27f80e8-4028-46b9-97a6-bcc2f97c2c0a agro_mirai.api.app: GET /health -> 200
+127.0.0.1 - - [16/Sep/2026 00:49:16] "GET /health HTTP/1.1" 200 -
+[2026-09-16 00:49:20,832] INFO request_id=13bbf223-c944-4698-8c1f-1caaddaa7dca agro_mirai.auth.otp: OTP for +919876500099: 172917 (valid 10 min)
+[2026-09-16 00:49:20,832] INFO request_id=13bbf223-c944-4698-8c1f-1caaddaa7dca agro_mirai.api.app: POST /v2/auth/request-otp -> 200
+127.0.0.1 - - [16/Sep/2026 00:49:20] "POST /v2/auth/request-otp HTTP/1.1" 200 -
+[2026-09-16 00:49:27,071] INFO request_id=c5a40120-892d-42a4-86be-d627c2e54fbd agro_mirai.api.app: POST /v2/auth/verify-otp -> 400
+127.0.0.1 - - [16/Sep/2026 00:49:27] "POST /v2/auth/verify-otp HTTP/1.1" 400 -
+[2026-09-16 00:49:27,179] INFO request_id=ecbc320c-1433-4d47-8972-26b4a30e5b3e agro_mirai.api.app: POST /v2/bug-reports -> 401
+127.0.0.1 - - [16/Sep/2026 00:49:27] "POST /v2/bug-reports HTTP/1.1" 401 -
+[2026-09-16 00:49:27,272] INFO request_id=3fe55528-87b0-47cc-ae36-935910b37551 agro_mirai.api.app: POST /v2/bug-reports -> 401
+127.0.0.1 - - [16/Sep/2026 00:49:27] "POST /v2/bug-reports HTTP/1.1" 401 -
+[2026-09-16 00:49:27,359] INFO request_id=0bfc3b8f-f151-4953-a10f-a5d4f0adce05 agro_mirai.api.app: POST /v2/bug-reports -> 401
+127.0.0.1 - - [16/Sep/2026 00:49:27] "POST /v2/bug-reports HTTP/1.1" 401 -
+[2026-09-16 00:49:37,660] INFO request_id=74a1f5fb-588a-47db-90dc-9ba0553495b9 agro_mirai.api.app: POST /v2/auth/verify-otp -> 200
+127.0.0.1 - - [16/Sep/2026 00:49:37] "POST /v2/auth/verify-otp HTTP/1.1" 200 -
+[2026-09-16 00:49:37,802] INFO request_id=5d354f40-1a23-4d1e-8487-6cfdc678dbc6 agro_mirai.api.app: POST /v2/bug-reports -> 201
+127.0.0.1 - - [16/Sep/2026 00:49:37] "POST /v2/bug-reports HTTP/1.1" 201 -
+[2026-09-16 00:49:37,903] INFO request_id=d5c0fa81-e239-419f-b1ff-62cd82f7827d agro_mirai.api.app: POST /v2/bug-reports -> 400
+127.0.0.1 - - [16/Sep/2026 00:49:37] "POST /v2/bug-reports HTTP/1.1" 400 -
+[2026-09-16 00:49:37,999] INFO request_id=a350ab65-cc26-49ef-9b63-fbf672131c3e agro_mirai.api.app: POST /v2/bug-reports -> 401
+127.0.0.1 - - [16/Sep/2026 00:49:38] "POST /v2/bug-reports HTTP/1.1" 401 -
+[2026-09-16 00:50:18,665] INFO request_id=8a3d8e5d-287a-418d-aeb9-ddf3bcdc27c1 agro_mirai.api.app: GET /v2/farmers/me -> 200
+10.105.30.216 - - [16/Sep/2026 00:50:18] "GET /v2/farmers/me HTTP/1.1" 200 -
+[2026-09-16 00:50:18,756] INFO request_id=b51d5da6-dd3d-4c3e-a40b-280e5f01bc88 agro_mirai.api.app: GET /v2/fields -> 200
+10.105.30.216 - - [16/Sep/2026 00:50:18] "GET /v2/fields HTTP/1.1" 200 -
+[2026-09-16 00:50:18,944] INFO request_id=ac83783d-4ca2-4552-a30c-4ef695e4d2ac agro_mirai.api.app: GET /v2/fields/4b08f7e2-2e86-434d-9ff3-b192f76d11c1/advisories -> 422
+10.105.30.216 - - [16/Sep/2026 00:50:18] "GET /v2/fields/4b08f7e2-2e86-434d-9ff3-b192f76d11c1/advisories HTTP/1.1" 422 -
+[2026-09-16 00:50:19,373] INFO request_id=90aa9f5d-5442-45c2-bb8c-f2051f0454bd agro_mirai.api.app: GET /v2/fields -> 200
+10.105.30.216 - - [16/Sep/2026 00:50:19] "GET /v2/fields HTTP/1.1" 200 -
+[2026-09-16 00:50:19,507] INFO request_id=acbc2ca7-9ebd-4eb3-be21-9126d2ed5efa agro_mirai.api.app: GET /v2/fields/4b08f7e2-2e86-434d-9ff3-b192f76d11c1/advisories -> 422
+10.105.30.216 - - [16/Sep/2026 00:50:19] "GET /v2/fields/4b08f7e2-2e86-434d-9ff3-b192f76d11c1/advisories HTTP/1.1" 422 -
+[2026-09-16 00:50:45,412] INFO request_id=c0ce7363-b24e-4ab2-a035-458b7193ead2 agro_mirai.api.app: GET /v2/farmers/me -> 200
+10.105.30.216 - - [16/Sep/2026 00:50:45] "GET /v2/farmers/me HTTP/1.1" 200 -
+[2026-09-16 00:50:45,413] INFO request_id=3ae784ea-a1b5-4561-ae72-5e57875bbb66 agro_mirai.api.app: GET /v2/fields -> 200
+10.105.30.216 - - [16/Sep/2026 00:50:45] "GET /v2/fields HTTP/1.1" 200 -
+[2026-09-16 00:50:45,508] INFO request_id=3fad804e-1813-433f-98bd-48f525a707f8 agro_mirai.api.app: GET /v2/fields -> 200
+10.105.30.216 - - [16/Sep/2026 00:50:45] "GET /v2/fields HTTP/1.1" 200 -
+[2026-09-16 00:50:45,509] INFO request_id=c74a51d9-e0c7-4aa3-ad30-f2e45a217488 agro_mirai.api.app: GET /v2/fields/4b08f7e2-2e86-434d-9ff3-b192f76d11c1/advisories -> 422
+10.105.30.216 - - [16/Sep/2026 00:50:45] "GET /v2/fields/4b08f7e2-2e86-434d-9ff3-b192f76d11c1/advisories HTTP/1.1" 422 -
+[2026-09-16 00:50:45,605] INFO request_id=530b4698-a56f-470d-b3a0-d2ce6e2da289 agro_mirai.api.app: GET /v2/fields/4b08f7e2-2e86-434d-9ff3-b192f76d11c1/advisories -> 422
+10.105.30.216 - - [16/Sep/2026 00:50:45] "GET /v2/fields/4b08f7e2-2e86-434d-9ff3-b192f76d11c1/advisories HTTP/1.1" 422 -
+[2026-09-16 00:51:12,746] INFO request_id=4f95123d-3576-44c4-ba27-858ee14c0d3f agro_mirai.api.app: GET /v2/farmers/me -> 200
+10.105.30.216 - - [16/Sep/2026 00:51:12] "GET /v2/farmers/me HTTP/1.1" 200 -
+[2026-09-16 00:51:12,747] INFO request_id=e4a5e31c-c18b-4883-b6db-927857c0971d agro_mirai.api.app: GET /v2/fields -> 200
+10.105.30.216 - - [16/Sep/2026 00:51:12] "GET /v2/fields HTTP/1.1" 200 -
+[2026-09-16 00:51:12,820] INFO request_id=fd6ad42d-ffce-4dec-8a7b-2a8746d34c1b agro_mirai.api.app: GET /v2/fields -> 200
+10.105.30.216 - - [16/Sep/2026 00:51:12] "GET /v2/fields HTTP/1.1" 200 -
+[2026-09-16 00:51:12,946] INFO request_id=b43cc7f1-c261-4074-b331-0830a779e591 agro_mirai.api.app: GET /v2/fields/4b08f7e2-2e86-434d-9ff3-b192f76d11c1/advisories -> 422
+10.105.30.216 - - [16/Sep/2026 00:51:12] "GET /v2/fields/4b08f7e2-2e86-434d-9ff3-b192f76d11c1/advisories HTTP/1.1" 422 -
+[2026-09-16 00:51:12,947] INFO request_id=82b02316-8da7-4cb4-a3ae-623edb396b0e agro_mirai.api.app: GET /v2/fields/4b08f7e2-2e86-434d-9ff3-b192f76d11c1/advisories -> 422
+10.105.30.216 - - [16/Sep/2026 00:51:12] "GET /v2/fields/4b08f7e2-2e86-434d-9ff3-b192f76d11c1/advisories HTTP/1.1" 422 -
+[2026-09-16 00:51:25,563] INFO request_id=2602ccf8-b212-47e1-93d5-4788e59f392f agro_mirai.api.app: GET /v2/farmers/me -> 200
+10.105.30.216 - - [16/Sep/2026 00:51:25] "GET /v2/farmers/me HTTP/1.1" 200 -
+[2026-09-16 00:51:25,564] INFO request_id=67d225f7-7226-4e11-9649-a5f5ecaffc5f agro_mirai.api.app: GET /v2/fields -> 200
+10.105.30.216 - - [16/Sep/2026 00:51:25] "GET /v2/fields HTTP/1.1" 200 -
+[2026-09-16 00:51:25,690] INFO request_id=e3527a09-e04b-479b-ae21-5b7ff6cb3277 agro_mirai.api.app: GET /v2/fields -> 200
+10.105.30.216 - - [16/Sep/2026 00:51:25] "GET /v2/fields HTTP/1.1" 200 -
+[2026-09-16 00:51:25,694] INFO request_id=2e1c7bda-0dca-43ba-af77-b4f8f616effe agro_mirai.api.app: GET /v2/fields/4b08f7e2-2e86-434d-9ff3-b192f76d11c1/advisories -> 422
+10.105.30.216 - - [16/Sep/2026 00:51:25] "GET /v2/fields/4b08f7e2-2e86-434d-9ff3-b192f76d11c1/advisories HTTP/1.1" 422 -
+[2026-09-16 00:51:25,783] INFO request_id=41919eda-00fd-4d2c-b9f4-a9bf01896af5 agro_mirai.api.app: GET /v2/fields/4b08f7e2-2e86-434d-9ff3-b192f76d11c1/advisories -> 422
+10.105.30.216 - - [16/Sep/2026 00:51:25] "GET /v2/fields/4b08f7e2-2e86-434d-9ff3-b192f76d11c1/advisories HTTP/1.1" 422 -
+[2026-09-16 00:51:37,626] INFO request_id=a7f3691a-948b-4f98-8618-cc5b1f973ce8 agro_mirai.api.app: GET /v2/farmers/me -> 200
+10.105.30.216 - - [16/Sep/2026 00:51:37] "GET /v2/farmers/me HTTP/1.1" 200 -
+[2026-09-16 00:51:37,627] INFO request_id=fd062951-1b97-4e1f-bcfd-7daeb5bd9b5b agro_mirai.api.app: GET /v2/fields -> 200
+10.105.30.216 - - [16/Sep/2026 00:51:37] "GET /v2/fields HTTP/1.1" 200 -
+[2026-09-16 00:51:37,815] INFO request_id=e3f2e749-9ee8-4888-98b0-970e55f6a5f4 agro_mirai.api.app: GET /v2/fields -> 200
+10.105.30.216 - - [16/Sep/2026 00:51:37] "GET /v2/fields HTTP/1.1" 200 -
+[2026-09-16 00:51:37,817] INFO request_id=4e45cb6f-185f-41ad-af40-b53ace1d9861 agro_mirai.api.app: GET /v2/fields/4b08f7e2-2e86-434d-9ff3-b192f76d11c1/advisories -> 422
+10.105.30.216 - - [16/Sep/2026 00:51:37] "GET /v2/fields/4b08f7e2-2e86-434d-9ff3-b192f76d11c1/advisories HTTP/1.1" 422 -
+[2026-09-16 00:51:38,010] INFO request_id=a8454d2f-d038-4abd-bc3e-dba61194c6ef agro_mirai.api.app: GET /v2/fields/4b08f7e2-2e86-434d-9ff3-b192f76d11c1/advisories -> 422
+10.105.30.216 - - [16/Sep/2026 00:51:38] "GET /v2/fields/4b08f7e2-2e86-434d-9ff3-b192f76d11c1/advisories HTTP/1.1" 422 -
+[2026-09-16 00:51:48,450] INFO request_id=f76cb2f0-2187-46e5-8850-1c3876e04b9d agro_mirai.api.app: GET /v2/farmers/me -> 200
+10.105.30.216 - - [16/Sep/2026 00:51:48] "GET /v2/farmers/me HTTP/1.1" 200 -
+[2026-09-16 00:51:48,452] INFO request_id=c5a74cfd-c707-4a4b-ac4e-a887d4a39fd6 agro_mirai.api.app: GET /v2/fields -> 200
+10.105.30.216 - - [16/Sep/2026 00:51:48] "GET /v2/fields HTTP/1.1" 200 -
+[2026-09-16 00:51:48,567] INFO request_id=0459c8cc-b224-4779-a01a-12d38140838c agro_mirai.api.app: GET /v2/fields -> 200
+10.105.30.216 - - [16/Sep/2026 00:51:48] "GET /v2/fields HTTP/1.1" 200 -
+[2026-09-16 00:51:48,569] INFO request_id=e3438b6f-3033-4020-aa57-9c7b02a6736d agro_mirai.api.app: GET /v2/fields/4b08f7e2-2e86-434d-9ff3-b192f76d11c1/advisories -> 422
+10.105.30.216 - - [16/Sep/2026 00:51:48] "GET /v2/fields/4b08f7e2-2e86-434d-9ff3-b192f76d11c1/advisories HTTP/1.1" 422 -
+[2026-09-16 00:51:48,816] INFO request_id=67d08f71-dcb2-48f7-9c5d-73d92e165175 agro_mirai.api.app: GET /v2/fields/4b08f7e2-2e86-434d-9ff3-b192f76d11c1/advisories -> 422
+10.105.30.216 - - [16/Sep/2026 00:51:48] "GET /v2/fields/4b08f7e2-2e86-434d-9ff3-b192f76d11c1/advisories HTTP/1.1" 422 -
+[2026-09-16 00:51:59,138] INFO request_id=fdcdc6c8-9344-4e18-b757-702ef9c583f2 agro_mirai.api.app: GET /v2/farmers/me -> 200
+10.105.30.216 - - [16/Sep/2026 00:51:59] "GET /v2/farmers/me HTTP/1.1" 200 -
+[2026-09-16 00:51:59,139] INFO request_id=f1e06f56-d849-42f4-b771-55a965a3a881 agro_mirai.api.app: GET /v2/fields -> 200
+10.105.30.216 - - [16/Sep/2026 00:51:59] "GET /v2/fields HTTP/1.1" 200 -
+[2026-09-16 00:51:59,232] INFO request_id=a9ec8d6b-c04c-49a6-aede-b535c3c2af9c agro_mirai.api.app: GET /v2/fields/4b08f7e2-2e86-434d-9ff3-b192f76d11c1/advisories -> 422
+10.105.30.216 - - [16/Sep/2026 00:51:59] "GET /v2/fields/4b08f7e2-2e86-434d-9ff3-b192f76d11c1/advisories HTTP/1.1" 422 -
+[2026-09-16 00:51:59,235] INFO request_id=60d8c2bb-e465-443f-a40b-5bd39eea4bce agro_mirai.api.app: GET /v2/fields -> 200
+10.105.30.216 - - [16/Sep/2026 00:51:59] "GET /v2/fields HTTP/1.1" 200 -
+[2026-09-16 00:51:59,466] INFO request_id=46417253-c521-4a17-8c9a-e28169aad1f4 agro_mirai.api.app: GET /v2/fields/4b08f7e2-2e86-434d-9ff3-b192f76d11c1/advisories -> 422
+10.105.30.216 - - [16/Sep/2026 00:51:59] "GET /v2/fields/4b08f7e2-2e86-434d-9ff3-b192f76d11c1/advisories HTTP/1.1" 422 -
+[2026-09-16 00:52:27,934] INFO request_id=5371dd44-f8fd-4596-8c7c-56d550d384dd agro_mirai.api.app: GET /v2/fields -> 200
+10.105.30.216 - - [16/Sep/2026 00:52:27] "GET /v2/fields HTTP/1.1" 200 -
+[2026-09-16 00:52:27,937] INFO request_id=3f1e8ada-2829-4836-aeac-629d0cf2ea4d agro_mirai.api.app: GET /v2/farmers/me -> 200
+10.105.30.216 - - [16/Sep/2026 00:52:27] "GET /v2/farmers/me HTTP/1.1" 200 -
+[2026-09-16 00:52:28,017] INFO request_id=aead7a5b-d8bd-4874-954d-65d7d6986c44 agro_mirai.api.app: GET /v2/fields/4b08f7e2-2e86-434d-9ff3-b192f76d11c1/advisories -> 422
+10.105.30.216 - - [16/Sep/2026 00:52:28] "GET /v2/fields/4b08f7e2-2e86-434d-9ff3-b192f76d11c1/advisories HTTP/1.1" 422 -
+[2026-09-16 00:52:28,036] INFO request_id=2fd0731b-eb6a-436f-a48a-fe1031448c64 agro_mirai.api.app: GET /v2/fields -> 200
+10.105.30.216 - - [16/Sep/2026 00:52:28] "GET /v2/fields HTTP/1.1" 200 -
+[2026-09-16 00:52:28,120] INFO request_id=71675067-01a3-46e8-ba7b-96cbb21ef419 agro_mirai.api.app: GET /v2/fields/4b08f7e2-2e86-434d-9ff3-b192f76d11c1/advisories -> 422
+10.105.30.216 - - [16/Sep/2026 00:52:28] "GET /v2/fields/4b08f7e2-2e86-434d-9ff3-b192f76d11c1/advisories HTTP/1.1" 422 -
+[2026-09-16 00:52:31,279] INFO request_id=733e609f-8333-4e8e-8358-ae9f3f0672e4 agro_mirai.api.app: GET /v2/farmers/me -> 200
+10.105.30.216 - - [16/Sep/2026 00:52:31] "GET /v2/farmers/me HTTP/1.1" 200 -
+[2026-09-16 00:52:31,280] INFO request_id=9c639a01-6d16-43f9-8d23-9f9e064c3ed2 agro_mirai.api.app: GET /v2/fields -> 200
+10.105.30.216 - - [16/Sep/2026 00:52:31] "GET /v2/fields HTTP/1.1" 200 -
+[2026-09-16 00:52:31,404] INFO request_id=72d2063a-35ea-47b2-ae2d-e96800c24c9e agro_mirai.api.app: GET /v2/fields/4b08f7e2-2e86-434d-9ff3-b192f76d11c1/advisories -> 422
+10.105.30.216 - - [16/Sep/2026 00:52:31] "GET /v2/fields/4b08f7e2-2e86-434d-9ff3-b192f76d11c1/advisories HTTP/1.1" 422 -
+[2026-09-16 00:52:31,405] INFO request_id=fb8cb80a-2432-43cb-ad30-f9020bc1a7d7 agro_mirai.api.app: GET /v2/fields -> 200
+10.105.30.216 - - [16/Sep/2026 00:52:31] "GET /v2/fields HTTP/1.1" 200 -
+[2026-09-16 00:52:31,593] INFO request_id=46169d55-8e35-4c18-a982-231752ef14e8 agro_mirai.api.app: GET /v2/fields/4b08f7e2-2e86-434d-9ff3-b192f76d11c1/advisories -> 422
+10.105.30.216 - - [16/Sep/2026 00:52:31] "GET /v2/fields/4b08f7e2-2e86-434d-9ff3-b192f76d11c1/advisories HTTP/1.1" 422 -
+[2026-09-16 00:53:05,902] INFO request_id=db409ad8-41a9-4110-a3cc-6ab3905f771b agro_mirai.api.app: GET /v2/fields -> 200
+10.105.30.216 - - [16/Sep/2026 00:53:05] "GET /v2/fields HTTP/1.1" 200 -
+[2026-09-16 00:53:05,921] INFO request_id=3dfadcd2-3c14-4d52-9a7f-b5b58777ec22 agro_mirai.api.app: GET /v2/farmers/me -> 200
+10.105.30.216 - - [16/Sep/2026 00:53:05] "GET /v2/farmers/me HTTP/1.1" 200 -
+[2026-09-16 00:53:06,042] INFO request_id=cca8e7c2-9a0b-408b-854c-97410449eb5c agro_mirai.api.app: GET /v2/fields/4b08f7e2-2e86-434d-9ff3-b192f76d11c1/advisories -> 422
+10.105.30.216 - - [16/Sep/2026 00:53:06] "GET /v2/fields/4b08f7e2-2e86-434d-9ff3-b192f76d11c1/advisories HTTP/1.1" 422 -
+[2026-09-16 00:53:06,123] INFO request_id=65813cbb-5c2c-4565-bb5d-47bf4b227a42 agro_mirai.api.app: GET /v2/fields -> 200
+10.105.30.216 - - [16/Sep/2026 00:53:06] "GET /v2/fields HTTP/1.1" 200 -
+[2026-09-16 00:53:06,239] INFO request_id=8d7aaef9-fa22-4b78-ab52-7f7d765ab28c agro_mirai.api.app: GET /v2/fields/4b08f7e2-2e86-434d-9ff3-b192f76d11c1/advisories -> 422
+10.105.30.216 - - [16/Sep/2026 00:53:06] "GET /v2/fields/4b08f7e2-2e86-434d-9ff3-b192f76d11c1/advisories HTTP/1.1" 422 -
+[2026-09-16 00:53:09,318] INFO request_id=94cc1f01-074a-4e5b-900d-4a5f0ab55469 agro_mirai.api.app: GET /v2/farmers/me -> 200
+10.105.30.216 - - [16/Sep/2026 00:53:09] "GET /v2/farmers/me HTTP/1.1" 200 -
+[2026-09-16 00:53:09,320] INFO request_id=2e6720e2-9837-4404-8396-08599326c570 agro_mirai.api.app: GET /v2/fields -> 200
+10.105.30.216 - - [16/Sep/2026 00:53:09] "GET /v2/fields HTTP/1.1" 200 -
+[2026-09-16 00:53:09,670] INFO request_id=83db5229-5014-47fa-adaf-65305e6e7933 agro_mirai.api.app: GET /v2/fields -> 200
+10.105.30.216 - - [16/Sep/2026 00:53:09] "GET /v2/fields HTTP/1.1" 200 -
+[2026-09-16 00:53:09,672] INFO request_id=a1891d9c-599d-4f29-bbba-f7a0ec06a1c3 agro_mirai.api.app: GET /v2/fields/4b08f7e2-2e86-434d-9ff3-b192f76d11c1/advisories -> 422
+10.105.30.216 - - [16/Sep/2026 00:53:09] "GET /v2/fields/4b08f7e2-2e86-434d-9ff3-b192f76d11c1/advisories HTTP/1.1" 422 -
+[2026-09-16 00:53:09,973] INFO request_id=c86a4b63-c951-4313-b898-c6d2a26c0977 agro_mirai.api.app: GET /v2/fields/4b08f7e2-2e86-434d-9ff3-b192f76d11c1/advisories -> 422
+10.105.30.216 - - [16/Sep/2026 00:53:09] "GET /v2/fields/4b08f7e2-2e86-434d-9ff3-b192f76d11c1/advisories HTTP/1.1" 422 -
+[2026-09-16 00:53:18,258] INFO request_id=39875444-cfb8-468e-9cb3-f12dd333566a agro_mirai.api.app: GET /v2/fields -> 200
+10.105.30.216 - - [16/Sep/2026 00:53:18] "GET /v2/fields HTTP/1.1" 200 -
+[2026-09-16 00:53:18,259] INFO request_id=9b2bba46-d047-4a5f-8fae-88cacc2ed226 agro_mirai.api.app: GET /v2/farmers/me -> 200
+10.105.30.216 - - [16/Sep/2026 00:53:18] "GET /v2/farmers/me HTTP/1.1" 200 -
+[2026-09-16 00:53:18,547] INFO request_id=abac6d10-09e3-44f3-a1bc-c46235e8ef6f agro_mirai.api.app: GET /v2/fields -> 200
+10.105.30.216 - - [16/Sep/2026 00:53:18] "GET /v2/fields HTTP/1.1" 200 -
+[2026-09-16 00:53:18,590] INFO request_id=05b5e4eb-6f39-4083-a0f5-ae9294986ad7 agro_mirai.api.app: GET /v2/fields/4b08f7e2-2e86-434d-9ff3-b192f76d11c1/advisories -> 422
+10.105.30.216 - - [16/Sep/2026 00:53:18] "GET /v2/fields/4b08f7e2-2e86-434d-9ff3-b192f76d11c1/advisories HTTP/1.1" 422 -
+[2026-09-16 00:53:18,830] INFO request_id=50d76527-d208-499e-973b-7cc13b7881db agro_mirai.api.app: GET /v2/fields/4b08f7e2-2e86-434d-9ff3-b192f76d11c1/advisories -> 422
+10.105.30.216 - - [16/Sep/2026 00:53:18] "GET /v2/fields/4b08f7e2-2e86-434d-9ff3-b192f76d11c1/advisories HTTP/1.1" 422 -
+[2026-09-16 00:53:28,433] INFO request_id=d585819e-999c-43e5-8bc4-d4056ecc27d4 agro_mirai.api.app: GET /v2/fields -> 200
+10.105.30.216 - - [16/Sep/2026 00:53:28] "GET /v2/fields HTTP/1.1" 200 -
+[2026-09-16 00:53:28,435] INFO request_id=505b261b-221b-47a4-a391-11bd234c5a26 agro_mirai.api.app: GET /v2/farmers/me -> 200
+10.105.30.216 - - [16/Sep/2026 00:53:28] "GET /v2/farmers/me HTTP/1.1" 200 -
+[2026-09-16 00:53:28,526] INFO request_id=9818cc93-e841-4675-b679-80058c5d6bc1 agro_mirai.api.app: GET /v2/fields -> 200
+10.105.30.216 - - [16/Sep/2026 00:53:28] "GET /v2/fields HTTP/1.1" 200 -
+[2026-09-16 00:53:28,530] INFO request_id=487de45e-5d75-45f8-9855-fb2d9ac781ba agro_mirai.api.app: GET /v2/fields/4b08f7e2-2e86-434d-9ff3-b192f76d11c1/advisories -> 422
+10.105.30.216 - - [16/Sep/2026 00:53:28] "GET /v2/fields/4b08f7e2-2e86-434d-9ff3-b192f76d11c1/advisories HTTP/1.1" 422 -
+[2026-09-16 00:53:28,635] INFO request_id=e288a01c-2008-4e3e-8236-7738dcaad2b0 agro_mirai.api.app: GET /v2/fields/4b08f7e2-2e86-434d-9ff3-b192f76d11c1/advisories -> 422
+10.105.30.216 - - [16/Sep/2026 00:53:28] "GET /v2/fields/4b08f7e2-2e86-434d-9ff3-b192f76d11c1/advisories HTTP/1.1" 422 -
+[2026-09-16 00:53:35,578] INFO request_id=61787bde-f4bc-4b2c-ac02-ff43cbefa63a agro_mirai.api.app: GET /v2/farmers/me -> 200
+10.105.30.216 - - [16/Sep/2026 00:53:35] "GET /v2/farmers/me HTTP/1.1" 200 -
+[2026-09-16 00:53:35,579] INFO request_id=b1b9695f-99a5-4997-bfdd-c61ba106cacc agro_mirai.api.app: GET /v2/fields -> 200
+10.105.30.216 - - [16/Sep/2026 00:53:35] "GET /v2/fields HTTP/1.1" 200 -
+[2026-09-16 00:53:35,677] INFO request_id=0c8aa7af-844a-4cc0-a0f3-f5765f0f8ffc agro_mirai.api.app: GET /v2/fields/4b08f7e2-2e86-434d-9ff3-b192f76d11c1/advisories -> 422
+10.105.30.216 - - [16/Sep/2026 00:53:35] "GET /v2/fields/4b08f7e2-2e86-434d-9ff3-b192f76d11c1/advisories HTTP/1.1" 422 -
+[2026-09-16 00:53:35,681] INFO request_id=5d5f9908-b71d-438d-abba-fd83e7e1e0db agro_mirai.api.app: GET /v2/fields -> 200
+10.105.30.216 - - [16/Sep/2026 00:53:35] "GET /v2/fields HTTP/1.1" 200 -
+[2026-09-16 00:53:35,807] INFO request_id=49633e3d-98d1-4e2b-9413-1eb25fc5e6d9 agro_mirai.api.app: GET /v2/fields/4b08f7e2-2e86-434d-9ff3-b192f76d11c1/advisories -> 422
+10.105.30.216 - - [16/Sep/2026 00:53:35] "GET /v2/fields/4b08f7e2-2e86-434d-9ff3-b192f76d11c1/advisories HTTP/1.1" 422 -
+[2026-09-16 00:53:56,828] INFO request_id=32835b81-d6e8-4038-82cf-001884e2ac00 agro_mirai.api.app: GET /v2/farmers/me -> 200
+10.105.30.216 - - [16/Sep/2026 00:53:56] "GET /v2/farmers/me HTTP/1.1" 200 -
+[2026-09-16 00:53:56,939] INFO request_id=c271cbcd-18be-42f5-aa08-278b8bb83afd agro_mirai.api.app: GET /v2/fields -> 200
+10.105.30.216 - - [16/Sep/2026 00:53:56] "GET /v2/fields HTTP/1.1" 200 -
+[2026-09-16 00:53:57,006] INFO request_id=481c4ebf-0635-40ca-8d36-424be31f6391 agro_mirai.api.app: GET /v2/fields/4b08f7e2-2e86-434d-9ff3-b192f76d11c1/advisories -> 422
+10.105.30.216 - - [16/Sep/2026 00:53:57] "GET /v2/fields/4b08f7e2-2e86-434d-9ff3-b192f76d11c1/advisories HTTP/1.1" 422 -
+[2026-09-16 00:53:57,309] INFO request_id=ba7e2277-e367-42f4-9573-d133be5e0a98 agro_mirai.api.app: GET /v2/fields -> 200
+10.105.30.216 - - [16/Sep/2026 00:53:57] "GET /v2/fields HTTP/1.1" 200 -
+[2026-09-16 00:53:57,385] INFO request_id=aba5974a-1ea8-4a43-b186-03be97912319 agro_mirai.api.app: GET /v2/fields/4b08f7e2-2e86-434d-9ff3-b192f76d11c1/advisories -> 422
+10.105.30.216 - - [16/Sep/2026 00:53:57] "GET /v2/fields/4b08f7e2-2e86-434d-9ff3-b192f76d11c1/advisories HTTP/1.1" 422 -
+[2026-09-16 00:55:07,239] INFO request_id=34a7ee20-b39e-4d26-a771-5ba057d5ab91 agro_mirai.api.app: GET /v2/fields -> 200
+10.105.30.216 - - [16/Sep/2026 00:55:07] "GET /v2/fields HTTP/1.1" 200 -
+[2026-09-16 00:55:07,281] INFO request_id=068310bd-dad0-4beb-9cf5-e06d2bad6a8e agro_mirai.api.app: GET /v2/farmers/me -> 200
+10.105.30.216 - - [16/Sep/2026 00:55:07] "GET /v2/farmers/me HTTP/1.1" 200 -
+[2026-09-16 00:55:07,337] INFO request_id=f4517e9a-d259-4b0c-92ba-0398588432cc agro_mirai.api.app: GET /v2/fields/4b08f7e2-2e86-434d-9ff3-b192f76d11c1/advisories -> 422
+10.105.30.216 - - [16/Sep/2026 00:55:07] "GET /v2/fields/4b08f7e2-2e86-434d-9ff3-b192f76d11c1/advisories HTTP/1.1" 422 -
+[2026-09-16 00:55:07,448] INFO request_id=51b9b3ac-55a2-4fc8-9d16-129c4c3d9af9 agro_mirai.api.app: GET /v2/fields -> 200
+10.105.30.216 - - [16/Sep/2026 00:55:07] "GET /v2/fields HTTP/1.1" 200 -
+[2026-09-16 00:55:07,533] INFO request_id=e58d16e3-e185-411e-8d4d-67374cd48283 agro_mirai.api.app: GET /v2/fields/4b08f7e2-2e86-434d-9ff3-b192f76d11c1/advisories -> 422
+10.105.30.216 - - [16/Sep/2026 00:55:07] "GET /v2/fields/4b08f7e2-2e86-434d-9ff3-b192f76d11c1/advisories HTTP/1.1" 422 -
+[2026-09-16 00:55:13,889] INFO request_id=b8d394d6-545b-496c-8c51-bee7366c357c agro_mirai.api.app: GET /v2/farmers/me -> 200
+10.105.30.216 - - [16/Sep/2026 00:55:13] "GET /v2/farmers/me HTTP/1.1" 200 -
+[2026-09-16 00:55:13,984] INFO request_id=d98bbb88-d03c-4a85-857d-179d40154056 agro_mirai.api.app: GET /v2/fields -> 200
+10.105.30.216 - - [16/Sep/2026 00:55:13] "GET /v2/fields HTTP/1.1" 200 -
+[2026-09-16 00:55:14,059] INFO request_id=a2c3d3c1-13b1-41c3-a4ad-9c7899a68ed0 agro_mirai.api.app: GET /v2/fields/4b08f7e2-2e86-434d-9ff3-b192f76d11c1/advisories -> 422
+10.105.30.216 - - [16/Sep/2026 00:55:14] "GET /v2/fields/4b08f7e2-2e86-434d-9ff3-b192f76d11c1/advisories HTTP/1.1" 422 -
+[2026-09-16 00:55:14,345] INFO request_id=2df5aba5-757f-4378-a014-80266c3a6fcf agro_mirai.api.app: GET /v2/fields -> 200
+10.105.30.216 - - [16/Sep/2026 00:55:14] "GET /v2/fields HTTP/1.1" 200 -
+[2026-09-16 00:55:14,429] INFO request_id=5eea69dd-db0a-4c49-ab84-405173150369 agro_mirai.api.app: GET /v2/fields/4b08f7e2-2e86-434d-9ff3-b192f76d11c1/advisories -> 422
+10.105.30.216 - - [16/Sep/2026 00:55:14] "GET /v2/fields/4b08f7e2-2e86-434d-9ff3-b192f76d11c1/advisories HTTP/1.1" 422 -
+[2026-09-16 00:55:16,518] INFO request_id=17ff90ba-e612-422e-b657-98455bffef5e agro_mirai.api.app: GET /v2/farmers/me -> 200
+10.105.30.216 - - [16/Sep/2026 00:55:16] "GET /v2/farmers/me HTTP/1.1" 200 -
+[2026-09-16 00:55:16,583] INFO request_id=cb79e99d-e020-474b-8c52-fdac23eb6064 agro_mirai.api.app: GET /v2/fields -> 200
+10.105.30.216 - - [16/Sep/2026 00:55:16] "GET /v2/fields HTTP/1.1" 200 -
+[2026-09-16 00:55:16,659] INFO request_id=3d39d88a-7d45-4ead-8ea9-4c125369d2fa agro_mirai.api.app: GET /v2/fields/4b08f7e2-2e86-434d-9ff3-b192f76d11c1/advisories -> 422
+10.105.30.216 - - [16/Sep/2026 00:55:16] "GET /v2/fields/4b08f7e2-2e86-434d-9ff3-b192f76d11c1/advisories HTTP/1.1" 422 -
+[2026-09-16 00:55:27,528] INFO request_id=684e72b8-5de6-4790-8ba6-167f79594242 agro_mirai.api.app: GET /v2/farmers/me -> 200
+10.105.30.216 - - [16/Sep/2026 00:55:27] "GET /v2/farmers/me HTTP/1.1" 200 -
+[2026-09-16 00:55:27,612] INFO request_id=d6fd836f-b062-4809-b73e-367a6d6a560d agro_mirai.api.app: GET /v2/fields -> 200
+10.105.30.216 - - [16/Sep/2026 00:55:27] "GET /v2/fields HTTP/1.1" 200 -
+[2026-09-16 00:55:27,686] INFO request_id=5f8afb6e-76c7-406d-9e20-83fecda3bbae agro_mirai.api.app: GET /v2/fields/4b08f7e2-2e86-434d-9ff3-b192f76d11c1/advisories -> 422
+10.105.30.216 - - [16/Sep/2026 00:55:27] "GET /v2/fields/4b08f7e2-2e86-434d-9ff3-b192f76d11c1/advisories HTTP/1.1" 422 -
+[2026-09-16 00:56:59,992] INFO request_id=6a61fc99-44e7-4969-a6c1-4edf8e155f84 agro_mirai.api.app: GET /v2/farmers/me -> 200
+10.105.30.216 - - [16/Sep/2026 00:56:59] "GET /v2/farmers/me HTTP/1.1" 200 -
+[2026-09-16 00:57:00,090] INFO request_id=6c4156b4-cf2e-4fc6-b4b5-57ba4df88606 agro_mirai.api.app: GET /v2/fields -> 200
+10.105.30.216 - - [16/Sep/2026 00:57:00] "GET /v2/fields HTTP/1.1" 200 -
+[2026-09-16 00:57:00,165] INFO request_id=1aa15d76-c1be-49e3-a22a-2836930c34cc agro_mirai.api.app: GET /v2/fields/4b08f7e2-2e86-434d-9ff3-b192f76d11c1/advisories -> 422
+10.105.30.216 - - [16/Sep/2026 00:57:00] "GET /v2/fields/4b08f7e2-2e86-434d-9ff3-b192f76d11c1/advisories HTTP/1.1" 422 -
+[2026-09-16 00:57:00,443] INFO request_id=396385d7-8b2f-419c-aa2e-eabaaf5dbd05 agro_mirai.api.app: GET /v2/fields -> 200
+10.105.30.216 - - [16/Sep/2026 00:57:00] "GET /v2/fields HTTP/1.1" 200 -
+[2026-09-16 00:57:00,523] INFO request_id=69171f19-b875-49b7-badf-af4a368d8c95 agro_mirai.api.app: GET /v2/fields/4b08f7e2-2e86-434d-9ff3-b192f76d11c1/advisories -> 422
+10.105.30.216 - - [16/Sep/2026 00:57:00] "GET /v2/fields/4b08f7e2-2e86-434d-9ff3-b192f76d11c1/advisories HTTP/1.1" 422 -
+[2026-09-16 00:57:10,291] INFO request_id=5fe36ee4-bb9d-4ecd-b601-61850224428f agro_mirai.api.app: GET /v2/farmers/me -> 200
+10.105.30.216 - - [16/Sep/2026 00:57:10] "GET /v2/farmers/me HTTP/1.1" 200 -
+[2026-09-16 00:57:10,294] INFO request_id=d1f2b91a-d0b0-447f-9583-fbd98024b984 agro_mirai.api.app: GET /v2/fields -> 200
+10.105.30.216 - - [16/Sep/2026 00:57:10] "GET /v2/fields HTTP/1.1" 200 -
+[2026-09-16 00:57:10,417] INFO request_id=b531972e-c43b-4b46-b4d1-18454294a650 agro_mirai.api.app: GET /v2/fields -> 200
+10.105.30.216 - - [16/Sep/2026 00:57:10] "GET /v2/fields HTTP/1.1" 200 -
+[2026-09-16 00:57:10,437] INFO request_id=be4f66e3-77f0-4de2-b1e7-859e1bd45399 agro_mirai.api.app: GET /v2/fields/4b08f7e2-2e86-434d-9ff3-b192f76d11c1/advisories -> 422
+10.105.30.216 - - [16/Sep/2026 00:57:10] "GET /v2/fields/4b08f7e2-2e86-434d-9ff3-b192f76d11c1/advisories HTTP/1.1" 422 -
+[2026-09-16 00:57:10,533] INFO request_id=39007f82-9b03-4bfc-b923-c4bfc46a3f1b agro_mirai.api.app: GET /v2/fields/4b08f7e2-2e86-434d-9ff3-b192f76d11c1/advisories -> 422
+10.105.30.216 - - [16/Sep/2026 00:57:10] "GET /v2/fields/4b08f7e2-2e86-434d-9ff3-b192f76d11c1/advisories HTTP/1.1" 422 -
+[2026-09-16 00:57:14,215] INFO request_id=e2532244-8d60-42c3-aa2c-cb22f37af71e agro_mirai.api.app: GET /v2/fields -> 200
+10.105.30.216 - - [16/Sep/2026 00:57:14] "GET /v2/fields HTTP/1.1" 200 -
+[2026-09-16 00:57:14,328] INFO request_id=e2749b7e-61ef-444e-8a8e-adcaf38033c8 agro_mirai.api.app: GET /v2/farmers/me -> 200
+10.105.30.216 - - [16/Sep/2026 00:57:14] "GET /v2/farmers/me HTTP/1.1" 200 -
+[2026-09-16 00:57:14,547] INFO request_id=4d9e8dde-7e38-4924-b9e9-008bec70a4ec agro_mirai.api.app: GET /v2/fields/4b08f7e2-2e86-434d-9ff3-b192f76d11c1/advisories -> 422
+10.105.30.216 - - [16/Sep/2026 00:57:14] "GET /v2/fields/4b08f7e2-2e86-434d-9ff3-b192f76d11c1/advisories HTTP/1.1" 422 -
+[2026-09-16 00:57:14,808] INFO request_id=c9498d97-a041-4f90-bef5-afe2bf8cdb54 agro_mirai.api.app: GET /v2/fields -> 200
+10.105.30.216 - - [16/Sep/2026 00:57:14] "GET /v2/fields HTTP/1.1" 200 -
+[2026-09-16 00:57:15,034] INFO request_id=3b0777a5-4648-45a1-892d-009d17f82121 agro_mirai.api.app: GET /v2/fields/4b08f7e2-2e86-434d-9ff3-b192f76d11c1/advisories -> 422
+10.105.30.216 - - [16/Sep/2026 00:57:15] "GET /v2/fields/4b08f7e2-2e86-434d-9ff3-b192f76d11c1/advisories HTTP/1.1" 422 -
+[2026-09-16 00:57:35,712] INFO request_id=dbeb5bf9-3895-46f3-8ffc-e583341b64c3 agro_mirai.api.app: GET /v2/fields -> 200
+10.105.30.216 - - [16/Sep/2026 00:57:35] "GET /v2/fields HTTP/1.1" 200 -
+[2026-09-16 00:57:35,717] INFO request_id=6731bd6a-d164-455d-b03c-d8770ba6d505 agro_mirai.api.app: GET /v2/farmers/me -> 200
+10.105.30.216 - - [16/Sep/2026 00:57:35] "GET /v2/farmers/me HTTP/1.1" 200 -
+[2026-09-16 00:57:35,841] INFO request_id=daabea9a-b7bc-4f61-8ec2-6fce9906d456 agro_mirai.api.app: GET /v2/fields/4b08f7e2-2e86-434d-9ff3-b192f76d11c1/advisories -> 422
+10.105.30.216 - - [16/Sep/2026 00:57:35] "GET /v2/fields/4b08f7e2-2e86-434d-9ff3-b192f76d11c1/advisories HTTP/1.1" 422 -
+[2026-09-16 00:57:35,844] INFO request_id=b57d50bf-d5e0-4022-828c-ba8cbb17090b agro_mirai.api.app: GET /v2/fields -> 200
+10.105.30.216 - - [16/Sep/2026 00:57:35] "GET /v2/fields HTTP/1.1" 200 -
+[2026-09-16 00:57:36,015] INFO request_id=f3e2fd8e-11fc-4508-a83b-f919dda60587 agro_mirai.api.app: GET /v2/fields/4b08f7e2-2e86-434d-9ff3-b192f76d11c1/advisories -> 422
+10.105.30.216 - - [16/Sep/2026 00:57:36] "GET /v2/fields/4b08f7e2-2e86-434d-9ff3-b192f76d11c1/advisories HTTP/1.1" 422 -
+[2026-09-16 00:57:39,750] INFO request_id=9c73bb7b-c9f3-4364-be48-bcf0a612ed1a agro_mirai.api.app: GET /v2/fields -> 200
+10.105.30.216 - - [16/Sep/2026 00:57:39] "GET /v2/fields HTTP/1.1" 200 -
+[2026-09-16 00:57:39,753] INFO request_id=acc30465-f6e7-4108-8811-f52d8bdd0ec5 agro_mirai.api.app: GET /v2/farmers/me -> 200
+10.105.30.216 - - [16/Sep/2026 00:57:39] "GET /v2/farmers/me HTTP/1.1" 200 -
+[2026-09-16 00:57:39,829] INFO request_id=59d3ed64-cb0c-4637-a134-63dd1b24fbae agro_mirai.api.app: GET /v2/fields -> 200
+10.105.30.216 - - [16/Sep/2026 00:57:39] "GET /v2/fields HTTP/1.1" 200 -
+[2026-09-16 00:57:39,832] INFO request_id=a417969c-ec0e-4323-ab13-ac7cb40802cd agro_mirai.api.app: GET /v2/fields/4b08f7e2-2e86-434d-9ff3-b192f76d11c1/advisories -> 422
+10.105.30.216 - - [16/Sep/2026 00:57:39] "GET /v2/fields/4b08f7e2-2e86-434d-9ff3-b192f76d11c1/advisories HTTP/1.1" 422 -
+[2026-09-16 00:57:39,988] INFO request_id=e591e6aa-5a3e-414a-8d17-be402c7dec40 agro_mirai.api.app: GET /v2/fields/4b08f7e2-2e86-434d-9ff3-b192f76d11c1/advisories -> 422
+10.105.30.216 - - [16/Sep/2026 00:57:39] "GET /v2/fields/4b08f7e2-2e86-434d-9ff3-b192f76d11c1/advisories HTTP/1.1" 422 -
+[2026-09-16 00:58:17,747] INFO request_id=0b0022da-6ed6-4a43-8d5e-406b8c2efc10 agro_mirai.api.app: GET /v2/fields -> 200
+10.105.30.216 - - [16/Sep/2026 00:58:17] "GET /v2/fields HTTP/1.1" 200 -
+[2026-09-16 00:58:17,753] INFO request_id=6d2099b6-b13b-4bdf-b92b-0e78a23a0d69 agro_mirai.api.app: GET /v2/farmers/me -> 200
+10.105.30.216 - - [16/Sep/2026 00:58:17] "GET /v2/farmers/me HTTP/1.1" 200 -
+[2026-09-16 00:58:17,846] INFO request_id=2862147e-558c-42f8-903b-488e5f44d895 agro_mirai.api.app: GET /v2/fields/4b08f7e2-2e86-434d-9ff3-b192f76d11c1/advisories -> 422
+10.105.30.216 - - [16/Sep/2026 00:58:17] "GET /v2/fields/4b08f7e2-2e86-434d-9ff3-b192f76d11c1/advisories HTTP/1.1" 422 -
+[2026-09-16 00:58:17,948] INFO request_id=d61a1a1a-b5d0-451e-8112-4ee14978a53e agro_mirai.api.app: GET /v2/fields -> 200
+10.105.30.216 - - [16/Sep/2026 00:58:17] "GET /v2/fields HTTP/1.1" 200 -
+[2026-09-16 00:58:18,086] INFO request_id=67aa7de9-603a-4884-99d4-7d2c9aaabc44 agro_mirai.api.app: GET /v2/fields/4b08f7e2-2e86-434d-9ff3-b192f76d11c1/advisories -> 422
+10.105.30.216 - - [16/Sep/2026 00:58:18] "GET /v2/fields/4b08f7e2-2e86-434d-9ff3-b192f76d11c1/advisories HTTP/1.1" 422 -
+[2026-09-16 00:59:06,372] INFO request_id=8371ebbe-c6c1-4f1d-bee5-5c6d0804c990 agro_mirai.api.app: GET /v2/fields -> 200
+10.105.30.216 - - [16/Sep/2026 00:59:06] "GET /v2/fields HTTP/1.1" 200 -
+[2026-09-16 00:59:06,374] INFO request_id=1b92a6bb-406e-4d10-9ec5-6919439d4b21 agro_mirai.api.app: GET /v2/farmers/me -> 200
+10.105.30.216 - - [16/Sep/2026 00:59:06] "GET /v2/farmers/me HTTP/1.1" 200 -
+[2026-09-16 00:59:06,506] INFO request_id=66518fac-37ea-4415-8e6e-ca2a1d7cd9eb agro_mirai.api.app: GET /v2/fields -> 200
+10.105.30.216 - - [16/Sep/2026 00:59:06] "GET /v2/fields HTTP/1.1" 200 -
+[2026-09-16 00:59:06,509] INFO request_id=7bd8c12d-37de-4567-86b1-8ffe5caaf334 agro_mirai.api.app: GET /v2/fields/4b08f7e2-2e86-434d-9ff3-b192f76d11c1/advisories -> 422
+10.105.30.216 - - [16/Sep/2026 00:59:06] "GET /v2/fields/4b08f7e2-2e86-434d-9ff3-b192f76d11c1/advisories HTTP/1.1" 422 -
+[2026-09-16 00:59:06,603] INFO request_id=4a72a531-11ee-4d61-9225-da8daf694c3e agro_mirai.api.app: GET /v2/fields/4b08f7e2-2e86-434d-9ff3-b192f76d11c1/advisories -> 422
+10.105.30.216 - - [16/Sep/2026 00:59:06] "GET /v2/fields/4b08f7e2-2e86-434d-9ff3-b192f76d11c1/advisories HTTP/1.1" 422 -
+[2026-09-16 00:59:49,708] INFO request_id=8b9d8f6b-871f-4ff4-8ab7-9d0e1e335304 agro_mirai.api.app: GET /v2/farmers/me -> 200
+10.105.30.216 - - [16/Sep/2026 00:59:49] "GET /v2/farmers/me HTTP/1.1" 200 -
+[2026-09-16 00:59:49,786] INFO request_id=32c058b4-9c36-44a1-80de-b49244c4ada4 agro_mirai.api.app: GET /v2/fields -> 200
+10.105.30.216 - - [16/Sep/2026 00:59:49] "GET /v2/fields HTTP/1.1" 200 -
+[2026-09-16 00:59:49,906] INFO request_id=db01c708-e4b6-444c-b635-576154b39a4a agro_mirai.api.app: GET /v2/fields/4b08f7e2-2e86-434d-9ff3-b192f76d11c1/advisories -> 422
+10.105.30.216 - - [16/Sep/2026 00:59:49] "GET /v2/fields/4b08f7e2-2e86-434d-9ff3-b192f76d11c1/advisories HTTP/1.1" 422 -
+[2026-09-16 00:59:50,202] INFO request_id=06c7359d-789a-40ee-91ed-afa415d1944c agro_mirai.api.app: GET /v2/fields -> 200
+10.105.30.216 - - [16/Sep/2026 00:59:50] "GET /v2/fields HTTP/1.1" 200 -
+[2026-09-16 00:59:50,337] INFO request_id=1f7dd03d-6eb8-4afd-8f27-595fa76aa328 agro_mirai.api.app: GET /v2/fields/4b08f7e2-2e86-434d-9ff3-b192f76d11c1/advisories -> 422
+10.105.30.216 - - [16/Sep/2026 00:59:50] "GET /v2/fields/4b08f7e2-2e86-434d-9ff3-b192f76d11c1/advisories HTTP/1.1" 422 -
+[2026-09-16 00:59:54,300] INFO request_id=f166f0b1-e3d5-447c-af24-dfb3cd0c752f agro_mirai.api.app: GET /v2/fields -> 200
+10.105.30.216 - - [16/Sep/2026 00:59:54] "GET /v2/fields HTTP/1.1" 200 -
+[2026-09-16 00:59:54,312] INFO request_id=937152ef-80af-4178-aa0d-6448007a1568 agro_mirai.api.app: GET /v2/farmers/me -> 200
+10.105.30.216 - - [16/Sep/2026 00:59:54] "GET /v2/farmers/me HTTP/1.1" 200 -
+[2026-09-16 00:59:54,388] INFO request_id=4de5bb03-8a60-46d9-ae2b-74fc05bdf82c agro_mirai.api.app: GET /v2/fields/4b08f7e2-2e86-434d-9ff3-b192f76d11c1/advisories -> 422
+10.105.30.216 - - [16/Sep/2026 00:59:54] "GET /v2/fields/4b08f7e2-2e86-434d-9ff3-b192f76d11c1/advisories HTTP/1.1" 422 -
+[2026-09-16 00:59:54,396] INFO request_id=53229504-273f-46c8-8dcc-ebf782f05885 agro_mirai.api.app: GET /v2/fields -> 200
+10.105.30.216 - - [16/Sep/2026 00:59:54] "GET /v2/fields HTTP/1.1" 200 -
+[2026-09-16 00:59:54,487] INFO request_id=f03e711c-8877-4694-bc03-c202013fc823 agro_mirai.api.app: GET /v2/fields/4b08f7e2-2e86-434d-9ff3-b192f76d11c1/advisories -> 422
+10.105.30.216 - - [16/Sep/2026 00:59:54] "GET /v2/fields/4b08f7e2-2e86-434d-9ff3-b192f76d11c1/advisories HTTP/1.1" 422 -
+[2026-09-16 01:00:08,406] INFO request_id=2dd80831-8020-4c2b-be90-fbdc3fb3d3ba agro_mirai.api.app: GET /v2/fields -> 200
+10.105.30.216 - - [16/Sep/2026 01:00:08] "GET /v2/fields HTTP/1.1" 200 -
+[2026-09-16 01:00:08,408] INFO request_id=ab783d8a-6824-49c7-87d2-6b7f8840f664 agro_mirai.api.app: GET /v2/farmers/me -> 200
+10.105.30.216 - - [16/Sep/2026 01:00:08] "GET /v2/farmers/me HTTP/1.1" 200 -
+[2026-09-16 01:00:08,501] INFO request_id=56a6de0f-cbe2-413e-83f1-54bec878b26d agro_mirai.api.app: GET /v2/fields -> 200
+10.105.30.216 - - [16/Sep/2026 01:00:08] "GET /v2/fields HTTP/1.1" 200 -
+[2026-09-16 01:00:08,505] INFO request_id=15f9f9ca-d278-44c7-ada0-dcbd0eef4ab1 agro_mirai.api.app: GET /v2/fields/4b08f7e2-2e86-434d-9ff3-b192f76d11c1/advisories -> 422
+10.105.30.216 - - [16/Sep/2026 01:00:08] "GET /v2/fields/4b08f7e2-2e86-434d-9ff3-b192f76d11c1/advisories HTTP/1.1" 422 -
+[2026-09-16 01:00:08,592] INFO request_id=df600e5d-a0e6-4e1c-980d-48f690b115e4 agro_mirai.api.app: GET /v2/fields/4b08f7e2-2e86-434d-9ff3-b192f76d11c1/advisories -> 422
+10.105.30.216 - - [16/Sep/2026 01:00:08] "GET /v2/fields/4b08f7e2-2e86-434d-9ff3-b192f76d11c1/advisories HTTP/1.1" 422 -
+[2026-09-16 01:00:13,383] INFO request_id=0e852556-28e4-4b54-b6e0-db54bd8910d9 agro_mirai.api.app: GET /v2/fields -> 200
+10.105.30.216 - - [16/Sep/2026 01:00:13] "GET /v2/fields HTTP/1.1" 200 -
+[2026-09-16 01:00:13,385] INFO request_id=44ca4174-786e-498c-b85f-76d4c290da2c agro_mirai.api.app: GET /v2/farmers/me -> 200
+10.105.30.216 - - [16/Sep/2026 01:00:13] "GET /v2/farmers/me HTTP/1.1" 200 -
+[2026-09-16 01:00:13,498] INFO request_id=6e204d3e-9405-4d59-92f1-f1d43e555ae8 agro_mirai.api.app: GET /v2/fields -> 200
+10.105.30.216 - - [16/Sep/2026 01:00:13] "GET /v2/fields HTTP/1.1" 200 -
+[2026-09-16 01:00:13,506] INFO request_id=b4cb8548-4d49-4c6c-a542-7753b7919431 agro_mirai.api.app: GET /v2/fields/4b08f7e2-2e86-434d-9ff3-b192f76d11c1/advisories -> 422
+10.105.30.216 - - [16/Sep/2026 01:00:13] "GET /v2/fields/4b08f7e2-2e86-434d-9ff3-b192f76d11c1/advisories HTTP/1.1" 422 -
+[2026-09-16 01:00:13,598] INFO request_id=1d3e1938-1420-4366-aaf1-37c13819a7f5 agro_mirai.api.app: GET /v2/fields/4b08f7e2-2e86-434d-9ff3-b192f76d11c1/advisories -> 422
+10.105.30.216 - - [16/Sep/2026 01:00:13] "GET /v2/fields/4b08f7e2-2e86-434d-9ff3-b192f76d11c1/advisories HTTP/1.1" 422 -
+[2026-09-16 01:00:52,540] INFO request_id=0ef2183d-5394-45f1-9836-30c596778d7e agro_mirai.api.app: GET /v2/fields -> 200
+10.105.30.216 - - [16/Sep/2026 01:00:52] "GET /v2/fields HTTP/1.1" 200 -
+[2026-09-16 01:00:52,548] INFO request_id=73cae292-cbdc-4dac-9f14-9b2df1dd32a6 agro_mirai.api.app: GET /v2/farmers/me -> 200
+10.105.30.216 - - [16/Sep/2026 01:00:52] "GET /v2/farmers/me HTTP/1.1" 200 -
+[2026-09-16 01:00:52,743] INFO request_id=0cd98f9d-698f-4f4a-adc8-134e9a1849bf agro_mirai.api.app: GET /v2/fields -> 200
+10.105.30.216 - - [16/Sep/2026 01:00:52] "GET /v2/fields HTTP/1.1" 200 -
+[2026-09-16 01:00:52,782] INFO request_id=c98e8bf4-02ee-4672-acc6-8a430d5b56b8 agro_mirai.api.app: GET /v2/fields/4b08f7e2-2e86-434d-9ff3-b192f76d11c1/advisories -> 422
+10.105.30.216 - - [16/Sep/2026 01:00:52] "GET /v2/fields/4b08f7e2-2e86-434d-9ff3-b192f76d11c1/advisories HTTP/1.1" 422 -
+[2026-09-16 01:00:53,053] INFO request_id=4dcf3b3b-5576-4cab-a24b-2a90bfd47858 agro_mirai.api.app: GET /v2/fields/4b08f7e2-2e86-434d-9ff3-b192f76d11c1/advisories -> 422
+10.105.30.216 - - [16/Sep/2026 01:00:53] "GET /v2/fields/4b08f7e2-2e86-434d-9ff3-b192f76d11c1/advisories HTTP/1.1" 422 -
+[2026-09-16 01:01:09,584] INFO request_id=37055444-fb7e-4bf6-8798-5761ba9f2398 agro_mirai.api.app: GET /health -> 200
+127.0.0.1 - - [16/Sep/2026 01:01:09] "GET /health HTTP/1.1" 200 -
+[2026-09-16 01:01:21,926] INFO request_id=e8cbb527-50b6-4de7-9056-34b78a5a312f agro_mirai.api.app: POST /v2/bug-reports -> 401
+127.0.0.1 - - [16/Sep/2026 01:01:21] "POST /v2/bug-reports HTTP/1.1" 401 -
+[2026-09-16 01:01:29,394] INFO request_id=fcd9f453-cfb9-4283-93c5-6f699888c5ef agro_mirai.auth.otp: OTP for +919876500077: 212985 (valid 10 min)
+[2026-09-16 01:01:29,394] INFO request_id=fcd9f453-cfb9-4283-93c5-6f699888c5ef agro_mirai.api.app: POST /v2/auth/request-otp -> 200
+127.0.0.1 - - [16/Sep/2026 01:01:29] "POST /v2/auth/request-otp HTTP/1.1" 200 -
+[2026-09-16 01:01:36,402] INFO request_id=79d74587-7ebd-4fa9-91d1-9ce4a6bd4b42 agro_mirai.api.app: POST /v2/auth/verify-otp -> 200
+127.0.0.1 - - [16/Sep/2026 01:01:36] "POST /v2/auth/verify-otp HTTP/1.1" 200 -
+[2026-09-16 01:01:36,672] INFO request_id=3bb87f5f-772f-4b99-ae5c-959c9f44aa6a agro_mirai.api.app: POST /v2/bug-reports -> 201
+127.0.0.1 - - [16/Sep/2026 01:01:36] "POST /v2/bug-reports HTTP/1.1" 201 -
+[2026-09-16 01:02:22,630] INFO request_id=e0a5a8b4-877b-4a36-ae36-f45b19a9984c agro_mirai.api.app: GET /v2/farmers/me -> 200
+10.105.30.216 - - [16/Sep/2026 01:02:22] "GET /v2/farmers/me HTTP/1.1" 200 -
+[2026-09-16 01:02:22,750] INFO request_id=4a9b6db3-2bd5-4fe9-a28e-7484332819a7 agro_mirai.api.app: GET /v2/fields -> 200
+10.105.30.216 - - [16/Sep/2026 01:02:22] "GET /v2/fields HTTP/1.1" 200 -
+[2026-09-16 01:02:22,917] INFO request_id=bdca9643-f0c9-435e-b8ec-5cb9e4d7f98f agro_mirai.api.app: GET /v2/fields/4b08f7e2-2e86-434d-9ff3-b192f76d11c1/advisories -> 422
+10.105.30.216 - - [16/Sep/2026 01:02:22] "GET /v2/fields/4b08f7e2-2e86-434d-9ff3-b192f76d11c1/advisories HTTP/1.1" 422 -
+[2026-09-16 01:02:23,373] INFO request_id=169a7f78-0984-4a54-80f6-9cc0e888fe97 agro_mirai.api.app: GET /v2/fields -> 200
+10.105.30.216 - - [16/Sep/2026 01:02:23] "GET /v2/fields HTTP/1.1" 200 -
+[2026-09-16 01:02:23,497] INFO request_id=e9dbfc47-d9df-45dd-9ee6-437df84d382f agro_mirai.api.app: GET /v2/fields/4b08f7e2-2e86-434d-9ff3-b192f76d11c1/advisories -> 422
+10.105.30.216 - - [16/Sep/2026 01:02:23] "GET /v2/fields/4b08f7e2-2e86-434d-9ff3-b192f76d11c1/advisories HTTP/1.1" 422 -
+[2026-09-16 01:03:44,592] INFO request_id=22f63238-7594-4c2c-940c-836da65aed04 agro_mirai.api.app: GET /v2/farmers/me -> 200
+10.105.30.216 - - [16/Sep/2026 01:03:44] "GET /v2/farmers/me HTTP/1.1" 200 -
+[2026-09-16 01:03:44,676] INFO request_id=ac602deb-c334-43ef-b29d-09c79d61cbf9 agro_mirai.api.app: GET /v2/fields -> 200
+10.105.30.216 - - [16/Sep/2026 01:03:44] "GET /v2/fields HTTP/1.1" 200 -
+[2026-09-16 01:03:44,782] INFO request_id=a37ff47d-4ae2-4120-b186-404c028e45a6 agro_mirai.api.app: GET /v2/fields/4b08f7e2-2e86-434d-9ff3-b192f76d11c1/advisories -> 422
+10.105.30.216 - - [16/Sep/2026 01:03:44] "GET /v2/fields/4b08f7e2-2e86-434d-9ff3-b192f76d11c1/advisories HTTP/1.1" 422 -
+[2026-09-16 01:03:45,210] INFO request_id=83bf8876-f01b-4d97-b9bc-e5326426215e agro_mirai.api.app: GET /v2/fields -> 200
+10.105.30.216 - - [16/Sep/2026 01:03:45] "GET /v2/fields HTTP/1.1" 200 -
+[2026-09-16 01:03:45,343] INFO request_id=aad80013-0571-4320-b08d-aa7540a4199d agro_mirai.api.app: GET /v2/fields/4b08f7e2-2e86-434d-9ff3-b192f76d11c1/advisories -> 422
+10.105.30.216 - - [16/Sep/2026 01:03:45] "GET /v2/fields/4b08f7e2-2e86-434d-9ff3-b192f76d11c1/advisories HTTP/1.1" 422 -
+[2026-09-16 01:05:43,895] INFO request_id=6bc52c6d-cb43-4c5f-aca0-e1609b26a68a agro_mirai.api.app: POST /v2/bug-reports -> 201
+10.105.30.216 - - [16/Sep/2026 01:05:43] "POST /v2/bug-reports HTTP/1.1" 201 -

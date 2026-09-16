@@ -233,3 +233,22 @@ entities:
       rating: { type: int, required: true, range: [1, 5] }
       helpful: { type: bool, required: true }
       comment: { type: string, required: false }
+
+  BugReport:
+    description: |
+      Farmer-submitted in-app bug report (mobile bug-report flow).
+      Deliberately not FeedbackEntry: no advisory_id/rating/helpful — a
+      bug report isn't tied to a specific Advisory. At least one of
+      category/message is required (enforced server-side).
+    fields:
+      id: { type: uuid, required: true }
+      farmer_id: { type: uuid, required: true, ref: Farmer.id }
+      created_at: { type: timestamp, required: true }
+      category: { type: string, enum: bug_report_category, required: false }
+      message: { type: string, required: false }
+      photo_url:
+        type: string
+        required: false
+        note: "base64 data: URI of the attached photo; no separate object-storage pipeline exists yet"
+      app_version: { type: string, required: false }
+      platform: { type: string, required: false }

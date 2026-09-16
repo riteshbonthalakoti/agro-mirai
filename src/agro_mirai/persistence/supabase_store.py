@@ -20,6 +20,7 @@ from datetime import datetime, timezone
 
 from agro_mirai.persistence.models import (
     Advisory,
+    BugReport,
     CropRecommendation,
     DiseaseRiskAlert,
     Farmer,
@@ -660,6 +661,51 @@ class SupabaseDataStore:
             rating=row["rating"],
             helpful=bool(row["helpful"]),
             comment=row.get("comment"),
+        )
+
+    # --- BugReport ---
+    def save_bug_report(self, farmer_id: str, report: BugReport) -> BugReport:
+        payload = {
+            "id": report.id,
+            "farmer_id": farmer_id,
+            "created_at": _dt(report.created_at),
+            "category": report.category,
+            "message": report.message,
+            "photo_url": report.photo_url,
+            "app_version": report.app_version,
+            "platform": report.platform,
+        }
+        try:
+            self._client.table("bug_reports").upsert(payload).execute()
+        except Exception as e:  # pragma: no cover
+            raise ConflictError(str(e)) from e
+        res = self._client.table("bug_reports").select("*").eq("id", report.id).execute()
+        return self._row_to_bug_report(res.data[0])
+
+    def list_bug_reports_for_farmer(
+        self, farmer_id: str, limit: int = 200
+    ) -> list[BugReport]:
+        res = (
+            self._client.table("bug_reports")
+            .select("*")
+            .eq("farmer_id", farmer_id)
+            .order("created_at", desc=True)
+            .limit(limit)
+            .execute()
+        )
+        return [self._row_to_bug_report(r) for r in res.data]
+
+    @staticmethod
+    def _row_to_bug_report(row: dict) -> BugReport:
+        return BugReport(
+            id=row["id"],
+            farmer_id=row["farmer_id"],
+            created_at=_parse_dt(row["created_at"]),
+            category=row.get("category"),
+            message=row.get("message"),
+            photo_url=row.get("photo_url"),
+            app_version=row.get("app_version"),
+            platform=row.get("platform"),
         )
 
     # --- Health ---

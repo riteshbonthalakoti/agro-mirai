@@ -15,7 +15,7 @@ export type IconName =
   | 'play' | 'pause' | 'chevron-down' | 'chevron-up' | 'chevron-back'
   | 'chevron-right' | 'bolt' | 'gallery' | 'globe' | 'user' | 'field'
   | 'mic' | 'thermo' | 'speaker' | 'logout' | 'close' | 'location'
-  | 'settings';
+  | 'settings' | 'check' | 'alert' | 'info' | 'bug' | 'image';
 
 type IconProps = { name: IconName; size?: number; color?: string };
 
@@ -186,6 +186,37 @@ export function Icon({ name, size = 18, color = '#23281F' }: IconProps) {
           <Path d="M5.5 5.5l13 13M18.5 5.5l-13 13" stroke={color} strokeWidth={1.8} strokeLinecap="round" fill="none" />
         </Svg>
       );
+    case 'alert':
+      return (
+        <Svg width={size} height={size} viewBox="0 0 24 24">
+          <Path d="M12 4l9 16H3L12 4Z" {...stroke} strokeLinejoin="round" />
+          <Path d="M12 10v4" {...stroke} />
+          <Circle cx={12} cy={17.2} r={0.9} fill={color} stroke="none" />
+        </Svg>
+      );
+    case 'info':
+      return (
+        <Svg width={size} height={size} viewBox="0 0 24 24">
+          <Circle cx={12} cy={12} r={8.5} {...stroke} />
+          <Path d="M12 11v5.5" {...stroke} />
+          <Circle cx={12} cy={7.6} r={0.9} fill={color} stroke="none" />
+        </Svg>
+      );
+    case 'bug':
+      return (
+        <Svg width={size} height={size} viewBox="0 0 24 24">
+          <Rect x={8} y={8} width={8} height={9} rx={4} {...stroke} />
+          <Path d="M12 8V5.5M9 9l-2.5-2M15 9l2.5-2M6 13h2M16 13h2M6.5 17l2 1.6M17.5 17l-2 1.6" {...stroke} />
+        </Svg>
+      );
+    case 'image':
+      return (
+        <Svg width={size} height={size} viewBox="0 0 24 24">
+          <Rect x={3.5} y={5} width={17} height={14} rx={2} {...stroke} />
+          <Circle cx={9} cy={10} r={1.6} {...stroke} />
+          <Path d="M4 17l5.5-5.5 3.5 3.5 2-2L20 17" {...stroke} strokeLinejoin="round" />
+        </Svg>
+      );
     case 'location':
       return (
         <Svg width={size} height={size} viewBox="0 0 24 24">
@@ -204,6 +235,12 @@ export function Icon({ name, size = 18, color = '#23281F' }: IconProps) {
             strokeLinejoin="round"
             fill="none"
           />
+        </Svg>
+      );
+    case 'check':
+      return (
+        <Svg width={size} height={size} viewBox="0 0 24 24">
+          <Path d="M5 12.5l4.5 4.5L19 7.5" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" fill="none" />
         </Svg>
       );
     default:

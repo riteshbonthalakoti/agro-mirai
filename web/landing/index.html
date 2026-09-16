@@ -1,0 +1,1040 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AGRO MIRAI — AI-Driven Smart Agriculture Advisory</title>
+<meta name="description" content="AGRO MIRAI: crop recommendation, ET0-based irrigation advisory, disease risk detection, and voice support in four Indian languages.">
+<link rel="icon" href="./assets/logo-mark.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700;9..144,800&family=Source+Sans+3:wght@400;500;600;700;800&family=Noto+Sans+Kannada:wght@500;600&family=Noto+Sans+Telugu:wght@500;600&family=Noto+Sans+Devanagari:wght@500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --soil-900:#241d13;
+    --soil-800:#3a2f1f;
+    --leaf-700:#3f6b3a;
+    --leaf-600:#4d7c47;
+    --leaf-500:#5d8f56;
+    --leaf-100:#e7efe2;
+    --wheat-100:#f6efdf;
+    --wheat-200:#eee1c4;
+    --clay-500:#b5652d;
+    --clay-600:#9c5424;
+    --saffron:#e0812f;
+    --cream:#fbf7ee;
+    --paper:#ffffff;
+    --ink:#2a2620;
+    --ink-soft:#5a5346;
+    --line:#e3d9c4;
+    --shadow: 0 10px 30px rgba(43,35,24,0.10);
+    --shadow-lg: 0 24px 60px rgba(43,35,24,0.16);
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    margin:0;
+    font-family:'Source Sans 3', -apple-system, sans-serif;
+    background:var(--cream);
+    color:var(--ink);
+    line-height:1.6;
+    overflow-x:hidden;
+  }
+  h1,h2,h3,.brand-word{
+    font-family:'Fraunces', Georgia, serif;
+  }
+  a{color:inherit;}
+  img{max-width:100%; display:block;}
+  .container{
+    width:100%;
+    max-width:1180px;
+    margin:0 auto;
+    padding:0 24px;
+  }
+  .lang-kn{font-family:'Noto Sans Kannada', 'Source Sans 3', sans-serif;}
+  .lang-te{font-family:'Noto Sans Telugu', 'Source Sans 3', sans-serif;}
+  .lang-hi{font-family:'Noto Sans Devanagari', 'Source Sans 3', sans-serif;}
+
+  .tricolor-rule{
+    height:3px;
+    background:linear-gradient(90deg, #ff9933 0 33%, #ffffff 33% 66%, #138808 66% 100%);
+  }
+
+  /* ---------- FLOATING NAV ---------- */
+  .nav-spacer{height:26px;}
+  nav{
+    position:fixed; top:16px; left:50%; transform:translateX(-50%);
+    z-index:200;
+    width:calc(100% - 32px); max-width:1180px;
+    border-radius:999px;
+    padding:9px 12px 9px 20px;
+    display:flex; align-items:center; justify-content:space-between;
+    background:rgba(20,17,10,0.32);
+    border:1px solid rgba(255,255,255,0.22);
+    backdrop-filter:blur(14px) saturate(140%);
+    -webkit-backdrop-filter:blur(14px) saturate(140%);
+    box-shadow:0 12px 34px rgba(10,8,4,0.18);
+    transition:background .35s ease, border-color .35s ease, box-shadow .35s ease, padding .35s ease;
+  }
+  nav.nav-solid{
+    background:rgba(251,247,238,0.92);
+    border-color:var(--line);
+    box-shadow:0 10px 26px rgba(43,35,24,0.10);
+  }
+  .brand{display:flex; align-items:center; gap:10px;}
+  .brand img{width:32px; height:32px; object-fit:contain; filter:drop-shadow(0 1px 4px rgba(0,0,0,0.45));}
+  .brand-word{font-size:1.08rem; font-weight:600; color:#fff; letter-spacing:0.01em; transition:color .35s ease;}
+  .brand-word span{color:#bfe0b6;}
+  nav.nav-solid .brand-word{color:var(--soil-900);}
+  nav.nav-solid .brand-word span{color:var(--leaf-700);}
+  .nav-links{display:flex; align-items:center; gap:30px; list-style:none; margin:0; padding:0; font-size:0.94rem; font-weight:500;}
+  .nav-links a{text-decoration:none; color:rgba(255,255,255,0.85); transition:color .2s;}
+  .nav-links a:hover{color:#fff;}
+  nav.nav-solid .nav-links a{color:var(--ink-soft);}
+  nav.nav-solid .nav-links a:hover{color:var(--leaf-700);}
+  .nav-cta{
+    background:#fff; color:var(--soil-900) !important; padding:10px 20px; border-radius:999px;
+    font-weight:700; font-size:0.88rem;
+  }
+  nav.nav-solid .nav-cta{background:var(--soil-900); color:#fff !important;}
+  .nav-cta:hover{background:var(--leaf-500); color:#fff !important;}
+  @media (max-width:760px){
+    .nav-links li:not(.nav-cta-item){display:none;}
+    nav{padding:8px 8px 8px 16px;}
+  }
+
+  /* ---------- HERO ---------- */
+  .hero{
+    position:relative;
+    min-height:96vh;
+    display:flex;
+    align-items:center;
+    background-image:
+      linear-gradient(100deg, rgba(12,16,10,0.72) 0%, rgba(12,16,10,0.5) 32%, rgba(12,16,10,0.18) 58%, rgba(12,16,10,0.32) 100%),
+      linear-gradient(180deg, rgba(10,12,8,0.35) 0%, rgba(10,12,8,0) 30%, rgba(10,12,8,0) 70%, rgba(10,12,8,0.4) 100%),
+      url('./assets/hero-farmer.jpg');
+    background-size:cover;
+    background-position:center 30%;
+    padding:150px 0 90px;
+    overflow:hidden;
+  }
+  @media (min-width:901px) and (prefers-reduced-motion:no-preference){
+    .hero{background-attachment:fixed;}
+  }
+  @media (max-width:900px){
+    .hero{
+      background-image:
+        linear-gradient(180deg, rgba(10,12,8,0.6) 0%, rgba(10,12,8,0.15) 34%, rgba(10,12,8,0.1) 55%, rgba(10,12,8,0.72) 100%),
+        url('./assets/hero-farmer.jpg');
+      background-position:78% 18%;
+      padding-top:130px;
+    }
+    .float-chip{display:none;}
+  }
+  .hero-panel{
+    max-width:600px;
+    position:relative; z-index:3;
+  }
+  .eyebrow{
+    display:inline-flex; align-items:center; gap:8px;
+    font-size:0.76rem;
+    font-weight:700;
+    letter-spacing:0.12em;
+    text-transform:uppercase;
+    color:#fff;
+    background:rgba(93,143,86,0.42);
+    border:1px solid rgba(255,255,255,0.32);
+    padding:7px 14px;
+    border-radius:999px;
+    margin-bottom:22px;
+  }
+  .eyebrow .dot{width:6px; height:6px; border-radius:50%; background:#a7e69a; box-shadow:0 0 0 3px rgba(167,230,154,0.35);}
+  .hero h1{
+    font-size:clamp(2.3rem, 5vw, 3.6rem);
+    line-height:1.06;
+    font-weight:600;
+    color:#fff;
+    margin:0 0 18px;
+    text-shadow:0 2px 30px rgba(0,0,0,0.35);
+    letter-spacing:-0.01em;
+  }
+  .hero h1 em{
+    font-style:normal;
+    background:linear-gradient(180deg, #d8f0c8 0%, #a7d89a 100%);
+    -webkit-background-clip:text; background-clip:text; color:transparent;
+  }
+  .hero p{
+    font-size:clamp(1.02rem, 1.6vw, 1.2rem);
+    color:rgba(255,255,255,0.9);
+    margin:0 0 30px;
+    max-width:50ch;
+  }
+  .cta-row{display:flex; gap:14px; flex-wrap:wrap; margin-bottom:34px;}
+  .btn{
+    display:inline-block;
+    padding:14px 28px;
+    border-radius:12px;
+    font-weight:700;
+    font-size:0.98rem;
+    text-decoration:none;
+    transition:transform .15s ease, box-shadow .15s ease, background .15s ease;
+    border:1px solid transparent;
+  }
+  .btn:hover{transform:translateY(-2px);}
+  .btn-primary{background:var(--leaf-600); color:#fff; box-shadow:0 12px 28px rgba(63,107,58,0.5);}
+  .btn-primary:hover{background:var(--leaf-500);}
+  .btn-ghost{background:rgba(255,255,255,0.1); color:#fff; border-color:rgba(255,255,255,0.55);}
+  .btn-ghost:hover{background:rgba(255,255,255,0.2);}
+
+  .lang-widget{
+    display:inline-flex; align-items:center; gap:14px;
+    background:rgba(20,17,10,0.35);
+    border:1px solid rgba(255,255,255,0.22);
+    backdrop-filter:blur(10px);
+    border-radius:14px;
+    padding:14px 20px;
+  }
+  .lang-widget .lw-label{
+    font-size:0.74rem; font-weight:700; letter-spacing:0.1em; text-transform:uppercase;
+    color:rgba(255,255,255,0.65); white-space:nowrap;
+  }
+  .lw-stage{ position:relative; height:30px; overflow:hidden; min-width:150px; }
+  .lw-word{
+    position:absolute; left:0; top:0;
+    font-size:1.2rem; font-weight:600; color:#fff;
+    opacity:0; transform:translateY(10px);
+    transition:opacity .5s ease, transform .5s ease;
+    white-space:nowrap;
+  }
+  .lw-word.is-active{opacity:1; transform:translateY(0);}
+  .lw-dots{display:flex; gap:6px;}
+  .lw-dots span{width:5px; height:5px; border-radius:50%; background:rgba(255,255,255,0.3); transition:background .3s;}
+  .lw-dots span.is-active{background:#fff;}
+
+  /* floating glass data chips over the hero photo — depth, not decoration */
+  .float-chip{
+    position:absolute; z-index:2;
+    background:rgba(255,255,255,0.14);
+    border:1px solid rgba(255,255,255,0.32);
+    backdrop-filter:blur(14px) saturate(160%);
+    -webkit-backdrop-filter:blur(14px) saturate(160%);
+    border-radius:14px;
+    padding:12px 16px;
+    box-shadow:0 16px 40px rgba(10,8,4,0.28);
+    color:#fff;
+    animation:chipfloat 6s ease-in-out infinite;
+  }
+  .float-chip .fc-k{font-size:0.68rem; text-transform:uppercase; letter-spacing:0.08em; color:rgba(255,255,255,0.7); margin-bottom:3px;}
+  .float-chip .fc-v{font-family:'Fraunces', serif; font-size:1.15rem; font-weight:600;}
+  .float-chip .fc-v small{font-size:0.62em; font-weight:500; color:rgba(255,255,255,0.75);}
+  .chip-1{right:8%; top:16%; animation-delay:0s;}
+  .chip-2{right:2%; top:46%; animation-delay:1.4s;}
+  .chip-3{right:14%; top:73%; animation-delay:2.8s;}
+  @keyframes chipfloat{
+    0%,100%{transform:translateY(0);}
+    50%{transform:translateY(-12px);}
+  }
+  @media (max-width:980px){ .float-chip{display:none;} }
+
+  .scroll-cue{
+    position:absolute; left:50%; bottom:26px; transform:translateX(-50%);
+    z-index:3; color:rgba(255,255,255,0.75); font-size:0.72rem; letter-spacing:0.14em; text-transform:uppercase;
+    display:flex; flex-direction:column; align-items:center; gap:8px;
+  }
+  .scroll-cue .line{width:1px; height:26px; background:rgba(255,255,255,0.5); position:relative; overflow:hidden;}
+  .scroll-cue .line::after{
+    content:""; position:absolute; left:0; top:-100%; width:100%; height:100%; background:#fff;
+    animation:scrolldrop 1.8s ease-in-out infinite;
+  }
+  @keyframes scrolldrop{ to{ top:100%; } }
+
+  /* ---------- SECTION SHARED ---------- */
+  section{padding:104px 0;}
+  .section-head{max-width:660px; margin:0 auto 56px; text-align:center;}
+  .kicker{
+    font-size:0.78rem; font-weight:700; letter-spacing:0.16em; text-transform:uppercase;
+    color:var(--clay-600); margin-bottom:14px;
+  }
+  .section-head h2{
+    font-size:clamp(1.9rem, 3.4vw, 2.6rem);
+    color:var(--soil-900);
+    margin:0 0 16px;
+    font-weight:600;
+    letter-spacing:-0.01em;
+  }
+  .section-head p{color:var(--ink-soft); font-size:1.08rem; margin:0;}
+
+  .reveal{
+    opacity:0;
+    transform:translateY(28px);
+    transition:opacity .7s cubic-bezier(.2,.7,.3,1), transform .7s cubic-bezier(.2,.7,.3,1);
+  }
+  .reveal.is-visible{opacity:1; transform:translateY(0);}
+
+  /* dynamic reveal variants — different entrances per section so the page
+     doesn't fade in as one flat block, plus a JS-assigned stagger delay */
+  .reveal-card{
+    opacity:0; transform:translateY(40px) scale(0.9) rotateX(6deg);
+    transition:opacity .7s cubic-bezier(.16,1,.3,1), transform .7s cubic-bezier(.16,1,.3,1);
+  }
+  .reveal-card.is-visible{opacity:1; transform:translateY(0) scale(1) rotateX(0);}
+  .reveal-left{
+    opacity:0; transform:translateX(-50px);
+    transition:opacity .8s cubic-bezier(.16,1,.3,1), transform .8s cubic-bezier(.16,1,.3,1);
+  }
+  .reveal-left.is-visible{opacity:1; transform:translateX(0);}
+  .reveal-right{
+    opacity:0; transform:translateX(50px) rotateY(12deg);
+    transition:opacity .8s cubic-bezier(.16,1,.3,1), transform .8s cubic-bezier(.16,1,.3,1);
+  }
+  .reveal-right.is-visible{opacity:1; transform:translateX(0) rotateY(0);}
+  .reveal-pop{
+    opacity:0; transform:scale(0.55);
+    transition:opacity .5s ease, transform .55s cubic-bezier(.34,1.56,.64,1);
+  }
+  .reveal-pop.is-visible{opacity:1; transform:scale(1);}
+  .reveal-fade{
+    opacity:0; transform:translateY(18px);
+    transition:opacity .6s ease, transform .6s cubic-bezier(.2,.7,.2,1);
+  }
+  .reveal-fade.is-visible{opacity:1; transform:translateY(0);}
+
+  /* scroll progress bar */
+  .scroll-progress{
+    position:fixed; top:0; left:0; height:3px; width:0%;
+    background:linear-gradient(90deg, var(--leaf-500), var(--saffron));
+    z-index:300; transition:width .12s linear;
+  }
+
+  @keyframes navdrop{
+    from{ transform:translate(-50%,-26px); opacity:0; }
+    to{ transform:translate(-50%,0); opacity:1; }
+  }
+  nav{ animation:navdrop .7s cubic-bezier(.16,1,.3,1) both; }
+
+  /* ---------- INDIA STRIP ---------- */
+  .india-strip{background:var(--soil-900); padding:22px 0;}
+  .india-strip .container{
+    display:flex; align-items:center; justify-content:center; gap:40px;
+    flex-wrap:wrap; text-align:center;
+  }
+  .india-strip .chip{
+    display:flex; align-items:center; gap:9px;
+    color:#e9dfc4; font-size:0.92rem; font-weight:600;
+  }
+  .india-strip .chip .swatch{width:8px; height:8px; border-radius:50%; background:var(--saffron);}
+
+  /* ---------- FEATURES (3D tilt cards) ---------- */
+  .features{background:var(--paper);}
+  .feature-grid{
+    display:grid;
+    grid-template-columns:repeat(4, 1fr);
+    gap:22px;
+    perspective:1400px;
+  }
+  @media (max-width:920px){ .feature-grid{grid-template-columns:repeat(2,1fr);} }
+  @media (max-width:560px){ .feature-grid{grid-template-columns:1fr;} }
+  .feature-card{
+    background:var(--cream);
+    border:1px solid var(--line);
+    border-radius:18px;
+    padding:30px 26px;
+    transition:box-shadow .2s ease, border-color .2s ease, opacity .7s cubic-bezier(.16,1,.3,1), transform .7s cubic-bezier(.16,1,.3,1);
+    transform-style:preserve-3d;
+    will-change:transform;
+    position:relative;
+  }
+  .feature-card:hover{box-shadow:var(--shadow-lg); border-color:var(--leaf-500);}
+  /* once the entrance animation has played, switch to a snappy transition
+     so the mouse-follow 3D tilt (set via inline style in JS) feels instant */
+  .feature-card.is-visible{transition:box-shadow .2s ease, border-color .2s ease, transform .15s ease;}
+  .feature-card::after{
+    content:"";
+    position:absolute; inset:0; border-radius:18px;
+    background:linear-gradient(140deg, rgba(255,255,255,0.5), transparent 60%);
+    opacity:0; transition:opacity .25s ease; pointer-events:none;
+  }
+  .feature-card:hover::after{opacity:1;}
+  .feature-mark{
+    width:48px; height:48px;
+    border-radius:13px;
+    background:var(--leaf-100);
+    color:var(--leaf-700);
+    display:flex; align-items:center; justify-content:center;
+    margin-bottom:20px;
+    transform:translateZ(28px);
+  }
+  .feature-mark svg{width:25px; height:25px;}
+  .feature-card h3{font-size:1.14rem; margin:0 0 10px; color:var(--soil-900); font-weight:600; transform:translateZ(18px);}
+  .feature-card p{font-size:0.94rem; color:var(--ink-soft); margin:0; transform:translateZ(10px);}
+
+  /* ---------- HOW IT WORKS ---------- */
+  .how{background:var(--wheat-100); overflow:hidden; position:relative;}
+  .timeline{
+    position:relative;
+    display:grid;
+    grid-template-columns:repeat(3, 1fr);
+    gap:0;
+    margin-top:8px;
+  }
+  .tl-line{
+    position:absolute;
+    top:34px; left:calc(16.66% - 1px); right:calc(16.66% - 1px);
+    height:2px;
+    background:repeating-linear-gradient(90deg, var(--leaf-500) 0 10px, transparent 10px 18px);
+    transform-origin:left center;
+    transform:scaleX(0);
+    transition:transform 1.3s cubic-bezier(.16,1,.3,1);
+  }
+  .tl-line.is-drawn{transform:scaleX(1);}
+  @media (max-width:820px){
+    .timeline{grid-template-columns:1fr; gap:36px;}
+    .tl-line{
+      top:0; bottom:0; left:34px; right:auto; width:2px; height:auto;
+      background:repeating-linear-gradient(180deg, var(--leaf-500) 0 10px, transparent 10px 18px);
+      transform-origin:top center;
+      transform:scaleY(0);
+    }
+    .tl-line.is-drawn{transform:scaleY(1);}
+  }
+  .tl-step{position:relative; padding:0 20px; text-align:center;}
+  @media (max-width:820px){ .tl-step{text-align:left; padding:0 0 0 76px; min-height:70px;} }
+  .tl-node{
+    width:68px; height:68px; border-radius:50%;
+    background:var(--paper); border:2px solid var(--leaf-500);
+    display:flex; align-items:center; justify-content:center;
+    margin:0 auto 22px; position:relative; z-index:2;
+    box-shadow:0 8px 20px rgba(63,107,58,0.18);
+  }
+  @media (max-width:820px){ .tl-node{position:absolute; left:0; top:0; margin:0;} }
+  .tl-node svg{width:30px; height:30px; color:var(--leaf-700);}
+  .tl-step .step-num{
+    font-family:'Fraunces', serif;
+    font-size:0.8rem;
+    font-weight:700;
+    color:var(--clay-600);
+    letter-spacing:0.1em;
+    text-transform:uppercase;
+    margin-bottom:8px;
+    display:block;
+  }
+  .tl-step h3{margin:0 0 10px; font-size:1.2rem; color:var(--soil-900);}
+  .tl-card{
+    background:var(--paper); border:1px solid var(--line); border-radius:14px;
+    padding:22px 20px; text-align:left;
+  }
+  .tl-card ul{margin:0; padding-left:18px; color:var(--ink-soft); font-size:0.92rem;}
+  .tl-card ul li + li{margin-top:6px;}
+
+  /* ---------- APP MOCKUP (3D layered) ---------- */
+  .app-showcase{background:var(--soil-900); color:var(--wheat-100); overflow:hidden;}
+  .app-grid{display:grid; grid-template-columns:1.05fr 0.95fr; gap:56px; align-items:center;}
+  @media (max-width:900px){ .app-grid{grid-template-columns:1fr; gap:48px;} }
+  .app-copy .kicker{color:#e0a877;}
+  .app-copy h2{color:var(--wheat-100); font-size:clamp(1.8rem,3vw,2.3rem); margin:0 0 18px; font-weight:600;}
+  .app-copy p{color:#cfc4a8; font-size:1.02rem; margin:0 0 24px;}
+  .app-copy ul{list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:14px;}
+  .app-copy li{display:flex; gap:12px; align-items:flex-start; color:#e9dfc4; font-size:0.96rem;}
+  .app-copy li svg{flex:none; width:20px; height:20px; color:#a7e69a; margin-top:2px;}
+  .phone-stage{position:relative; display:flex; justify-content:center; perspective:1600px;}
+  .phone{
+    width:250px; height:510px; border-radius:38px;
+    background:linear-gradient(160deg, #1c1710, #0f0c07);
+    border:6px solid #171310;
+    box-shadow:0 40px 80px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,255,255,0.04) inset;
+    transform:rotateY(-16deg) rotateX(4deg);
+    position:relative; z-index:2;
+    padding:16px;
+  }
+  .phone-screen{
+    background:var(--wheat-100); border-radius:24px; height:100%; width:100%;
+    padding:18px 16px; display:flex; flex-direction:column; gap:10px; overflow:hidden;
+  }
+  .phone-screen .ps-top{display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;}
+  .phone-screen .ps-brand{font-family:'Fraunces', serif; font-weight:600; color:var(--soil-900); font-size:0.92rem;}
+  .phone-screen .ps-live{display:flex; align-items:center; gap:5px; font-size:0.62rem; font-weight:700; color:var(--leaf-700); text-transform:uppercase; letter-spacing:0.06em;}
+  .phone-screen .ps-live .dot{width:6px; height:6px; border-radius:50%; background:var(--leaf-500); animation:pslive 1.6s ease-in-out infinite;}
+  @keyframes pslive{ 0%,100%{ opacity:1; transform:scale(1);} 50%{ opacity:0.4; transform:scale(0.75);} }
+  .phone-screen .ps-lang{
+    position:relative; height:16px; overflow:hidden; margin:-2px 0 6px; min-width:70px;
+    font-size:0.66rem; color:var(--ink-soft);
+  }
+  .phone-screen .ps-lang span{
+    position:absolute; left:0; top:0; white-space:nowrap;
+    opacity:0; transform:translateY(6px);
+    transition:opacity .45s ease, transform .45s ease;
+  }
+  .phone-screen .ps-lang span.is-active{opacity:1; transform:translateY(0);}
+  .phone-screen .ps-card{
+    background:#fff; border-radius:12px; padding:12px 14px; border:1px solid var(--line);
+    transition:border-color .4s ease, box-shadow .4s ease, transform .4s ease;
+  }
+  .phone-screen .ps-card.is-active{
+    border-color:var(--leaf-500);
+    box-shadow:0 6px 18px rgba(63,107,58,0.18);
+    transform:translateY(-2px);
+  }
+  .phone-screen .ps-card .ps-label{font-size:0.62rem; text-transform:uppercase; letter-spacing:0.08em; color:var(--ink-soft);}
+  .phone-screen .ps-card .ps-val{font-family:'Fraunces', serif; font-weight:600; color:var(--soil-900); font-size:1.05rem; margin-top:2px;}
+  .phone-screen .ps-badge{display:inline-block; margin-top:6px; font-size:0.68rem; font-weight:700; padding:3px 9px; border-radius:999px; background:var(--leaf-100); color:var(--leaf-700);}
+  .phone-card-behind{
+    position:absolute; z-index:1; width:250px; height:510px; border-radius:38px;
+    border:2px solid rgba(255,255,255,0.08); top:26px; left:50%;
+    transform:translateX(-50%) rotateY(-16deg) rotateX(4deg) translateZ(-60px) translateX(46px);
+    background:rgba(255,255,255,0.03);
+  }
+
+  /* ---------- STATS (real count-up + rings) ---------- */
+  .stats{background:var(--wheat-100);}
+  .stat-grid{
+    display:grid;
+    grid-template-columns:repeat(4,1fr);
+    gap:24px;
+  }
+  @media (max-width:820px){ .stat-grid{grid-template-columns:repeat(2,1fr);} }
+  @media (max-width:480px){ .stat-grid{grid-template-columns:1fr;} }
+  .stat-card{
+    background:var(--paper); border:1px solid var(--line); border-radius:18px;
+    padding:32px 26px; text-align:left;
+  }
+  .stat-figure{
+    font-family:'Fraunces', serif; font-weight:700; color:var(--soil-900);
+    font-size:clamp(2.2rem, 3.4vw, 2.6rem); line-height:1;
+    margin-bottom:14px;
+  }
+  .stat-bar-track{
+    height:7px; border-radius:999px; background:var(--wheat-200);
+    overflow:hidden; margin-bottom:16px;
+  }
+  .stat-bar-fill{
+    display:block; height:100%; width:0%; border-radius:999px;
+    background:linear-gradient(90deg, var(--leaf-600), var(--leaf-500));
+    transition:width 1.4s cubic-bezier(.16,1,.3,1);
+  }
+  .stat-label{font-size:0.94rem; color:var(--soil-900); font-weight:600; margin-bottom:4px;}
+  .stat-note{font-size:0.78rem; color:var(--ink-soft);}
+  .stat-langs{display:flex; justify-content:flex-start; gap:8px; margin-bottom:16px; flex-wrap:wrap; padding-top:6px;}
+  .stat-lang-chip{
+    opacity:0; transform:scale(0.6);
+    transition:opacity .4s ease, transform .4s cubic-bezier(.3,1.4,.4,1);
+    background:var(--leaf-100); color:var(--leaf-700); font-weight:700; font-size:0.82rem;
+    padding:8px 12px; border-radius:10px;
+  }
+  .stat-lang-chip.is-shown{opacity:1; transform:scale(1);}
+
+  /* ---------- FOOTER ---------- */
+  footer{
+    background:var(--soil-900);
+    color:#cfc4a8;
+    padding:64px 0 28px;
+    border-top:4px solid var(--leaf-700);
+  }
+  .foot-top{
+    display:grid;
+    grid-template-columns:1.6fr 1fr 1fr;
+    gap:48px;
+    padding-bottom:40px;
+    border-bottom:1px solid rgba(255,255,255,0.1);
+  }
+  @media (max-width:760px){
+    .foot-top{grid-template-columns:1fr; gap:32px;}
+  }
+  .foot-brand{display:flex; align-items:center; gap:10px; margin-bottom:14px;}
+  .foot-brand img{width:30px; height:30px; object-fit:contain;}
+  footer .foot-title{color:var(--wheat-100); font-family:'Fraunces', serif; font-size:1.2rem; font-weight:600;}
+  .foot-tagline{margin:0 0 18px; font-size:0.92rem; line-height:1.6; color:#b6a988; max-width:38ch;}
+  .foot-langs{display:flex; align-items:center; gap:8px; font-size:0.84rem; font-weight:600; color:#e0a877; flex-wrap:wrap;}
+  .foot-dot{color:#6b5f47;}
+  .foot-col-title{
+    font-size:0.76rem; font-weight:700; letter-spacing:0.1em; text-transform:uppercase;
+    color:#8c8067; margin-bottom:16px;
+  }
+  .foot-col{display:flex; flex-direction:column; gap:11px;}
+  .foot-col a{font-size:0.92rem; color:#e9dfc4; text-decoration:none; transition:color .2s;}
+  .foot-col a:hover{color:#a7e69a;}
+  .foot-bottom{
+    display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;
+    padding-top:24px;
+    font-size:0.82rem; color:#8c8067;
+  }
+  .foot-honesty{max-width:44ch; text-align:right;}
+  @media (max-width:640px){
+    .foot-bottom{flex-direction:column; align-items:flex-start;}
+    .foot-honesty{text-align:left;}
+  }
+</style>
+</head>
+<body>
+
+<div class="scroll-progress" id="scroll-progress"></div>
+
+<nav id="site-nav">
+  <div class="brand">
+    <img src="./assets/logo-mark.png" alt="AGRO MIRAI logo">
+    <div class="brand-word">AGRO <span>MIRAI</span></div>
+  </div>
+  <ul class="nav-links">
+    <li><a href="#features">What it does</a></li>
+    <li><a href="#how">How it works</a></li>
+    <li><a href="#app">The app</a></li>
+    <li><a href="#stats">Results</a></li>
+    <li class="nav-cta-item"><a class="nav-cta" href="#features">See it work</a></li>
+  </ul>
+</nav>
+
+<header class="hero" id="hero">
+  <div class="float-chip chip-1">
+    <div class="fc-k">Soil pH</div>
+    <div class="fc-v">6.8 <small>lab report</small></div>
+  </div>
+  <div class="float-chip chip-2">
+    <div class="fc-k">Irrigation ET0</div>
+    <div class="fc-v">4.9 <small>mm / day</small></div>
+  </div>
+  <div class="float-chip chip-3">
+    <div class="fc-k">Disease risk</div>
+    <div class="fc-v">Moderate</div>
+  </div>
+  <div class="container">
+    <div class="hero-panel">
+      <span class="eyebrow"><span class="dot"></span>Built for Indian farms</span>
+      <h1>Farming decisions backed by <em>data</em>, not guesswork.</h1>
+      <p>AGRO MIRAI reads a field's soil, weather, and satellite signals, then hands the farmer a crop pick, an irrigation schedule, and a disease alert — spoken back in their own language.</p>
+      <div class="cta-row">
+        <a class="btn btn-primary" href="#features">See what it does</a>
+        <a class="btn btn-ghost" href="#stats">View model results</a>
+      </div>
+      <div class="lang-widget">
+        <span class="lw-label">Speaks</span>
+        <div class="lw-stage" id="lang-stage">
+          <span class="lw-word is-active" data-lang="en">Crop advice</span>
+          <span class="lw-word lang-kn" data-lang="kn">ಬೆಳೆ ಸಲಹೆ</span>
+          <span class="lw-word lang-te" data-lang="te">పంట సలహా</span>
+          <span class="lw-word lang-hi" data-lang="hi">फसल सलाह</span>
+        </div>
+        <div class="lw-dots" id="lang-dots">
+          <span class="is-active"></span><span></span><span></span><span></span>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="scroll-cue"><span>Scroll</span><span class="line"></span></div>
+</header>
+
+<div class="tricolor-rule"></div>
+
+<div class="india-strip">
+  <div class="container" data-stagger>
+    <span class="chip reveal-fade"><span class="swatch"></span>Bellary district, Karnataka</span>
+    <span class="chip reveal-fade"><span class="swatch"></span>ICAR &amp; state agriculture data</span>
+    <span class="chip reveal-fade"><span class="swatch"></span>ಕನ್ನಡ &middot; తెలుగు &middot; हिन्दी &middot; English</span>
+  </div>
+</div>
+
+<section class="features" id="features">
+  <div class="container">
+    <div class="section-head reveal">
+      <div class="kicker">What it does</div>
+      <h2>Four advisories, one field visit</h2>
+      <p>Every recommendation is generated from the farmer's own field data — soil samples, local weather, and satellite NDVI — not a generic lookup table.</p>
+    </div>
+    <div class="feature-grid" id="feature-grid" data-stagger>
+      <div class="feature-card reveal-card">
+        <div class="feature-mark">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3c3 3 3 7 0 10-3-3-3-7 0-10Z"/><path d="M12 13v8"/><path d="M8 21h8"/></svg>
+        </div>
+        <h3>Crop recommendation</h3>
+        <p>A Random Forest model trained on soil N/P/K, pH, and 14/30-day weather aggregates, ranking the best of 22 crop types for the field — with a regional-suitability check that flags picks agronomically unusual for the farmer's district instead of silently trusting the model.</p>
+      </div>
+      <div class="feature-card reveal-card">
+        <div class="feature-mark">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.5s6 6.5 6 11a6 6 0 1 1-12 0c0-4.5 6-11 6-11Z"/></svg>
+        </div>
+        <h3>Irrigation advisory</h3>
+        <p>A real water balance — reference evapotranspiration (Hargreaves-Samani, FAO-56) times a crop coefficient by growth stage, minus recent rainfall — sets the recommended depth in mm. A trained classifier separately sets urgency and the advisory window.</p>
+      </div>
+      <div class="feature-card reveal-card">
+        <div class="feature-mark">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2s7 3.5 7 9a7 7 0 1 1-14 0c0-5.5 7-9 7-9Z"/><path d="M9.5 12.5c1 1.5 3.5 1.5 4.5 0"/></svg>
+        </div>
+        <h3>Disease risk detection</h3>
+        <p>A MobileNetV2 CNN trained on the PlantVillage dataset reads an uploaded leaf photo when one is available; when it isn't, a weighted rule-based score over humidity, rainfall, temperature, and NDVI trend fills in. A failed CNN call always falls back to the rule-based score — never a failure.</p>
+      </div>
+      <div class="feature-card reveal-card">
+        <div class="feature-mark">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 1 3 3v6a3 3 0 0 1-6 0V5a3 3 0 0 1 3-3Z"/><path d="M19 11a7 7 0 0 1-14 0"/><path d="M12 18v4"/><path d="M9 22h6"/></svg>
+        </div>
+        <h3>Voice, in four languages</h3>
+        <p>Advisories translate and speak back in English, Kannada, Telugu, and Hindi (IndicTrans2 + AI4Bharat ASR/TTS, Piper for English/Hindi), with a name+phone+OTP login so a farmer never needs to remember a password.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="how" id="how">
+  <div class="container">
+    <div class="section-head reveal">
+      <div class="kicker">How it works</div>
+      <h2>From field data to a farmer's advisory</h2>
+      <p>The same pipeline runs behind every advisory type — only the model at the processing step changes.</p>
+    </div>
+    <div class="timeline" id="timeline" data-stagger>
+      <div class="tl-line" id="tl-line"></div>
+      <div class="tl-step reveal-card">
+        <div class="tl-node">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h18"/><path d="M3 6h18"/><path d="M3 18h18"/><circle cx="7" cy="6" r="1.4" fill="currentColor" stroke="none"/><circle cx="15" cy="12" r="1.4" fill="currentColor" stroke="none"/><circle cx="10" cy="18" r="1.4" fill="currentColor" stroke="none"/></svg>
+        </div>
+        <span class="step-num">Input</span>
+        <h3>Field &amp; environment data</h3>
+        <div class="tl-card">
+          <ul>
+            <li>Soil N/P/K, pH, moisture</li>
+            <li>Daily weather (temp, humidity, rainfall)</li>
+            <li>Satellite NDVI (Google Earth Engine, with a local NDVI cache fallback)</li>
+            <li>Optional leaf photo upload</li>
+          </ul>
+        </div>
+      </div>
+      <div class="tl-step reveal-card">
+        <div class="tl-node">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M8 9h8M8 13h5"/></svg>
+        </div>
+        <span class="step-num">Processing</span>
+        <h3>Feature build &amp; model inference</h3>
+        <div class="tl-card">
+          <ul>
+            <li>Feature vector assembled per field, per request</li>
+            <li>Crop RF &middot; irrigation water balance &middot; disease CNN or rule score</li>
+            <li>SHAP-based explanation attached to each result</li>
+          </ul>
+        </div>
+      </div>
+      <div class="tl-step reveal-card">
+        <div class="tl-node">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="2.5" width="10" height="19" rx="2.2"/><path d="M11 18h2"/></svg>
+        </div>
+        <span class="step-num">Output</span>
+        <h3>Advisory delivered</h3>
+        <div class="tl-card">
+          <ul>
+            <li>Plain-language summary, severity-tagged</li>
+            <li>Mobile app (React Native / Expo) &amp; admin dashboard</li>
+            <li>Spoken aloud on request, in the farmer's language</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="app-showcase" id="app">
+  <div class="container">
+    <div class="app-grid">
+      <div class="app-copy reveal-left">
+        <div class="kicker">In the farmer's pocket</div>
+        <h2>One app. Every field, every advisory.</h2>
+        <p>A React Native / Expo mobile app puts all four advisories, voice playback, and photo-based disease scans in a single screen a farmer already knows how to use — no password, just name, phone, and an OTP.</p>
+        <ul>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Name + phone + OTP login — nothing to remember</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Live field readings, translated and read aloud</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Camera-based leaf scan for disease risk, on the spot</li>
+        </ul>
+      </div>
+      <div class="phone-stage reveal-right">
+        <div class="phone-card-behind"></div>
+        <div class="phone">
+          <div class="phone-screen" id="phone-screen">
+            <div class="ps-top">
+              <span class="ps-brand">AGRO MIRAI</span>
+              <span class="ps-live"><span class="dot"></span>Live</span>
+            </div>
+            <div class="ps-lang" id="ps-lang">
+              <span class="is-active">North Plot &middot; English</span>
+              <span class="lang-kn">ಉತ್ತರ ಪ್ಲಾಟ್ &middot; ಕನ್ನಡ</span>
+              <span class="lang-te">నార్త్ ప్లాట్ &middot; తెలుగు</span>
+              <span class="lang-hi">नॉर्थ प्लॉट &middot; हिन्दी</span>
+            </div>
+            <div class="ps-card">
+              <div class="ps-label">Recommended crop</div>
+              <div class="ps-val">Cotton</div>
+              <span class="ps-badge">82% confidence</span>
+            </div>
+            <div class="ps-card">
+              <div class="ps-label">Irrigation depth</div>
+              <div class="ps-val">12 mm</div>
+              <span class="ps-badge">Moderate urgency</span>
+            </div>
+            <div class="ps-card">
+              <div class="ps-label">Disease risk</div>
+              <div class="ps-val">Moderate</div>
+              <span class="ps-badge">Scout within 2 days</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="stats" id="stats">
+  <div class="container">
+    <div class="section-head reveal">
+      <div class="kicker">Measured, not claimed</div>
+      <h2>Model results from held-out evaluation</h2>
+      <p>Every figure below comes from a committed evaluation report, run against a genuine held-out split.</p>
+    </div>
+    <div class="stat-grid" data-stagger>
+      <div class="stat-card reveal-card">
+        <div class="stat-figure" data-target="99.55" data-suffix="%">0%</div>
+        <div class="stat-bar-track"><span class="stat-bar-fill" data-target="99.55"></span></div>
+        <div class="stat-label">Crop recommendation accuracy</div>
+        <div class="stat-note">RandomForest, held-out split, macro-F1 0.9955</div>
+      </div>
+      <div class="stat-card reveal-card">
+        <div class="stat-figure" data-target="99.24" data-suffix="%">0%</div>
+        <div class="stat-bar-track"><span class="stat-bar-fill" data-target="99.24"></span></div>
+        <div class="stat-label">Disease CNN validation accuracy</div>
+        <div class="stat-note">MobileNetV2 on PlantVillage, 38 classes</div>
+      </div>
+      <div class="stat-card reveal-card">
+        <div class="stat-figure" data-target="72.4" data-suffix="%">0%</div>
+        <div class="stat-bar-track"><span class="stat-bar-fill" data-target="72.4"></span></div>
+        <div class="stat-label">Irrigation urgency accuracy</div>
+        <div class="stat-note">3-class RandomForest, macro-F1 0.58</div>
+      </div>
+      <div class="stat-card reveal-card">
+        <div class="stat-langs" id="stat-langs">
+          <span class="stat-lang-chip lang-kn">ಕನ್ನಡ</span>
+          <span class="stat-lang-chip lang-te">తెలుగు</span>
+          <span class="stat-lang-chip lang-hi">हिन्दी</span>
+          <span class="stat-lang-chip">English</span>
+        </div>
+        <div class="stat-label">Indian languages supported</div>
+        <div class="stat-note">Translation, speech-to-text &amp; text-to-speech, all four</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer id="footer-info">
+  <div class="container">
+    <div class="foot-top">
+      <div class="foot-brand-col">
+        <div class="foot-brand">
+          <img src="./assets/logo-mark.png" alt="AGRO MIRAI logo">
+          <div class="foot-title">AGRO MIRAI</div>
+        </div>
+        <p class="foot-tagline">AI-driven smart agriculture advisory — crop, irrigation, and disease guidance for Indian farms, in the farmer's own language.</p>
+        <div class="foot-langs">
+          <span class="lang-kn">ಕನ್ನಡ</span><span class="foot-dot">&middot;</span><span class="lang-te">తెలుగు</span><span class="foot-dot">&middot;</span><span class="lang-hi">हिन्दी</span><span class="foot-dot">&middot;</span><span>English</span>
+        </div>
+      </div>
+      <div class="foot-col">
+        <div class="foot-col-title">Product</div>
+        <a href="#features">Crop recommendation</a>
+        <a href="#features">Irrigation advisory</a>
+        <a href="#features">Disease detection</a>
+        <a href="#app">Mobile app</a>
+      </div>
+      <div class="foot-col">
+        <div class="foot-col-title">Project</div>
+        <a href="#how">How it works</a>
+        <a href="#stats">Model results</a>
+        <a href="#features">What it does</a>
+      </div>
+    </div>
+    <div class="foot-bottom">
+      <span>&copy; 2026 AGRO MIRAI. Built for Indian farms.</span>
+      <span class="foot-honesty">Every figure on this page is from a real, committed evaluation report — nothing hand-faked.</span>
+    </div>
+  </div>
+</footer>
+
+<script>
+/* dynamic scroll-reveal: fades/slides/pops elements in as they enter the
+   viewport, staggering siblings inside any [data-stagger] container so
+   grids and timelines animate in sequence rather than all at once */
+(function(){
+  var revealSelector = '.reveal, .reveal-card, .reveal-left, .reveal-right, .reveal-pop, .reveal-fade';
+  var els = document.querySelectorAll(revealSelector);
+
+  function staggerIndex(el){
+    var group = el.closest('[data-stagger]');
+    if(!group) return 0;
+    var siblings = Array.prototype.filter.call(group.children, function(c){
+      return c.matches && c.matches(revealSelector);
+    });
+    var idx = siblings.indexOf(el);
+    return Math.min(idx, 7);
+  }
+
+  if(!('IntersectionObserver' in window)){
+    els.forEach(function(el){ el.classList.add('is-visible'); });
+  } else {
+    var io = new IntersectionObserver(function(entries){
+      entries.forEach(function(entry){
+        if(entry.isIntersecting){
+          var delay = staggerIndex(entry.target) * 100;
+          entry.target.style.transitionDelay = delay + 'ms';
+          entry.target.classList.add('is-visible');
+          io.unobserve(entry.target);
+        }
+      });
+    }, { threshold: 0.15, rootMargin: '0px 0px -60px 0px' });
+    els.forEach(function(el){ io.observe(el); });
+  }
+})();
+
+/* the connecting dashed line in "How it works" draws itself in once the
+   timeline scrolls into view */
+(function(){
+  var timeline = document.getElementById('timeline');
+  var line = document.getElementById('tl-line');
+  if(!timeline || !line) return;
+  if(!('IntersectionObserver' in window)){ line.classList.add('is-drawn'); return; }
+  var io = new IntersectionObserver(function(entries){
+    entries.forEach(function(entry){
+      if(entry.isIntersecting){
+        line.classList.add('is-drawn');
+        io.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.3 });
+  io.observe(timeline);
+})();
+
+/* nav goes solid after scrolling past the hero; a thin progress bar up top
+   fills as the visitor scrolls down the page */
+(function(){
+  var nav = document.getElementById('site-nav');
+  var bar = document.getElementById('scroll-progress');
+  function onScroll(){
+    if(window.scrollY > 60){ nav.classList.add('nav-solid'); }
+    else{ nav.classList.remove('nav-solid'); }
+    if(bar){
+      var docHeight = document.documentElement.scrollHeight - window.innerHeight;
+      var pct = docHeight > 0 ? (window.scrollY / docHeight) * 100 : 0;
+      bar.style.width = pct + '%';
+    }
+  }
+  window.addEventListener('scroll', onScroll, { passive:true });
+  onScroll();
+})();
+
+/* rotating language widget in the hero */
+(function(){
+  var words = Array.prototype.slice.call(document.querySelectorAll('#lang-stage .lw-word'));
+  var dots = Array.prototype.slice.call(document.querySelectorAll('#lang-dots span'));
+  if(!words.length) return;
+  var i = 0;
+  setInterval(function(){
+    words[i].classList.remove('is-active');
+    dots[i].classList.remove('is-active');
+    i = (i + 1) % words.length;
+    words[i].classList.add('is-active');
+    dots[i].classList.add('is-active');
+  }, 2200);
+})();
+
+/* the "in the farmer's pocket" phone mockup — cycles its language label the
+   same way the hero does, and sweeps a highlight across the three advisory
+   cards, so the phone reads as live/interactive rather than a flat screenshot */
+(function(){
+  var langEl = document.getElementById('ps-lang');
+  if(langEl){
+    var words = Array.prototype.slice.call(langEl.children);
+    var i = 0;
+    setInterval(function(){
+      words[i].classList.remove('is-active');
+      i = (i + 1) % words.length;
+      words[i].classList.add('is-active');
+    }, 2600);
+  }
+
+  var screen = document.getElementById('phone-screen');
+  if(screen){
+    var cards = Array.prototype.slice.call(screen.querySelectorAll('.ps-card'));
+    var j = 0;
+    cards[0].classList.add('is-active');
+    setInterval(function(){
+      cards[j].classList.remove('is-active');
+      j = (j + 1) % cards.length;
+      cards[j].classList.add('is-active');
+    }, 1900);
+  }
+})();
+
+/* 3D tilt on feature cards, mouse-follow */
+(function(){
+  var cards = document.querySelectorAll('#feature-grid .feature-card');
+  cards.forEach(function(card){
+    card.addEventListener('mousemove', function(e){
+      var r = card.getBoundingClientRect();
+      var px = (e.clientX - r.left) / r.width - 0.5;
+      var py = (e.clientY - r.top) / r.height - 0.5;
+      card.style.transform = 'perspective(900px) rotateX(' + (-py * 10) + 'deg) rotateY(' + (px * 12) + 'deg) scale3d(1.02,1.02,1.02)';
+    });
+    card.addEventListener('mouseleave', function(){
+      card.style.transform = 'perspective(900px) rotateX(0deg) rotateY(0deg) scale3d(1,1,1)';
+    });
+  });
+})();
+
+/* real count-up + fill-bar animation for the stats, triggered once on scroll-into-view */
+(function(){
+  var figures = document.querySelectorAll('.stat-figure');
+  var langChips = document.getElementById('stat-langs');
+
+  function easeOutExpo(t){ return t === 1 ? 1 : 1 - Math.pow(2, -10 * t); }
+
+  function animateFigure(figure){
+    var target = parseFloat(figure.getAttribute('data-target'));
+    var suffix = figure.getAttribute('data-suffix') || '';
+    var bar = figure.parentElement.querySelector('.stat-bar-fill');
+    var duration = 1500;
+    var start = null;
+
+    function frame(ts){
+      if(start === null) start = ts;
+      var elapsed = ts - start;
+      var t = Math.min(1, elapsed / duration);
+      var eased = easeOutExpo(t);
+      var current = target * eased;
+      figure.textContent = current.toFixed(current < 100 ? 2 : 1).replace(/\.00$/, '') + suffix;
+      if(bar) bar.style.width = current + '%';
+      if(t < 1){ requestAnimationFrame(frame); }
+      else{
+        figure.textContent = target.toString().replace(/(\.\d*?)0+$/, '$1').replace(/\.$/, '') + suffix;
+        if(bar) bar.style.width = target + '%';
+      }
+    }
+    requestAnimationFrame(frame);
+  }
+
+  function animateLangChips(){
+    var chips = langChips.querySelectorAll('.stat-lang-chip');
+    chips.forEach(function(chip, idx){
+      setTimeout(function(){ chip.classList.add('is-shown'); }, idx * 180);
+    });
+  }
+
+  if(!('IntersectionObserver' in window)){
+    figures.forEach(animateFigure);
+    if(langChips) animateLangChips();
+    return;
+  }
+  var statIo = new IntersectionObserver(function(entries){
+    entries.forEach(function(entry){
+      if(entry.isIntersecting){
+        entry.target.querySelectorAll('.stat-figure').forEach(animateFigure);
+        if(entry.target.contains(langChips)) animateLangChips();
+        statIo.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.4 });
+  document.querySelectorAll('.stat-card').forEach(function(card){ statIo.observe(card); });
+})();
+</script>
+
+</body>
+</html>
