@@ -14,6 +14,7 @@ from typing import Protocol, runtime_checkable
 
 from agro_mirai.persistence.models import (
     Advisory,
+    BugReport,
     CropRecommendation,
     DiseaseRiskAlert,
     Farmer,
@@ -163,6 +164,12 @@ class DataStore(Protocol):
     def list_feedback_for_farmer(
         self, farmer_id: str, limit: int = 200
     ) -> list[FeedbackEntry]: ...
+
+    def save_bug_report(self, farmer_id: str, report: BugReport) -> BugReport: ...
+
+    def list_bug_reports_for_farmer(
+        self, farmer_id: str, limit: int = 200
+    ) -> list[BugReport]: ...
 
     # --- Health ---
     def ping(self) -> bool: ...

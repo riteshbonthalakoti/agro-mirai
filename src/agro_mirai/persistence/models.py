@@ -150,3 +150,19 @@ class FeedbackEntry:
     rating: int
     helpful: bool
     comment: str | None = None
+
+
+@dataclass
+class BugReport:
+    """A farmer-submitted in-app bug report -- deliberately separate from
+    FeedbackEntry (no advisory_id/rating/helpful requirement); see
+    migrations/sqlite/009_bug_reports.sql's header for why."""
+
+    id: str
+    farmer_id: str
+    created_at: datetime
+    category: str | None = None
+    message: str | None = None
+    photo_url: str | None = None
+    app_version: str | None = None
+    platform: str | None = None

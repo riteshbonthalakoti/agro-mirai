@@ -418,6 +418,40 @@ paths:
   # registration) via agro_mirai.api.value_endpoints — see
   # decisions/0020-v2-value-endpoints-and-voice-api.md.
 
+  /v2/fields/{field_id}/refresh-data:
+    parameters:
+      - $ref: '#/components/parameters/FieldId'
+    post:
+      summary: >-
+        Module 34 follow-up 2: manually re-pull real weather/soil/NDVI
+        data for a Field owned by the session-authenticated Farmer via
+        the Module 03 acquisition adapters, the same call field creation
+        makes. Weather/soil are fetched synchronously; NDVI is fetched in
+        a background thread and is not reflected in this response
+        (data_acquisition.ndvi is always "gathering"). No automatic
+        periodic refresh exists — this manual trigger is the deliberate
+        MVP, not a placeholder for a scheduler.
+      security: [ { sessionCookie: [] } ]
+      responses:
+        '202':
+          description: Refresh accepted; weather/soil status reflects the synchronous portion, NDVI is still in flight.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  field_id: { type: string }
+                  data_acquisition:
+                    type: object
+                    properties:
+                      weather: { type: string, enum: [ready, unavailable] }
+                      soil: { type: string, enum: [ready, unavailable] }
+                      ndvi: { type: string, enum: [gathering] }
+                    required: [weather, soil, ndvi]
+                required: [field_id, data_acquisition]
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
   /v2/fields/{field_id}/recommendation:
     parameters:
       - $ref: '#/components/parameters/FieldId'
@@ -541,6 +575,24 @@ paths:
         '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '404': { $ref: '#/components/responses/NotFound' }
+
+  /v2/bug-reports:
+    post:
+      summary: Submit a farmer-facing in-app bug report (not tied to a specific Advisory).
+      security: [ { sessionCookie: [] } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/BugReportCreate' }
+      responses:
+        '201':
+          description: The stored bug report.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BugReport' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
 
   /v2/advisories/{advisory_id}/audio:
     parameters:
@@ -1046,3 +1098,30 @@ components:
         rating: { type: integer, minimum: 1, maximum: 5 }
         helpful: { type: boolean }
         comment: { type: string }
+
+    BugReport:
+      type: object
+      required: [id, farmer_id, created_at]
+      properties:
+        id: { type: string, format: uuid }
+        farmer_id: { type: string, format: uuid }
+        created_at: { type: string, format: date-time }
+        category:
+          type: string
+          enum: [crash, wrong_info, unclear_advice, photo_scan_failed, login_failed, other]
+        message: { type: string }
+        photo_url: { type: string }
+        app_version: { type: string }
+        platform: { type: string }
+
+    BugReportCreate:
+      type: object
+      description: At least one of category/message is required (enforced server-side, not by an "at least one" JSON Schema construct here).
+      properties:
+        category:
+          type: string
+          enum: [crash, wrong_info, unclear_advice, photo_scan_failed, login_failed, other]
+        message: { type: string }
+        photo_url: { type: string }
+        app_version: { type: string }
+        platform: { type: string }

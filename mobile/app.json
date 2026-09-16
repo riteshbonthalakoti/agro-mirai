@@ -36,7 +36,8 @@
         }
       ],
       "expo-asset",
-      "expo-font"
+      "expo-font",
+      "@react-native-community/datetimepicker"
     ],
     "owner": "ritesh.bonthalakoti",
     "extra": {

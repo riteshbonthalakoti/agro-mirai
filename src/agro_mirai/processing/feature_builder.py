@@ -12,6 +12,10 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import date
 
+from agro_mirai.models.soil_type_typical_values import (
+    lookup_typical_moisture_pct,
+    lookup_typical_values,
+)
 from agro_mirai.persistence.models import (
     Field_,
     NDVIReading,
@@ -51,6 +55,28 @@ class FeatureVector:
     soil_organic_carbon_pct: float | None = None
     soil_moisture_pct: float | None = None
     soil_npk_balance_index: float | None = None
+    #: DEPRECATED alias, kept only for backward compatibility with any
+    #: caller reading the pre-follow-up-3 single flag — always equal to
+    #: soil_chemistry_source below. New code should read
+    #: soil_chemistry_source / soil_moisture_source instead, since a real
+    #: SoilGrids sample commonly has real chemistry (ph/N/P/K) but a
+    #: fallback moisture value (SoilGrids never returns moisture at all),
+    #: which this single flag cannot represent correctly.
+    soil_source: str | None = None
+    #: Module 34 follow-up 3: which source backed soil_ph/nitrogen/
+    #: phosphorus/potassium/organic_carbon — a real SoilSample.source
+    #: ("soilgrids"/"lab_report"/"manual"), or "soil_type_fallback" when
+    #: SoilGrids returned a no-data pixel and Field.soil_type's typical-
+    #: values table was used instead. None when soil_data_available is
+    #: False.
+    soil_chemistry_source: str | None = None
+    #: Module 34 follow-up 3: which source backed soil_moisture_pct
+    #: specifically — a real SoilSample.source when moisture_pct was
+    #: actually measured (lab_report/manual; SoilGrids itself never
+    #: populates this), or "soil_type_fallback" when Field.soil_type's
+    #: typical field-capacity table was used because the real sample had
+    #: no moisture reading. None when soil_data_available is False.
+    soil_moisture_source: str | None = None
 
     # ndvi
     ndvi_data_available: bool = False
@@ -99,7 +125,7 @@ class FeatureBuilder:
                 weather_in_range, as_of, window_days
             )
 
-        soil_available, soil_features = _soil_features(soil_samples, as_of)
+        soil_available, soil_features = _soil_features(soil_samples, as_of, field)
         ndvi_available, ndvi_latest, ndvi_trend, ndvi_source = _ndvi_features(
             ndvi_readings, as_of
         )
@@ -187,7 +213,7 @@ def _temp_min_max_window(
 
 
 def _soil_features(
-    samples: list[SoilSample], as_of: date
+    samples: list[SoilSample], as_of: date, field: Field_
 ) -> tuple[bool, dict[str, float | None]]:
     if not samples:
         return False, {
@@ -198,6 +224,9 @@ def _soil_features(
             "soil_organic_carbon_pct": None,
             "soil_moisture_pct": None,
             "soil_npk_balance_index": None,
+            "soil_source": None,
+            "soil_chemistry_source": None,
+            "soil_moisture_source": None,
         }
 
     in_range = [s for s in samples if s.observed_at.date() <= as_of]
@@ -207,19 +236,55 @@ def _soil_features(
     n = latest.nitrogen_mg_per_kg
     p = latest.phosphorus_mg_per_kg
     k = latest.potassium_mg_per_kg
+    ph = latest.ph
+    organic_carbon = latest.organic_carbon_pct
+    chemistry_source = latest.source
+    moisture = latest.moisture_pct
+    moisture_source = latest.source if moisture is not None else None
+
+    # Module 34 follow-up 2: the real SoilGrids-sourced sample is a
+    # genuine "no-data pixel" (SoilGrids had nothing for this exact
+    # location — see soilgrids.py's docstring) when ph/N/P/K all came
+    # back None. Field.soil_type (the farmer-confirmable label) is the
+    # documented fallback for exactly this case — never used when the
+    # real sample has any real chemistry value.
+    if ph is None and n is None and p is None and k is None:
+        typical = lookup_typical_values(field.soil_type)
+        if typical is not None:
+            ph = typical["ph"]
+            n = typical["nitrogen_mg_per_kg"]
+            p = typical["phosphorus_mg_per_kg"]
+            k = typical["potassium_mg_per_kg"]
+            organic_carbon = typical.get("organic_carbon_pct", organic_carbon)
+            chemistry_source = "soil_type_fallback"
+
+    # Module 34 follow-up 3: unlike chemistry, SoilGrids NEVER returns
+    # moisture at all — this is the common case, not a no-data edge case.
+    # Falls back independently of chemistry, so the common real-world mix
+    # (real SoilGrids ph/N/P/K, fallback moisture) is represented
+    # correctly rather than being forced under one flag.
+    if moisture is None:
+        typical_moisture = lookup_typical_moisture_pct(field.soil_type)
+        if typical_moisture is not None:
+            moisture = typical_moisture
+            moisture_source = "soil_type_fallback"
+
     if n is not None and p is not None and k is not None and (n + p + k) > 0:
         npk_balance = n / (n + p + k)
     else:
         npk_balance = None
 
     return True, {
-        "soil_ph": latest.ph,
+        "soil_ph": ph,
         "soil_nitrogen_mg_per_kg": n,
         "soil_phosphorus_mg_per_kg": p,
         "soil_potassium_mg_per_kg": k,
-        "soil_organic_carbon_pct": latest.organic_carbon_pct,
-        "soil_moisture_pct": latest.moisture_pct,
+        "soil_organic_carbon_pct": organic_carbon,
+        "soil_moisture_pct": moisture,
         "soil_npk_balance_index": npk_balance,
+        "soil_source": chemistry_source,
+        "soil_chemistry_source": chemistry_source,
+        "soil_moisture_source": moisture_source,
     }
 
 

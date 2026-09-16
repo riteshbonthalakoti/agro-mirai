@@ -62,6 +62,25 @@ def synthesize_advisory_audio(advisory: Advisory, language: str) -> bytes | None
         return None
 
 
+def translate_text(text: str, source_lang: str, target_lang: str) -> str | None:
+    """Never-raise translate for arbitrary short server-generated English
+    text (Module 34 follow-up): reuses the same ``RemoteVoiceService``/
+    IndicTrans2 path ``synthesize_advisory_audio`` already calls, rather
+    than building a second translation call. Returns ``None`` on any
+    voice-service unavailability, so callers apply the same degrade-not-
+    fail pattern (fall back to the original English text) as every other
+    voice-service call in this module."""
+    if source_lang == target_lang:
+        return text
+    service = get_remote_voice_service()
+    if service is None:
+        return None
+    try:
+        return service.translate(text, source_lang, target_lang)
+    except VoiceUnavailableError:
+        return None
+
+
 def transcribe_audio(audio_bytes: bytes, expected_lang: str | None = None) -> tuple[str, str] | None:
     """Returns ``(text, detected_lang)``, or ``None`` if the voice service
     is not configured/reachable."""

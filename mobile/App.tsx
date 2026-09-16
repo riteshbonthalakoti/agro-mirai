@@ -14,14 +14,19 @@ import {
   useWindowDimensions,
   TextProps,
   TextInputProps,
+  RefreshControl,
+  Platform,
 } from 'react-native';
+import Constants from 'expo-constants';
 import { SafeAreaProvider, SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Speech from 'expo-speech';
 import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
 import { createAudioPlayer, AudioPlayer } from 'expo-audio';
 import { CameraView, useCameraPermissions, FlashMode } from 'expo-camera';
+import { File as ExpoFile } from 'expo-file-system';
 import { BlurView } from 'expo-blur';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import {
   useFonts,
   Poppins_400Regular,
@@ -83,6 +88,83 @@ const CROPPED_LOGO_WITHOUT_NAME = require('./assets/Logo.png');
 const SOIL_TYPES = ['alluvial', 'black', 'red', 'laterite', 'mountain', 'desert', 'saline', 'peaty', 'unknown'];
 const CROP_TYPES = ['rice', 'maize', 'chickpea', 'kidneybeans', 'pigeonpeas', 'mothbeans', 'mungbean', 'blackgram', 'lentil', 'pomegranate', 'banana', 'mango', 'grapes', 'watermelon', 'muskmelon', 'apple', 'orange', 'papaya', 'coconut', 'cotton', 'jute', 'coffee'];
 
+// Module 34: display-only label maps for the stable enum keys above.
+// SOIL_TYPES/CROP_TYPES themselves stay untranslated (they ARE what gets
+// sent as soil_type/current_crop to the backend -- schema.yaml enums,
+// keyed by their English string exactly, per the comment above). These
+// maps translate the *display* only, so a farmer never sees a raw English
+// enum key on a Kannada/Telugu/Hindi UI, while the payload sent to the
+// backend is always the untouched key. kn/te/hi values are standard
+// agricultural terms; a few (kidneybeans, mothbeans, jute, laterite,
+// peaty) are less common in everyday speech and are flagged for a native
+// speaker to double-check -- marked with a trailing comment below.
+const CROP_TYPE_LABELS: Record<LangKey, Record<string, string>> = {
+  en: {
+    rice: 'Rice', maize: 'Maize', chickpea: 'Chickpea', kidneybeans: 'Kidney Beans',
+    pigeonpeas: 'Pigeon Peas', mothbeans: 'Moth Beans', mungbean: 'Mung Bean',
+    blackgram: 'Black Gram', lentil: 'Lentil', pomegranate: 'Pomegranate',
+    banana: 'Banana', mango: 'Mango', grapes: 'Grapes', watermelon: 'Watermelon',
+    muskmelon: 'Muskmelon', apple: 'Apple', orange: 'Orange', papaya: 'Papaya',
+    coconut: 'Coconut', cotton: 'Cotton', jute: 'Jute', coffee: 'Coffee',
+  },
+  kn: {
+    rice: 'ಭತ್ತ', maize: 'ಮೆಕ್ಕೆಜೋಳ', chickpea: 'ಕಡಲೆ', kidneybeans: 'ರಾಜ್ಮಾ', // kidneybeans: unsure, verify
+    pigeonpeas: 'ತೊಗರಿ', mothbeans: 'ಮಟ್ ಕಾಳು', mungbean: 'ಹೆಸರುಕಾಳು', // mothbeans: unsure, verify
+    blackgram: 'ಉದ್ದಿನಬೇಳೆ', lentil: 'ಮಸೂರ ಬೇಳೆ', pomegranate: 'ದಾಳಿಂಬೆ',
+    banana: 'ಬಾಳೆಹಣ್ಣು', mango: 'ಮಾವು', grapes: 'ದ್ರಾಕ್ಷಿ', watermelon: 'ಕಲ್ಲಂಗಡಿ',
+    muskmelon: 'ಕರಬೂಜ', apple: 'ಸೇಬು', orange: 'ಕಿತ್ತಳೆ', papaya: 'ಪರಂಗಿ',
+    coconut: 'ತೆಂಗಿನಕಾಯಿ', cotton: 'ಹತ್ತಿ', jute: 'ಸೆಣಬು', coffee: 'ಕಾಫಿ',
+  },
+  te: {
+    rice: 'వరి', maize: 'మొక్కజొన్న', chickpea: 'శనగలు', kidneybeans: 'రాజ్మా', // kidneybeans: unsure, verify
+    pigeonpeas: 'కందులు', mothbeans: 'బర్రెనూనె పప్పు', mungbean: 'పెసలు', // mothbeans: unsure, verify
+    blackgram: 'మినుములు', lentil: 'మసూర్ పప్పు', pomegranate: 'దానిమ్మ',
+    banana: 'అరటి', mango: 'మామిడి', grapes: 'ద్రాక్ష', watermelon: 'పుచ్చకాయ',
+    muskmelon: 'ఖర్బూజా', apple: 'ఆపిల్', orange: 'నారింజ', papaya: 'బొప్పాయి',
+    coconut: 'కొబ్బరి', cotton: 'పత్తి', jute: 'జనపనార', coffee: 'కాఫీ', // jute: unsure, verify
+  },
+  hi: {
+    rice: 'चावल', maize: 'मक्का', chickpea: 'चना', kidneybeans: 'राजमा',
+    pigeonpeas: 'अरहर', mothbeans: 'मोठ', mungbean: 'मूंग',
+    blackgram: 'उड़द', lentil: 'मसूर', pomegranate: 'अनार',
+    banana: 'केला', mango: 'आम', grapes: 'अंगूर', watermelon: 'तरबूज',
+    muskmelon: 'खरबूजा', apple: 'सेब', orange: 'संतरा', papaya: 'पपीता',
+    coconut: 'नारियल', cotton: 'कपास', jute: 'जूट', coffee: 'कॉफी',
+  },
+};
+const SOIL_TYPE_LABELS: Record<LangKey, Record<string, string>> = {
+  en: { alluvial: 'Alluvial', black: 'Black', red: 'Red', laterite: 'Laterite', mountain: 'Mountain', desert: 'Desert', saline: 'Saline', peaty: 'Peaty', unknown: 'Unknown' },
+  kn: { alluvial: 'ಮೆಕ್ಕಲು', black: 'ಕಪ್ಪು', red: 'ಕೆಂಪು', laterite: 'ಜಂಬಿಟ್ಟಿಗೆ', mountain: 'ಪರ್ವತ', desert: 'ಮರುಭೂಮಿ', saline: 'ಲವಣಯುಕ್ತ', peaty: 'ಪೀಟ್', unknown: 'ಗೊತ್ತಿಲ್ಲ' }, // laterite/peaty: unsure, verify
+  te: { alluvial: 'ఒండ్రు', black: 'నలుపు', red: 'ఎర్ర', laterite: 'లాటరైట్', mountain: 'పర్వత', desert: 'ఎడారి', saline: 'ఉప్పు నేల', peaty: 'పీట్', unknown: 'తెలియదు' }, // laterite/peaty: unsure, verify
+  hi: { alluvial: 'जलोढ़', black: 'काली', red: 'लाल', laterite: 'लैटेराइट', mountain: 'पर्वतीय', desert: 'रेगिस्तानी', saline: 'लवणीय', peaty: 'पीटयुक्त', unknown: 'अज्ञात' }, // laterite/peaty: unsure, verify
+};
+
+// Module 34 follow-up: `recommended_action` from GET/POST
+// .../disease-risk(/image) is always exactly one of the 4 fixed English
+// strings in `disease_risk_scoring.RISK_ACTION`, keyed purely by
+// `risk_level` (`low`/`moderate`/`high`/`severe`) -- true for both the
+// CNN and environmental/fallback paths (image_disease_risk_model.py
+// reuses the same RISK_ACTION lookup). Since risk_level is already a
+// small closed enum the app already gets in every response, this text
+// can be fully localized client-side via `t.*` with no backend
+// translation call needed (unlike `disease`, which is genuine free
+// text -- see `disease_translated` from
+// `value_endpoints._with_disease_translation`).
+function diseaseActionText(scanResult: any, t: Record<string, string>): string {
+  const key: Record<string, string> = {
+    low: 'diseaseActionLow',
+    moderate: 'diseaseActionModerate',
+    high: 'diseaseActionHigh',
+    severe: 'diseaseActionSevere',
+  };
+  const tKey = scanResult?.risk_level ? key[scanResult.risk_level] : undefined;
+  if (tKey && t[tKey]) return t[tKey];
+  // Unknown/missing risk_level -- fall back to whatever the server sent
+  // rather than showing nothing (degrade-not-fail, matches this
+  // project's doctrine elsewhere).
+  return scanResult?.recommendation || scanResult?.recommended_action || '';
+}
+
 // --- Module 31: "Field & Grain" light-only palette ---
 // Values below are the exact hex codes given in this module's own source
 // brief (Claude outputs/module-31-redesign-onboarding-audit-prompt.md,
@@ -133,6 +215,136 @@ const LANG_DISPLAY_NAMES: Record<LangKey, string> = {
   hi: 'हिंदी (Hindi)',
   en: 'English'
 };
+
+// Module 34: shared option list for LanguageDropdown's default 4-language
+// use (the Language Picker screen); PROFILE_SETUP passes its own
+// differently-labeled options list to the same component.
+const LANGUAGE_DROPDOWN_OPTIONS: { key: LangKey; label: string }[] = [
+  { key: 'kn', label: LANG_DISPLAY_NAMES.kn },
+  { key: 'te', label: LANG_DISPLAY_NAMES.te },
+  { key: 'hi', label: LANG_DISPLAY_NAMES.hi },
+  { key: 'en', label: LANG_DISPLAY_NAMES.en },
+];
+
+// Module 34: a single dropdown/select language picker, replacing every
+// place this app previously rendered language choice as four separate
+// always-visible tap buttons (the Language Picker screen and the
+// first-time Profile Setup screen). Built from Modal + TouchableOpacity,
+// the same primitives already used throughout this file (langConfirmModal,
+// the Add Field modal, etc.) -- no new dependency (e.g. a Picker package)
+// was added, per this module's "avoid adding a new heavy dependency"
+// instruction.
+function LanguageDropdown({
+  value,
+  onChange,
+  options,
+}: {
+  value: LangKey;
+  onChange: (lang: LangKey) => void;
+  options: { key: LangKey; label: string }[];
+}) {
+  const [open, setOpen] = useState(false);
+  const selected = options.find((o) => o.key === value) || options[0];
+
+  return (
+    <>
+      <TouchableOpacity
+        style={dropdownStyles.trigger}
+        onPress={() => setOpen(true)}
+        activeOpacity={0.8}
+      >
+        <Icon name="globe" size={16} color={THEME.brand700} />
+        <Text style={dropdownStyles.triggerText}>{selected?.label}</Text>
+        <Icon name="chevron-down" size={16} color={THEME.brand700} />
+      </TouchableOpacity>
+
+      <Modal visible={open} transparent animationType="fade" onRequestClose={() => setOpen(false)}>
+        <TouchableOpacity
+          style={dropdownStyles.overlay}
+          activeOpacity={1}
+          onPress={() => setOpen(false)}
+        >
+          <View style={dropdownStyles.menu}>
+            {options.map((opt) => (
+              <TouchableOpacity
+                key={opt.key}
+                style={[dropdownStyles.menuItem, value === opt.key && dropdownStyles.menuItemActive]}
+                onPress={() => {
+                  onChange(opt.key);
+                  setOpen(false);
+                }}
+              >
+                <Text style={[dropdownStyles.menuItemText, value === opt.key && dropdownStyles.menuItemTextActive]}>
+                  {opt.label}
+                </Text>
+                {value === opt.key ? <Icon name="check" size={16} color={THEME.brand900} /> : null}
+              </TouchableOpacity>
+            ))}
+          </View>
+        </TouchableOpacity>
+      </Modal>
+    </>
+  );
+}
+
+const dropdownStyles = StyleSheet.create({
+  trigger: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: THEME.grainCardBg,
+    borderWidth: 1.5,
+    borderColor: THEME.brand500,
+    borderRadius: 14,
+    paddingVertical: 14,
+    paddingHorizontal: 18,
+    alignSelf: 'stretch',
+    justifyContent: 'center',
+    minWidth: 220,
+  },
+  triggerText: {
+    flex: 1,
+    color: THEME.brand900,
+    fontWeight: '700',
+    fontSize: 15,
+    textAlign: 'center',
+  },
+  overlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  menu: {
+    backgroundColor: THEME.grainCardBg,
+    borderRadius: 16,
+    width: '100%',
+    maxWidth: 340,
+    paddingVertical: 8,
+    borderWidth: 1.5,
+    borderColor: THEME.brand500,
+  },
+  menuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 14,
+    paddingHorizontal: 18,
+  },
+  menuItemActive: {
+    backgroundColor: THEME.brand100,
+  },
+  menuItemText: {
+    fontSize: 15,
+    color: THEME.ink900,
+    fontWeight: '600',
+  },
+  menuItemTextActive: {
+    color: THEME.brand900,
+    fontWeight: 'bold',
+  },
+});
 
 const TRANSLATIONS: Record<LangKey, Record<string, string>> = {
   kn: {
@@ -243,11 +455,15 @@ const TRANSLATIONS: Record<LangKey, Record<string, string>> = {
     addFieldLocationLabel: 'ಹೊಲದ ಸ್ಥಳ',
     addFieldUseLocationBtn: 'ಪ್ರಸ್ತುತ ಸ್ಥಳ ಬಳಸಿ',
     addFieldLocationCaptured: 'ಸ್ಥಳ ಸೆರೆಹಿಡಿಯಲಾಗಿದೆ',
+    addFieldSownOnLabel: 'ಬಿತ್ತನೆ ದಿನಾಂಕ',
+    addFieldSownOnHint: 'ನೀರಾವರಿ ಶಿಫಾರಸಿಗೆ ನಿಖರವಾದ ಬಿತ್ತನೆ ದಿನಾಂಕ ಅಗತ್ಯ.',
+    addFieldSownOnPickBtn: 'ದಿನಾಂಕ ಆಯ್ಕೆಮಾಡಿ',
     addFieldSubmitBtn: 'ಹೊಲ ಸೇರಿಸಿ',
     addFieldCancelBtn: 'ರದ್ದುಮಾಡಿ',
     addFieldNameRequired: 'ದಯವಿಟ್ಟು ಹೊಲದ ಹೆಸರು ನಮೂದಿಸಿ.',
     addFieldAreaRequired: 'ದಯವಿಟ್ಟು ಸರಿಯಾದ ವಿಸ್ತೀರ್ಣ ನಮೂದಿಸಿ.',
     addFieldLocationRequired: 'ದಯವಿಟ್ಟು ಹೊಲದ ಸ್ಥಳವನ್ನು ಸೆರೆಹಿಡಿಯಿರಿ.',
+    addFieldSownOnRequired: 'ದಯವಿಟ್ಟು ಬಿತ್ತನೆ ದಿನಾಂಕವನ್ನು ಆಯ್ಕೆಮಾಡಿ.',
     addFieldGenericError: 'ಹೊಲ ಸೇರಿಸಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ. ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.',
     locationPermissionDenied: 'ಸ್ಥಳ ಅನುಮತಿ ಅಗತ್ಯ.',
     locationCaptureFailed: 'ಸ್ಥಳ ಪಡೆಯಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ.',
@@ -262,7 +478,35 @@ const TRANSLATIONS: Record<LangKey, Record<string, string>> = {
     growthPhaseLabel: 'ಬೆಳವಣಿಗೆ ಹಂತ',
     scanErrorTitle: 'ಸ್ಕ್ಯಾನ್ ವಿಫಲವಾಗಿದೆ',
     scanErrorBody: 'ಫೋಟೋ ಸರ್ವರ್‌ಗೆ ಕಳುಹಿಸಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ. ನಿಮ್ಮ ಇಂಟರ್ನೆಟ್ ಸಂಪರ್ಕ ಪರಿಶೀಲಿಸಿ ಮತ್ತು ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.',
+    scanErrorBodyFile: 'ಫೋಟೋ ಫೈಲ್ ಓದಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ. ದಯವಿಟ್ಟು ಬೇರೆ ಫೋಟೋ ಆಯ್ಕೆಮಾಡಿ ಅಥವಾ ಮತ್ತೊಮ್ಮೆ ಸೆರೆಹಿಡಿಯಿರಿ.',
+    scanErrorBodyServer: 'ಸರ್ವರ್ ಈ ಫೋಟೋವನ್ನು ಪ್ರಕ್ರಿಯೆಗೊಳಿಸಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ',
     retryBtn: 'ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ',
+    settingsSupportGroup: 'ಸಹಾಯ',
+    settingsReportProblemRow: 'ಸಮಸ್ಯೆ ವರದಿ ಮಾಡಿ',
+    bugReportTitle: 'ಸಮಸ್ಯೆ ವರದಿ ಮಾಡಿ',
+    bugReportSub: 'ಏನಾಯಿತು ಎಂದು ನಮಗೆ ತಿಳಿಸಿ.',
+    bugCategoryCrash: 'ಆ್ಯಪ್ ಸ್ಥಗಿತಗೊಂಡಿತು',
+    bugCategoryWrongAdvice: 'ತಪ್ಪು ಸಲಹೆ ತೋರಿಸಿತು',
+    bugCategoryScanFailed: 'ಫೋಟೋ ಸ್ಕ್ಯಾನ್ ಕೆಲಸ ಮಾಡಲಿಲ್ಲ',
+    bugCategoryLoginFailed: 'ಲಾಗಿನ್ ಆಗಲು ಸಾಧ್ಯವಾಗುತ್ತಿಲ್ಲ',
+    bugCategoryOther: 'ಇತರೆ',
+    bugReportMessagePlaceholder: 'ಏನಾಯಿತು ಎಂದು ಬರೆಯಿರಿ (ಐಚ್ಛಿಕ)',
+    bugReportAddPhoto: 'ಫೋಟೋ ಸೇರಿಸಿ (ಐಚ್ಛಿಕ)',
+    bugReportRemovePhoto: 'ಫೋಟೋ ತೆಗೆದುಹಾಕಿ',
+    bugReportSubmit: 'ವರದಿ ಕಳುಹಿಸಿ',
+    bugReportSubmitting: 'ಕಳುಹಿಸಲಾಗುತ್ತಿದೆ...',
+    bugReportSuccessToast: 'ಧನ್ಯವಾದಗಳು — ನಿಮ್ಮ ವರದಿ ಕಳುಹಿಸಲಾಗಿದೆ.',
+    bugReportErrorToast: 'ವರದಿ ಕಳುಹಿಸಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ. ಸಂಪರ್ಕ ಪರಿಶೀಲಿಸಿ ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.',
+    bugReportCancel: 'ರದ್ದುಮಾಡಿ',
+    scanStatusUploading: 'ನಿಮ್ಮ ಫೋಟೋ ನೋಡಲಾಗುತ್ತಿದೆ...',
+    scanStatusAlmostDone: 'ಬಹುತೇಕ ಮುಗಿದಿದೆ...',
+    scanSourceCnn: 'AI ಫೋಟೋ ವಿಶ್ಲೇಷಣೆ',
+    scanSourceEnvironmental: 'ನಿಮ್ಮ ಹೊಲದ ಪರಿಸ್ಥಿತಿ ಆಧಾರಿತ',
+    scanSourceEnvironmentalFallback: 'ನಿಮ್ಮ ಹೊಲದ ಪರಿಸ್ಥಿತಿ ಆಧಾರಿತ (ಫೋಟೋ ವಿಶ್ಲೇಷಣೆ ಲಭ್ಯವಿಲ್ಲ)',
+    diseaseActionLow: 'ನಿಯಮಿತ ಮೇಲ್ವಿಚಾರಣೆ ಮುಂದುವರಿಸಿ; ಯಾವುದೇ ಕ್ರಮ ಅಗತ್ಯವಿಲ್ಲ.',
+    diseaseActionModerate: 'ಹೊಲದ ಪರಿಶೀಲನೆಯ ಆವರ್ತನೆಯನ್ನು ಹೆಚ್ಚಿಸಿ; ಆರಂಭಿಕ ಗಾಯಗಳು ಅಥವಾ ಎಲೆ ಚುಕ್ಕೆಗಳನ್ನು ಗಮನಿಸಿ.',
+    diseaseActionHigh: '2 ದಿನಗಳಲ್ಲಿ ಹೊಲವನ್ನು ಪರಿಶೀಲಿಸಿ; ಸ್ಥಳೀಯ ಕೃಷಿ ಮಾರ್ಗದರ್ಶನದಂತೆ ತಡೆಗಟ್ಟುವ ಶಿಲೀಂಧ್ರನಾಶಕ ಬಳಕೆಯನ್ನು ಪರಿಗಣಿಸಿ.',
+    diseaseActionSevere: 'ತಕ್ಷಣ ಪರಿಶೀಲಿಸಿ; ಸ್ಥಳೀಯ ಕೃಷಿ ಮಾರ್ಗದರ್ಶನದಂತೆ ಶಿಲೀಂಧ್ರನಾಶಕ ಅನ್ವಯಿಸಿ ಮತ್ತು ಹೊಲದ ಒಳಚರಂಡಿ/ಗಾಳಿ ಹರಿವನ್ನು ಸುಧಾರಿಸುವುದನ್ನು ಪರಿಗಣಿಸಿ.',
   },
   te: {
     splashTagline: 'స్మార్ట్ AI వ్యవసాయ సలహాదారు',
@@ -372,11 +616,15 @@ const TRANSLATIONS: Record<LangKey, Record<string, string>> = {
     addFieldLocationLabel: 'పొలం స్థానం',
     addFieldUseLocationBtn: 'ప్రస్తుత స్థానం వాడండి',
     addFieldLocationCaptured: 'స్థానం సంగ్రహించబడింది',
+    addFieldSownOnLabel: 'విత్తిన తేదీ',
+    addFieldSownOnHint: 'నీటిపారుదల సిఫార్సుకు ఖచ్చితమైన విత్తిన తేదీ అవసరం.',
+    addFieldSownOnPickBtn: 'తేదీ ఎంచుకోండి',
     addFieldSubmitBtn: 'పొలం జోడించండి',
     addFieldCancelBtn: 'రద్దు చేయండి',
     addFieldNameRequired: 'దయచేసి పొలం పేరు నమోదు చేయండి.',
     addFieldAreaRequired: 'దయచేసి సరైన విస్తీర్ణం నమోదు చేయండి.',
     addFieldLocationRequired: 'దయచేసి పొలం స్థానాన్ని సంగ్రహించండి.',
+    addFieldSownOnRequired: 'దయచేసి విత్తిన తేదీని ఎంచుకోండి.',
     addFieldGenericError: 'పొలం జోడించలేకపోయాము. మళ్ళీ ప్రయత్నించండి.',
     locationPermissionDenied: 'స్థాన అనుమతి అవసరం.',
     locationCaptureFailed: 'స్థానం పొందలేకపోయాము.',
@@ -391,7 +639,35 @@ const TRANSLATIONS: Record<LangKey, Record<string, string>> = {
     growthPhaseLabel: 'పెరుగుదల దశ',
     scanErrorTitle: 'స్కాన్ విఫలమైంది',
     scanErrorBody: 'ఫోటోను సర్వర్‌కు పంపలేకపోయాము. మీ ఇంటర్నెట్ కనెక్షన్‌ను చూసి, మళ్ళీ ప్రయత్నించండి.',
+    scanErrorBodyFile: 'ఫోటో ఫైల్‌ను చదవలేకపోయాము. దయచేసి వేరే ఫోటో ఎంచుకోండి లేదా మళ్ళీ తీయండి.',
+    scanErrorBodyServer: 'సర్వర్ ఈ ఫోటోను ప్రాసెస్ చేయలేకపోయింది',
     retryBtn: 'మళ్ళీ ప్రయత్నించండి',
+    settingsSupportGroup: 'మద్దతు',
+    settingsReportProblemRow: 'సమస్యను నివేదించండి',
+    bugReportTitle: 'సమస్యను నివేదించండి',
+    bugReportSub: 'ఏమి జరిగిందో మాకు చెప్పండి.',
+    bugCategoryCrash: 'యాప్ మూసుకుపోయింది',
+    bugCategoryWrongAdvice: 'తప్పు సలహా చూపించింది',
+    bugCategoryScanFailed: 'ఫోటో స్కాన్ పనిచేయలేదు',
+    bugCategoryLoginFailed: 'లాగిన్ కావడం లేదు',
+    bugCategoryOther: 'ఇతర',
+    bugReportMessagePlaceholder: 'ఏమి జరిగిందో రాయండి (ఐచ్ఛికం)',
+    bugReportAddPhoto: 'ఫోటో జోడించండి (ఐచ్ఛికం)',
+    bugReportRemovePhoto: 'ఫోటో తీసివేయండి',
+    bugReportSubmit: 'నివేదిక పంపండి',
+    bugReportSubmitting: 'పంపుతోంది...',
+    bugReportSuccessToast: 'ధన్యవాదాలు — మీ నివేదిక పంపబడింది.',
+    bugReportErrorToast: 'నివేదిక పంపలేకపోయాము. కనెక్షన్ చూసి మళ్ళీ ప్రయత్నించండి.',
+    bugReportCancel: 'రద్దు చేయండి',
+    scanStatusUploading: 'మీ ఫోటోను చూస్తున్నాము...',
+    scanStatusAlmostDone: 'దాదాపు పూర్తయింది...',
+    scanSourceCnn: 'AI ఫోటో విశ్లేషణ',
+    scanSourceEnvironmental: 'మీ పొలం పరిస్థితుల ఆధారంగా',
+    scanSourceEnvironmentalFallback: 'మీ పొలం పరిస్థితుల ఆధారంగా (ఫోటో విశ్లేషణ అందుబాటులో లేదు)',
+    diseaseActionLow: 'సాధారణ పర్యవేక్షణ కొనసాగించండి; ఎలాంటి చర్య అవసరం లేదు.',
+    diseaseActionModerate: 'పొలం పరిశీలన తరచుగా చేయండి; ఆకుల మీద మొదటి మచ్చలు లేదా మచ్చలను గమనించండి.',
+    diseaseActionHigh: '2 రోజుల్లోపు పొలాన్ని పరిశీలించండి; స్థానిక వ్యవసాయ సలహా ప్రకారం నివారణ ఫంగిసైడ్ వాడకాన్ని పరిగణించండి.',
+    diseaseActionSevere: 'వెంటనే పరిశీలించండి; స్థానిక వ్యవసాయ సలహా ప్రకారం ఫంగిసైడ్ వేయండి మరియు పొలం నీటి పారుదల/గాలి ప్రసరణ మెరుగుపరచడాన్ని పరిగణించండి.',
   },
   hi: {
     splashTagline: 'स्मार्ट AI कृषि सलाहकार',
@@ -501,11 +777,15 @@ const TRANSLATIONS: Record<LangKey, Record<string, string>> = {
     addFieldLocationLabel: 'खेत का स्थान',
     addFieldUseLocationBtn: 'वर्तमान स्थान उपयोग करें',
     addFieldLocationCaptured: 'स्थान कैप्चर किया गया',
+    addFieldSownOnLabel: 'बुवाई की तारीख',
+    addFieldSownOnHint: 'सिंचाई सिफारिश के लिए सही बुवाई तारीख ज़रूरी है।',
+    addFieldSownOnPickBtn: 'तारीख चुनें',
     addFieldSubmitBtn: 'खेत जोड़ें',
     addFieldCancelBtn: 'रद्द करें',
     addFieldNameRequired: 'कृपया खेत का नाम दर्ज करें।',
     addFieldAreaRequired: 'कृपया सही क्षेत्रफल दर्ज करें।',
     addFieldLocationRequired: 'कृपया खेत का स्थान कैप्चर करें।',
+    addFieldSownOnRequired: 'कृपया बुवाई की तारीख चुनें।',
     addFieldGenericError: 'खेत जोड़ा नहीं जा सका। फिर से प्रयास करें।',
     locationPermissionDenied: 'स्थान अनुमति आवश्यक है।',
     locationCaptureFailed: 'स्थान प्राप्त नहीं हो सका।',
@@ -520,7 +800,35 @@ const TRANSLATIONS: Record<LangKey, Record<string, string>> = {
     growthPhaseLabel: 'बढ़वार चरण',
     scanErrorTitle: 'स्कैन विफल',
     scanErrorBody: 'फोटो सर्वर तक नहीं पहुंच पाई। कृपया अपना इंटरनेट कनेक्शन जांचें और फिर से प्रयास करें।',
+    scanErrorBodyFile: 'फोटो फ़ाइल को पढ़ा नहीं जा सका। कृपया कोई दूसरी फोटो चुनें या फिर से लें।',
+    scanErrorBodyServer: 'सर्वर इस फोटो को प्रोसेस नहीं कर सका',
     retryBtn: 'फिर से प्रयास करें',
+    settingsSupportGroup: 'सहायता',
+    settingsReportProblemRow: 'समस्या की रिपोर्ट करें',
+    bugReportTitle: 'समस्या की रिपोर्ट करें',
+    bugReportSub: 'हमें बताएं क्या गलत हुआ।',
+    bugCategoryCrash: 'ऐप बंद हो गया',
+    bugCategoryWrongAdvice: 'गलत सलाह दिखाई',
+    bugCategoryScanFailed: 'फोटो स्कैन काम नहीं किया',
+    bugCategoryLoginFailed: 'लॉगिन नहीं हो पा रहा',
+    bugCategoryOther: 'अन्य',
+    bugReportMessagePlaceholder: 'क्या हुआ लिखें (वैकल्पिक)',
+    bugReportAddPhoto: 'फोटो जोड़ें (वैकल्पिक)',
+    bugReportRemovePhoto: 'फोटो हटाएं',
+    bugReportSubmit: 'रिपोर्ट भेजें',
+    bugReportSubmitting: 'भेजा जा रहा है...',
+    bugReportSuccessToast: 'धन्यवाद — आपकी रिपोर्ट भेज दी गई है।',
+    bugReportErrorToast: 'रिपोर्ट नहीं भेजी जा सकी। कनेक्शन जांचें और फिर से प्रयास करें।',
+    bugReportCancel: 'रद्द करें',
+    scanStatusUploading: 'आपकी फोटो देखी जा रही है...',
+    scanStatusAlmostDone: 'लगभग पूरा हो गया...',
+    scanSourceCnn: 'AI फोटो विश्लेषण',
+    scanSourceEnvironmental: 'आपके खेत की स्थिति के आधार पर',
+    scanSourceEnvironmentalFallback: 'आपके खेत की स्थिति के आधार पर (फोटो विश्लेषण उपलब्ध नहीं)',
+    diseaseActionLow: 'नियमित निगरानी जारी रखें; कोई कार्रवाई आवश्यक नहीं।',
+    diseaseActionModerate: 'खेत की निगरानी बढ़ाएं; शुरुआती धब्बों या पत्तियों पर दाग देखें।',
+    diseaseActionHigh: '2 दिनों के भीतर खेत की जांच करें; स्थानीय कृषि सलाह अनुसार निवारक फफूंदनाशक पर विचार करें।',
+    diseaseActionSevere: 'तुरंत जांच करें; स्थानीय कृषि सलाह अनुसार फफूंदनाशक लगाएं और खेत की जल निकासी/हवा प्रवाह सुधारने पर विचार करें।',
   },
   en: {
     splashTagline: 'Smart AI Agricultural Companion',
@@ -630,11 +938,15 @@ const TRANSLATIONS: Record<LangKey, Record<string, string>> = {
     addFieldLocationLabel: 'Field Location',
     addFieldUseLocationBtn: 'Use Current Location',
     addFieldLocationCaptured: 'Location Captured',
+    addFieldSownOnLabel: 'Sowing Date',
+    addFieldSownOnHint: 'A real sowing date is needed for an accurate irrigation recommendation.',
+    addFieldSownOnPickBtn: 'Pick Date',
     addFieldSubmitBtn: 'Add Field',
     addFieldCancelBtn: 'Cancel',
     addFieldNameRequired: 'Please enter a field name.',
     addFieldAreaRequired: 'Please enter a valid area.',
     addFieldLocationRequired: 'Please capture the field location.',
+    addFieldSownOnRequired: 'Please pick the sowing date.',
     addFieldGenericError: 'Could not add the field. Please try again.',
     locationPermissionDenied: 'Location permission is required.',
     locationCaptureFailed: 'Could not get your location.',
@@ -649,7 +961,35 @@ const TRANSLATIONS: Record<LangKey, Record<string, string>> = {
     growthPhaseLabel: 'Growth Phase',
     scanErrorTitle: "Scan Couldn't Complete",
     scanErrorBody: "We couldn't reach the server to analyze this photo. Check your internet connection and try again.",
+    scanErrorBodyFile: "We couldn't read that photo file. Please pick a different photo or take a new one.",
+    scanErrorBodyServer: "The server couldn't process this photo",
     retryBtn: 'Try Again',
+    settingsSupportGroup: 'Support',
+    settingsReportProblemRow: 'Report a Problem',
+    bugReportTitle: 'Report a Problem',
+    bugReportSub: 'Tell us what went wrong. This goes straight to the team.',
+    bugCategoryCrash: 'App crashed',
+    bugCategoryWrongAdvice: 'Wrong advice shown',
+    bugCategoryScanFailed: "Photo scan didn't work",
+    bugCategoryLoginFailed: "Can't log in",
+    bugCategoryOther: 'Other',
+    bugReportMessagePlaceholder: 'Describe what happened (optional)',
+    bugReportAddPhoto: 'Attach a photo (optional)',
+    bugReportRemovePhoto: 'Remove photo',
+    bugReportSubmit: 'Send Report',
+    bugReportSubmitting: 'Sending...',
+    bugReportSuccessToast: 'Thanks — your report was sent.',
+    bugReportErrorToast: "Couldn't send your report. Check your connection and try again.",
+    bugReportCancel: 'Cancel',
+    scanStatusUploading: 'Looking at your photo...',
+    scanStatusAlmostDone: 'Almost done...',
+    scanSourceCnn: 'AI photo analysis',
+    scanSourceEnvironmental: "Based on your farm's conditions",
+    scanSourceEnvironmentalFallback: "Based on your farm's conditions (photo analysis unavailable)",
+    diseaseActionLow: "Continue routine monitoring; no action needed.",
+    diseaseActionModerate: "Increase field scouting frequency; watch for early lesions or leaf spotting.",
+    diseaseActionHigh: "Scout field within 2 days; consider preventive fungicide application per local extension guidance.",
+    diseaseActionSevere: "Scout immediately; apply fungicide per local extension guidance and consider improving field drainage/airflow.",
   },
 };
 
@@ -716,7 +1056,20 @@ export default function App() {
 function MainApp() {
   const { width: windowWidth, height: windowHeight } = useWindowDimensions();
   const insets = useSafeAreaInsets();
-  
+  const [bugReportVisible, setBugReportVisible] = useState(false);
+  // Consolidated in-app toast/banner (success/error/info) -- the one
+  // reusable notification surface for the whole app, replacing ad hoc
+  // Alert.alert() popups for non-blocking confirmations. Used by the
+  // bug-report flow and the AI Scan upload/analyze flow below via
+  // showToast(); rendered once, near the end of this component's JSX.
+  const [toast, setToast] = useState<{ kind: 'success' | 'error' | 'info'; message: string } | null>(null);
+  const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const showToast = (kind: 'success' | 'error' | 'info', message: string) => {
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    setToast({ kind, message });
+    toastTimerRef.current = setTimeout(() => setToast(null), 3800);
+  };
+
   const scale = Math.min(windowWidth / 380, 1.2);
   const isSmallDevice = windowWidth < 360;
 
@@ -730,7 +1083,12 @@ function MainApp() {
   const [isNewFarmerPending, setIsNewFarmerPending] = useState(false);
   const [profileSetupLang, setProfileSetupLang] = useState<LangKey>('en');
   const [profileSetupSubmitting, setProfileSetupSubmitting] = useState(false);
-  const [language, setLanguage] = useState<LangKey>('te');
+  // Module 34: UI language must default to English on a fresh install, with
+  // no flash of another language before any async storage/location lookup
+  // resolves -- 'en' is the literal initial render value, not just the
+  // eventual one, so the very first frame (before any effect below runs)
+  // is already correct.
+  const [language, setLanguage] = useState<LangKey>('en');
   // Module 27: farmer identity/session now comes from the backend's
   // Name+Phone+OTP /v2/auth/* endpoints (signed session cookie), not
   // Supabase Auth -- see decisions/0023-name-phone-otp-auth.md.
@@ -746,10 +1104,18 @@ function MainApp() {
 
   // Location & Permission State
   const [locationName, setLocationName] = useState<string>('Andhra Pradesh / Telangana');
-  const [detectedLang, setDetectedLang] = useState<LangKey>('te');
+  const [detectedLang, setDetectedLang] = useState<LangKey>('en');
   const [isDetectingLocation, setIsDetectingLocation] = useState<boolean>(false);
   const [langConfirmVisible, setLangConfirmVisible] = useState(false);
   const [detectedCoords, setDetectedCoords] = useState<{ latitude: number; longitude: number } | null>(null);
+  // Module 34: has the farmer already confirmed/picked a language once
+  // before (either tapping "Confirm" on the auto-detected regional
+  // language, or explicitly choosing one in the Language Picker)? Persisted
+  // the same way 'onboardingSeen' is (Module 31) so the Regional Language
+  // Confirmation popup -- whose real purpose is flagging when the
+  // device-detected language differs from what the farmer already chose --
+  // fires at most once per install instead of re-asking every cold start.
+  const [languageConfirmed, setLanguageConfirmed] = useState<boolean | null>(null);
 
   // Add Field form state -- the app has no fields until the farmer adds one
   // for real (no more fake demo field), so this modal is the only way in.
@@ -762,6 +1128,15 @@ function MainApp() {
   const [addFieldCoords, setAddFieldCoords] = useState<{ latitude: number; longitude: number } | null>(null);
   const [addFieldLocating, setAddFieldLocating] = useState(false);
   const [addFieldError, setAddFieldError] = useState('');
+  // Module 34: sown_on is REQUIRED (not defaulted to "today") -- the
+  // irrigation water balance (ET0/Kc growth-stage lookup) derives both
+  // `season` and `days_since_sowing` from this date server-side
+  // (processing/feature_builder.py's _season_for/_days_since_sowing); a
+  // silent "today" default would silently produce a wrong growth-stage
+  // and wrong irrigation depth for a crop actually sown earlier, and
+  // GET /v2/fields/{id}/irrigation 422s outright without season at all.
+  const [addFieldSownOn, setAddFieldSownOn] = useState<Date | null>(null);
+  const [addFieldSownOnPickerVisible, setAddFieldSownOnPickerVisible] = useState(false);
 
   // Auth state: two-step Name+Phone+OTP flow
   const [authStep, setAuthStep] = useState<'ENTER_PHONE' | 'ENTER_OTP'>('ENTER_PHONE');
@@ -774,6 +1149,7 @@ function MainApp() {
 
   // Navigation & Tab state
   const [activeTab, setActiveTab] = useState<'home' | 'scan' | 'records' | 'settings'>('home');
+  const [refreshingHome, setRefreshingHome] = useState(false);
   const [recordsFilter, setRecordsFilter] = useState<'all' | 'irrigation' | 'disease'>('all');
   const [embeddedCameraVisible, setEmbeddedCameraVisible] = useState(false);
   const [cameraFlash, setCameraFlash] = useState<FlashMode>('off');
@@ -797,11 +1173,25 @@ function MainApp() {
   // Leaf Disease Image Scan Modal State
   const [selectedImageUri, setSelectedImageUri] = useState<string | null>(null);
   const [isAnalyzingImage, setIsAnalyzingImage] = useState(false);
+  // Plain-language stepped status text while the scan is in flight:
+  // "Looking at your photo..." for the first couple seconds (upload +
+  // CNN service call), then "Almost done..." for anything past that --
+  // no fake progress bar, just an honest "still working" signal for a
+  // request that can legitimately take a few seconds.
+  const [scanStatusStep, setScanStatusStep] = useState<'uploading' | 'almostDone'>('uploading');
   const [scanResult, setScanResult] = useState<any>(null);
-  const [scanError, setScanError] = useState(false);
+  const [scanError, setScanError] = useState<null | { kind: 'file' | 'network' | 'server'; detail?: string }>(null);
 
   // Active Category Detail Modal
   const [activeModal, setActiveModal] = useState<'irrigation' | 'crop' | null>(null);
+
+  // Bug-report flow state (Settings screen entry point; bugReportVisible
+  // itself is declared once, near the top of MainApp, alongside the
+  // showToast()/toast state).
+  const [bugReportCategory, setBugReportCategory] = useState<string | null>(null);
+  const [bugReportMessage, setBugReportMessage] = useState('');
+  const [bugReportPhotoUri, setBugReportPhotoUri] = useState<string | null>(null);
+  const [bugReportSubmitting, setBugReportSubmitting] = useState(false);
 
   const t = TRANSLATIONS[language] || TRANSLATIONS.en;
 
@@ -820,6 +1210,31 @@ function MainApp() {
       setPlayingAdvisoryId(null);
     };
   }, [screen, sound]);
+
+  // Module 34: advisory staleness fix. This app has no React Navigation
+  // (it's a single-component activeTab/screen state machine, not a
+  // navigator), so there is no useFocusEffect to hook -- the equivalent
+  // here is watching `activeTab` directly and refetching whenever the
+  // farmer lands back on Home, since fetchBackendData previously only
+  // ran on session-restore, right after OTP login, and right after
+  // adding a field: switching away to Scan/Records/Settings and back to
+  // Home (or just leaving the app idle on Home) never refreshed
+  // `advisories`/`fields` again.
+  useEffect(() => {
+    if (screen === 'HOME' && activeTab === 'home' && farmer) {
+      fetchBackendData();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, screen]);
+
+  const onRefreshHome = async () => {
+    setRefreshingHome(true);
+    try {
+      await fetchBackendData();
+    } finally {
+      setRefreshingHome(false);
+    }
+  };
 
   // Cooldown countdown timer
   useEffect(() => {
@@ -873,6 +1288,21 @@ function MainApp() {
         // onboarding as unseen rather than crash the cold-start flow.
         setOnboardingSeen(false);
       }
+      try {
+        // Module 34: restore whatever language the farmer already picked,
+        // and whether they've already confirmed one -- see the
+        // 'languageConfirmed' state declared above for why. Only applied
+        // when a real, still-supported code was stored: it never overrides
+        // the 'en' default with something invalid.
+        const storedLang = await AsyncStorage.getItem('preferredLanguage');
+        if (storedLang === 'en' || storedLang === 'kn' || storedLang === 'te' || storedLang === 'hi') {
+          setLanguage(storedLang);
+        }
+        const confirmed = await AsyncStorage.getItem('languageConfirmed');
+        setLanguageConfirmed(confirmed === 'true');
+      } catch (e) {
+        setLanguageConfirmed(false);
+      }
     })();
   }, []);
 
@@ -916,16 +1346,26 @@ function MainApp() {
 
       setLocationName(detectedLocationText);
       setDetectedLang(autoLang);
-      setLanguage(autoLang);
+      // Module 34: only auto-apply the detected language and pop the
+      // confirmation once, ever -- once languageConfirmed is true (the
+      // farmer already confirmed or manually chose a language before),
+      // detection still updates locationName/detectedLang (used elsewhere,
+      // e.g. Add Field) but must not silently override an already-chosen
+      // language or re-ask every cold start.
+      if (!languageConfirmed) {
+        setLanguage(autoLang);
+        setLangConfirmVisible(true);
+      }
       setScreen(farmer ? 'HOME' : (onboardingSeen ? 'AUTH' : 'ONBOARD_1'));
-      setLangConfirmVisible(true);
     } catch (err: any) {
       console.log('Location detection exception:', err.message);
       setLocationName('Andhra Pradesh / Telangana');
-      setDetectedLang('te');
-      setLanguage('te');
+      setDetectedLang('en');
+      if (!languageConfirmed) {
+        setLanguage('en');
+        setLangConfirmVisible(true);
+      }
       setScreen(farmer ? 'HOME' : (onboardingSeen ? 'AUTH' : 'ONBOARD_1'));
-      setLangConfirmVisible(true);
     } finally {
       setIsDetectingLocation(false);
     }
@@ -940,6 +1380,22 @@ function MainApp() {
     }
     setOnboardingSeen(true);
     setScreen('AUTH');
+  };
+
+  // Module 34: persist a chosen language + the "already confirmed" flag
+  // together, so requestPermissionsAndDetectLanguage never re-asks after
+  // this. Called from the confirmation popup's "Confirm" button, the
+  // Language Picker's "Continue" button, and cycleLanguage -- every place
+  // the farmer's language becomes settled.
+  const persistLanguageChoice = async (lang: LangKey) => {
+    setLanguageConfirmed(true);
+    try {
+      await AsyncStorage.setItem('preferredLanguage', lang);
+      await AsyncStorage.setItem('languageConfirmed', 'true');
+    } catch (e) {
+      // Degrade-not-fail: worst case the confirmation is asked again next
+      // cold start if local storage is unreadable.
+    }
   };
 
   const fetchBackendData = async () => {
@@ -1004,6 +1460,7 @@ function MainApp() {
     setAddFieldCrop(null);
     setAddFieldError('');
     setAddFieldCoords(detectedCoords);
+    setAddFieldSownOn(null);
     setAddFieldVisible(true);
   };
 
@@ -1012,7 +1469,7 @@ function MainApp() {
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
-        Alert.alert(t.noFieldTitle, t.locationPermissionDenied);
+        showToast('error', t.locationPermissionDenied);
         return;
       }
       const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
@@ -1020,7 +1477,7 @@ function MainApp() {
       setAddFieldCoords(coords);
       setDetectedCoords(coords);
     } catch (e) {
-      Alert.alert(t.noFieldTitle, t.locationCaptureFailed);
+      showToast('error', t.locationCaptureFailed);
     } finally {
       setAddFieldLocating(false);
     }
@@ -1040,15 +1497,23 @@ function MainApp() {
       setAddFieldError(t.addFieldLocationRequired);
       return;
     }
+    if (!addFieldSownOn) {
+      setAddFieldError(t.addFieldSownOnRequired);
+      return;
+    }
 
     setAddFieldSubmitting(true);
     setAddFieldError('');
     try {
+      const sownOnYear = addFieldSownOn.getFullYear();
+      const sownOnMonth = String(addFieldSownOn.getMonth() + 1).padStart(2, '0');
+      const sownOnDay = String(addFieldSownOn.getDate()).padStart(2, '0');
       const payload: any = {
         name: addFieldName.trim(),
         latitude: addFieldCoords.latitude,
         longitude: addFieldCoords.longitude,
         area_ha: areaValue,
+        sown_on: `${sownOnYear}-${sownOnMonth}-${sownOnDay}`,
       };
       if (addFieldSoilType) payload.soil_type = addFieldSoilType;
       if (addFieldCrop) payload.current_crop = addFieldCrop;
@@ -1096,7 +1561,7 @@ function MainApp() {
   const pickProfilePhoto = async () => {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) {
-      Alert.alert(t.noFieldTitle, t.locationPermissionDenied);
+      showToast('error', t.locationPermissionDenied);
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -1125,7 +1590,7 @@ function MainApp() {
       });
       setProfilePhotoDataUri(dataUri);
     } catch (e) {
-      Alert.alert(t.noFieldTitle, t.addFieldGenericError);
+      showToast('error', t.addFieldGenericError);
     }
   };
 
@@ -1271,7 +1736,7 @@ function MainApp() {
   const pickImageFromGallery = async () => {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) {
-      Alert.alert(t.galleryPermTitle, t.galleryPermBody);
+      showToast('error', t.galleryPermBody);
       return;
     }
 
@@ -1292,7 +1757,7 @@ function MainApp() {
     if (!cameraPermission?.granted) {
       const result = await requestCameraPermission();
       if (!result.granted) {
-        Alert.alert(t.cameraPermTitle, t.cameraPermBody);
+        showToast('error', t.cameraPermBody);
         return;
       }
     }
@@ -1310,58 +1775,165 @@ function MainApp() {
         await analyzeLeafImage(photo.uri);
       }
     } catch (e) {
-      Alert.alert(t.captureFailedTitle, t.captureFailedBody);
+      showToast('error', t.captureFailedBody);
     }
   };
 
   const analyzeLeafImage = async (imageUri: string) => {
     if (!selectedField?.id) {
-      Alert.alert(t.noFieldTitle, t.noFieldBody);
+      showToast('error', t.noFieldBody);
       return;
     }
     setIsAnalyzingImage(true);
+    setScanStatusStep('uploading');
     setScanResult(null);
-    setScanError(false);
+    setScanError(null);
+    const almostDoneTimer = setTimeout(() => setScanStatusStep('almostDone'), 2500);
     try {
       const fieldId = selectedField.id;
 
-      // Expo SDK 53+ replaces RN's classic fetch with its own spec-compliant
-      // "Winter" fetch, whose FormData multipart encoder
-      // (expo/src/winter/fetch/convertFormData.ts) only accepts a string, a
-      // real Blob/File instance, or an object with a .bytes() method -- it
-      // does NOT understand React Native's classic
-      // { uri, name, type } file-part convention, even though that shape is
-      // still shown in the type declarations. Appending that shape throws
-      // "Unsupported FormDataPart implementation" every time under Expo's
-      // fetch. The fix is to fetch the local file:// URI into a real Blob
-      // first, then append the Blob -- not a header or FormData-shape tweak.
-      const localFile = await fetch(imageUri);
-      const imageBlob = await localFile.blob();
+      // Module 34 root cause (confirmed live in Module 33): the previous
+      // approach -- fetch(imageUri) against a local file:// URI, then
+      // .blob() on the result -- does NOT throw when the read fails. Expo's
+      // "Winter" fetch treats a file:// URI as a real HTTP-ish request; when
+      // it can't resolve the local path (sandbox/content-URI differences
+      // across Android's expo-image-picker/expo-camera output and iOS) it
+      // silently resolves with a "successful" response whose body is the
+      // literal text "File not found" -- which .blob() happily wraps into a
+      // 14-byte "image" blob that then gets POSTed as the multipart payload.
+      // No exception, no !response.ok check catches it, because the fetch
+      // itself considered itself successful.
+      //
+      // Fix: skip fetch(file://) entirely. expo-file-system's new `File`
+      // class (SDK 54+) reads the local file directly through the native
+      // module and itself implements the Blob interface, so it can be
+      // appended to FormData exactly like the Blob this file used to build
+      // by hand -- with a real `.exists` check we can act on *before*
+      // trying to upload anything.
+      const localFile = new ExpoFile(imageUri);
+      if (!localFile.exists) {
+        throw { __kind: 'file', message: `Local file not found at ${imageUri}` };
+      }
+      if (!localFile.size) {
+        throw { __kind: 'file', message: 'Local file is empty' };
+      }
 
       const formData = new FormData();
-      formData.append('image', imageBlob, 'leaf.jpg');
+      formData.append('image', localFile, 'leaf.jpg');
 
       console.log(`Posting image to ${API_BASE_URL}/v2/fields/${fieldId}/disease-risk/image`);
-      const response = await fetch(`${API_BASE_URL}/v2/fields/${fieldId}/disease-risk/image`, {
-        method: 'POST',
-        headers: {
-          'Accept': 'application/json',
-        },
-        body: formData,
-      });
+      let response: Response;
+      try {
+        response = await fetch(`${API_BASE_URL}/v2/fields/${fieldId}/disease-risk/image`, {
+          method: 'POST',
+          headers: {
+            'Accept': 'application/json',
+          },
+          body: formData,
+        });
+      } catch (networkErr: any) {
+        throw { __kind: 'network', message: networkErr?.message || 'Network request failed' };
+      }
 
       if (response.ok) {
         const data = await response.json();
         setScanResult(data);
       } else {
-        console.log(`Disease-risk image upload rejected: ${response.status}`);
-        setScanError(true);
+        // Read the backend's real error envelope ({"error":{"code","message","details"}}
+        // per api/errors.py) instead of showing a generic "couldn't reach the
+        // server" message for what may be a real 400/422 validation error.
+        const errBody = await response.json().catch(() => null);
+        const detail = errBody?.error?.message || `HTTP ${response.status}`;
+        console.log(`Disease-risk image upload rejected: ${response.status} - ${detail}`);
+        throw { __kind: 'server', message: detail };
       }
     } catch (err: any) {
-      console.log('Image upload exception:', err.message);
-      setScanError(true);
+      const kind: 'file' | 'network' | 'server' = err?.__kind === 'file' || err?.__kind === 'server' ? err.__kind : 'network';
+      console.log(`Image upload failed (${kind}):`, err?.message || err);
+      setScanError({ kind, detail: err?.message });
+      showToast(
+        'error',
+        kind === 'file' ? t.scanErrorBodyFile : kind === 'server' ? t.scanErrorBodyServer : t.scanErrorBody
+      );
     } finally {
+      clearTimeout(almostDoneTimer);
       setIsAnalyzingImage(false);
+    }
+  };
+
+  // Bug-report flow: reuses the same expo-image-picker gallery call the AI
+  // Scan flow already uses above -- library permission,
+  // launchImageLibraryAsync, same quality options -- for the optional
+  // attached photo. Sent inline as a base64 data: URI in
+  // BugReportCreate.photo_url (value_endpoints.submit_bug_report /
+  // _MAX_BUG_PHOTO_DATA_URI_LEN) -- there is still no CDN/object-storage
+  // pipeline for this project's uploads, so this isn't a durable public
+  // URL, but it is a real, working, non-faked upload path: the backend
+  // genuinely stores the bytes and returns them back on read.
+  const [bugReportPhotoDataUrl, setBugReportPhotoDataUrl] = useState<string | null>(null);
+
+  const pickBugReportPhoto = async () => {
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) {
+      showToast('error', t.galleryPermBody);
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      quality: 0.5,
+      base64: true,
+    });
+    if (!result.canceled && result.assets?.[0]?.uri) {
+      const asset = result.assets[0];
+      setBugReportPhotoUri(asset.uri);
+      if (asset.base64) {
+        setBugReportPhotoDataUrl(`data:${asset.mimeType || 'image/jpeg'};base64,${asset.base64}`);
+      } else {
+        // Photo attachment is optional -- fail soft, keep the preview so
+        // the farmer sees something was picked, but don't submit a photo.
+        setBugReportPhotoDataUrl(null);
+      }
+    }
+  };
+
+  const resetBugReportForm = () => {
+    setBugReportCategory(null);
+    setBugReportMessage('');
+    setBugReportPhotoUri(null);
+    setBugReportPhotoDataUrl(null);
+  };
+
+  const submitBugReport = async () => {
+    if (!bugReportCategory && !bugReportMessage.trim()) {
+      showToast('error', t.bugReportErrorToast);
+      return;
+    }
+    setBugReportSubmitting(true);
+    try {
+      const res = await fetch(`${API_BASE_URL}/v2/bug-reports`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          category: bugReportCategory || undefined,
+          message: bugReportMessage.trim() || undefined,
+          photo_url: bugReportPhotoDataUrl || undefined,
+          app_version: Constants.expoConfig?.version || undefined,
+          platform: Platform.OS,
+        }),
+      });
+      if (res.ok) {
+        showToast('success', t.bugReportSuccessToast);
+        resetBugReportForm();
+        setBugReportVisible(false);
+      } else {
+        const errBody = await res.json().catch(() => null);
+        showToast('error', errBody?.error?.message || t.bugReportErrorToast);
+      }
+    } catch (e: any) {
+      console.log('Bug report submit failed:', e?.message || e);
+      showToast('error', t.bugReportErrorToast);
+    } finally {
+      setBugReportSubmitting(false);
     }
   };
 
@@ -1371,6 +1943,20 @@ function MainApp() {
   // the previous build's hardcoded demo_access_token_farmer_123 button
   // was the mobile-side twin of a backend security backdoor discarded
   // in the same module, and is removed outright here, not disabled.
+
+  // Module 34: the phone field now only ever collects a bare 10-digit
+  // Indian mobile number (no +91 typed by the farmer -- see the TextInput's
+  // onChangeText filter above). The backend contract
+  // (specs/core/openapi.yaml's RequestOtpRequest.phone / VerifyOtpRequest.phone,
+  // "E.164-ish, 7-15 digits, optional leading +") accepts either form, so
+  // +91 is prepended here, transparently, right before the request -- the
+  // farmer never sees or types it. This only changes what NEW input sends;
+  // it does not touch or re-validate any phone number already stored for
+  // an existing farmer.
+  const normalizePhoneForApi = (raw: string) => {
+    const digits = raw.trim().replace(/[^0-9]/g, '');
+    return digits ? `+91${digits}` : '';
+  };
 
   const handleRequestOtp = async () => {
     if (cooldownSeconds > 0) return;
@@ -1391,7 +1977,7 @@ function MainApp() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          phone: phoneInput.trim(),
+          phone: normalizePhoneForApi(phoneInput),
           name: nameInput.trim(),
           preferred_language: language,
         }),
@@ -1433,7 +2019,7 @@ function MainApp() {
       const res = await fetch(`${API_BASE_URL}/v2/auth/verify-otp`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone: phoneInput.trim(), otp: otpInput.trim() }),
+        body: JSON.stringify({ phone: normalizePhoneForApi(phoneInput), otp: otpInput.trim() }),
       });
 
       if (!res.ok) {
@@ -1468,6 +2054,7 @@ function MainApp() {
       }).catch(() => null);
     } finally {
       setLanguage(profileSetupLang);
+      persistLanguageChoice(profileSetupLang);
       setIsNewFarmerPending(false);
       setProfileSetupSubmitting(false);
       setScreen('HOME');
@@ -1499,6 +2086,7 @@ function MainApp() {
     const currentIndex = order.indexOf(language);
     const nextLang = order[(currentIndex + 1) % order.length];
     setLanguage(nextLang);
+    persistLanguageChoice(nextLang);
     if (farmer) {
       fetch(`${API_BASE_URL}/v2/farmers/me`, {
         method: 'PATCH',
@@ -1572,6 +2160,7 @@ function MainApp() {
             onPress={() => {
               previewLanguageSample(detectedLang);
               setLangConfirmVisible(false);
+              persistLanguageChoice(detectedLang);
             }}
           >
             <Text style={styles.primaryButtonText}>{t.confirmLangBtn}</Text>
@@ -1595,78 +2184,47 @@ function MainApp() {
   if (screen === 'LANG_PICKER') {
     const headerLogoSize = Math.min(windowWidth * 0.28, 110);
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={styles.container} edges={['left', 'right', 'bottom']}>
         <StatusBar barStyle="light-content" backgroundColor={THEME.brand900} />
-        
-        <View style={styles.onboardingHeader}>
+        {/* Module 34: SDK 57's Android edge-to-edge means the physical
+            status-bar row is painted by whatever sits behind it, not by
+            this StatusBar component's (now largely no-op) backgroundColor
+            prop. Excluding 'top' from SafeAreaView and pushing insets.top
+            into this header's own paddingTop instead makes the dark-green
+            header itself extend under the status bar, so the light-content
+            (white) status bar icons/text land on dark green, not on the
+            cream body color underneath -- fixing the illegible white-on-
+            white status bar reported on this screen. */}
+        <View style={[styles.onboardingHeader, { paddingTop: insets.top + 14 }]}>
           <AgroMiraiLogo size={headerLogoSize} useCropped={true} />
           <Text style={[styles.onboardingSubtitle, { fontSize: Math.max(13, 14 * scale) }]}>
             {t.selectLang}
           </Text>
         </View>
 
-        <ScrollView 
-          contentContainerStyle={[styles.cardContainer, { paddingHorizontal: isSmallDevice ? 12 : 18 }]} 
+        <ScrollView
+          contentContainerStyle={[styles.cardContainer, { paddingHorizontal: isSmallDevice ? 12 : 18, alignItems: 'center' }]}
           showsVerticalScrollIndicator={false}
         >
-          {/* Kannada Card */}
-          <TouchableOpacity 
-            style={[styles.langCard, language === 'kn' && styles.selectedLangCard]} 
-            onPress={() => {
-              setLanguage('kn');
-              previewLanguageSample('kn');
+          {/* Module 34: was four separate always-visible EN/KN/TE/HI tap
+              cards; replaced with one dropdown (LanguageDropdown, a Modal-
+              based picker built from components already used elsewhere in
+              this file -- no new dependency added) plus a single "listen"
+              preview button for whichever language is currently selected. */}
+          <LanguageDropdown
+            value={language}
+            onChange={(lang) => {
+              setLanguage(lang);
+              previewLanguageSample(lang);
             }}
+            options={LANGUAGE_DROPDOWN_OPTIONS}
+          />
+          <TouchableOpacity
+            style={[styles.previewBtn, { flexDirection: 'row', alignItems: 'center', gap: 6, justifyContent: 'center', marginTop: 14, alignSelf: 'center' }]}
+            onPress={() => previewLanguageSample(language)}
           >
-            <Text style={styles.langScriptTitle}>ಕನ್ನಡ</Text>
-            <TouchableOpacity style={[styles.previewBtn, { flexDirection: 'row', alignItems: 'center', gap: 6, justifyContent: 'center' }]} onPress={() => previewLanguageSample('kn')}>
-              <Icon name="speaker" size={14} color={THEME.brand700} />
-              <Text style={styles.previewBtnText}>ಕೇಳಿ</Text>
-            </TouchableOpacity>
-          </TouchableOpacity>
-
-          {/* Telugu Card */}
-          <TouchableOpacity 
-            style={[styles.langCard, language === 'te' && styles.selectedLangCard]} 
-            onPress={() => {
-              setLanguage('te');
-              previewLanguageSample('te');
-            }}
-          >
-            <Text style={styles.langScriptTitle}>తెలుగు</Text>
-            <TouchableOpacity style={[styles.previewBtn, { flexDirection: 'row', alignItems: 'center', gap: 6, justifyContent: 'center' }]} onPress={() => previewLanguageSample('te')}>
-              <Icon name="speaker" size={14} color={THEME.brand700} />
-              <Text style={styles.previewBtnText}>వినండి</Text>
-            </TouchableOpacity>
-          </TouchableOpacity>
-
-          {/* Hindi Card */}
-          <TouchableOpacity 
-            style={[styles.langCard, language === 'hi' && styles.selectedLangCard]} 
-            onPress={() => {
-              setLanguage('hi');
-              previewLanguageSample('hi');
-            }}
-          >
-            <Text style={styles.langScriptTitle}>हिंदी</Text>
-            <TouchableOpacity style={[styles.previewBtn, { flexDirection: 'row', alignItems: 'center', gap: 6, justifyContent: 'center' }]} onPress={() => previewLanguageSample('hi')}>
-              <Icon name="speaker" size={14} color={THEME.brand700} />
-              <Text style={styles.previewBtnText}>सुनें</Text>
-            </TouchableOpacity>
-          </TouchableOpacity>
-
-          {/* English Card */}
-          <TouchableOpacity 
-            style={[styles.langCard, language === 'en' && styles.selectedLangCard]} 
-            onPress={() => {
-              setLanguage('en');
-              previewLanguageSample('en');
-            }}
-          >
-            <Text style={styles.langScriptTitle}>English</Text>
-            <TouchableOpacity style={[styles.previewBtn, { flexDirection: 'row', alignItems: 'center', gap: 6, justifyContent: 'center' }]} onPress={() => previewLanguageSample('en')}>
-              <Icon name="speaker" size={14} color={THEME.brand700} />
-              <Text style={styles.previewBtnText}>Listen</Text>
-            </TouchableOpacity>
+            <Icon name="speaker" size={14} color={THEME.brand700} />
+            <Text style={styles.previewBtnText}>{t.listen}</Text>
           </TouchableOpacity>
         </ScrollView>
 
@@ -1674,6 +2232,7 @@ function MainApp() {
           <TouchableOpacity 
             style={styles.primaryButton}
             onPress={() => {
+              persistLanguageChoice(language);
               if (farmer) {
                 setScreen('HOME');
               } else if (!onboardingSeen) {
@@ -1736,11 +2295,11 @@ function MainApp() {
   if (screen === 'AUTH') {
     const logoSize = Math.min(windowWidth * 0.25, 100);
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={styles.container} edges={['left', 'right', 'bottom']}>
         <StatusBar barStyle="light-content" backgroundColor={THEME.brand900} />
-        
-        <View style={styles.authTopHeader}>
-          <TouchableOpacity 
+
+        <View style={[styles.authTopHeader, { paddingTop: insets.top + 12 }]}>
+          <TouchableOpacity
             style={styles.backButton}
             onPress={() => setScreen('LANG_PICKER')}
           >
@@ -1794,9 +2353,10 @@ function MainApp() {
                 <TextInput
                   style={styles.input}
                   value={phoneInput}
-                  onChangeText={setPhoneInput}
+                  onChangeText={(text) => setPhoneInput(text.replace(/[^0-9]/g, '').slice(0, 10))}
                   autoCapitalize="none"
-                  keyboardType="phone-pad"
+                  keyboardType="number-pad"
+                  maxLength={10}
                   placeholder={t.phonePlaceholder}
                 />
               </View>
@@ -1876,9 +2436,9 @@ function MainApp() {
       { key: 'hi', label: 'हिंदी' },
     ];
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={styles.container} edges={['left', 'right', 'bottom']}>
         <StatusBar barStyle="light-content" backgroundColor={THEME.brand900} />
-        <View style={styles.onboardingHeader}>
+        <View style={[styles.onboardingHeader, { paddingTop: insets.top + 14 }]}>
           <AgroMiraiLogo size={90} useCropped={true} />
         </View>
         <View style={{ flex: 1, padding: 20, justifyContent: 'center', alignItems: 'center' }}>
@@ -1890,19 +2450,15 @@ function MainApp() {
               {t.profileSetupSub}
             </Text>
 
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, justifyContent: 'center' }}>
-              {langOptions.map((opt) => (
-                <TouchableOpacity
-                  key={opt.key}
-                  onPress={() => setProfileSetupLang(opt.key)}
-                  style={[modalStyles.chip, { paddingVertical: 12, paddingHorizontal: 20 }, profileSetupLang === opt.key && modalStyles.chipActive]}
-                >
-                  <Text style={[modalStyles.chipText, { fontSize: 15, textTransform: 'none' }, profileSetupLang === opt.key && modalStyles.chipTextActive]}>
-                    {opt.label}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
+            {/* Module 34: was four separate always-visible tap chips;
+                replaced with the same LanguageDropdown used on the
+                Language Picker screen, for one consistent picker widget
+                app-wide instead of two different UI patterns. */}
+            <LanguageDropdown
+              value={profileSetupLang}
+              onChange={setProfileSetupLang}
+              options={langOptions}
+            />
 
             <TouchableOpacity
               style={[styles.primaryButton, { marginTop: 26, width: '100%' }]}
@@ -1952,7 +2508,7 @@ function MainApp() {
         <>
           <View style={styles.inlineFactRow}>
             <Text style={styles.inlineFactRowLabel}>{t.cropTypeLabel}</Text>
-            <Text style={styles.inlineFactRowValue}>{selectedField.current_crop || '—'}</Text>
+            <Text style={styles.inlineFactRowValue}>{selectedField.current_crop ? (CROP_TYPE_LABELS[language]?.[selectedField.current_crop] || selectedField.current_crop) : '—'}</Text>
           </View>
           <View style={styles.inlineFactRow}>
             <Text style={styles.inlineFactRowLabel}>{t.fieldAreaLabel}</Text>
@@ -2013,9 +2569,12 @@ function MainApp() {
       <View style={{ flex: 1 }}>
         {/* --- TAB 1: HOME --- */}
         {activeTab === 'home' && (
-          <ScrollView 
-            contentContainerStyle={[styles.dashScrollContent, { paddingHorizontal: isSmallDevice ? 12 : 16 }]} 
+          <ScrollView
+            contentContainerStyle={[styles.dashScrollContent, { paddingHorizontal: isSmallDevice ? 12 : 16, paddingBottom: 110 + insets.bottom }]}
             showsVerticalScrollIndicator={false}
+            refreshControl={
+              <RefreshControl refreshing={refreshingHome} onRefresh={onRefreshHome} colors={[THEME.brand700]} tintColor={THEME.brand700} />
+            }
           >
             {/* Module 31: zero-field empty state -- with the header field
                 pill gone, a brand-new farmer with no fields yet needs an
@@ -2169,7 +2728,7 @@ function MainApp() {
 
         {/* --- TAB 2: AI SCAN --- */}
         {activeTab === 'scan' && (
-          <ScrollView contentContainerStyle={styles.tabContentContainer} showsVerticalScrollIndicator={false}>
+          <ScrollView contentContainerStyle={[styles.tabContentContainer, { paddingBottom: 110 + insets.bottom }]} showsVerticalScrollIndicator={false}>
             <View style={styles.tabHeaderCard}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                 <Icon name="camera" size={20} color={THEME.brand900} />
@@ -2195,24 +2754,53 @@ function MainApp() {
                 a genuinely different, unbranded UX a user could land on
                 by tapping the more discoverable AI Scan tab -- real bug
                 found during a live device walkthrough. */}
-            <View style={{ marginTop: 12 }}>
+            <View style={{ marginTop: 16 }}>
               <TouchableOpacity style={modalStyles.pickerBtn} onPress={pickImageFromGallery}>
                 <Text style={modalStyles.pickerBtnText}>{t.pickGallery}</Text>
               </TouchableOpacity>
             </View>
 
+            {/* Module 34: idle state -- previously nothing at all rendered
+                below the two entry points until a photo existed, so there
+                was no visual confirmation of what happens next. Reuses
+                placeholderBox/placeholderText (already defined in
+                modalStyles, previously unused anywhere), matching the same
+                dashed-card language the rest of the app already uses for
+                "nothing here yet" states (e.g. empty fields/advisories). */}
+            {!selectedImageUri && (
+              <View style={[modalStyles.placeholderBox, { marginTop: 16, marginBottom: 0 }]}>
+                <Icon name="gallery" size={28} color={THEME.brand700} />
+                <Text style={modalStyles.placeholderText}>{t.scanTabSub}</Text>
+              </View>
+            )}
+
             {selectedImageUri && (
-              <View style={[modalStyles.resultBox, { marginTop: 16 }]}>
+              <View
+                style={[
+                  modalStyles.resultBox,
+                  { marginTop: 16 },
+                  scanError && { borderLeftColor: THEME.statusUrgent },
+                  scanResult && !scanError && { borderLeftColor: THEME.statusGood },
+                ]}
+              >
                 <Image source={{ uri: selectedImageUri }} style={modalStyles.previewImage} />
                 {isAnalyzingImage ? (
                   <View style={{ paddingVertical: 14, alignItems: 'center' }}>
                     <ActivityIndicator size="large" color={THEME.brand800} />
-                    <Text style={{ marginTop: 8, color: THEME.brand900, fontWeight: '600' }}>{t.analyzing}</Text>
+                    <Text style={{ marginTop: 8, color: THEME.brand900, fontWeight: '600' }}>
+                      {(scanStatusStep === 'almostDone' ? t.scanStatusAlmostDone : t.scanStatusUploading) || t.analyzing}
+                    </Text>
                   </View>
                 ) : scanError ? (
                   <View style={{ paddingVertical: 14, alignItems: 'center' }}>
                     <Text style={{ color: THEME.statusUrgent, fontWeight: '700', marginBottom: 6, textAlign: 'center' }}>{t.scanErrorTitle}</Text>
-                    <Text style={{ color: THEME.ink600, textAlign: 'center', marginBottom: 12 }}>{t.scanErrorBody}</Text>
+                    <Text style={{ color: THEME.ink600, textAlign: 'center', marginBottom: 12 }}>
+                      {scanError.kind === 'file'
+                        ? t.scanErrorBodyFile
+                        : scanError.kind === 'server'
+                        ? `${t.scanErrorBodyServer}${scanError.detail ? `: ${scanError.detail}` : ''}`
+                        : t.scanErrorBody}
+                    </Text>
                     <TouchableOpacity style={modalStyles.pickerBtn} onPress={() => selectedImageUri && analyzeLeafImage(selectedImageUri)}>
                       <Text style={modalStyles.pickerBtnText}>{t.retryBtn}</Text>
                     </TouchableOpacity>
@@ -2222,14 +2810,44 @@ function MainApp() {
                     <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                         <Icon name="blight" size={16} color={THEME.statusUrgent} />
-                        <Text style={modalStyles.diseaseResultTitle}>{scanResult.disease_name || scanResult.disease || t.diseaseNameFallback}</Text>
+                        <Text style={modalStyles.diseaseResultTitle}>
+                          {/* Module 34 follow-up: `disease_translated` is a
+                              real server-side IndicTrans2 MT of `disease`
+                              into the farmer's active `preferred_language`
+                              (value_endpoints._with_disease_translation),
+                              added only when that language isn't English --
+                              prefer it over the always-English raw field. */}
+                          {scanResult.disease_translated || scanResult.disease_name || scanResult.disease || t.diseaseNameFallback}
+                        </Text>
                       </View>
                       <Text style={modalStyles.confidenceBadge}>{((scanResult.confidence || 0.95) * 100).toFixed(0)}% {t.aiMatchLabel}</Text>
                     </View>
-                    <Text style={modalStyles.recommendationBody}>{scanResult.recommendation || scanResult.recommended_action}</Text>
+                    {/* Task B: distinguish a real CNN photo-analysis result
+                        from the environmental-proxy fallback in plain
+                        farmer-friendly language -- never the internal
+                        "environmental_fallback" string. See
+                        image_or_environmental_disease.py / DiseaseRiskAlert.source. */}
+                    {scanResult.source ? (
+                      <View
+                        style={{
+                          alignSelf: 'flex-start',
+                          backgroundColor: scanResult.source === 'cnn' ? THEME.brand100 : '#F3E9D2',
+                          borderRadius: 8,
+                          paddingHorizontal: 8,
+                          paddingVertical: 3,
+                          marginTop: 6,
+                          marginBottom: 4,
+                        }}
+                      >
+                        <Text style={{ fontSize: 11, fontWeight: '600', color: THEME.ink600 }}>
+                          {scanResult.source === 'cnn' ? t.scanSourceCnn : scanResult.source === 'environmental_fallback' ? t.scanSourceEnvironmentalFallback : t.scanSourceEnvironmental}
+                        </Text>
+                      </View>
+                    ) : null}
+                    <Text style={modalStyles.recommendationBody}>{diseaseActionText(scanResult, t)}</Text>
                     <TouchableOpacity
                       style={[modalStyles.playResultVoiceBtn, { flexDirection: 'row', alignItems: 'center', gap: 6, justifyContent: 'center' }]}
-                      onPress={() => playAdvisoryVoice({ id: 'scan-tab-adv', body: scanResult.recommendation || scanResult.recommended_action })}
+                      onPress={() => playAdvisoryVoice({ id: 'scan-tab-adv', body: diseaseActionText(scanResult, t) })}
                     >
                       <Icon name="speaker" size={14} color={THEME.brand700} />
                       <Text style={modalStyles.playResultVoiceText}>{t.listenVoice}</Text>
@@ -2276,7 +2894,7 @@ function MainApp() {
           const filtered = recordItems.filter((r) => recordsFilter === 'all' || r.kind === recordsFilter);
 
           return (
-            <ScrollView contentContainerStyle={styles.tabContentContainer} showsVerticalScrollIndicator={false}>
+            <ScrollView contentContainerStyle={[styles.tabContentContainer, { paddingBottom: 110 + insets.bottom }]} showsVerticalScrollIndicator={false}>
               <View style={styles.tabHeaderCard}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                   <Icon name="list" size={20} color={THEME.brand900} />
@@ -2330,7 +2948,7 @@ function MainApp() {
 
         {/* --- TAB 4: SETTINGS (new, Module 31) --- */}
         {activeTab === 'settings' && (
-          <ScrollView contentContainerStyle={styles.tabContentContainer} showsVerticalScrollIndicator={false}>
+          <ScrollView contentContainerStyle={[styles.tabContentContainer, { paddingBottom: 110 + insets.bottom }]} showsVerticalScrollIndicator={false}>
             <View style={styles.tabHeaderCard}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                 <Icon name="settings" size={20} color={THEME.brand900} />
@@ -2345,7 +2963,7 @@ function MainApp() {
                 <View style={{ flex: 1, marginLeft: 10 }}>
                   <Text style={styles.settingsRowLabel}>{t.settingsActiveFieldLabel}</Text>
                   <Text style={styles.settingsRowValue} numberOfLines={1}>
-                    {selectedField ? (selectedField.name || selectedField.current_crop || t.selectField) : t.settingsNoFieldYet}
+                    {selectedField ? (selectedField.name || (selectedField.current_crop && (CROP_TYPE_LABELS[language]?.[selectedField.current_crop] || selectedField.current_crop)) || t.selectField) : t.settingsNoFieldYet}
                   </Text>
                 </View>
               </View>
@@ -2370,6 +2988,20 @@ function MainApp() {
                   playAdvisoryVoice/previewLanguageSample only ever calls
                   GET /v2/advisories/{id}/audio and on-device TTS), so a
                   chat-style STT entry point here would be a dead button. */}
+            </View>
+
+            {/* Farmer-style bug report entry point -- plain language, one
+                tap in, no typing required to submit. */}
+            <Text style={styles.settingsGroupLabel}>{t.settingsSupportGroup}</Text>
+            <View style={styles.settingsGroupCard}>
+              <TouchableOpacity
+                style={[styles.settingsRow, styles.settingsRowButton]}
+                onPress={() => setBugReportVisible(true)}
+              >
+                <Icon name="blight" size={18} color={THEME.brand700} />
+                <Text style={[styles.settingsRowLabel, { flex: 1, marginLeft: 10 }]}>{t.settingsReportProblemRow}</Text>
+                <Icon name="chevron-right" size={16} color={THEME.ink500} />
+              </TouchableOpacity>
             </View>
           </ScrollView>
         )}
@@ -2553,7 +3185,7 @@ function MainApp() {
                       onPress={() => setAddFieldSoilType(addFieldSoilType === s ? null : s)}
                       style={[modalStyles.chip, addFieldSoilType === s && modalStyles.chipActive]}
                     >
-                      <Text style={[modalStyles.chipText, addFieldSoilType === s && modalStyles.chipTextActive]}>{s}</Text>
+                      <Text style={[modalStyles.chipText, addFieldSoilType === s && modalStyles.chipTextActive]}>{SOIL_TYPE_LABELS[language]?.[s] || s}</Text>
                     </TouchableOpacity>
                   ))}
                 </View>
@@ -2568,7 +3200,7 @@ function MainApp() {
                       onPress={() => setAddFieldCrop(addFieldCrop === c ? null : c)}
                       style={[modalStyles.chip, addFieldCrop === c && modalStyles.chipActive]}
                     >
-                      <Text style={[modalStyles.chipText, addFieldCrop === c && modalStyles.chipTextActive]}>{c}</Text>
+                      <Text style={[modalStyles.chipText, addFieldCrop === c && modalStyles.chipTextActive]}>{CROP_TYPE_LABELS[language]?.[c] || c}</Text>
                     </TouchableOpacity>
                   ))}
                 </View>
@@ -2576,18 +3208,71 @@ function MainApp() {
 
               <Text style={{ fontSize: 14, fontWeight: '600', color: THEME.ink900, marginTop: 14, marginBottom: 6 }}>{t.addFieldLocationLabel}</Text>
               <TouchableOpacity
-                style={[modalStyles.pickerBtn, { backgroundColor: addFieldCoords ? THEME.brand100 : THEME.brand800, alignSelf: 'flex-start' }]}
+                style={[
+                  modalStyles.pickerBtn,
+                  { backgroundColor: addFieldCoords ? THEME.brand100 : THEME.brand800, alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 8 },
+                ]}
                 onPress={captureFieldLocation}
                 disabled={addFieldLocating}
               >
                 {addFieldLocating ? (
                   <ActivityIndicator size="small" color={THEME.brand800} />
                 ) : (
-                  <Text style={[modalStyles.pickerBtnText, { color: addFieldCoords ? THEME.brand900 : '#FFF' }]}>
-                    {addFieldCoords ? t.addFieldLocationCaptured : t.addFieldUseLocationBtn}
-                  </Text>
+                  <>
+                    {/* Module 34: a static "Location Captured" label with no
+                        checkmark or coordinates was indistinguishable from a
+                        plain unpressed button -- a farmer had no visual
+                        confirmation capture actually succeeded. Now a real
+                        check icon plus the real lat/lng this field will be
+                        saved with (addFieldCoords, set by
+                        captureFieldLocation from expo-location) are shown. */}
+                    {addFieldCoords ? <Icon name="check" size={16} color={THEME.brand900} /> : null}
+                    <Text style={[modalStyles.pickerBtnText, { color: addFieldCoords ? THEME.brand900 : '#FFF' }]}>
+                      {addFieldCoords ? t.addFieldLocationCaptured : t.addFieldUseLocationBtn}
+                    </Text>
+                  </>
                 )}
               </TouchableOpacity>
+              {addFieldCoords ? (
+                <Text style={{ fontSize: 12, color: THEME.ink600, marginTop: 4, fontFamily: 'IBMPlexMono_400Regular' }}>
+                  {addFieldCoords.latitude.toFixed(5)}, {addFieldCoords.longitude.toFixed(5)}
+                </Text>
+              ) : null}
+
+              <Text style={{ fontSize: 14, fontWeight: '600', color: THEME.ink900, marginTop: 14, marginBottom: 6 }}>{t.addFieldSownOnLabel}</Text>
+              <Text style={{ fontSize: 12, color: THEME.ink600, marginBottom: 6 }}>{t.addFieldSownOnHint}</Text>
+              <TouchableOpacity
+                style={[
+                  modalStyles.pickerBtn,
+                  { backgroundColor: addFieldSownOn ? THEME.brand100 : THEME.brand800, alignSelf: 'flex-start' },
+                ]}
+                onPress={() => setAddFieldSownOnPickerVisible(true)}
+              >
+                <Text style={[modalStyles.pickerBtnText, { color: addFieldSownOn ? THEME.brand900 : '#FFF' }]}>
+                  {addFieldSownOn
+                    ? addFieldSownOn.toLocaleDateString()
+                    : t.addFieldSownOnPickBtn}
+                </Text>
+              </TouchableOpacity>
+              {addFieldSownOnPickerVisible ? (
+                <DateTimePicker
+                  value={addFieldSownOn || new Date()}
+                  mode="date"
+                  display={Platform.OS === 'ios' ? 'inline' : 'default'}
+                  maximumDate={new Date()}
+                  onChange={(event, selectedDate) => {
+                    // Android's default picker dialog dismisses itself; iOS's
+                    // inline picker stays open, so only iOS needs an explicit
+                    // close (the modal Cancel/Add buttons close it there).
+                    if (Platform.OS === 'android') {
+                      setAddFieldSownOnPickerVisible(false);
+                    }
+                    if (event.type === 'set' && selectedDate) {
+                      setAddFieldSownOn(selectedDate);
+                    }
+                  }}
+                />
+              ) : null}
 
               {addFieldError ? (
                 <Text style={{ color: THEME.statusUrgent, marginTop: 12 }}>{addFieldError}</Text>
@@ -2687,6 +3372,156 @@ function MainApp() {
           </View>
         </View>
       </Modal>
+
+      {/* Farmer-style bug report modal: "What went wrong?" -- large
+          tap-friendly presets, optional free text, optional photo (reuses
+          the AI Scan flow's gallery picker), one-tap submit. */}
+      <Modal
+        visible={bugReportVisible}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setBugReportVisible(false)}
+      >
+        <View style={modalStyles.modalOverlay}>
+          <View style={[modalStyles.modalCard, { maxHeight: windowHeight * 0.85 }]}>
+            <View style={modalStyles.modalHeader}>
+              <Text style={modalStyles.modalTitle}>{t.bugReportTitle}</Text>
+              <TouchableOpacity onPress={() => setBugReportVisible(false)}>
+                <Icon name="close" size={20} color={THEME.ink700} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false}>
+              <Text style={{ fontSize: 14, color: THEME.ink600, marginBottom: 14 }}>{t.bugReportSub}</Text>
+
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 16 }}>
+                {([
+                  ['crash', t.bugCategoryCrash],
+                  ['wrong_info', t.bugCategoryWrongAdvice],
+                  ['photo_scan_failed', t.bugCategoryScanFailed],
+                  ['login_failed', t.bugCategoryLoginFailed],
+                  ['other', t.bugCategoryOther],
+                ] as const).map(([value, label]) => (
+                  <TouchableOpacity
+                    key={value}
+                    onPress={() => setBugReportCategory(bugReportCategory === value ? null : value)}
+                    style={[
+                      modalStyles.chip,
+                      { minWidth: '46%', paddingVertical: 14, alignItems: 'center' },
+                      bugReportCategory === value && { backgroundColor: THEME.brand800, borderColor: THEME.brand800 },
+                    ]}
+                  >
+                    <Text
+                      style={{
+                        fontSize: 14,
+                        fontWeight: '600',
+                        textAlign: 'center',
+                        color: bugReportCategory === value ? '#FFF' : THEME.ink900,
+                      }}
+                    >
+                      {label}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              <TextInput
+                style={[modalStyles.textInput, { minHeight: 80, textAlignVertical: 'top' }]}
+                value={bugReportMessage}
+                onChangeText={setBugReportMessage}
+                placeholder={t.bugReportMessagePlaceholder}
+                multiline
+              />
+
+              <TouchableOpacity
+                style={[modalStyles.pickerBtn, { marginTop: 14, alignSelf: 'flex-start' }]}
+                onPress={
+                  bugReportPhotoUri
+                    ? () => {
+                        setBugReportPhotoUri(null);
+                        setBugReportPhotoDataUrl(null);
+                      }
+                    : pickBugReportPhoto
+                }
+              >
+                <Text style={modalStyles.pickerBtnText}>
+                  {bugReportPhotoUri ? t.bugReportRemovePhoto : t.bugReportAddPhoto}
+                </Text>
+              </TouchableOpacity>
+
+              {bugReportPhotoUri ? (
+                <TouchableOpacity
+                  onPress={() => {
+                    setBugReportPhotoUri(null);
+                    setBugReportPhotoDataUrl(null);
+                  }}
+                  style={{ marginTop: 10 }}
+                >
+                  <Image source={{ uri: bugReportPhotoUri }} style={[modalStyles.previewImage, { height: 140 }]} />
+                </TouchableOpacity>
+              ) : null}
+            </ScrollView>
+
+            <View style={modalStyles.actionBtnRow}>
+              <TouchableOpacity
+                style={modalStyles.pickerBtn}
+                onPress={() => {
+                  resetBugReportForm();
+                  setBugReportVisible(false);
+                }}
+              >
+                <Text style={modalStyles.pickerBtnText}>{t.bugReportCancel}</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[modalStyles.pickerBtn, { backgroundColor: THEME.brand800 }]}
+                onPress={submitBugReport}
+                disabled={bugReportSubmitting}
+              >
+                {bugReportSubmitting ? (
+                  <ActivityIndicator size="small" color="#FFF" />
+                ) : (
+                  <Text style={[modalStyles.pickerBtnText, { color: '#FFF' }]}>{t.bugReportSubmit}</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Consolidated toast/banner: the one surface every informational/
+          success/error notification in this file renders through --
+          showToast() above is the only way anything pushes into `toast`.
+          Positioned above the safe-area top inset so it clears the status
+          bar/notch on every device this renders on. */}
+      {toast && (
+        <View
+          pointerEvents="box-none"
+          style={{ position: 'absolute', top: insets.top + 8, left: 16, right: 16, zIndex: 999 }}
+        >
+          <TouchableOpacity
+            activeOpacity={0.9}
+            onPress={() => setToast(null)}
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              borderRadius: 14,
+              paddingVertical: 12,
+              paddingHorizontal: 14,
+              backgroundColor:
+                toast.kind === 'success' ? THEME.statusGood : toast.kind === 'error' ? THEME.statusUrgent : THEME.brand900,
+              shadowColor: '#000',
+              shadowOpacity: 0.25,
+              shadowRadius: 10,
+              shadowOffset: { width: 0, height: 4 },
+              elevation: 6,
+            }}
+          >
+            <Icon name={toast.kind === 'success' ? 'check' : toast.kind === 'error' ? 'alert' : 'info'} size={18} color="#FFF" />
+            <Text style={{ color: '#FFF', fontSize: 14, fontWeight: '600', marginLeft: 10, flex: 1 }}>{toast.message}</Text>
+          </TouchableOpacity>
+        </View>
+      )}
 
       {langConfirmModal}
     </SafeAreaView>

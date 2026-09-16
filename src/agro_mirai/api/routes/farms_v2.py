@@ -15,6 +15,7 @@ from datetime import date, datetime, timezone
 from flask import Blueprint, current_app, g, jsonify, request
 
 from agro_mirai.api.errors import ApiError
+from agro_mirai.api.field_data_acquisition import acquire_field_data
 from agro_mirai.api.serializers import farmer_to_public_json, to_json
 from agro_mirai.api.session_auth import require_session_auth
 from agro_mirai.api.validation import validate_field_create, validate_field_update
@@ -146,7 +147,25 @@ def create_field():
         sown_on=date.fromisoformat(sown_on) if sown_on else None,
     )
     saved = store.save_field(g.farmer_id, field)
-    return jsonify(to_json(saved)), 201
+
+    # Module 34 follow-up 2: pull real weather/soil (sync, ~5s combined
+    # measured) and real NDVI (background thread, GEE latency measured
+    # close to its own 20s timeout) for the field just created. Any
+    # individual adapter failure is caught inside acquire_field_data and
+    # never blocks this 201 response — degrade-not-fail per source.
+    data_status = acquire_field_data(
+        store, g.farmer_id, saved.id, saved.latitude, saved.longitude
+    )
+
+    response = to_json(saved)
+    response["data_acquisition"] = {
+        "weather": "ready" if data_status["weather"] else "unavailable",
+        "soil": "ready" if data_status["soil"] else "unavailable",
+        # NDVI is always still in flight at response time by design —
+        # the mobile client must not imply it is ready yet.
+        "ndvi": "gathering",
+    }
+    return jsonify(response), 201
 
 
 @farms_v2_bp.get("/fields/<field_id>")
@@ -213,3 +232,38 @@ def update_field(field_id: str):
     )
     saved = store.save_field(g.farmer_id, updated)
     return jsonify(to_json(saved)), 200
+
+
+@farms_v2_bp.post("/fields/<field_id>/refresh-data")
+@require_session_auth
+def refresh_field_data(field_id: str):
+    """Module 34 follow-up 2: manual re-pull of real weather/soil/NDVI for
+    a field that already exists (data ages, or a field created before this
+    module shipped has none at all). Same auth scoping and degrade-not-fail
+    rules as field creation's own acquisition call.
+
+    Deliberately NOT a scheduler — there is no cron/Celery/task-queue
+    infrastructure anywhere in this project (checked `tools/`,
+    `docs/deploy/`, `render.yaml`, `docker-compose.yml`: none found), and
+    building one is out of scope for this pass. This manual-trigger
+    endpoint is the intentional MVP; automatic periodic refresh is a real,
+    open follow-on, not something this module pretends to solve.
+    """
+    store = current_app.extensions["data_store"]
+    field = store.get_field(g.farmer_id, field_id)
+    if field is None:
+        raise ApiError(404, "NOT_FOUND", "Field not found")
+
+    data_status = acquire_field_data(
+        store, g.farmer_id, field.id, field.latitude, field.longitude
+    )
+    return jsonify(
+        {
+            "field_id": field.id,
+            "data_acquisition": {
+                "weather": "ready" if data_status["weather"] else "unavailable",
+                "soil": "ready" if data_status["soil"] else "unavailable",
+                "ndvi": "gathering",
+            },
+        }
+    ), 202
