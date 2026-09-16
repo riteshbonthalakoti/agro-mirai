@@ -1,0 +1,51 @@
+# AGRO MIRAI
+
+> AI-driven smart agriculture advisory system for Indian farms. Generates crop
+> recommendations, irrigation advisories, and disease-risk alerts from a
+> field's real soil, weather, and satellite data, and delivers them back to
+> the farmer by voice in English, Kannada, Telugu, or Hindi.
+
+AGRO MIRAI is a BITM Department of AIML (VTU Semester 7) capstone project.
+It is not a generic AI demo — every figure on the site comes from a
+committed, held-out model evaluation, and known limitations are disclosed
+rather than hidden.
+
+## What it does
+
+- **Crop recommendation** — a RandomForest classifier trained on soil N/P/K,
+  pH, and 14/30-day weather aggregates, ranking 22 crop types for a field,
+  with a regional-suitability check (Bellary/Karnataka) that flags
+  agronomically unusual picks instead of silently trusting the model.
+- **Irrigation advisory** — a physically grounded water balance: reference
+  evapotranspiration (Hargreaves-Samani, FAO-56) times a crop coefficient by
+  growth stage, minus recent rainfall, giving a recommended irrigation depth
+  in millimetres. A separately trained classifier sets urgency.
+- **Disease risk detection** — a MobileNetV2 CNN trained on the PlantVillage
+  dataset reads an uploaded leaf photo when available; otherwise a
+  transparent, weighted rule-based score over humidity, rainfall,
+  temperature, and NDVI trend fills in. A failed CNN call always falls back
+  to the rule-based score, never a hard failure.
+- **Voice in four Indian languages** — advisories translate and speak back in
+  English, Kannada, Telugu, and Hindi, with name+phone+OTP login (no
+  passwords).
+
+## Measured results
+
+- Crop recommendation accuracy: 99.55% (RandomForest, held-out split,
+  macro-F1 0.9955).
+- Disease CNN validation accuracy: 99.24% (MobileNetV2 on PlantVillage,
+  38 classes) — evaluated against lab-condition photos, not field
+  conditions; documented, not hidden.
+- Irrigation urgency classifier accuracy: 72.4% (3-class RandomForest,
+  macro-F1 0.58).
+
+## Key pages
+
+- [Landing page](https://agromirai.vercel.app/): product overview, model
+  results, and how the pipeline works end to end.
+
+## Source
+
+The full source, including the trained-model code, feature-engineering
+pipeline, and demonstration Colab notebooks, lives in the project's
+repository (private during the capstone review period).
