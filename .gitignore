@@ -54,3 +54,6 @@ Thumbs.db
 .report.json
 htmlcov/
 .temp/
+
+# Local scratch / debug output, not part of the repo
+/scratch/
