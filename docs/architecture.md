@@ -8,7 +8,7 @@ what was a placeholder through Module 01/02; grows module by module.
 ```
                         ┌─────────────────────────┐
                         │   API layer (Module 11)  │
-                        │  FastAPI, /v1/... routes │
+                        │  Flask, /v1 + /v2 routes │
                         └────────────┬─────────────┘
                                      │
        ┌─────────────────────────────┼─────────────────────────────┐

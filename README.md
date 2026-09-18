@@ -38,15 +38,19 @@ tools/             Seeding, training, backup, and spec-check scripts
 
 ## Quick start — backend
 
+The full, tested-from-a-fresh-clone walkthrough (setup, building the model
+files, seeding, running, tests) and the architecture / model-provenance
+explanation are in **[`BACKEND.md`](BACKEND.md)**. Short version:
+
 ```bash
 pip install -r requirements.txt
-cp .env.example .env                   # fill in API_KEY, FARMER_ID
-python tools/seed_fixture.py --backend sqlite --db-path agro_mirai_demo.db
-python -m flask --app agro_mirai.api.app:create_app run
+python tools/train_crop_model.py && python tools/train_irrigation_model.py   # models/ is git-ignored
+cp .env.example .env                   # then set API_KEY to any string
+python tools/seed_fixture.py --backend sqlite --db-path agro_mirai.db
+PYTHONPATH=src python -m flask --app agro_mirai.api.app:create_app run
 ```
 
-Open `http://127.0.0.1:5000/`. Full step-by-step instructions (seeding,
-exercising every module via the browser and the API directly) are in
+Open `http://127.0.0.1:5000/`. Manual click-through of every feature:
 **[`MANUAL_TEST_GUIDE.md`](MANUAL_TEST_GUIDE.md)**.
 
 The voice stack needs its own pinned Python environment (`.venv/`,
@@ -71,7 +75,7 @@ real data.
 ## Tests
 
 ```bash
-python -m pytest --ignore=tests/voice --ignore=tests/vision --ignore=tests/e2e -q
+PYTHONPATH=src python -m pytest --ignore=tests/voice --ignore=tests/vision --ignore=tests/e2e \n    --ignore=services/cnn-inference --ignore=services/voice -q
 python tools/check_specs.py                          # contract/fixture validation
 .venv/Scripts/python.exe -m pytest tests/voice -q     # voice stack, needs the pinned .venv
 ```
