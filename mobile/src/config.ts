@@ -24,6 +24,12 @@ const BACKEND_PORT = 5000;
  * their current network automatically, with nothing to hand-edit here.
  */
 function resolveApiBaseUrl(): string {
+  // Build-time override (EXPO_PUBLIC_* is inlined by Metro at bundle time), so
+  // a standalone release APK can be pointed at a specific backend with no
+  // Metro/hostUri to infer from -- e.g. EXPO_PUBLIC_API_BASE_URL=http://<host>:5000
+  const override = process.env.EXPO_PUBLIC_API_BASE_URL;
+  if (override) return override.replace(/\/+$/, '');
+
   if (Platform.OS === 'web') {
     if (typeof window !== 'undefined' && window.location?.hostname) {
       return `http://${window.location.hostname}:${BACKEND_PORT}`;
