@@ -13,3 +13,6 @@ Backend must run with a cookie that survives this setup: FLASK_ENV=production
 (Secure cookie, https) or, for plain http local testing, SESSION_COOKIE_SAMESITE=Lax.
 
 The backend needs an admin account (role=admin), see MANUAL_TEST_GUIDE.md step 8.
+
+Tunnel note: with a free cloudflared quick tunnel the URL changes every run, so BACKEND_HOST must be
+updated and the dashboard redeployed each time. Do not commit a tunnel host.
