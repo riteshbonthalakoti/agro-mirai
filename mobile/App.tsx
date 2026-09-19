@@ -490,6 +490,13 @@ const TRANSLATIONS: Record<LangKey, Record<string, string>> = {
     lastUpdatedLabel: 'ಕೊನೆಯ ಅಪ್‌ಡೇಟ್',
     offlineActionBlocked: 'ನೀವು ಆಫ್‌ಲೈನ್‌ನಲ್ಲಿದ್ದೀರಿ. ಇದನ್ನು ಮಾಡಲು ಇಂಟರ್ನೆಟ್‌ಗೆ ಸಂಪರ್ಕಿಸಿ.',
     cantReachServer: 'ಸರ್ವರ್ ತಲುಪಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ. ಇಂಟರ್ನೆಟ್ ಪರಿಶೀಲಿಸಿ.',
+    readMore: 'ಇನ್ನಷ್ಟು ಓದಿ',
+    showLess: 'ಕಡಿಮೆ ತೋರಿಸಿ',
+    urgencyLow: 'ಕಡಿಮೆ',
+    urgencyModerate: 'ಮಧ್ಯಮ',
+    urgencyHigh: 'ಹೆಚ್ಚು',
+    urgencySevere: 'ತೀವ್ರ',
+    recordAdvisoryPrefix: 'ಸಲಹೆ',
     settingsSupportGroup: 'ಸಹಾಯ',
     settingsReportProblemRow: 'ಸಮಸ್ಯೆ ವರದಿ ಮಾಡಿ',
     bugReportTitle: 'ಸಮಸ್ಯೆ ವರದಿ ಮಾಡಿ',
@@ -655,6 +662,13 @@ const TRANSLATIONS: Record<LangKey, Record<string, string>> = {
     lastUpdatedLabel: 'చివరి అప్‌డేట్',
     offlineActionBlocked: 'మీరు ఆఫ్‌లైన్‌లో ఉన్నారు. ఇది చేయడానికి ఇంటర్నెట్‌కు కనెక్ట్ అవ్వండి.',
     cantReachServer: 'సర్వర్‌ను చేరుకోలేకపోయాము. ఇంటర్నెట్ చూడండి.',
+    readMore: 'మరింత చదవండి',
+    showLess: 'తక్కువ చూపండి',
+    urgencyLow: 'తక్కువ',
+    urgencyModerate: 'మధ్యస్థం',
+    urgencyHigh: 'ఎక్కువ',
+    urgencySevere: 'తీవ్రం',
+    recordAdvisoryPrefix: 'సలహా',
     settingsSupportGroup: 'మద్దతు',
     settingsReportProblemRow: 'సమస్యను నివేదించండి',
     bugReportTitle: 'సమస్యను నివేదించండి',
@@ -820,6 +834,13 @@ const TRANSLATIONS: Record<LangKey, Record<string, string>> = {
     lastUpdatedLabel: 'आखिरी अपडेट',
     offlineActionBlocked: 'आप ऑफ़लाइन हैं। यह करने के लिए इंटरनेट से जुड़ें।',
     cantReachServer: 'सर्वर तक नहीं पहुंच पाए। इंटरनेट जांचें।',
+    readMore: 'और पढ़ें',
+    showLess: 'कम दिखाएं',
+    urgencyLow: 'कम',
+    urgencyModerate: 'मध्यम',
+    urgencyHigh: 'उच्च',
+    urgencySevere: 'गंभीर',
+    recordAdvisoryPrefix: 'सलाह',
     settingsSupportGroup: 'सहायता',
     settingsReportProblemRow: 'समस्या की रिपोर्ट करें',
     bugReportTitle: 'समस्या की रिपोर्ट करें',
@@ -985,6 +1006,13 @@ const TRANSLATIONS: Record<LangKey, Record<string, string>> = {
     lastUpdatedLabel: 'Last updated',
     offlineActionBlocked: 'You\'re offline. Connect to the internet to do this.',
     cantReachServer: 'Can\'t reach the server. Check your internet connection.',
+    readMore: 'Read more',
+    showLess: 'Show less',
+    urgencyLow: 'Low',
+    urgencyModerate: 'Moderate',
+    urgencyHigh: 'High',
+    urgencySevere: 'Severe',
+    recordAdvisoryPrefix: 'Advisory',
     settingsSupportGroup: 'Support',
     settingsReportProblemRow: 'Report a Problem',
     bugReportTitle: 'Report a Problem',
@@ -1072,6 +1100,44 @@ export default function App() {
       <MainApp />
     </SafeAreaProvider>
   );
+}
+
+// UX: the backend advisory body is developer-flavored ("humidity_pct_mean_14d
+// (74.00, increases the result)"). Show farmers plain words: swap raw feature
+// names for readable ones and drop the model-internals phrasing. Purely a
+// display transform -- the stored/spoken body is untouched.
+const FEATURE_WORDS: [RegExp, string][] = [
+  [/humidity_pct_mean_14d/g, 'humidity'],
+  [/temp_c_mean_14d/g, 'temperature'],
+  [/rainfall_mm_sum_7d/g, 'rainfall'],
+  [/Rainfall_mm/g, 'rainfall'],
+  [/Soil_pH/g, 'soil pH'],
+  [/Soil_Moisture/g, 'soil moisture'],
+  [/Temperature_C/g, 'temperature'],
+  [/Humidity/g, 'humidity'],
+  [/\b(increases|decreases) the result\b/g, ''],
+  [/, \)/g, ')'],
+  [/ \(([\d.]+), \)/g, ' ($1)'],
+];
+function humanizeAdvisory(body: string): string {
+  let out = body || '';
+  for (const [re, to] of FEATURE_WORDS) out = out.replace(re, to);
+  return out.replace(/\(([\d.]+),\s*\)/g, '($1)').replace(/[ ]{2,}/g, ' ').trim();
+}
+
+function formatRecordDate(raw: string): string {
+  const ms = Date.parse(raw);
+  return isNaN(ms) ? raw : formatSyncedAt(ms);
+}
+function urgencyLabel(level: string | undefined, t: Record<string, string>): string {
+  const m: Record<string, string> = { low: t.urgencyLow, moderate: t.urgencyModerate, high: t.urgencyHigh, severe: t.urgencySevere };
+  return m[(level || 'moderate').toLowerCase()] || (level || '').toUpperCase();
+}
+function localizedAdvisoryTitle(title: string | undefined, lang: LangKey, t: Record<string, string>): string {
+  const m = /^Advisory for (\w+)/i.exec(title || '');
+  if (!m) return title || '';
+  const crop = m[1].toLowerCase();
+  return `${t.recordAdvisoryPrefix}: ${CROP_TYPE_LABELS[lang]?.[crop] || m[1]}`;
 }
 
 function MainApp() {
@@ -1193,6 +1259,7 @@ function MainApp() {
   const [serverReachable, setServerReachable] = useState(true);
   const [lastSyncedAt, setLastSyncedAt] = useState<number | null>(null);
   const [showingCached, setShowingCached] = useState(false);
+  const [heroExpanded, setHeroExpanded] = useState(false);
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
   const [playingAdvisoryId, setPlayingAdvisoryId] = useState<string | null>(null);
   const [sound, setSound] = useState<AudioPlayer | null>(null);
@@ -2642,8 +2709,8 @@ function MainApp() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor={THEME.brand900} />
-      
+      <StatusBar barStyle="dark-content" backgroundColor={THEME.grainCream} />
+
       {/* Top Navigation Bar */}
       <View style={styles.dashHeaderNav}>
         <View style={styles.dashBrandGroup}>
@@ -2666,7 +2733,7 @@ function MainApp() {
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.dashLogoutCircle} onPress={handleSignOut}>
-            <Icon name="logout" size={16} color={THEME.ink700} />
+            <Icon name="logout" size={16} color={THEME.grainCream} />
           </TouchableOpacity>
         </View>
       </View>
@@ -2728,7 +2795,7 @@ function MainApp() {
               onPress={() => openEmbeddedCamera()}
               activeOpacity={0.85}
             >
-              <Icon name="camera" size={22} color={THEME.brand900} />
+              <Icon name="camera" size={22} color={THEME.grainCream} />
               <View style={{ flex: 1, marginLeft: 10 }}>
                 <Text style={[styles.scanLeafTitle, { fontSize: isSmallDevice ? 14 : 16 }]}>{t.scanLeaf}</Text>
                 <Text style={styles.scanLeafSub}>{t.scanLeafSub}</Text>
@@ -2753,18 +2820,24 @@ function MainApp() {
                     activeOpacity={0.85}
                   >
                     <View style={styles.heroPlayCircle}>
-                      <Icon name={isPlayingAudio ? 'pause' : 'play'} size={16} color={THEME.grainCream} />
+                      <Icon name={isPlayingAudio ? 'pause' : 'play'} size={18} color={THEME.brand900} />
                     </View>
                     <View style={styles.heroAudioMeta}>
                       <Text style={styles.heroAudioTitle}>
                         {isPlayingAudio ? t.playingAudio : t.todayAdvisory}
                       </Text>
-                      <Text style={styles.heroAudioWaveText}>━━━━━━━●━━━━━ 0:25</Text>
                     </View>
                   </TouchableOpacity>
 
                   <View style={styles.heroTranscriptBox}>
-                    <Text style={styles.heroTranscriptBody}>{urgentAdvisory.body}</Text>
+                    <Text style={styles.heroTranscriptBody} numberOfLines={heroExpanded ? undefined : 5}>
+                      {humanizeAdvisory(urgentAdvisory.body)}
+                    </Text>
+                    <TouchableOpacity onPress={() => setHeroExpanded((v) => !v)} style={{ marginTop: 8 }}>
+                      <Text style={{ color: THEME.brand700, fontWeight: '700', fontSize: 13 }}>
+                        {heroExpanded ? t.showLess : t.readMore}
+                      </Text>
+                    </TouchableOpacity>
                   </View>
                 </>
               ) : (
@@ -2856,7 +2929,7 @@ function MainApp() {
           <ScrollView contentContainerStyle={[styles.tabContentContainer, { paddingBottom: 110 + insets.bottom }]} showsVerticalScrollIndicator={false}>
             <View style={styles.tabHeaderCard}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                <Icon name="camera" size={20} color={THEME.brand900} />
+                <Icon name="camera" size={20} color={THEME.grainCream} />
                 <Text style={styles.tabHeaderTitle}>{t.scanTitle}</Text>
               </View>
               <Text style={styles.tabHeaderSub}>{t.scanTabSub}</Text>
@@ -2867,7 +2940,7 @@ function MainApp() {
               onPress={() => openEmbeddedCamera()}
               activeOpacity={0.85}
             >
-              <Icon name="camera" size={40} color={THEME.brand900} />
+              <Icon name="camera" size={40} color={THEME.grainCream} />
               <Text style={styles.bigScanLauncherTitle}>{t.scanLeaf}</Text>
               <Text style={styles.bigScanLauncherSub}>{t.embeddedCamSub}</Text>
             </TouchableOpacity>
@@ -2995,20 +3068,20 @@ function MainApp() {
         {activeTab === 'records' && (() => {
           type RecordItem = { key: string; kind: 'irrigation' | 'disease'; timestamp: string; title: string; body: string; tag: string; onPlay: () => void; playing: boolean };
           const recordItems: RecordItem[] = [
-            ...advisories.map((adv, idx): RecordItem => ({
+            ...advisories.filter((adv, idx, arr) => arr.findIndex((o) => o.body === adv.body) === idx).map((adv, idx): RecordItem => ({
               key: `adv-${adv.id || idx}`,
               kind: 'irrigation',
-              timestamp: adv.created_at || adv.date || '',
-              title: adv.title || t.todayAction,
-              body: adv.body,
-              tag: (adv.urgency || 'moderate').toUpperCase(),
+              timestamp: formatRecordDate(adv.created_at || adv.date || ''),
+              title: localizedAdvisoryTitle(adv.title, language, t) || t.todayAction,
+              body: humanizeAdvisory(adv.body),
+              tag: urgencyLabel(adv.urgency || adv.severity, t),
               onPlay: () => playAdvisoryVoice(adv),
               playing: playingAdvisoryId === adv.id && isPlayingAudio,
             })),
             ...scanHistory.map((item): RecordItem => ({
               key: `scan-${item.id}`,
               kind: 'disease',
-              timestamp: item.date || '',
+              timestamp: formatRecordDate(item.date || ''),
               title: item.disease,
               body: item.recommendation,
               tag: `${((item.confidence || 0.9) * 100).toFixed(0)}%`,
@@ -3022,7 +3095,7 @@ function MainApp() {
             <ScrollView contentContainerStyle={[styles.tabContentContainer, { paddingBottom: 110 + insets.bottom }]} showsVerticalScrollIndicator={false}>
               <View style={styles.tabHeaderCard}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                  <Icon name="list" size={20} color={THEME.brand900} />
+                  <Icon name="list" size={20} color={THEME.grainCream} />
                   <Text style={styles.tabHeaderTitle}>{t.tabRecords}</Text>
                 </View>
                 <Text style={styles.tabHeaderSub}>{t.recordsSubtitle}</Text>
@@ -3076,7 +3149,7 @@ function MainApp() {
           <ScrollView contentContainerStyle={[styles.tabContentContainer, { paddingBottom: 110 + insets.bottom }]} showsVerticalScrollIndicator={false}>
             <View style={styles.tabHeaderCard}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                <Icon name="settings" size={20} color={THEME.brand900} />
+                <Icon name="settings" size={20} color={THEME.grainCream} />
                 <Text style={styles.tabHeaderTitle}>{t.tabSettings}</Text>
               </View>
             </View>
@@ -3093,7 +3166,7 @@ function MainApp() {
                 </View>
               </View>
               <TouchableOpacity style={[styles.settingsRow, styles.settingsRowButton]} onPress={openAddField}>
-                <Icon name="bolt" size={18} color={THEME.brand700} />
+                <Icon name="plus" size={18} color={THEME.brand700} />
                 <Text style={[styles.settingsRowLabel, { flex: 1, marginLeft: 10 }]}>{t.settingsAddFieldRow}</Text>
                 <Icon name="chevron-right" size={16} color={THEME.ink500} />
               </TouchableOpacity>
@@ -3123,7 +3196,7 @@ function MainApp() {
                 style={[styles.settingsRow, styles.settingsRowButton]}
                 onPress={() => setBugReportVisible(true)}
               >
-                <Icon name="blight" size={18} color={THEME.brand700} />
+                <Icon name="bug" size={18} color={THEME.brand700} />
                 <Text style={[styles.settingsRowLabel, { flex: 1, marginLeft: 10 }]}>{t.settingsReportProblemRow}</Text>
                 <Icon name="chevron-right" size={16} color={THEME.ink500} />
               </TouchableOpacity>
@@ -3799,6 +3872,7 @@ const modalStyles = StyleSheet.create({
     flex: 1,
     backgroundColor: THEME.brand100,
     paddingVertical: 14,
+    paddingHorizontal: 16,
     borderRadius: 12,
     alignItems: 'center',
     borderWidth: 1,
@@ -3806,7 +3880,7 @@ const modalStyles = StyleSheet.create({
   },
   pickerBtnText: {
     color: THEME.brand900,
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: 'bold',
   },
 });
@@ -4339,8 +4413,8 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   dashLogoutCircle: {
-    backgroundColor: 'rgba(217, 4, 41, 0.2)',
-    padding: 7,
+    backgroundColor: 'rgba(251, 247, 236, 0.16)',
+    padding: 8,
     borderRadius: 18,
   },
   dashLogoutIcon: {
@@ -4470,6 +4544,9 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   heroAudioPlayBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
     backgroundColor: THEME.brand800,
     borderRadius: 14,
     borderWidth: 1.5,
