@@ -1,0 +1,7 @@
+{
+  "rewrites": [
+    { "source": "/admin/:path*", "destination": "https://BACKEND_HOST/admin/:path*" },
+    { "source": "/v2/:path*", "destination": "https://BACKEND_HOST/v2/:path*" },
+    { "source": "/health", "destination": "https://BACKEND_HOST/health" }
+  ]
+}
