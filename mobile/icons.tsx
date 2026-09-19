@@ -15,7 +15,7 @@ export type IconName =
   | 'play' | 'pause' | 'chevron-down' | 'chevron-up' | 'chevron-back'
   | 'chevron-right' | 'bolt' | 'gallery' | 'globe' | 'user' | 'field'
   | 'mic' | 'thermo' | 'speaker' | 'logout' | 'close' | 'location'
-  | 'settings' | 'check' | 'alert' | 'info' | 'bug' | 'image';
+  | 'settings' | 'check' | 'alert' | 'info' | 'bug' | 'image' | 'plus';
 
 type IconProps = { name: IconName; size?: number; color?: string };
 
@@ -114,6 +114,12 @@ export function Icon({ name, size = 18, color = '#23281F' }: IconProps) {
       return (
         <Svg width={size} height={size} viewBox="0 0 24 24">
           <Path d="M9 5l7 7-7 7" {...strokeChevron} />
+        </Svg>
+      );
+    case 'plus':
+      return (
+        <Svg width={size} height={size} viewBox="0 0 24 24">
+          <Path d="M12 5v14M5 12h14" {...stroke} />
         </Svg>
       );
     case 'bolt':
