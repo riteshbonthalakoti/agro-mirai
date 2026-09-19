@@ -16,6 +16,7 @@ import {
   TextInputProps,
   RefreshControl,
   Platform,
+  AppState,
 } from 'react-native';
 import Constants from 'expo-constants';
 import { SafeAreaProvider, SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -47,6 +48,10 @@ import { IBMPlexMono_400Regular, IBMPlexMono_500Medium } from '@expo-google-font
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { API_BASE_URL } from './src/config';
+import {
+  loadFarmer, saveFarmer, loadSnapshot, saveSnapshot, loadScans, saveScans,
+  clearFarmerCache, fetchWithTimeout, formatSyncedAt,
+} from './src/offlineCache';
 import { Icon } from './icons';
 
 // Brand typeface (Module 31): Poppins for Latin/numeric text. Indic
@@ -481,6 +486,10 @@ const TRANSLATIONS: Record<LangKey, Record<string, string>> = {
     scanErrorBodyFile: 'ಫೋಟೋ ಫೈಲ್ ಓದಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ. ದಯವಿಟ್ಟು ಬೇರೆ ಫೋಟೋ ಆಯ್ಕೆಮಾಡಿ ಅಥವಾ ಮತ್ತೊಮ್ಮೆ ಸೆರೆಹಿಡಿಯಿರಿ.',
     scanErrorBodyServer: 'ಸರ್ವರ್ ಈ ಫೋಟೋವನ್ನು ಪ್ರಕ್ರಿಯೆಗೊಳಿಸಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ',
     retryBtn: 'ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ',
+    offlineBanner: 'ಆಫ್‌ಲೈನ್ — ಉಳಿಸಿದ ಮಾಹಿತಿ ತೋರಿಸಲಾಗುತ್ತಿದೆ',
+    lastUpdatedLabel: 'ಕೊನೆಯ ಅಪ್‌ಡೇಟ್',
+    offlineActionBlocked: 'ನೀವು ಆಫ್‌ಲೈನ್‌ನಲ್ಲಿದ್ದೀರಿ. ಇದನ್ನು ಮಾಡಲು ಇಂಟರ್ನೆಟ್‌ಗೆ ಸಂಪರ್ಕಿಸಿ.',
+    cantReachServer: 'ಸರ್ವರ್ ತಲುಪಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ. ಇಂಟರ್ನೆಟ್ ಪರಿಶೀಲಿಸಿ.',
     settingsSupportGroup: 'ಸಹಾಯ',
     settingsReportProblemRow: 'ಸಮಸ್ಯೆ ವರದಿ ಮಾಡಿ',
     bugReportTitle: 'ಸಮಸ್ಯೆ ವರದಿ ಮಾಡಿ',
@@ -642,6 +651,10 @@ const TRANSLATIONS: Record<LangKey, Record<string, string>> = {
     scanErrorBodyFile: 'ఫోటో ఫైల్‌ను చదవలేకపోయాము. దయచేసి వేరే ఫోటో ఎంచుకోండి లేదా మళ్ళీ తీయండి.',
     scanErrorBodyServer: 'సర్వర్ ఈ ఫోటోను ప్రాసెస్ చేయలేకపోయింది',
     retryBtn: 'మళ్ళీ ప్రయత్నించండి',
+    offlineBanner: 'ఆఫ్‌లైన్ — సేవ్ చేసిన సమాచారం చూపిస్తున్నాం',
+    lastUpdatedLabel: 'చివరి అప్‌డేట్',
+    offlineActionBlocked: 'మీరు ఆఫ్‌లైన్‌లో ఉన్నారు. ఇది చేయడానికి ఇంటర్నెట్‌కు కనెక్ట్ అవ్వండి.',
+    cantReachServer: 'సర్వర్‌ను చేరుకోలేకపోయాము. ఇంటర్నెట్ చూడండి.',
     settingsSupportGroup: 'మద్దతు',
     settingsReportProblemRow: 'సమస్యను నివేదించండి',
     bugReportTitle: 'సమస్యను నివేదించండి',
@@ -803,6 +816,10 @@ const TRANSLATIONS: Record<LangKey, Record<string, string>> = {
     scanErrorBodyFile: 'फोटो फ़ाइल को पढ़ा नहीं जा सका। कृपया कोई दूसरी फोटो चुनें या फिर से लें।',
     scanErrorBodyServer: 'सर्वर इस फोटो को प्रोसेस नहीं कर सका',
     retryBtn: 'फिर से प्रयास करें',
+    offlineBanner: 'ऑफ़लाइन — सहेजा गया डेटा दिखाया जा रहा है',
+    lastUpdatedLabel: 'आखिरी अपडेट',
+    offlineActionBlocked: 'आप ऑफ़लाइन हैं। यह करने के लिए इंटरनेट से जुड़ें।',
+    cantReachServer: 'सर्वर तक नहीं पहुंच पाए। इंटरनेट जांचें।',
     settingsSupportGroup: 'सहायता',
     settingsReportProblemRow: 'समस्या की रिपोर्ट करें',
     bugReportTitle: 'समस्या की रिपोर्ट करें',
@@ -964,6 +981,10 @@ const TRANSLATIONS: Record<LangKey, Record<string, string>> = {
     scanErrorBodyFile: "We couldn't read that photo file. Please pick a different photo or take a new one.",
     scanErrorBodyServer: "The server couldn't process this photo",
     retryBtn: 'Try Again',
+    offlineBanner: 'Offline — showing saved data',
+    lastUpdatedLabel: 'Last updated',
+    offlineActionBlocked: 'You\'re offline. Connect to the internet to do this.',
+    cantReachServer: 'Can\'t reach the server. Check your internet connection.',
     settingsSupportGroup: 'Support',
     settingsReportProblemRow: 'Report a Problem',
     bugReportTitle: 'Report a Problem',
@@ -1166,6 +1187,12 @@ function MainApp() {
   const [selectedField, setSelectedField] = useState<any>(null);
   const [advisories, setAdvisories] = useState<any[]>([]);
   const [loadError, setLoadError] = useState(false);
+  // Module 37: `serverReachable` is optimistic (true) until a request to the
+  // backend actually fails at the network level; `lastSyncedAt` is the epoch
+  // ms of the last successful sync -- what the "last updated" label shows.
+  const [serverReachable, setServerReachable] = useState(true);
+  const [lastSyncedAt, setLastSyncedAt] = useState<number | null>(null);
+  const [showingCached, setShowingCached] = useState(false);
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
   const [playingAdvisoryId, setPlayingAdvisoryId] = useState<string | null>(null);
   const [sound, setSound] = useState<AudioPlayer | null>(null);
@@ -1250,20 +1277,37 @@ function MainApp() {
   }, [cooldownSeconds]);
 
   useEffect(() => {
-    // Try to restore an existing backend session (signed session cookie
-    // from a prior /v2/auth/verify-otp) rather than assuming logged-out.
+    // Module 37: session restore must never leave the app blank or hung.
+    // 200 -> live session, refresh cache. 401 -> server says the session is
+    // dead: drop the cache, stay logged-out. Network failure/timeout -> stay
+    // logged in from the cached profile and show cached data, labeled
+    // offline. No await here lacks a timeout, and every branch routes.
     (async () => {
+      let restored = false;
       try {
-        const res = await fetch(`${API_BASE_URL}/v2/farmers/me`);
+        const res = await fetchWithTimeout(`${API_BASE_URL}/v2/farmers/me`, {}, 6000);
         if (res.ok) {
           const data = await res.json();
-          setFarmer({ id: data.id, name: data.name, phone: data.phone ?? null, photo_url: data.photo_url ?? null });
+          const f = { id: data.id, name: data.name, phone: data.phone ?? null, photo_url: data.photo_url ?? null };
+          setFarmer(f);
+          saveFarmer(f);
+          setServerReachable(true);
+          restored = true;
           await fetchBackendData();
-          setScreen('HOME');
+        } else if (res.status === 401) {
+          await clearFarmerCache();
         }
       } catch (e) {
-        console.log('Session restore check failed (likely offline or logged out):', e);
+        console.log('Session restore: server unreachable, trying cached session:', e);
+        setServerReachable(false);
+        const cachedFarmer = await loadFarmer();
+        if (cachedFarmer) {
+          setFarmer(cachedFarmer);
+          restored = true;
+          await showCachedData();
+        }
       }
+      if (restored) setScreen('HOME');
     })();
 
     return () => {
@@ -1272,6 +1316,25 @@ function MainApp() {
       }
     };
   }, []);
+
+  // Module 37: sync-on-reconnect reuses the same fetchBackendData path as
+  // Module 34's tab-switch / pull-to-refresh -- no second sync mechanism. It
+  // fires when the app returns to the foreground, and every 15s while the
+  // server is known unreachable, so coming back online needs no manual step.
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (st) => {
+      if (st === 'active' && farmer && screen === 'HOME') fetchBackendData();
+    });
+    return () => sub.remove();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [farmer, screen]);
+
+  useEffect(() => {
+    if (serverReachable || !farmer || screen !== 'HOME') return;
+    const id = setInterval(() => { fetchBackendData(); }, 15000);
+    return () => clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [serverReachable, farmer, screen]);
 
   // Module 31: read the once-only onboarding flag on mount. Per the
   // Expo SDK 57 docs, @react-native-async-storage/async-storage's API is
@@ -1398,37 +1461,65 @@ function MainApp() {
     }
   };
 
+  // Module 37: paint whatever was last synced (fields, advisories, scans).
+  const showCachedData = async () => {
+    const snap = await loadSnapshot();
+    const scans = await loadScans();
+    setScanHistory(scans);
+    if (snap) {
+      setFields(snap.fields || []);
+      setSelectedField((snap.fields || [])[0] || null);
+      setAdvisories(snap.advisories || []);
+      setLastSyncedAt(snap.syncedAt || null);
+      setShowingCached(true);
+    }
+  };
+
+  // Module 37: every write that needs the server calls this first. Returns
+  // true (tells the farmer, re-probes the server in the background) when the
+  // server is known unreachable -- so a write never spins forever or
+  // silently no-ops.
+  const blockIfOffline = (): boolean => {
+    if (serverReachable) return false;
+    showToast('error', t.offlineActionBlocked);
+    fetchBackendData();
+    return true;
+  };
+
   const fetchBackendData = async () => {
     setIsLoading(true);
     setLoadError(false);
     try {
       console.log(`Fetching backend data from ${API_BASE_URL}/v2/fields`);
-      const fieldsRes = await fetch(`${API_BASE_URL}/v2/fields`, {
+      const fieldsRes = await fetchWithTimeout(`${API_BASE_URL}/v2/fields`, {
         headers: { 'Accept': 'application/json' }
       });
 
+      if (fieldsRes.status === 401) {
+        // Session genuinely expired server-side (not merely offline).
+        await clearFarmerCache();
+        setFarmer(null);
+        setFields([]); setSelectedField(null); setAdvisories([]); setScanHistory([]);
+        setShowingCached(false);
+        setServerReachable(true);
+        setScreen('AUTH');
+        return;
+      }
       if (!fieldsRes.ok) {
         throw new Error(`GET /v2/fields -> ${fieldsRes.status}`);
       }
 
       const data = await fieldsRes.json();
       // Real fields only -- a farmer who hasn't added a field yet gets an
-      // empty list and the app shows a real "add a field" empty state, not
-      // fabricated demo data standing in for it.
+      // empty list and the app shows a real "add a field" empty state.
       const loadedFields: any[] = Array.isArray(data) ? data : (data.items || data.fields || []);
-
-      setFields(loadedFields);
       const activeField = loadedFields[0] || null;
-      setSelectedField(activeField);
 
       // Advisories are per-field (GET /v2/fields/{field_id}/advisories) --
-      // there is no bare GET /v2/advisories in the API (see
-      // specs/core/openapi.yaml). No field yet means no advisories to ask
-      // for; a real field with genuinely zero advisories yet is a real
-      // empty state, not a reason to invent one.
+      // there is no bare GET /v2/advisories (see specs/core/openapi.yaml).
       let loadedAdvisories: any[] = [];
       if (activeField) {
-        const advRes = await fetch(`${API_BASE_URL}/v2/fields/${activeField.id}/advisories`, {
+        const advRes = await fetchWithTimeout(`${API_BASE_URL}/v2/fields/${activeField.id}/advisories`, {
           headers: { 'Accept': 'application/json' }
         });
         if (advRes.ok) {
@@ -1438,22 +1529,29 @@ function MainApp() {
         }
       }
 
+      const syncedAt = Date.now();
+      setFields(loadedFields);
+      setSelectedField(activeField);
       setAdvisories(loadedAdvisories);
+      setLastSyncedAt(syncedAt);
+      setShowingCached(false);
+      setServerReachable(true);
+      saveSnapshot({ fields: loadedFields, advisories: loadedAdvisories, syncedAt });
     } catch (err: any) {
-      // Genuine failure to reach the backend -- surface it as a real error
-      // state (with a retry action) rather than papering over it with fake
-      // data that looks indistinguishable from a real farmer's real field.
+      // Genuine failure to reach the backend. Module 37: restore the
+      // last-synced data (labeled as such) instead of wiping the screen; only
+      // when nothing was ever cached does the list stay empty.
       console.log('Backend fetch warning:', err.message);
-      setFields([]);
-      setSelectedField(null);
-      setAdvisories([]);
+      setServerReachable(false);
       setLoadError(true);
+      await showCachedData();
     } finally {
       setIsLoading(false);
     }
   };
 
   const openAddField = () => {
+    if (blockIfOffline()) return;
     setAddFieldName('');
     setAddFieldAreaHa('');
     setAddFieldSoilType(null);
@@ -1484,6 +1582,7 @@ function MainApp() {
   };
 
   const submitAddField = async () => {
+    if (blockIfOffline()) return;
     if (!addFieldName.trim()) {
       setAddFieldError(t.addFieldNameRequired);
       return;
@@ -1518,11 +1617,11 @@ function MainApp() {
       if (addFieldSoilType) payload.soil_type = addFieldSoilType;
       if (addFieldCrop) payload.current_crop = addFieldCrop;
 
-      const res = await fetch(`${API_BASE_URL}/v2/fields`, {
+      const res = await fetchWithTimeout(`${API_BASE_URL}/v2/fields`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
         body: JSON.stringify(payload),
-      });
+      }, 20000);
 
       if (!res.ok) {
         const errBody = await res.json().catch(() => null);
@@ -1532,7 +1631,7 @@ function MainApp() {
       setAddFieldVisible(false);
       await fetchBackendData();
     } catch (e: any) {
-      setAddFieldError(e.message || t.addFieldGenericError);
+      setAddFieldError(e?.name === 'AbortError' || /Network request failed/i.test(e?.message || '') ? t.cantReachServer : (e.message || t.addFieldGenericError));
     } finally {
       setAddFieldSubmitting(false);
     }
@@ -1780,6 +1879,7 @@ function MainApp() {
   };
 
   const analyzeLeafImage = async (imageUri: string) => {
+    if (blockIfOffline()) return;
     if (!selectedField?.id) {
       showToast('error', t.noFieldBody);
       return;
@@ -1824,13 +1924,13 @@ function MainApp() {
       console.log(`Posting image to ${API_BASE_URL}/v2/fields/${fieldId}/disease-risk/image`);
       let response: Response;
       try {
-        response = await fetch(`${API_BASE_URL}/v2/fields/${fieldId}/disease-risk/image`, {
+        response = await fetchWithTimeout(`${API_BASE_URL}/v2/fields/${fieldId}/disease-risk/image`, {
           method: 'POST',
           headers: {
             'Accept': 'application/json',
           },
           body: formData,
-        });
+        }, 60000);
       } catch (networkErr: any) {
         throw { __kind: 'network', message: networkErr?.message || 'Network request failed' };
       }
@@ -1838,6 +1938,15 @@ function MainApp() {
       if (response.ok) {
         const data = await response.json();
         setScanResult(data);
+        // Module 37: keep real scan results across launches (offline-viewable).
+        const entry = {
+          id: `scan-${Date.now()}`,
+          date: new Date().toISOString(),
+          disease: data.disease_translated || data.disease || t.diseaseNameFallback,
+          recommendation: diseaseActionText(data, t),
+          confidence: data.confidence,
+        };
+        setScanHistory((prev) => { const next = [entry, ...prev]; saveScans(next); return next; });
       } else {
         // Read the backend's real error envelope ({"error":{"code","message","details"}}
         // per api/errors.py) instead of showing a generic "couldn't reach the
@@ -1973,7 +2082,7 @@ function MainApp() {
 
     setIsLoading(true);
     try {
-      const res = await fetch(`${API_BASE_URL}/v2/auth/request-otp`, {
+      const res = await fetchWithTimeout(`${API_BASE_URL}/v2/auth/request-otp`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -1981,7 +2090,8 @@ function MainApp() {
           name: nameInput.trim(),
           preferred_language: language,
         }),
-      });
+      }, 12000);
+      setServerReachable(true);
 
       if (res.status === 429) {
         setCooldownSeconds(60);
@@ -2000,8 +2110,9 @@ function MainApp() {
       setOtpInput('');
       setCooldownSeconds(30);
     } catch (err: any) {
-      console.error('request-otp error:', err);
-      setAuthError(err.message || 'Failed to send OTP.');
+      console.log('request-otp error:', err);
+      setServerReachable(false);
+      setAuthError(t.cantReachServer + ' ' + t.offlineActionBlocked);
     } finally {
       setIsLoading(false);
     }
@@ -2016,11 +2127,11 @@ function MainApp() {
 
     setIsLoading(true);
     try {
-      const res = await fetch(`${API_BASE_URL}/v2/auth/verify-otp`, {
+      const res = await fetchWithTimeout(`${API_BASE_URL}/v2/auth/verify-otp`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ phone: normalizePhoneForApi(phoneInput), otp: otpInput.trim() }),
-      });
+      }, 12000);
 
       if (!res.ok) {
         setAuthError(t.invalidOtp);
@@ -2028,7 +2139,9 @@ function MainApp() {
       }
 
       const data = await res.json();
-      setFarmer({ id: data.id, name: data.name, phone: data.phone ?? null, photo_url: data.photo_url ?? null });
+      const loggedIn = { id: data.id, name: data.name, phone: data.phone ?? null, photo_url: data.photo_url ?? null };
+      setFarmer(loggedIn);
+      saveFarmer(loggedIn);
       await fetchBackendData();
       if (isNewFarmerPending) {
         setProfileSetupLang(detectedLang);
@@ -2037,8 +2150,8 @@ function MainApp() {
         setScreen('HOME');
       }
     } catch (err: any) {
-      console.error('verify-otp error:', err);
-      setAuthError(err.message || t.invalidOtp);
+      console.log('verify-otp error:', err);
+      setAuthError(t.cantReachServer);
     } finally {
       setIsLoading(false);
     }
@@ -2073,6 +2186,8 @@ function MainApp() {
     } catch (e) {
       console.log('Logout request failed (continuing to clear local state):', e);
     }
+    await clearFarmerCache();
+    setFields([]); setSelectedField(null); setAdvisories([]); setScanHistory([]); setShowingCached(false);
     setFarmer(null);
     setAuthStep('ENTER_PHONE');
     setPhoneInput('');
@@ -2564,6 +2679,16 @@ function MainApp() {
           brand-new zero-field farmer still has a clear path in: the
           zero-fields empty-state card rendered inside the 'home' tab below
           links to Settings instead of opening this pill directly. */}
+
+      {/* Module 37: honest offline / staleness indicator (shared by every tab) */}
+      {(!serverReachable || showingCached) && (
+        <View style={{ backgroundColor: THEME.accentGoldSoft, paddingVertical: 6, paddingHorizontal: 14 }}>
+          <Text style={{ color: THEME.ink900, fontSize: 12, fontWeight: '600' }}>{t.offlineBanner}</Text>
+          {lastSyncedAt ? (
+            <Text style={{ color: THEME.ink700, fontSize: 11 }}>{t.lastUpdatedLabel}: {formatSyncedAt(lastSyncedAt)}</Text>
+          ) : null}
+        </View>
+      )}
 
       {/* Main Tab Screen Content Container */}
       <View style={{ flex: 1 }}>
