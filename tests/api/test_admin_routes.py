@@ -99,3 +99,56 @@ def test_admin_sees_all_farmers_and_fields():
     assert feedback_resp.status_code == 200
     body = feedback_resp.get_json()
     assert "total_entries" in body
+
+
+def test_admin_scans_and_advisories():
+    from datetime import datetime, timezone
+
+    from agro_mirai.persistence.models import Advisory, DiseaseRiskAlert
+
+    app, client = _app_and_client()
+    store = app.extensions["data_store"]
+    _register_and_login(client, "+919000000031", name="Farmer")
+    field_id = client.post(
+        "/v2/fields", json={"name": "Plot S", "latitude": 1.0, "longitude": 1.0, "area_ha": 1.0}
+    ).get_json()["id"]
+    farmer = store.get_farmer_by_phone("+919000000031")
+    now = datetime.now(timezone.utc)
+
+    def alert(id_, source):
+        return DiseaseRiskAlert(
+            id=id_, field_id=field_id, created_at=now, disease="d", risk_level="low",
+            confidence=0.5, recommended_action="a", window_start_at=now, window_end_at=now,
+            source=source,
+        )
+
+    for id_, source in [("a1", "cnn"), ("a2", "environmental_fallback"), ("a3", "environmental")]:
+        store.save_disease_risk_alert(farmer.id, alert(id_, source))
+    store.save_advisory(
+        farmer.id,
+        Advisory(
+            id="adv1", field_id=field_id, created_at=now, title="t", body="b",
+            severity="low", language="en",
+        ),
+    )
+    client.post("/v2/auth/logout")
+
+    farmer.role = "admin"
+    store.save_farmer(farmer)
+    _register_and_login(client, "+919000000031", name="Farmer")
+
+    scans = client.get("/v2/admin/scans").get_json()["items"]
+    assert {s["id"] for s in scans} == {"a1", "a2"}
+    assert all(s["farmer_id"] == farmer.id and s["field_name"] == "Plot S" for s in scans)
+
+    advisories = client.get("/v2/admin/advisories").get_json()["items"]
+    assert [a["id"] for a in advisories] == ["adv1"]
+    assert advisories[0]["field_name"] == "Plot S"
+
+
+def test_admin_scans_and_advisories_require_admin():
+    app, client = _app_and_client()
+    assert client.get("/v2/admin/scans").status_code == 401
+    _register_and_login(client, "+919000000032")
+    assert client.get("/v2/admin/scans").status_code == 403
+    assert client.get("/v2/admin/advisories").status_code == 403
