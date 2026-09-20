@@ -168,7 +168,36 @@ python tools/check_specs.py                  # validates fixtures against the co
 services have a module called `app`.) `tests/voice` and `tests/vision`
 need the heavy AI stacks (torch etc.) and run separately — see `docs/TOOLING.md`.
 
-## 6. Where to look next
+## 6. Hosted on Render (partial backend)
+
+The Flask API is deployed on Render's free tier at `https://agro-mirai.onrender.com`,
+using Supabase as the store. The admin dashboard (`web/admin`, on Vercel at
+`https://agromirai-admin.vercel.app`) forwards `/admin/*`, `/v2/*` and `/health` to it
+through the rewrites in `web/admin/vercel.json`, so it works with the laptop off.
+
+What Render covers today:
+
+- The API and `/v2/admin/*`, `/admin` login, farmers, fields, feedback.
+- Crop, irrigation and rule-based disease-risk advisories (`/v2/fields/{id}/advisories`).
+  Checked live; one gunicorn worker only, because two workers were OOM-killed at the free
+  tier's 512 MB.
+
+What Render does not cover:
+
+- **Voice** (translate, speech-to-text, text-to-speech): the AI4Bharat stack does not fit in
+  512 MB. `/v2/advisories/{id}/audio` returns 503 `VOICE_UNAVAILABLE`, and the mobile app
+  falls back to on-device TTS.
+- **CNN disease image path**: no CNN service is configured, so image upload returns the
+  rule-based result with `source: environmental_fallback`.
+- Full model functionality still needs the laptop (or the Oracle VM from Module 21) running
+  the voice and CNN services, with `VOICE_SERVICE_URL` / `CNN_SERVICE_URL` pointing at it.
+
+Free-tier behaviour: the service spins down after about 15 minutes idle and the next
+request waits for a cold start. Secrets (`SUPABASE_*`, `FLASK_SECRET_KEY`, `API_KEY`,
+`FARMER_ID`, `OPENWEATHER_API_KEY`, the Earth Engine key as a secret file) are set in
+Render's env config, never in the repo.
+
+## 7. Where to look next
 
 | Question | File |
 |---|---|
