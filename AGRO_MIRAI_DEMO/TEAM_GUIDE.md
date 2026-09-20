@@ -111,7 +111,7 @@ READY. AGRO MIRAI demo backend on http://localhost:5000  (Ctrl+C to stop)
  * Running on http://127.0.0.1:5000
 ```
 
-(A yellow line saying "This is a development server" is normal, ignore it.)
+(A warning line saying "This is a development server" is normal, ignore it. PowerShell may show it in red, that is also normal.)
 **Leave this terminal alone.** It is now the running backend. Do not press anything in it.
 
 ### Step 2.2. Open a second terminal for commands (Terminal 2)
@@ -193,7 +193,7 @@ For the live demo we work on a local copy, so nothing we do here can damage prod
 ```
 
 This is a **POST**. It creates a new field ("Live Demo Plot" near Ballari) and immediately fetches live data.
-The reply ends with a `live_data` block like:
+The reply ends with a `live_data` block (the three sources can appear in any order) like:
 
 ```
 "live_data": {
@@ -423,7 +423,7 @@ Dataset links and training details are in `DATASETS.md`.
 | Send feedback (POST) | `.\.venv\Scripts\python try_it.py feedback N` |
 | List feedback (GET) | `.\.venv\Scripts\python try_it.py feedbacks` |
 | Start the server (Terminal 1) | `.\run.bat` |
-| Rebuild the demo database | `.\.venv\Scripts\python seed_demo_data.py` |
+| Rebuild the demo database (first stop the server with Ctrl+C in Terminal 1, and start it again afterwards with `.\run.bat`) | `.\.venv\Scripts\python seed_demo_data.py` |
 
 `N` is the field number from `try_it.py fields` (field 1 is the real field). If you leave `N` out, field 1 is used.
 
@@ -436,7 +436,7 @@ Dataset links and training details are in `DATASETS.md`.
 | `py` or `python` is not recognised | Close and reopen PowerShell / VS Code after installing Python. If still failing, reinstall Python and tick "Add python.exe to PATH". |
 | `.\setup.bat` says `Python 3.12 was not found` | Run `winget install Python.Python.3.12`, close and reopen VS Code, run setup again. |
 | Setup fails while downloading (a red error about a connection or timeout) | Check the internet and simply run `.\setup.bat` again. It resumes. |
-| Setup finishes but says it could not read Supabase | Check the internet, then run `.\.venv\Scripts\python seed_demo_data.py` again. The demo still works with a local farmer only. |
+| Setup finishes but says it could not read Supabase | Check the internet, make sure the server is stopped (Ctrl+C in Terminal 1), then run `.\.venv\Scripts\python seed_demo_data.py` again. The demo still works with a local farmer only. |
 | `Cannot reach the server` | Terminal 1 is not running the server. Type `.\run.bat` there and wait for `Running on http://127.0.0.1:5000`. |
 | `Address already in use` / port 5000 busy | Another program uses port 5000. Close it, or restart the laptop. |
 | `HTTP 401` | The `.env` file is missing or was edited. Get a fresh copy from Ritesh. |
