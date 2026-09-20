@@ -16,6 +16,7 @@ skip rather than limp along without a backend.
 from __future__ import annotations
 
 import os
+import uuid
 from datetime import datetime, timezone
 
 from agro_mirai.persistence.models import (
@@ -48,6 +49,17 @@ def _parse_dt(value: str) -> datetime:
     return datetime.fromisoformat(value.replace("Z", "+00:00")).astimezone(timezone.utc)
 
 
+def _is_uuid(value: str) -> bool:
+    """Ids are Postgres uuid columns; a malformed id would make PostgREST raise
+    (22P02) instead of matching nothing, so lookups check first and treat it as
+    not found, the same as SQLite does."""
+    try:
+        uuid.UUID(str(value))
+    except ValueError:
+        return False
+    return True
+
+
 class SupabaseDataStore:
     """Implements ``agro_mirai.persistence.store.DataStore`` against Supabase.
 
@@ -69,6 +81,8 @@ class SupabaseDataStore:
 
     # --- Farmer ---
     def get_farmer(self, farmer_id: str) -> Farmer | None:
+        if not _is_uuid(farmer_id):
+            return None
         res = self._client.table("farmers").select("*").eq("id", farmer_id).execute()
         rows = res.data
         return self._row_to_farmer(rows[0]) if rows else None
@@ -177,6 +191,8 @@ class SupabaseDataStore:
 
     # --- Field ---
     def get_field(self, farmer_id: str, field_id: str) -> Field_ | None:
+        if not _is_uuid(field_id) or not _is_uuid(farmer_id):
+            return None
         res = (
             self._client.table("fields")
             .select("*")
@@ -580,6 +596,8 @@ class SupabaseDataStore:
         return [self._row_to_advisory(r) for r in res.data]
 
     def get_advisory(self, farmer_id: str, advisory_id: str) -> Advisory | None:
+        if not _is_uuid(advisory_id):
+            return None
         res = self._client.table("advisories").select("*").eq("id", advisory_id).execute()
         if not res.data:
             return None
