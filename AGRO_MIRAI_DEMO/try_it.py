@@ -30,7 +30,7 @@ from dotenv import load_dotenv
 
 ROOT = Path(__file__).resolve().parent
 load_dotenv(ROOT / ".env")
-BASE = "http://localhost:5000"
+BASE = "http://127.0.0.1:5000"
 HEADERS = {"Authorization": "Bearer " + os.environ.get("API_KEY", "")}
 
 
