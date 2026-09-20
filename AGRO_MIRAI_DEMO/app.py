@@ -233,7 +233,15 @@ def live_data(field_id):
 @require_key
 def recommendation(field_id):
     field = field_or_404(field_id)
-    rec = crop_model.predict(features_for(field))
+    try:
+        rec = crop_model.predict(features_for(field))
+    except ValueError as exc:
+        raise ApiError(
+            422,
+            "SOIL_DATA_MISSING",
+            f"{exc}. The soil service (SoilGrids) did not answer for this field. "
+            "Run POST /fields/<id>/refresh-data and try again.",
+        ) from None
     return jsonify(to_json(store.save_crop_recommendation(g.farmer_id, rec)))
 
 

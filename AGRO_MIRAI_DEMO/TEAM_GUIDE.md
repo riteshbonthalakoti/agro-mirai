@@ -205,6 +205,10 @@ The reply ends with a `live_data` block (the three sources can appear in any ord
 
 `ok: true` for all three means real data was fetched from the internet just now.
 
+> If one of them says `"ok": false` (most often `soil`), the free public service did not answer in time. This can happen. Simply run
+> `.\.venv\Scripts\python try_it.py refresh 5` and it fetches again. Until the soil data is there, the crop endpoint answers
+> `HTTP 422 SOIL_DATA_MISSING` with the same instruction, instead of crashing.
+
 Say: "The moment a farmer adds a field, the system fetches today's weather, the soil properties at that
 exact GPS point, and the latest Sentinel-2 satellite reading from Google Earth Engine."
 
@@ -440,7 +444,7 @@ Dataset links and training details are in `DATASETS.md`.
 | `Cannot reach the server` | Terminal 1 is not running the server. Type `.\run.bat` there and wait for `Running on http://127.0.0.1:5000`. |
 | `Address already in use` / port 5000 busy | Another program uses port 5000. Close it, or restart the laptop. |
 | `HTTP 401` | The `.env` file is missing or was edited. Get a fresh copy from Ritesh. |
-| `HTTP 422 NO_WEATHER_DATA` | Run `.\.venv\Scripts\python try_it.py refresh N` for that field, then try again. |
+| `HTTP 422 NO_WEATHER_DATA` or `SOIL_DATA_MISSING` | A free data service did not answer in time. Run `.\.venv\Scripts\python try_it.py refresh N` for that field, then try again. |
 | Live NDVI shows `"source": "cache"` | Google Earth Engine was slow. This is the safe built-in fallback and is normal. Run `refresh N` again to try live once more. |
 | `advisory` takes about 5 seconds | Normal. It runs three models and computes SHAP explanations. |
 | You see the word `Traceback` in Terminal 1 | Copy the last 10 lines and send them to Ritesh. |
@@ -449,7 +453,34 @@ Dataset links and training details are in `DATASETS.md`.
 
 ---
 
-## PART 9. Important: keys and sharing
+## PART 9. Test case tables (for the "Testing" section of your presentation)
+
+The faculty asked for test case tables. They are ready, in the same format as the reference deck
+(Slno, Module, Test case, Expected result, Status, Work Done):
+
+- `TEST_CASES.pptx`: 17 slides you can copy into your presentation (unit, integration and system testing, for the **Backend** and for the **Models**, plus a summary slide).
+- `TEST_CASES.md`: the same tables as text.
+
+There are 53 test cases (Backend: 15 unit, 8 integration, 6 system. Models: 13 unit, 7 integration, 4 system).
+Every one of them was really run on the demo backend, so the Status and Work Done columns show what actually happened.
+
+**Optional: run all test cases live in front of the faculty.** With the server running (Terminal 1), type in Terminal 2:
+
+```
+.\.venv\Scripts\python test_cases.py
+```
+
+It takes 1 to 5 minutes (it calls the live weather, soil and satellite services) and prints one line per test case,
+`PASS` or `FAIL`, ending with `53/53 passed`. It only adds test fields to the local demo database, never to Supabase.
+If a free data service is slow, one case can occasionally fail; run it again.
+
+How to explain the levels: **Unit** = one part alone (one endpoint, one adapter, one model). **Integration** = parts working together
+(live data into the database, the CNN with the API, the three models inside the decision engine).
+**System** = the whole thing end to end (a farmer journey, safety of real data, speed, bad requests, many users).
+
+---
+
+## PART 10. Important: keys and sharing
 
 This folder contains **real** secret keys (`.env` and the `keys` folder). Keep the zip inside the team,
 do not upload it to GitHub, Drive links open to everyone, or any public place, and delete it after the presentation.

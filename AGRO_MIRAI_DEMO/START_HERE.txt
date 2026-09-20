@@ -13,5 +13,7 @@ AGRO MIRAI - demo package
 
 3. DATASETS.md has the dataset links and how the three models were trained.
 
+   TEST_CASES.pptx / TEST_CASES.md are the test case tables (backend and models) for the Testing slide.
+
 4. This folder contains real API keys (.env and keys\). Keep it inside the team and
    do not upload it to GitHub or any public place.
