@@ -2,7 +2,7 @@
 // dev-server.mjs) forwards /admin/*, /v2/* and /health to the Flask backend,
 // so the backend's session cookie is first-party here.
 (function () {
-  var state = { farmers: [], fields: [], feedback: null };
+  var state = { farmers: [], fields: [], feedback: null, scans: [], advisories: [] };
   var $ = function (id) { return document.getElementById(id); };
 
   function esc(s) {
@@ -23,12 +23,16 @@
   }
 
   function loadAll() {
-    return Promise.all([api("/v2/admin/farmers"), api("/v2/admin/fields"), api("/v2/admin/feedback")])
-      .then(function (r) {
-        state.farmers = r[0].items;
-        state.fields = r[1].items;
-        state.feedback = r[2];
-      });
+    return Promise.all([
+      api("/v2/admin/farmers"), api("/v2/admin/fields"), api("/v2/admin/feedback"),
+      api("/v2/admin/scans"), api("/v2/admin/advisories")
+    ]).then(function (r) {
+      state.farmers = r[0].items;
+      state.fields = r[1].items;
+      state.feedback = r[2];
+      state.scans = r[3].items;
+      state.advisories = r[4].items;
+    });
   }
 
   function showLogin(msg) {
@@ -72,7 +76,7 @@
   $("logout").addEventListener("click", function () {
     fetch("/admin/logout", { method: "POST", credentials: "same-origin" })
       .finally(function () {
-        state = { farmers: [], fields: [], feedback: null };
+        state = { farmers: [], fields: [], feedback: null, scans: [], advisories: [] };
         location.hash = "#/";
         showLogin();
       });
@@ -115,8 +119,8 @@
       stat("Fields", state.fields.length) +
       stat("Feedback entries", fb.total_entries, "mean rating " + fmt(fb.mean_rating) + ", helpful " +
         (fb.helpful_rate == null ? "n/a" : Math.round(fb.helpful_rate * 100) + "%")) +
-      '<div class="card stat"><div class="muted">Scans run</div><div class="na">Not available</div>' +
-      '<div class="muted">No /v2/admin route exposes scans</div></div>' +
+      stat("Scans run", state.scans.length, "image uploads") +
+      stat("Advisories", state.advisories.length) +
       "</div>" +
       '<div class="grid wide">' +
       '<div class="card"><h3>Language distribution</h3>' +
@@ -159,6 +163,29 @@
     }).join("") || '<tr><td colspan="6" class="muted">No farmers match.</td></tr>';
   }
 
+  function scanTable(id) {
+    var rows = state.scans.filter(function (x) { return x.farmer_id === id; });
+    return '<h3 style="margin-top:1.25rem">Scan history (' + rows.length + ")</h3>" + (rows.length
+      ? '<div class="tablewrap"><table><thead><tr><th>When</th><th>Field</th><th>Result</th><th>Risk</th>' +
+        "<th>Confidence</th><th>Source</th></tr></thead><tbody>" + rows.map(function (a) {
+          return "<tr><td>" + esc((a.created_at || "").replace("T", " ").slice(0, 16)) + "</td><td>" + esc(a.field_name) +
+            "</td><td>" + esc(a.disease) + "</td><td>" + esc(a.risk_level) + "</td><td>" + fmt(a.confidence) +
+            "</td><td>" + esc(a.source) + "</td></tr>";
+        }).join("") + "</tbody></table></div>"
+      : '<p class="muted">No image scans yet.</p>');
+  }
+
+  function advisoryList(id) {
+    var rows = state.advisories.filter(function (x) { return x.farmer_id === id; });
+    return '<h3 style="margin-top:1.25rem">Advisories (' + rows.length + ")</h3>" + (rows.length
+      ? '<div class="tablewrap"><table><thead><tr><th>When</th><th>Field</th><th>Title</th><th>Severity</th>' +
+        "<th>Language</th></tr></thead><tbody>" + rows.map(function (a) {
+          return "<tr><td>" + esc((a.created_at || "").replace("T", " ").slice(0, 16)) + "</td><td>" + esc(a.field_name) +
+            "</td><td>" + esc(a.title) + "</td><td>" + esc(a.severity) + "</td><td>" + esc(langName(a.language)) + "</td></tr>";
+        }).join("") + "</tbody></table></div>"
+      : '<p class="muted">No advisories yet.</p>');
+  }
+
   function farmerDetail(id) {
     var f = state.farmers.filter(function (x) { return x.id === id; })[0];
     if (!f) return '<p>Farmer not found. <a href="#/farmers">Back</a></p>';
@@ -182,11 +209,7 @@
         ? '<div class="tablewrap"><table><thead><tr><th>Name</th><th>Crop</th><th>Soil</th><th>Area (ha)</th>' +
           "<th>Lat, Lon</th><th>Sown</th><th>Feedback</th></tr></thead><tbody>" + rows + "</tbody></table></div>"
         : '<p class="muted">This farmer has no fields.</p>') +
-      '<div class="grid wide" style="margin-top:1.25rem">' +
-      '<div class="card gap"><h3>Scan history</h3>Not available. The existing /v2/admin routes do not return ' +
-      "per-farmer disease scans. Needs a decision on adding a read-only route.</div>" +
-      '<div class="card gap"><h3>Advisories</h3>Not available. No /v2/admin route lists advisories; only ' +
-      "feedback aggregates per field (shown above) are exposed.</div></div>";
+      scanTable(id) + advisoryList(id);
   }
 
   function route() {

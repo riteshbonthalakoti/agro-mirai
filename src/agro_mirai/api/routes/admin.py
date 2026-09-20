@@ -47,3 +47,42 @@ def feedback_summary():
     pairs = store.list_all_feedback_with_advisories()
     report = FeedbackAggregator.aggregate(pairs)
     return jsonify(dataclasses.asdict(report)), 200
+
+
+# Alerts created by an image upload carry one of these sources; the plain
+# GET /disease-risk path stores "environmental", so it is not a scan.
+_SCAN_SOURCES = {"cnn", "environmental_fallback"}
+
+
+def _per_field(store, fetch, limit):
+    """Yield (field, records) across every farmer's fields. One query per
+    field, fine at this project's scale."""
+    for field in store.list_all_fields():
+        yield field, fetch(field.farmer_id, field.id, limit=limit)
+
+
+@admin_bp.get("/scans")
+@require_admin
+def list_scans():
+    store = current_app.extensions["data_store"]
+    items = []
+    for field, alerts in _per_field(store, store.list_disease_risk_alerts, 200):
+        for a in alerts:
+            if a.source in _SCAN_SOURCES:
+                items.append(
+                    {**to_json(a), "farmer_id": field.farmer_id, "field_name": field.name}
+                )
+    items.sort(key=lambda i: i["created_at"], reverse=True)
+    return jsonify({"items": items}), 200
+
+
+@admin_bp.get("/advisories")
+@require_admin
+def list_advisories():
+    store = current_app.extensions["data_store"]
+    items = []
+    for field, advisories in _per_field(store, store.list_advisories_for_field, 50):
+        for a in advisories:
+            items.append({**to_json(a), "farmer_id": field.farmer_id, "field_name": field.name})
+    items.sort(key=lambda i: i["created_at"], reverse=True)
+    return jsonify({"items": items}), 200

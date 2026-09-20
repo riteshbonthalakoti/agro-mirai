@@ -789,6 +789,44 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
 
+  /v2/admin/scans:
+    get:
+      summary: 'Admin only: every image-upload disease scan (source cnn or environmental_fallback) across all Farmers, newest first, each with farmer_id and field_name. Read-only.'
+      security: [ { sessionCookie: [] } ]
+      responses:
+        '200':
+          description: A list of DiseaseRiskAlerts with additional farmer_id and field_name.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items: { type: object, additionalProperties: true }
+                required: [items]
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /v2/admin/advisories:
+    get:
+      summary: 'Admin only: advisories across all Farmers, newest first, each with farmer_id and field_name. Read-only.'
+      security: [ { sessionCookie: [] } ]
+      responses:
+        '200':
+          description: A list of Advisories with additional farmer_id and field_name.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items: { type: object, additionalProperties: true }
+                required: [items]
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
 components:
 
   securitySchemes:
