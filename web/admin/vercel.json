@@ -1,7 +1,7 @@
 {
   "rewrites": [
-    { "source": "/admin/:path*", "destination": "https://BACKEND_HOST/admin/:path*" },
-    { "source": "/v2/:path*", "destination": "https://BACKEND_HOST/v2/:path*" },
-    { "source": "/health", "destination": "https://BACKEND_HOST/health" }
+    { "source": "/admin/:path*", "destination": "https://agro-mirai.onrender.com/admin/:path*" },
+    { "source": "/v2/:path*", "destination": "https://agro-mirai.onrender.com/v2/:path*" },
+    { "source": "/health", "destination": "https://agro-mirai.onrender.com/health" }
   ]
 }
