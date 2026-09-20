@@ -82,7 +82,13 @@ def copy_real_data_from_supabase(store):
 def main():
     db_file = ROOT / "demo.db"
     if db_file.exists():
-        db_file.unlink()
+        try:
+            db_file.unlink()
+        except PermissionError:
+            sys.exit(
+                "demo.db is in use. Stop the server first (click the server terminal and press Ctrl+C), "
+                "then run this again."
+            )
     store = SQLiteDataStore(str(db_file))
 
     try:
