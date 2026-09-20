@@ -57,3 +57,11 @@ htmlcov/
 
 # Local scratch / debug output, not part of the repo
 /scratch/
+
+# demo package: never commit real keys, venv, local db or the zip
+AGRO_MIRAI_DEMO/.env
+AGRO_MIRAI_DEMO/keys/
+AGRO_MIRAI_DEMO/.venv/
+AGRO_MIRAI_DEMO/demo.db
+AGRO_MIRAI_DEMO/**/__pycache__/
+AGRO_MIRAI_DEMO.zip

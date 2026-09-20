@@ -1,0 +1,17 @@
+AGRO MIRAI - demo package
+
+1. Read TEAM_GUIDE.md first. It has every step, in order, from installing Python to
+   what to say to the faculty. Open it in VS Code (right click the file, "Open Preview"
+   or press Ctrl+Shift+V).
+
+2. The short version:
+     a) install Python 3.12 and VS Code
+     b) unzip this folder, open it in VS Code (File > Open Folder)
+     c) open a terminal (Terminal > New Terminal) and run:   .\setup.bat     (one time, 10-20 minutes)
+     d) start the server:                                      .\run.bat
+     e) in a second terminal:  .\.venv\Scripts\python try_it.py help
+
+3. DATASETS.md has the dataset links and how the three models were trained.
+
+4. This folder contains real API keys (.env and keys\). Keep it inside the team and
+   do not upload it to GitHub or any public place.
