@@ -733,3 +733,36 @@ class SupabaseDataStore:
             return True
         except Exception:
             return False
+
+
+# --- transient-connection retry (Module 39) --------------------------------
+# Found live: the API returned 500 "httpx.RemoteProtocolError: Server
+# disconnected" whenever Supabase had closed an idle keep-alive connection
+# the client then tried to reuse. That is a network hiccup, not a bug in the
+# request -- a fresh attempt succeeds. Every public store method is wrapped so
+# a dropped/reset connection is retried (new connection each time) a couple of
+# times before it is allowed to surface. HTTP-level errors (bad row, missing
+# table, ...) are NOT retried.
+def _with_transport_retry(method):
+    import functools
+    import time
+
+    @functools.wraps(method)
+    def wrapper(*args, **kwargs):
+        import httpx
+
+        last = None
+        for attempt in range(3):
+            try:
+                return method(*args, **kwargs)
+            except (httpx.TransportError, httpx.RemoteProtocolError) as exc:  # noqa: PERF203
+                last = exc
+                time.sleep(0.3 * (attempt + 1))
+        raise last
+
+    return wrapper
+
+
+for _name, _fn in list(vars(SupabaseDataStore).items()):
+    if callable(_fn) and not _name.startswith("_"):
+        setattr(SupabaseDataStore, _name, _with_transport_retry(_fn))

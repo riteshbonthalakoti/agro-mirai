@@ -77,7 +77,7 @@ def test_audio_success_returns_ogg_with_caching_headers(app, client, monkeypatch
     advisory_id = _seed_advisory(app, farmer_id, field_id)
 
     fake_service = MagicMock()
-    fake_service.text_to_speech.return_value = b"fake-ogg-bytes"
+    fake_service.text_to_speech.return_value = b"OggS-fake-bytes"
     monkeypatch.setattr(
         "agro_mirai.api.voice_client.get_remote_voice_service", lambda: fake_service
     )
@@ -85,7 +85,7 @@ def test_audio_success_returns_ogg_with_caching_headers(app, client, monkeypatch
     resp = client.get(f"/v2/advisories/{advisory_id}/audio")
     assert resp.status_code == 200
     assert resp.content_type == "audio/ogg"
-    assert resp.data == b"fake-ogg-bytes"
+    assert resp.data == b"OggS-fake-bytes"
     assert resp.headers.get("ETag")
     assert "max-age" in resp.headers.get("Cache-Control", "")
     # Advisory is in English; requested language defaults to the farmer's
@@ -103,7 +103,7 @@ def test_audio_translates_when_language_override_differs(app, client, monkeypatc
 
     fake_service = MagicMock()
     fake_service.translate.return_value = "ಬೇಗ ನೀರಾವರಿ ಮಾಡಿ."
-    fake_service.text_to_speech.return_value = b"fake-kn-ogg-bytes"
+    fake_service.text_to_speech.return_value = b"OggS-fake-kn-bytes"
     monkeypatch.setattr(
         "agro_mirai.api.voice_client.get_remote_voice_service", lambda: fake_service
     )
@@ -126,7 +126,7 @@ def test_audio_translates_for_new_v1_languages(app, client, monkeypatch, lang):
 
     fake_service = MagicMock()
     fake_service.translate.return_value = "translated"
-    fake_service.text_to_speech.return_value = b"fake-ogg-bytes"
+    fake_service.text_to_speech.return_value = b"OggS-fake-bytes"
     monkeypatch.setattr(
         "agro_mirai.api.voice_client.get_remote_voice_service", lambda: fake_service
     )
@@ -156,7 +156,7 @@ def test_audio_etag_revalidation_returns_304(app, client, monkeypatch):
     advisory_id = _seed_advisory(app, farmer_id, field_id)
 
     fake_service = MagicMock()
-    fake_service.text_to_speech.return_value = b"fake-ogg-bytes"
+    fake_service.text_to_speech.return_value = b"OggS-fake-bytes"
     monkeypatch.setattr(
         "agro_mirai.api.voice_client.get_remote_voice_service", lambda: fake_service
     )

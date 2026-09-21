@@ -257,6 +257,20 @@ def _soil_features(
             k = typical["potassium_mg_per_kg"]
             organic_carbon = typical.get("organic_carbon_pct", organic_carbon)
             chemistry_source = "soil_type_fallback"
+    elif p is None or k is None or n is None or ph is None:
+        # Module 39: the common REAL case. SoilGrids returns pH / N / organic
+        # carbon but never phosphorus or potassium, so the "all four missing"
+        # rule above never fired and the crop model then refused to run
+        # (a fresh field's /recommendation failed). Fill only the specific
+        # missing nutrients from the farmer's soil_type typicals; real values
+        # are never overridden, and the source string says both were used.
+        typical = lookup_typical_values(field.soil_type)
+        if typical is not None:
+            ph = typical["ph"] if ph is None else ph
+            n = typical["nitrogen_mg_per_kg"] if n is None else n
+            p = typical["phosphorus_mg_per_kg"] if p is None else p
+            k = typical["potassium_mg_per_kg"] if k is None else k
+            chemistry_source = f"{latest.source}+soil_type_fallback"
 
     # Module 34 follow-up 3: unlike chemistry, SoilGrids NEVER returns
     # moisture at all — this is the common case, not a no-data edge case.

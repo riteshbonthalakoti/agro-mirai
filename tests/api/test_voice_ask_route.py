@@ -88,7 +88,7 @@ def test_ask_success_grounds_answer_and_returns_audio(app, client, monkeypatch):
 
     fake_voice = MagicMock()
     fake_voice.speech_to_text.return_value = ("When should I water?", "en")
-    fake_voice.text_to_speech.return_value = b"ogg-bytes"
+    fake_voice.text_to_speech.return_value = b"OggS-ogg-bytes"
     monkeypatch.setattr("agro_mirai.api.voice_client.get_remote_voice_service", lambda: fake_voice)
     monkeypatch.setattr(
         "agro_mirai.api.voice_client.ask_gemini",
@@ -163,7 +163,7 @@ def test_ask_prompt_is_scoped_to_this_farmer_only(app, client, monkeypatch):
 
     fake_voice = MagicMock()
     fake_voice.speech_to_text.return_value = ("How is my field?", "en")
-    fake_voice.text_to_speech.return_value = b"ogg-bytes"
+    fake_voice.text_to_speech.return_value = b"OggS-ogg-bytes"
     monkeypatch.setattr("agro_mirai.api.voice_client.get_remote_voice_service", lambda: fake_voice)
 
     captured = {}
