@@ -144,21 +144,46 @@ class NDVIAdapter(Adapter):
         self._ee_ready = True
 
     def _fetch_live(self, field: FieldInput) -> dict[str, Any]:
-        import ee
-
+        """Tries the configured (strict) window first, then progressively
+        wider / cloudier ones: in the monsoon there may be no <20%-cloud scene
+        in 30 days at all, and a hazier real reading beats none. The reading
+        carries its true ``cloud_cover_pct`` so callers can see the quality."""
         self._ensure_initialized()
+        last_exc: Exception | None = None
+        for max_cloud, days in self._search_tiers():
+            try:
+                return self._fetch_live_once(field, max_cloud, days)
+            except SourceUnavailableError as exc:
+                last_exc = exc
+                if "timeout" in str(exc):
+                    raise
+            except Exception as exc:  # noqa: BLE001 — an empty collection surfaces as EEException
+                last_exc = exc
+        raise SourceUnavailableError(
+            f"GEE returned no usable Sentinel-2 scene for this field ({last_exc})"
+        )
+
+    def _search_tiers(self) -> list[tuple[float, int]]:
+        tiers = [(self.max_cloud_cover_pct, self.lookback_days)]
+        for cloud, days in ((40.0, 60), (70.0, 120)):
+            if cloud > tiers[-1][0] and days > tiers[-1][1]:
+                tiers.append((cloud, days))
+        return tiers
+
+    def _fetch_live_once(self, field: FieldInput, max_cloud: float, lookback_days: int) -> dict[str, Any]:
+        import ee
 
         def _query() -> dict[str, Any]:
             import datetime as _dt
 
             point = ee.Geometry.Point([field.longitude, field.latitude])
             end = ee.Date(_dt.datetime.now(_dt.timezone.utc).strftime("%Y-%m-%d"))
-            start = end.advance(-self.lookback_days, "day")
+            start = end.advance(-lookback_days, "day")
             collection = (
                 ee.ImageCollection(S2_COLLECTION)
                 .filterBounds(point)
                 .filterDate(start, end)
-                .filter(ee.Filter.lt(CLOUD_PROP, self.max_cloud_cover_pct))
+                .filter(ee.Filter.lt(CLOUD_PROP, max_cloud))
                 .sort("system:time_start", False)
             )
             image = ee.Image(collection.first())
