@@ -50,6 +50,12 @@ services:
         sync: false
       - key: GEMINI_API_KEY
         sync: false
+      # Earth Engine service-account key as JSON *text* (no key file on Render).
+      - key: EE_SERVICE_ACCOUNT_JSON
+        sync: false
+      # Weather fallback when Open-Meteo rate-limits Render's shared IP.
+      - key: OPENWEATHER_API_KEY
+        sync: false
       # Module 21 — Oracle VM heavy-inference services. Optional; unset
       # degrades to "CNN image path / remote voice unavailable" rather
       # than failing. Set once the Oracle VM (docs/deploy/oracle-vm-setup.md)

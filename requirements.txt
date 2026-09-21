@@ -83,3 +83,7 @@ bcrypt==5.0.0
 # (Next.js landing page, React Native web build) can reach the /v2 API.
 # Configured with CORS_ORIGINS env var; unset means same-origin only.
 Flask-Cors==6.0.5
+
+# Module 40: satellite NDVI (Earth Engine) was silently unavailable on Render
+# because this library was never installed there.
+earthengine-api==1.7.41
