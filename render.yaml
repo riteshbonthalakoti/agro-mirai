@@ -40,6 +40,16 @@ services:
         sync: false
       - key: OTP_RATE_LIMIT
         value: 5 per minute
+      # Module 40 — Sarvam AI voice (speech-to-text, answers, text-to-speech,
+      # translation). Set in the Render dashboard, never here.
+      - key: SARVAM_API_KEY_1
+        sync: false
+      - key: SARVAM_API_KEY_2
+        sync: false
+      - key: SARVAM_API_KEY_3
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
       # Module 21 — Oracle VM heavy-inference services. Optional; unset
       # degrades to "CNN image path / remote voice unavailable" rather
       # than failing. Set once the Oracle VM (docs/deploy/oracle-vm-setup.md)
