@@ -23,6 +23,7 @@ gitignored ``models/disease_cnn_mobilenetv2.pt`` /
 from __future__ import annotations
 
 import dataclasses
+import hmac
 import os
 import tempfile
 from datetime import date, datetime
@@ -94,6 +95,11 @@ def create_app(model_factory=None) -> Flask:
 
     @app.post("/predict")
     def predict():
+        # When CNN_SERVICE_TOKEN is set (public hosting), callers must present
+        # it; unset keeps local/dev use open.
+        expected = os.environ.get("CNN_SERVICE_TOKEN", "").strip()
+        if expected and not hmac.compare_digest(request.headers.get("X-Service-Token", ""), expected):
+            return jsonify({"error": {"code": "UNAUTHORIZED", "message": "invalid service token"}}), 401
         if "image" not in request.files:
             return jsonify({"error": {"code": "BAD_REQUEST", "message": "image file is required"}}), 400
         field_id = request.form.get("field_id")

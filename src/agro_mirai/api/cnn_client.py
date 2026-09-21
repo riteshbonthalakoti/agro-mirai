@@ -31,6 +31,13 @@ def cnn_service_timeout() -> float:
         return DEFAULT_TIMEOUT_S
 
 
+def _auth_headers() -> dict[str, str]:
+    """Shared secret for a publicly reachable CNN service (e.g. a Hugging Face
+    Space): sent as X-Service-Token when CNN_SERVICE_TOKEN is set."""
+    token = os.environ.get("CNN_SERVICE_TOKEN", "").strip()
+    return {"X-Service-Token": token} if token else {}
+
+
 def call_cnn_service(image_bytes: bytes, field_id: str, filename: str = "image.jpg") -> dict | None:
     """POSTs the image to ``CNN_SERVICE_URL``'s ``/predict``.
 
@@ -47,6 +54,7 @@ def call_cnn_service(image_bytes: bytes, field_id: str, filename: str = "image.j
             f"{base_url.rstrip('/')}/predict",
             files={"image": (filename, image_bytes)},
             data={"field_id": field_id},
+            headers=_auth_headers(),
             timeout=cnn_service_timeout(),
         )
     except requests.RequestException:

@@ -152,3 +152,29 @@ def test_non_leaf_photo_rejected_with_422_not_diagnosed(monkeypatch):
     buf = io.BytesIO()
     Image.new("RGB", (64, 64), color=(240, 240, 240)).save(buf, format="PNG")
     assert not leaf_gate.looks_like_plant_photo(buf.getvalue())
+
+
+def test_cnn_client_sends_service_token_when_configured(monkeypatch):
+    from unittest.mock import MagicMock
+
+    from agro_mirai.api import cnn_client
+
+    seen = {}
+
+    def fake_post(url, **kw):
+        seen.update(kw)
+        r = MagicMock()
+        r.status_code = 200
+        r.json.return_value = {"ok": True}
+        return r
+
+    monkeypatch.setenv("CNN_SERVICE_URL", "http://cnn.example")
+    monkeypatch.setattr(cnn_client.requests, "post", fake_post)
+
+    monkeypatch.setenv("CNN_SERVICE_TOKEN", "s3cret")
+    assert cnn_client.call_cnn_service(b"x", "f") == {"ok": True}
+    assert seen["headers"] == {"X-Service-Token": "s3cret"}
+
+    monkeypatch.delenv("CNN_SERVICE_TOKEN")
+    cnn_client.call_cnn_service(b"x", "f")
+    assert seen["headers"] == {}
