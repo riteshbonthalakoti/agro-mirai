@@ -121,14 +121,25 @@ class NDVIAdapter(Adapter):
             return
         import ee  # imported lazily so offline/cache use needs no GEE install
 
-        key_path = self._key_path or os.environ.get("EE_SERVICE_ACCOUNT_KEY")
-        if not key_path:
-            raise SourceUnavailableError(
-                "EE_SERVICE_ACCOUNT_KEY is not set; cannot authenticate GEE"
+        # Hosted deployments (Render) have no key file on disk: the service
+        # account JSON can be supplied as text in EE_SERVICE_ACCOUNT_JSON.
+        key_json = (os.environ.get("EE_SERVICE_ACCOUNT_JSON") or "").strip()
+        if key_json and not self._key_path:
+            from google.oauth2 import service_account
+
+            sa = json.loads(key_json)
+            creds = service_account.Credentials.from_service_account_info(
+                sa, scopes=ee.oauth.SCOPES
             )
-        with open(key_path, encoding="utf-8") as fh:
-            sa = json.load(fh)
-        creds = ee.ServiceAccountCredentials(sa["client_email"], key_path)
+        else:
+            key_path = self._key_path or os.environ.get("EE_SERVICE_ACCOUNT_KEY")
+            if not key_path:
+                raise SourceUnavailableError(
+                    "EE_SERVICE_ACCOUNT_KEY is not set; cannot authenticate GEE"
+                )
+            with open(key_path, encoding="utf-8") as fh:
+                sa = json.load(fh)
+            creds = ee.ServiceAccountCredentials(sa["client_email"], key_path)
         ee.Initialize(creds, project=sa.get("project_id"))
         self._ee_ready = True
 
