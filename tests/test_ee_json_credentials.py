@@ -47,3 +47,36 @@ def test_key_file_path_still_works_when_no_json(monkeypatch, tmp_path):
     monkeypatch.setenv("EE_SERVICE_ACCOUNT_KEY", str(key))
     NDVIAdapter(cache_path=tmp_path / "c.json")._ensure_initialized()
     assert seen.get("file_path_used") is True
+
+
+def test_search_widens_when_strict_window_has_no_scene(monkeypatch, tmp_path):
+    """Monsoon: no <20%-cloud scene in 30 days -> retry wider/cloudier, and the
+    reading keeps its true cloud cover so quality stays visible."""
+    from agro_mirai.acquisition.base import FieldInput
+
+    adapter = NDVIAdapter(cache_path=tmp_path / "c.json")
+    calls = []
+
+    def fake_once(field, max_cloud, days):
+        calls.append((max_cloud, days))
+        if max_cloud < 40:
+            raise RuntimeError("Image.normalizedDifference: Parameter 'input' is required")
+        return {"ndvi": 0.5, "cloud_cover_pct": 36.0}
+
+    monkeypatch.setattr(adapter, "_ensure_initialized", lambda: None)
+    monkeypatch.setattr(adapter, "_fetch_live_once", fake_once)
+    out = adapter._fetch_live(FieldInput(latitude=15.1, longitude=76.9, field_id="f"))
+    assert calls == [(20.0, 30), (40.0, 60)]
+    assert out["cloud_cover_pct"] == 36.0
+
+
+def test_all_windows_empty_raises_unavailable_so_cache_fallback_runs(monkeypatch, tmp_path):
+    import pytest
+
+    from agro_mirai.acquisition.base import FieldInput, SourceUnavailableError
+
+    adapter = NDVIAdapter(cache_path=tmp_path / "c.json")
+    monkeypatch.setattr(adapter, "_ensure_initialized", lambda: None)
+    monkeypatch.setattr(adapter, "_fetch_live_once", lambda f, c, d: (_ for _ in ()).throw(RuntimeError("empty")))
+    with pytest.raises(SourceUnavailableError):
+        adapter._fetch_live(FieldInput(latitude=1.0, longitude=1.0, field_id="f"))
