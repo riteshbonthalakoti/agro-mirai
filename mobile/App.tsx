@@ -18,7 +18,7 @@ class ErrorBoundary extends Component<{ children: React.ReactNode }, { error: st
     return this.props.children;
   }
 }
-import { ApiError, Farmer, Field, getMe, listFields, logout, patchMe, setUnauthorizedHandler, subscribeNet, isOnline } from './src/api';
+import { ApiError, Farmer, Field, getMe, listFields, logout, patchMe, setUnauthorizedHandler, subscribeNet, isOnline, wakeServer } from './src/api';
 import { AppCtx, Ctx, makeT } from './src/ctx';
 import { Lang, LANGS } from './src/i18n';
 import { AdviceTab } from './src/screens/AdviceTab';
@@ -62,6 +62,7 @@ function Root() {
   const [online, setOnline] = useState(isOnline());
   const [authNotice, setAuthNotice] = useState('');
   const [bootError, setBootError] = useState('');
+  const [waking, setWaking] = useState(false);
 
   const t = useMemo(() => makeT(lang), [lang]);
   const field = fields.find((f) => f.id === fieldId) ?? fields[0] ?? null;
@@ -102,10 +103,15 @@ function Root() {
   // Boot: saved language -> existing session (GET /v2/farmers/me) -> main.
   useEffect(() => {
     (async () => {
+      // Started immediately so the server is waking while the farmer picks a
+      // language / types their number, not after they tap.
+      const awake = wakeServer(() => setWaking(true));
       const saved = await cacheGet<string>('lang');
       if (isLang(saved)) setLang(saved);
       if (!isLang(saved)) return setPhase('lang');
       try {
+        await awake;
+        setWaking(false);
         const me = await getMe();
         setFarmer(me);
         cacheSet('farmer', me);
@@ -153,7 +159,12 @@ function Root() {
     : null;
 
   if (phase === 'boot') {
-    return <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}><ActivityIndicator /></View>;
+    return (
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: S.xl }}>
+        <ActivityIndicator />
+        {waking ? <Text style={{ color: C.muted, marginTop: S.md, textAlign: 'center' }}>{t('serverWaking')}</Text> : null}
+      </View>
+    );
   }
   if (phase === 'lang') {
     return <LanguageScreen onPick={(l) => { changeLang(l); setPhase('auth'); }} />;

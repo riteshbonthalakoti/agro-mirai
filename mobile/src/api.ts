@@ -35,6 +35,31 @@ function setOnline(o: boolean) {
   netListeners.forEach((f) => f(o));
 }
 
+/** Render's free tier sleeps after ~15 idle minutes and takes up to a minute to
+ *  wake. Pings /health (patiently, several times) so the first real request
+ *  doesn't time out and get misreported as "can't reach the server". Never
+ *  throws; resolves when the server answered or the attempts ran out.
+ *  `onSlow` fires if the first answer takes more than a few seconds. */
+export async function wakeServer(onSlow?: () => void): Promise<void> {
+  const slowTimer = onSlow ? setTimeout(onSlow, 4000) : null;
+  try {
+    for (let i = 0; i < 4; i++) {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 30000);
+      try {
+        const res = await fetch(`${API_BASE_URL}/health`, { signal: controller.signal });
+        if (res.ok) return;
+      } catch {
+        // asleep / unreachable: try again
+      } finally {
+        clearTimeout(timer);
+      }
+    }
+  } finally {
+    if (slowTimer) clearTimeout(slowTimer);
+  }
+}
+
 let onUnauthorized: (() => void) | null = null;
 export function setUnauthorizedHandler(fn: (() => void) | null) {
   onUnauthorized = fn;
@@ -120,9 +145,9 @@ export type DataSummary = {
 // ---- auth --------------------------------------------------------------------
 export const requestOtp = (phone: string, name: string, preferred_language: string) =>
   request<{ phone: string; otp_sent: boolean; is_new_farmer: boolean }>(
-    '/v2/auth/request-otp', json('POST', { phone, name, preferred_language }), { auth: false, timeout: 12000 });
+    '/v2/auth/request-otp', json('POST', { phone, name, preferred_language }), { auth: false, timeout: 40000 });
 export const verifyOtp = (phone: string, otp: string) =>
-  request<Farmer>('/v2/auth/verify-otp', json('POST', { phone, otp }), { auth: false, timeout: 12000 });
+  request<Farmer>('/v2/auth/verify-otp', json('POST', { phone, otp }), { auth: false, timeout: 40000 });
 export const logout = () => request<void>('/v2/auth/logout', { method: 'POST' }, { auth: false, timeout: 6000 }).catch(() => undefined);
 
 // ---- farmer / fields ---------------------------------------------------------
