@@ -34,6 +34,7 @@ from typing import Any
 from agro_mirai.acquisition.base import FieldInput
 from agro_mirai.acquisition.earth_engine import NDVIAdapter
 from agro_mirai.acquisition.open_meteo import WeatherAdapter
+from agro_mirai.acquisition.openweathermap import OpenWeatherMapAdapter
 from agro_mirai.acquisition.soilgrids import SoilAdapter
 from agro_mirai.persistence.models import NDVIReading, SoilSample, WeatherReading
 
@@ -97,16 +98,42 @@ def _ndvi_reading_from_row(row: dict[str, Any]) -> NDVIReading:
 def fetch_and_save_weather(store, farmer_id: str, field_input: FieldInput) -> bool:
     """Fetch+persist weather rows for a field. Returns True on success,
     False (logged, never raised) on any adapter/store failure."""
+    rows = None
     try:
         rows = WeatherAdapter().fetch(field_input)
+    except Exception as exc:  # noqa: BLE001 — degrade-not-fail per adapter
+        # Open-Meteo rate-limits shared hosting IPs (429 "daily limit
+        # exceeded" seen on Render), so fall back to OpenWeatherMap.
+        logger.warning(
+            "weather primary source failed field=%s (%s: %s); trying OpenWeatherMap",
+            field_input.field_id, type(exc).__name__, exc,
+        )
+        try:
+            rows = OpenWeatherMapAdapter().fetch(field_input)
+            for row in rows:
+                # A single current reading reports min == max == temp, which
+                # would read as "no day/night swing" in the ET0 water balance;
+                # drop them so the documented +/-4C estimate applies instead.
+                if row.get("temp_min_c") == row.get("temp_max_c"):
+                    row.pop("temp_min_c", None)
+                    row.pop("temp_max_c", None)
+        except Exception as exc2:  # noqa: BLE001
+            logger.warning(
+                "weather acquisition failed field=%s (fallback %s: %s)",
+                field_input.field_id, type(exc2).__name__, exc2,
+            )
+            return False
+    try:
         for row in rows:
             store.save_weather_reading(farmer_id, _weather_reading_from_row(row))
-        logger.info("weather acquisition ok field=%s rows=%d", field_input.field_id, len(rows))
+        logger.info(
+            "weather acquisition ok field=%s rows=%d source=%s",
+            field_input.field_id, len(rows), rows[0].get("source") if rows else "-",
+        )
         return True
-    except Exception as exc:  # noqa: BLE001 — degrade-not-fail per adapter
+    except Exception as exc:  # noqa: BLE001
         logger.warning(
-            "weather acquisition failed field=%s (%s: %s)",
-            field_input.field_id, type(exc).__name__, exc,
+            "weather save failed field=%s (%s: %s)", field_input.field_id, type(exc).__name__, exc
         )
         return False
 
