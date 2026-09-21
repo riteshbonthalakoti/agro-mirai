@@ -65,3 +65,6 @@ AGRO_MIRAI_DEMO/.venv/
 AGRO_MIRAI_DEMO/demo.db
 AGRO_MIRAI_DEMO/**/__pycache__/
 AGRO_MIRAI_DEMO.zip
+
+# Module 40: the one ONNX model that is deployed (services/cnn-onnx, ADR 0025)
+!services/cnn-onnx/model/*.onnx
