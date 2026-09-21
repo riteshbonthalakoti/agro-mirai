@@ -98,3 +98,4 @@ One entry per architectural decision record.
   are shown as the farmer entered them regardless of UI language,
   deliberately not auto-translated (a considered, reversible default,
   not an oversight).
+- `0025-onnx-cnn-service.md` — The leaf CNN is exported to ONNX and served by a second free Render service (`services/cnn-onnx`, onnxruntime instead of torch) because Render's 512 MB tier cannot run torch and Hugging Face Docker Spaces now need a paid plan. Verified identical to the torch model; adds an optional shared-secret header (`CNN_SERVICE_TOKEN`); the main API's `/health` warms it.

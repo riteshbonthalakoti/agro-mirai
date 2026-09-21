@@ -111,3 +111,25 @@ def test_predict_inference_error_422():
     data = {"field_id": "field-1", "image": (io.BytesIO(b"x"), "leaf.jpg")}
     resp = client.post("/predict", data=data, content_type="multipart/form-data")
     assert resp.status_code == 422
+
+
+def _post(client, headers=None):
+    return client.post(
+        "/predict",
+        data={"field_id": "f", "image": (io.BytesIO(b"\xff\xd8\xff\xe0jpeg"), "leaf.jpg")},
+        content_type="multipart/form-data",
+        headers=headers or {},
+    )
+
+
+def test_token_required_when_configured(monkeypatch):
+    monkeypatch.setenv("CNN_SERVICE_TOKEN", "s3cret")
+    client = _client(lambda: _StubModel())
+    assert _post(client).status_code == 401
+    assert _post(client, {"X-Service-Token": "wrong"}).status_code == 401
+    assert _post(client, {"X-Service-Token": "s3cret"}).status_code == 200
+
+
+def test_no_token_needed_when_not_configured(monkeypatch):
+    monkeypatch.delenv("CNN_SERVICE_TOKEN", raising=False)
+    assert _post(_client(lambda: _StubModel())).status_code == 200
