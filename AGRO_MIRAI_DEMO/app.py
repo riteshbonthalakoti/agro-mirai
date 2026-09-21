@@ -234,7 +234,15 @@ def live_data(field_id):
 def recommendation(field_id):
     field = field_or_404(field_id)
     try:
-        rec = crop_model.predict(features_for(field))
+        features = features_for(field)
+        rec = crop_model.predict(features)
+        # The crop model itself leaves `rationale` empty; the SHAP explanation
+        # (which soil / weather numbers pushed the pick) is attached here.
+        try:
+            explanation = engine._explanation_service.explain_crop(rec, features)
+            rec = dataclasses.replace(rec, rationale=explanation.summary_en)
+        except Exception as exc:  # noqa: BLE001 - the pick still works without its explanation
+            print(f"(crop explanation skipped: {exc})")
     except ValueError as exc:
         raise ApiError(
             422,

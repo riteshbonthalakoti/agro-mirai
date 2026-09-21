@@ -260,8 +260,8 @@ def _():
 def _():
     r = get(f"/fields/{real_field()['id']}/recommendation")
     d = r.json()
-    ok = r.status_code == 200 and d["recommended_crop"] in CROPS22 and 0 < d["confidence"] <= 1 and len(d["alternatives"]) >= 1
-    return ok, f"HTTP {r.status_code}, {d['recommended_crop']} (confidence {d['confidence']}), alternatives {d['alternatives']}"
+    ok = r.status_code == 200 and d["recommended_crop"] in CROPS22 and 0 < d["confidence"] <= 1 and len(d["alternatives"]) >= 1 and bool(d.get("rationale"))
+    return ok, f"HTTP {r.status_code}, {d['recommended_crop']} (confidence {d['confidence']}), alternatives {d['alternatives']}, rationale: {(d.get('rationale') or 'MISSING')[:80]}"
 
 
 @case("B-I4", "Backend", "Integration", "API + decision engine + explanations", "GET /fields/<id>/advisories",
