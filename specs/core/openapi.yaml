@@ -452,6 +452,46 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '404': { $ref: '#/components/responses/NotFound' }
 
+  /v2/fields/{field_id}/data-summary:
+    parameters:
+      - $ref: '#/components/parameters/FieldId'
+    get:
+      summary: >-
+        Module 39 (additive): the real weather / soil / NDVI rows already
+        persisted for a Field owned by the session-authenticated Farmer, for
+        display. weather.current is the newest observed reading, recent the
+        last 7 observed, forecast up to 7 upcoming forecast rows. soil and
+        ndvi.latest are null until that source has produced data (NDVI is
+        fetched in a background thread after field creation). Each row
+        carries its own `source` string (e.g. open-meteo, soilgrids, gee).
+      security: [ { sessionCookie: [] } ]
+      responses:
+        '200':
+          description: Data summary.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  field_id: { type: string }
+                  fetched_at: { type: string, format: date-time }
+                  soil_used: { type: object, nullable: true, additionalProperties: true }
+                  weather:
+                    type: object
+                    properties:
+                      current: { nullable: true, $ref: '#/components/schemas/WeatherReading' }
+                      recent: { type: array, items: { $ref: '#/components/schemas/WeatherReading' } }
+                      forecast: { type: array, items: { $ref: '#/components/schemas/WeatherReading' } }
+                  soil: { nullable: true, $ref: '#/components/schemas/SoilSample' }
+                  ndvi:
+                    type: object
+                    properties:
+                      latest: { nullable: true, $ref: '#/components/schemas/NDVIReading' }
+                      history: { type: array, items: { $ref: '#/components/schemas/NDVIReading' } }
+                required: [field_id, weather, soil, ndvi]
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
   /v2/fields/{field_id}/recommendation:
     parameters:
       - $ref: '#/components/parameters/FieldId'
@@ -539,6 +579,9 @@ paths:
     parameters:
       - $ref: '#/components/parameters/FieldId'
     get:
+      x-note-module-39: >-
+        Optional query `generate` (default true). `generate=false` only lists
+        the advisories already stored and does not compute a new one.
       summary: List Advisories for a Field owned by the session-authenticated Farmer.
       security: [ { sessionCookie: [] } ]
       responses:
@@ -884,6 +927,49 @@ components:
           type: string
           enum: [ok, degraded]
 
+    WeatherReading:
+      type: object
+      required: [id, field_id, observed_at, source, temp_c, is_forecast]
+      properties:
+        id: { type: string }
+        field_id: { type: string }
+        observed_at: { type: string, format: date-time }
+        source: { type: string }
+        temp_c: { type: number }
+        temp_min_c: { type: number, nullable: true }
+        temp_max_c: { type: number, nullable: true }
+        humidity_pct: { type: number, nullable: true }
+        rainfall_mm: { type: number, nullable: true }
+        wind_mps: { type: number, nullable: true }
+        is_forecast: { type: boolean }
+
+    SoilSample:
+      type: object
+      required: [id, field_id, observed_at, source]
+      properties:
+        id: { type: string }
+        field_id: { type: string }
+        observed_at: { type: string, format: date-time }
+        source: { type: string }
+        ph: { type: number, nullable: true }
+        nitrogen_mg_per_kg: { type: number, nullable: true }
+        phosphorus_mg_per_kg: { type: number, nullable: true }
+        potassium_mg_per_kg: { type: number, nullable: true }
+        organic_carbon_pct: { type: number, nullable: true }
+        moisture_pct: { type: number, nullable: true }
+
+    NDVIReading:
+      type: object
+      required: [id, field_id, observed_at, source, ndvi]
+      properties:
+        id: { type: string }
+        field_id: { type: string }
+        observed_at: { type: string, format: date-time }
+        source: { type: string }
+        ndvi: { type: number }
+        cloud_cover_pct: { type: number, nullable: true }
+        satellite: { type: string, nullable: true }
+
     ErrorEnvelope:
       type: object
       required: [error]
@@ -1109,6 +1195,9 @@ components:
           enum: [en, hi, kn, ta, te, mr, bn, gu]
         title: { type: string }
         body: { type: string }
+        body_plain:
+          type: string
+          description: Plain farmer-language rewrite of `body` (response only).
         severity:
           type: string
           enum: [low, moderate, high, severe]

@@ -267,3 +267,81 @@ def refresh_field_data(field_id: str):
             },
         }
     ), 202
+
+
+@farms_v2_bp.get("/fields/<field_id>/data-summary")
+@require_session_auth
+def field_data_summary(field_id: str):
+    """Module 39: read-only view of the real weather / soil / NDVI rows the
+    acquisition adapters already persist for a field (see
+    ``field_data_acquisition``). Before this route, the mobile app had no
+    way to *show* any of that data -- it was written to the store and only
+    ever consumed inside the models. Additive: nothing existing changes.
+    Ownership uses the store's farmer-scoped ``get_field`` -> 404 (not 403)
+    for another farmer's field, same as every other /v2 route.
+
+    ``weather.current`` is the newest observed (non-forecast) reading;
+    ``weather.forecast`` is up to 7 upcoming forecast rows, soonest first.
+    ``soil`` / ``ndvi.latest`` are ``null`` when that source has produced
+    nothing yet (NDVI is fetched in a background thread after field
+    creation, so ``null`` there can mean "still gathering").
+    """
+    store = current_app.extensions["data_store"]
+    field = store.get_field(g.farmer_id, field_id)
+    if field is None:
+        raise ApiError(404, "NOT_FOUND", "Field not found")
+
+    weather = store.list_weather_readings(g.farmer_id, field.id, limit=200)
+    observed = sorted((w for w in weather if not w.is_forecast), key=lambda w: w.observed_at)
+    now = datetime.now(timezone.utc)
+    upcoming = sorted(
+        (w for w in weather if w.is_forecast and w.observed_at.date() >= now.date()),
+        key=lambda w: w.observed_at,
+    )
+    soil = store.list_soil_samples(g.farmer_id, field.id, limit=20)
+    latest_soil = max(soil, key=lambda s: s.observed_at) if soil else None
+    ndvi = sorted(
+        store.list_ndvi_readings(g.farmer_id, field.id, limit=50),
+        key=lambda n: n.observed_at,
+        reverse=True,
+    )
+
+    # What the models actually use for soil (real SoilGrids values with typical
+    # values for the field's soil type filling only the gaps -- SoilGrids has no
+    # phosphorus/potassium/moisture), so the app can show it and label it.
+    soil_used = None
+    try:
+        from agro_mirai.api.features import build_features_for_field
+
+        fv = build_features_for_field(store, g.farmer_id, field)
+        if fv.soil_data_available:
+            soil_used = {
+                "ph": fv.soil_ph,
+                "nitrogen_mg_per_kg": fv.soil_nitrogen_mg_per_kg,
+                "phosphorus_mg_per_kg": fv.soil_phosphorus_mg_per_kg,
+                "potassium_mg_per_kg": fv.soil_potassium_mg_per_kg,
+                "organic_carbon_pct": fv.soil_organic_carbon_pct,
+                "moisture_pct": fv.soil_moisture_pct,
+                "chemistry_source": fv.soil_chemistry_source,
+                "moisture_source": fv.soil_moisture_source,
+            }
+    except Exception:  # noqa: BLE001 - display extra, never blocks the summary
+        soil_used = None
+
+    return jsonify(
+        {
+            "field_id": field.id,
+            "fetched_at": now.strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "soil_used": soil_used,
+            "weather": {
+                "current": to_json(observed[-1]) if observed else None,
+                "recent": [to_json(w) for w in observed[-7:]],
+                "forecast": [to_json(w) for w in upcoming[:7]],
+            },
+            "soil": to_json(latest_soil) if latest_soil else None,
+            "ndvi": {
+                "latest": to_json(ndvi[0]) if ndvi else None,
+                "history": [to_json(n) for n in ndvi[:10]],
+            },
+        }
+    ), 200

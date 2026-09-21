@@ -143,3 +143,25 @@ def client(app):
 
 def _auth_headers():
     return {"Authorization": f"Bearer {API_KEY}"}
+
+
+import pytest  # noqa: E402
+
+
+@pytest.fixture(autouse=True)
+def _clear_voice_caches():
+    """Module 39: voice_client caches translations/audio in memory; tests reuse
+    fixed advisory ids, so start each test with empty caches."""
+    from agro_mirai.api import voice_client
+
+    voice_client._AUDIO_CACHE.clear()
+    voice_client._TRANSLATION_CACHE.clear()
+    yield
+
+
+@pytest.fixture(autouse=True)
+def _no_live_sarvam(monkeypatch):
+    """Module 40: tests must never call the live Sarvam API (or spend quota)
+    even if the developer's shell has SARVAM_API_KEY_* set."""
+    for name in ("SARVAM_API_KEY", "SARVAM_API_KEY_1", "SARVAM_API_KEY_2", "SARVAM_API_KEY_3"):
+        monkeypatch.delenv(name, raising=False)

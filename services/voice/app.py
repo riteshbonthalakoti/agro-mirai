@@ -25,22 +25,121 @@ Endpoints adapt to the VoiceService Protocol shape 1:1:
                         ffmpeg — Module 23)
 - GET /health           mirrors the main API's health route shape
 
+STT fallback chain (Module 39): cloud APIs are tried first so the heavy
+AI4Bharat model doesn't need to be loaded just for transcription. Order:
+  1. Groq  (GROQ_API_KEY_1..3)   — whisper-large-v3-turbo, 2000 req/day, free, no card
+  2. Sarvam AI  (SARVAM_API_KEY_1..3) — native te/kn/hi/en support, 500/day, free, no card
+  3. AI4Bharat local — always available, no quota, but needs torch weights
+
 The model is loaded lazily (first request), same pattern as the CNN
 service, so /health responds even before AI4Bharat's ~6.8GB of weights
 have finished downloading/caching on first boot.
 """
 from __future__ import annotations
 
+import io
+import logging
 import os
 import shutil
 import subprocess
 import tempfile
 from pathlib import Path
 
+import requests as http_requests
 from flask import Flask, Response, jsonify, request
+
+logger = logging.getLogger(__name__)
 
 _service = None
 _service_load_error: str | None = None
+
+# ---------------------------------------------------------------------------
+# STT cloud fallback helpers (Module 39)
+# ---------------------------------------------------------------------------
+
+_GROQ_KEYS = [
+    os.environ.get("GROQ_API_KEY_1"),
+    os.environ.get("GROQ_API_KEY_2"),
+    os.environ.get("GROQ_API_KEY_3"),
+]
+_SARVAM_KEYS = [
+    os.environ.get("SARVAM_API_KEY_1"),
+    os.environ.get("SARVAM_API_KEY_2"),
+    os.environ.get("SARVAM_API_KEY_3"),
+]
+
+# Map our internal lang codes to Sarvam's BCP-47 codes
+_SARVAM_LANG = {"te": "te-IN", "kn": "kn-IN", "hi": "hi-IN", "en": "en-IN"}
+
+
+def _groq_stt(audio_bytes: bytes, filename: str, api_key: str) -> str:
+    """Transcribe via Groq Whisper (openai-compat multipart upload).
+    Raises on any non-200 or network error."""
+    resp = http_requests.post(
+        "https://api.groq.com/openai/v1/audio/transcriptions",
+        headers={"Authorization": f"Bearer {api_key}"},
+        files={"file": (filename, audio_bytes, "audio/mpeg")},
+        data={"model": "whisper-large-v3-turbo", "response_format": "text"},
+        timeout=30,
+    )
+    resp.raise_for_status()
+    return resp.text.strip()
+
+
+
+def _sarvam_stt(audio_bytes: bytes, filename: str, api_key: str, expected_lang: str | None) -> str:
+    """Transcribe via Sarvam AI (native Indian language support).
+    Sarvam accepts M4A/AAC/WAV/OGG directly — no conversion needed.
+    Use 'unknown' for auto-detect when lang is uncertain.
+    Raises on any non-200 or network error."""
+    lang_code = _SARVAM_LANG.get(expected_lang or "", "unknown")
+    # Sarvam rejects requests without an explicit MIME type on the file part
+    mime = "audio/wav" if audio_bytes[:4] == b"RIFF" else "audio/mpeg"
+    resp = http_requests.post(
+        "https://api.sarvam.ai/speech-to-text",
+        headers={"api-subscription-key": api_key},
+        files={"file": (filename, io.BytesIO(audio_bytes), mime)},
+        data={"language_code": lang_code, "model": "saaras:v3"},
+        timeout=30,
+    )
+    resp.raise_for_status()
+    return resp.json().get("transcript", "").strip()
+
+
+def _cloud_stt(audio_bytes: bytes, audio_filename: str, expected_lang: str | None) -> str | None:
+    """Try all 9 cloud keys in order: 3 Groq → 3 OpenRouter → 3 Sarvam.
+    Returns the transcript string on first success, or None if all 9 fail
+    (callers fall back to AI4Bharat local STT in that case)."""
+    # Groq
+    for key in _GROQ_KEYS:
+        if not key:
+            continue
+        try:
+            text = _groq_stt(audio_bytes, audio_filename, key)
+            if text:
+                logger.info("STT: Groq succeeded")
+                return text
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("STT Groq key failed: %s", exc)
+
+    # Sarvam AI
+    for key in _SARVAM_KEYS:
+        if not key:
+            continue
+        try:
+            text = _sarvam_stt(audio_bytes, audio_filename, key, expected_lang)
+            if text:
+                logger.info("STT: Sarvam succeeded")
+                return text
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("STT Sarvam key failed: %s", exc)
+
+    return None
+
+
+# ---------------------------------------------------------------------------
+# Audio helpers
+# ---------------------------------------------------------------------------
 
 
 def _transcode_wav_to_ogg(wav_bytes: bytes) -> bytes:
@@ -71,6 +170,33 @@ def _transcode_wav_to_ogg(wav_bytes: bytes) -> bytes:
         return ogg_path.read_bytes()
 
 
+def _normalize_audio_to_wav(audio_bytes: bytes) -> bytes:
+    """Module 39: the phone records AAC in an MP4 (M4A) container -- the only
+    format expo-audio can produce on Android -- but STT decodes with
+    libsndfile, which reads WAV/OGG/FLAC/MP3 and not AAC. Anything that is not
+    already WAV/OGG is converted to 16 kHz mono WAV with ffmpeg first. Raises
+    ``RuntimeError`` if conversion is needed but ffmpeg is missing/fails."""
+    if audio_bytes[:4] == b"RIFF" or audio_bytes[:4] == b"OggS":
+        return audio_bytes
+    if shutil.which("ffmpeg") is None:
+        raise RuntimeError("ffmpeg is required to decode this audio format but is not on PATH")
+    with tempfile.TemporaryDirectory() as tmp:
+        src = Path(tmp) / "in.bin"
+        dst = Path(tmp) / "out.wav"
+        src.write_bytes(audio_bytes)
+        subprocess.run(
+            ["ffmpeg", "-y", "-i", str(src), "-ac", "1", "-ar", "16000", str(dst)],
+            check=True,
+            capture_output=True,
+        )
+        return dst.read_bytes()
+
+
+# ---------------------------------------------------------------------------
+# AI4Bharat local service (lazy load)
+# ---------------------------------------------------------------------------
+
+
 def _get_service():
     global _service, _service_load_error
     if _service is not None:
@@ -85,6 +211,11 @@ def _get_service():
     except Exception as exc:  # noqa: BLE001
         _service_load_error = str(exc)
         raise
+
+
+# ---------------------------------------------------------------------------
+# Flask app
+# ---------------------------------------------------------------------------
 
 
 def create_app(service_factory=None) -> Flask:
@@ -123,14 +254,26 @@ def create_app(service_factory=None) -> Flask:
             return jsonify({"error": {"code": "BAD_REQUEST", "message": "audio file is required"}}), 400
         expected_lang = request.form.get("expected_lang") or None
         audio_file = request.files["audio"]
+        audio_bytes = audio_file.read()
+        filename = audio_file.filename or "audio.wav"
+
+        # --- Cloud fallback chain (Groq → OpenRouter → Sarvam) ---
+        # Try cloud first; only load the heavy AI4Bharat model if all 9 keys fail.
+        # Audio is sent as-is to cloud APIs (they handle M4A/AAC natively).
+        cloud_result = _cloud_stt(audio_bytes, filename, expected_lang)
+        if cloud_result:
+            detected = expected_lang or "en"
+            return jsonify({"text": cloud_result, "detected_lang": detected}), 200
+
+        # --- AI4Bharat local fallback ---
         try:
             service = get_service()
         except Exception as exc:  # noqa: BLE001
             return jsonify({"error": {"code": "MODEL_UNAVAILABLE", "message": str(exc)}}), 503
 
-        audio_bytes = audio_file.read()
         try:
-            text, detected_lang = service.speech_to_text(audio_bytes, expected_lang=expected_lang)
+            wav_bytes = _normalize_audio_to_wav(audio_bytes)
+            text, detected_lang = service.speech_to_text(wav_bytes, expected_lang=expected_lang)
         except Exception as exc:  # noqa: BLE001
             return jsonify({"error": {"code": "VOICE_ERROR", "message": str(exc)}}), 422
         return jsonify({"text": text, "detected_lang": detected_lang}), 200

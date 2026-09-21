@@ -102,8 +102,14 @@ def test_raises_when_season_unrecognized():
         map_features(vector)
 
 
-def test_raises_when_season_none():
-    vector = _full_vector(season=None)
+def test_season_none_no_longer_raises_it_falls_back_to_as_of_month():
+    # Module 39: was "raises when season None" -- see the fallback test below.
+    assert map_features(_full_vector(season=None))["season_Kharif"] == 1.0  # as_of is 24 Aug
 
-    with pytest.raises(ValueError, match="season"):
-        map_features(vector)
+
+def test_season_falls_back_to_advice_date_when_sowing_month_has_no_season():
+    """Module 39: a field sown in Sep has FeatureVector.season None; irrigation
+    must still map, using the month of as_of instead of refusing."""
+    assert map_features(_full_vector(season=None, as_of=date(2026, 9, 20)))["season_Kharif"] == 1.0
+    assert map_features(_full_vector(season=None, as_of=date(2026, 1, 15)))["season_Rabi"] == 1.0
+    assert map_features(_full_vector(season=None, as_of=date(2026, 3, 15)))["season_Zaid"] == 1.0

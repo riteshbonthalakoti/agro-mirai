@@ -57,10 +57,16 @@ _VECTOR = FeatureVector(
 
 
 def _png_bytes() -> bytes:
+    import numpy as np
     from PIL import Image
 
+    rng = np.random.default_rng(0)
+    arr = np.empty((64, 64, 3))
+    arr[...] = (50, 130, 40)
+    arr += rng.normal(0, 30, arr.shape)
+    arr[:, ::8] *= 0.4
     buf = io.BytesIO()
-    Image.new("RGB", (1, 1), color=(10, 20, 30)).save(buf, format="PNG")
+    Image.fromarray(np.clip(arr, 0, 255).astype("uint8")).save(buf, format="PNG")
     return buf.getvalue()
 
 
@@ -320,3 +326,16 @@ def test_feedback_cross_tenant_404(client, two_farmers):
     )
     assert resp.status_code == 404
     assert resp.get_json()["error"]["code"] == "NOT_FOUND"
+
+
+
+def test_advisories_generate_false_only_lists_never_creates(client):
+    """Module 39: merely opening the Advice tab must not mint a new advisory."""
+    _register_and_login(client, "+919555000111")
+    field_id = _create_field(client)
+    empty = client.get(f"/v2/fields/{field_id}/advisories?generate=false").get_json()["items"]
+    assert empty == []
+    client.get(f"/v2/fields/{field_id}/advisories")  # explicit generate
+    after_one = client.get(f"/v2/fields/{field_id}/advisories?generate=false").get_json()["items"]
+    again = client.get(f"/v2/fields/{field_id}/advisories?generate=false").get_json()["items"]
+    assert len(after_one) == 1 and len(again) == 1

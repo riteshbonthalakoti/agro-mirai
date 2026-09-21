@@ -214,6 +214,12 @@ entities:
       language: { type: string, enum: language_code, required: true }
       title: { type: string, required: true }
       body: { type: string, required: true }
+      body_plain:
+        type: string
+        required: false
+        description: |
+          Additive, API-response-only (never persisted): `body` rewritten in
+          plain farmer language (regional caveat dropped outside Karnataka).
       severity: { type: string, enum: risk_level, required: true }
       source_refs:
         type: list

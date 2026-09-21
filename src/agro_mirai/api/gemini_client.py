@@ -24,7 +24,7 @@ import os
 import requests
 
 DEFAULT_TIMEOUT_S = 20
-DEFAULT_MODEL = "gemini-2.5-flash"
+DEFAULT_MODEL = "gemini-flash-latest"
 _API_BASE = "https://generativelanguage.googleapis.com/v1beta/models"
 
 
@@ -61,7 +61,7 @@ def ask_gemini(prompt: str) -> str | None:
     try:
         resp = requests.post(
             url,
-            params={"key": api_key},
+            headers={"X-goog-api-key": api_key},
             json={"contents": [{"parts": [{"text": prompt}]}]},
             timeout=gemini_timeout(),
         )

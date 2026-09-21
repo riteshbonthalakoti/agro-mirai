@@ -28,6 +28,16 @@ _SEASON_TO_COLUMN = {
 }
 
 
+def _season_for_month(month: int) -> str:
+    """Indian crop-growing seasons covering all 12 months: kharif Jun-Sep,
+    rabi Oct-Jan, zaid Feb-May."""
+    if 6 <= month <= 9:
+        return "kharif"
+    if month >= 10 or month == 1:
+        return "rabi"
+    return "zaid"
+
+
 def map_features(vector: FeatureVector) -> dict[str, float]:
     """Maps ``vector`` to a ``{column: value}`` row for the irrigation model.
 
@@ -60,7 +70,16 @@ def map_features(vector: FeatureVector) -> dict[str, float]:
             "irrigation feature mapping requires temp_c_mean_14d and "
             "humidity_pct_mean_14d to be non-None"
         )
-    if vector.season not in _SEASON_TO_COLUMN:
+    season = vector.season
+    if season is None and getattr(vector, "as_of", None) is not None:
+        # Module 39: FeatureVector.season is derived from the SOWING month and
+        # is deliberately None for sowings in Aug/Sep and Jan/Feb (outside the
+        # narrow kharif/rabi/zaid sowing windows). That made the irrigation
+        # model refuse any field sown then (real case: a field sown in
+        # September got "not enough data" for irrigation and advisories).
+        # Fall back to the crop-growing season of the date being advised on.
+        season = _season_for_month(vector.as_of.month)
+    if season not in _SEASON_TO_COLUMN:
         raise ValueError(
             f"irrigation feature mapping requires season to be one of "
             f"{sorted(_SEASON_TO_COLUMN)}, got {vector.season!r}"
@@ -72,5 +91,5 @@ def map_features(vector: FeatureVector) -> dict[str, float]:
     row["Temperature_C"] = vector.temp_c_mean_14d
     row["Humidity"] = vector.humidity_pct_mean_14d
     row["Rainfall_mm"] = vector.rainfall_mm_sum_30d
-    row[_SEASON_TO_COLUMN[vector.season]] = 1.0
+    row[_SEASON_TO_COLUMN[season]] = 1.0
     return row

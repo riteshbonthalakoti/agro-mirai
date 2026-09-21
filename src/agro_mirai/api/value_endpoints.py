@@ -21,12 +21,15 @@ service), which both surfaces get "for free" from calling the same code.
 """
 from __future__ import annotations
 
+import dataclasses
 import uuid
 from datetime import datetime, timedelta, timezone
 
 from agro_mirai.api.errors import ApiError
+from agro_mirai.api.farmer_text import in_karnataka, plain_advisory, plain_irrigation
 from agro_mirai.api.features import build_features_for_field
 from agro_mirai.api.image_validation import validate_image_upload
+from agro_mirai.api.leaf_gate import looks_like_plant_photo
 from agro_mirai.api.serializers import to_json
 from agro_mirai.api.validation import validate_feedback_create
 from agro_mirai.api.voice_client import translate_text
@@ -77,9 +80,39 @@ def predict_or_422(fn, *args):
 def compute_recommendation(store, ext: dict, farmer_id: str, field_id: str) -> dict:
     field = get_field_or_404(store, farmer_id, field_id)
     features = features_or_422(store, farmer_id, field)
-    recommendation = ext["crop_model"].predict(features)
+    try:
+        recommendation = ext["crop_model"].predict(features)
+    except ValueError as exc:
+        # Soil N/P/K missing (SoilGrids has no P/K and the farmer picked no
+        # soil type to fall back on): a clear 422 the app can show, not a 500.
+        raise ApiError(
+            422,
+            "SOIL_DATA_MISSING",
+            f"{exc}. Choose a soil type for this field (Me > Edit field) or refresh field data.",
+        ) from None
+    # Module 39: CropRecommendationModel never fills `rationale` (only the
+    # irrigation model does); the SHAP explanation existed only inside
+    # Advisory.body. Attach it here so GET /recommendation carries its own
+    # "why". Degrades to rationale=None if the explainer is unavailable.
+    if recommendation.rationale is None:
+        try:
+            service = getattr(ext.get("decision_engine"), "_explanation_service", None)
+            if service is not None:
+                explanation = service.explain_crop(recommendation, features)
+                if isinstance(explanation.summary_en, str):
+                    recommendation = dataclasses.replace(recommendation, rationale=explanation.summary_en)
+        except Exception:  # noqa: BLE001 - explanation is additive, never blocks the pick
+            pass
     saved = store.save_crop_recommendation(farmer_id, recommendation)
-    return to_json(saved)
+    out = to_json(saved)
+    # The "not commonly grown in your region" check is a hard-coded
+    # Bellary/Karnataka list (decisions/0016): meaningless for fields elsewhere.
+    local = in_karnataka(field.latitude, field.longitude)
+    if not local:
+        out["out_of_region"] = None
+        out["regional_alternative"] = None
+    out["rationale_plain"] = plain_advisory(out.get("rationale") or "", drop_regional_caveat=not local) or None
+    return out
 
 
 def compute_irrigation(store, ext: dict, farmer_id: str, field_id: str) -> dict:
@@ -87,7 +120,9 @@ def compute_irrigation(store, ext: dict, farmer_id: str, field_id: str) -> dict:
     features = features_or_422(store, farmer_id, field)
     advice = predict_or_422(ext["irrigation_model"].predict, features)
     saved = store.save_irrigation_advice(farmer_id, advice)
-    return to_json(saved)
+    out = to_json(saved)
+    out["rationale_plain"] = plain_irrigation(out.get("rationale"))
+    return out
 
 
 _DISEASE_RISK_DEDUP_WINDOW = timedelta(hours=1)
@@ -169,13 +204,24 @@ def compute_disease_risk(store, ext: dict, farmer_id: str, field_id: str, target
     return {"items": [_with_disease_translation(to_json(a), target_lang) for a in alerts]}
 
 
-def compute_advisories(store, ext: dict, farmer_id: str, field_id: str) -> dict:
+def compute_advisories(store, ext: dict, farmer_id: str, field_id: str, generate: bool = True) -> dict:
+    """``generate=True`` (the original contract) computes and stores a NEW
+    advisory on every call. Module 39: the mobile app passes ``generate=False``
+    when merely opening the Advice tab (it used to mint a new advisory on every
+    open) and only generates when the farmer asks for fresh advice."""
     field = get_field_or_404(store, farmer_id, field_id)
-    features = features_or_422(store, farmer_id, field)
-    advisory = predict_or_422(ext["decision_engine"].recommend, field, features)
-    store.save_advisory(farmer_id, advisory)
+    if generate:
+        features = features_or_422(store, farmer_id, field)
+        advisory = predict_or_422(ext["decision_engine"].recommend, field, features)
+        store.save_advisory(farmer_id, advisory)
     advisories = store.list_advisories_for_field(farmer_id, field_id)
-    return {"items": [to_json(a) for a in advisories]}
+    local = in_karnataka(field.latitude, field.longitude)
+    items = []
+    for a in advisories:
+        item = to_json(a)
+        item["body_plain"] = plain_advisory(a.body, drop_regional_caveat=not local)
+        items.append(item)
+    return {"items": items}
 
 
 def compute_disease_risk_image(
@@ -183,6 +229,13 @@ def compute_disease_risk_image(
 ) -> dict:
     field = get_field_or_404(store, farmer_id, field_id)
     image_bytes = validate_image_upload(file_storage)
+    if not looks_like_plant_photo(image_bytes):
+        # Module 39: never let the closed-set CNN "diagnose" a bed sheet.
+        raise ApiError(
+            422,
+            "NOT_A_LEAF",
+            "This photo does not look like a plant leaf. Take a close, well-lit photo of one leaf.",
+        )
 
     try:
         features = build_features_for_field(store, farmer_id, field)

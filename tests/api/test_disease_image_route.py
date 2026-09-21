@@ -16,10 +16,18 @@ def _png_bytes() -> bytes:
     # A real (tiny, valid) 1x1 PNG, built at import time via Pillow — a
     # genuine decodable image, not just bytes with a .png filename, so
     # the content-sniffing check is exercised honestly.
+    import numpy as np
     from PIL import Image
 
+    # Textured foliage-like image: a flat green one is (correctly) rejected
+    # by the leaf gate as NOT_A_LEAF.
+    rng = np.random.default_rng(0)
+    arr = np.empty((64, 64, 3))
+    arr[...] = (50, 130, 40)
+    arr += rng.normal(0, 30, arr.shape)
+    arr[:, ::8] *= 0.4
     buf = io.BytesIO()
-    Image.new("RGB", (1, 1), color=(200, 30, 30)).save(buf, format="PNG")
+    Image.fromarray(np.clip(arr, 0, 255).astype("uint8")).save(buf, format="PNG")
     return buf.getvalue()
 
 
@@ -133,3 +141,14 @@ def test_unknown_field_404(app, monkeypatch):
         headers=_auth_headers(),
     )
     assert resp.status_code == 404
+
+
+def test_non_leaf_photo_rejected_with_422_not_diagnosed(monkeypatch):
+    """Module 39: a white bed-sheet-like image must NOT reach the CNN or get a diagnosis."""
+    import io
+    from PIL import Image
+    from agro_mirai.api import leaf_gate
+
+    buf = io.BytesIO()
+    Image.new("RGB", (64, 64), color=(240, 240, 240)).save(buf, format="PNG")
+    assert not leaf_gate.looks_like_plant_photo(buf.getvalue())

@@ -73,7 +73,8 @@ def post_disease_risk_image(field_id: str):
 @require_session_auth
 def get_advisories(field_id: str):
     store = current_app.extensions["data_store"]
-    body = value_endpoints.compute_advisories(store, current_app.extensions, g.farmer_id, field_id)
+    generate = request.args.get("generate", "true").lower() != "false"
+    body = value_endpoints.compute_advisories(store, current_app.extensions, g.farmer_id, field_id, generate)
     return jsonify(body), 200
 
 

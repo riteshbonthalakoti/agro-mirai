@@ -25,9 +25,11 @@ import hashlib
 from flask import Blueprint, Response, current_app, g, jsonify, request
 
 from agro_mirai.api.errors import ApiError
+from agro_mirai.api.sarvam_client import sniff_audio_mimetype
 from agro_mirai.api.session_auth import require_session_auth
 from agro_mirai.api.stt_validation import validate_audio_upload
 from agro_mirai.api.voice_client import (
+    translate_text,
     answer_farmer_question,
     synthesize_advisory_audio,
     synthesize_answer_audio,
@@ -88,7 +90,7 @@ def get_advisory_audio(advisory_id: str):
     if audio is None:
         raise ApiError(503, "VOICE_UNAVAILABLE", _VOICE_UNAVAILABLE_MESSAGE)
 
-    resp = Response(audio, mimetype=ADVISORY_AUDIO_MIMETYPE)
+    resp = Response(audio, mimetype=sniff_audio_mimetype(audio))
     resp.headers["ETag"] = etag
     resp.headers["Cache-Control"] = "private, max-age=86400"
     return resp
@@ -141,7 +143,14 @@ def post_voice_ask():
         raise ApiError(503, "VOICE_UNAVAILABLE", _VOICE_UNAVAILABLE_MESSAGE)
     question_text, detected_lang = stt_result
 
-    language = detected_lang if detected_lang in V1_LANGUAGES else _resolve_language(store, g.farmer_id)
+    # The language the farmer picked in the app wins over the recogniser's
+    # guess (a mis-detected language would answer in the wrong tongue).
+    if expected_lang:
+        language = expected_lang
+    elif detected_lang in V1_LANGUAGES:
+        language = detected_lang
+    else:
+        language = _resolve_language(store, g.farmer_id)
 
     answer_text = answer_farmer_question(store, g.farmer_id, question_text, language)
     if answer_text is None:
@@ -163,8 +172,38 @@ def post_voice_ask():
                 "answer_text": answer_text,
                 "language": language,
                 "answer_audio_base64": audio_b64,
-                "answer_audio_mimetype": ADVISORY_AUDIO_MIMETYPE if audio_b64 else None,
+                "answer_audio_mimetype": sniff_audio_mimetype(answer_audio) if audio_b64 else None,
             }
         ),
         200,
     )
+
+
+@voice_v2_bp.post("/translate")
+@require_session_auth
+@voice_limiter.limit(lambda: current_app.config["TTS_RATE_LIMIT"])
+def post_translate():
+    """Module 39: translate server-generated English text (advisory bodies,
+    "why this?" explanations) into the farmer's language for on-screen display.
+    Request: ``{"texts": ["..."], "target_lang": "te"}``. Response:
+    ``{"texts": [...], "translated": true}``; if the voice service is
+    unreachable, ``translated`` is false and the original English is returned
+    (degrade-not-fail -- the client keeps showing English)."""
+    body = request.get_json(silent=True)
+    if not isinstance(body, dict) or not isinstance(body.get("texts"), list):
+        raise ApiError(400, "BAD_REQUEST", "body must be {\"texts\": [..], \"target_lang\": \"xx\"}")
+    target = body.get("target_lang")
+    if target not in V1_LANGUAGES:
+        raise ApiError(400, "BAD_REQUEST", f"target_lang must be one of: {', '.join(sorted(V1_LANGUAGES))}")
+    texts = body["texts"]
+    if len(texts) > 10 or not all(isinstance(t, str) and len(t) <= 3000 for t in texts):
+        raise ApiError(400, "BAD_REQUEST", "up to 10 strings of at most 3000 characters")
+    out, ok = [], True
+    for t in texts:
+        tr = translate_text(t, "en", target) if target != "en" else t
+        if tr is None:
+            ok = False
+            out.append(t)
+        else:
+            out.append(tr)
+    return jsonify({"texts": out, "translated": ok and target != "en"}), 200

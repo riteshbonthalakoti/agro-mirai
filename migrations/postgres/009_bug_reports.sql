@@ -3,8 +3,8 @@
 -- migrations/sqlite/009_bug_reports.sql. Not reusing feedback_entries;
 -- see that file's header comment for why.
 CREATE TABLE IF NOT EXISTS bug_reports (
-  id text PRIMARY KEY,
-  farmer_id text NOT NULL REFERENCES farmers(id) ON DELETE CASCADE,
+  id uuid PRIMARY KEY,
+  farmer_id uuid NOT NULL REFERENCES farmers(id) ON DELETE CASCADE,
   created_at timestamptz NOT NULL,
   category text,
   message text,
