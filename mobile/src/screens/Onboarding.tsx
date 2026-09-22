@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { ImageBackground, KeyboardAvoidingView, Platform, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
 import { requestRecordingPermissionsAsync } from 'expo-audio';
@@ -61,10 +61,19 @@ export function PermissionsScreen({ lang, onDone }: { lang: Lang; onDone: () => 
 /** First-launch language pick. Big blocks, English/Telugu on top, Hindi/Kannada
  *  paired below -- tapping a block plays that language's welcome greeting from
  *  a bundled local audio file (no network, no API call). */
+// Real photos (Wikimedia Commons, CC-licensed -- see assets/lang/CREDITS.md)
+// of a place associated with each language: India Gate for English, Charminar
+// for Telugu, Mysore Palace for Kannada, Hawa Mahal for Hindi.
+const LANG_PHOTOS: Record<Lang, number> = {
+  en: require('../../assets/lang/en.jpg'),
+  te: require('../../assets/lang/te.jpg'),
+  kn: require('../../assets/lang/kn.jpg'),
+  hi: require('../../assets/lang/hi.jpg'),
+};
+
 export function LanguageScreen({ onPick }: { onPick: (l: Lang) => void }) {
   const [sel, setSel] = useState<Lang | null>(null);
   const t = makeT(sel ?? 'en');
-  const order: Lang[] = ['en', 'te', 'kn', 'hi'];
   const byCode = Object.fromEntries(LANGS.map((l) => [l.code, l]));
 
   const pick = (l: Lang) => {
@@ -80,22 +89,19 @@ export function LanguageScreen({ onPick }: { onPick: (l: Lang) => void }) {
       activeOpacity={0.85}
       style={{
         flex: 1,
-        minHeight: big ? 96 : 84,
+        minHeight: big ? 110 : 96,
         borderRadius: 16,
-        borderWidth: 2,
+        borderWidth: sel === code ? 3 : 1,
         borderColor: sel === code ? C.accent : C.border,
-        backgroundColor: sel === code ? C.accent : C.bg,
-        alignItems: 'center',
-        justifyContent: 'center',
-        paddingVertical: S.md,
+        overflow: 'hidden',
       }}
     >
-      <Text style={{ fontSize: big ? 26 : 22, fontWeight: '700', color: sel === code ? C.accentText : C.text }}>
-        {byCode[code].native}
-      </Text>
-      <Text style={{ fontSize: 13, marginTop: 2, color: sel === code ? C.accentText : C.muted }}>
-        {byCode[code].english}
-      </Text>
+      <ImageBackground source={LANG_PHOTOS[code]} style={{ flex: 1 }} imageStyle={{ opacity: sel === code ? 1 : 0.9 }}>
+        <View style={{ flex: 1, backgroundColor: sel === code ? 'rgba(46,125,50,0.55)' : 'rgba(0,0,0,0.35)', alignItems: 'center', justifyContent: 'center', paddingVertical: S.md }}>
+          <Text style={{ fontSize: big ? 26 : 22, fontWeight: '700', color: '#fff' }}>{byCode[code].native}</Text>
+          <Text style={{ fontSize: 13, marginTop: 2, color: 'rgba(255,255,255,0.85)' }}>{byCode[code].english}</Text>
+        </View>
+      </ImageBackground>
     </TouchableOpacity>
   );
 
