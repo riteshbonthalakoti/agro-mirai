@@ -51,11 +51,12 @@ function resolveApiBaseUrl(): string {
   return PRODUCTION_API_BASE_URL;
 }
 
-// Set this once a real backend is deployed (Render, etc.) so a standalone
-// production build (no Metro dev server to infer a host from) still has
-// somewhere to call. Empty today because no production deploy exists yet
-// -- see decisions/0019-deployment-architecture.md.
-const PRODUCTION_API_BASE_URL = '';
+// The real hosted backend (Render) -- so a standalone build (no Metro dev
+// server to infer a host from, e.g. the release APK on GitHub) always has
+// somewhere to call, even if EXPO_PUBLIC_API_BASE_URL was left unset at
+// build time. Module 40: replaces the empty placeholder now that the
+// backend is actually deployed.
+const PRODUCTION_API_BASE_URL = 'https://agro-mirai.onrender.com';
 
 export const API_BASE_URL = resolveApiBaseUrl();
 
