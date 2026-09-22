@@ -3,28 +3,9 @@ import { RefreshControl, ScrollView, Text, TouchableOpacity, View } from 'react-
 import { getDiseaseRisk, getIrrigation, getRecommendation } from '../api';
 import { cropLabel, diseaseAction, fmtDate, levelLabel, useApp } from '../ctx';
 import { errorText, Load, useLoad, useTranslated } from '../hooks';
+import { SkeletonCard } from '../skeleton';
 import { C, levelColor, S } from '../theme';
-import { Badge, Banner, Btn, Card, Chip, KV, Muted, st } from '../ui';
-
-export function FieldPicker() {
-  const { fields, field, selectField, lang, t } = useApp();
-  if (!field) return null;
-  return (
-    <View style={{ marginBottom: S.md }}>
-      <Text style={st.h1}>{field.name}</Text>
-      <Muted>
-        {`${field.area_ha} ${t('ha')} · ${cropLabel(lang, field.current_crop)}${field.sown_on ? ' · ' + t('sownOn') + ' ' + field.sown_on : ''}`}
-      </Muted>
-      {fields.length > 1 ? (
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginTop: S.sm }}>
-          {fields.map((f) => (
-            <Chip key={f.id} label={f.name} selected={f.id === field.id} onPress={() => selectField(f.id)} />
-          ))}
-        </View>
-      ) : null}
-    </View>
-  );
-}
+import { Badge, Banner, Btn, Card, KV, Muted, st } from '../ui';
 
 function ErrorBox({ load }: { load: Load<unknown> }) {
   const { t } = useApp();
@@ -71,14 +52,21 @@ export function HomeTab() {
   const c = crop.data;
   const i = irr.data;
   const d = dis.data?.[0];
+  const firstLoad = busy && !c && !i && !d;
+
+  if (firstLoad) {
+    return (
+      <ScrollView contentContainerStyle={{ padding: S.lg, paddingTop: S.md }}>
+        <SkeletonCard /><SkeletonCard /><SkeletonCard />
+      </ScrollView>
+    );
+  }
 
   return (
     <ScrollView
-      contentContainerStyle={{ padding: S.lg, paddingTop: 48 }}
+      contentContainerStyle={{ padding: S.lg, paddingTop: S.md }}
       refreshControl={<RefreshControl refreshing={busy} onRefresh={reloadAll} />}
     >
-      <FieldPicker />
-
       <Card title={t('cropRec')}>
         {c ? (
           <>

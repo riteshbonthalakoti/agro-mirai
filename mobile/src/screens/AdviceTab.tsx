@@ -17,7 +17,6 @@ import { fmtDate, levelLabel, useApp } from '../ctx';
 import { errorText, useLoad, useTranslated } from '../hooks';
 import { C, levelColor, S } from '../theme';
 import { Badge, Banner, Btn, Card, Chip, Input, Muted, st } from '../ui';
-import { FieldPicker } from './HomeTab';
 
 // ---------------------------------------------------------------------------
 // Advisory card
@@ -410,11 +409,10 @@ export function AdviceTab() {
 
   return (
     <ScrollView
-      contentContainerStyle={{ padding: S.lg, paddingTop: 48 }}
+      contentContainerStyle={{ padding: S.lg, paddingTop: S.md }}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => loaded && load(false)} />}
       keyboardShouldPersistTaps="handled"
     >
-      <FieldPicker />
       <AskCard />
       <Text style={[st.h1, { marginTop: S.sm, marginBottom: S.md }]}>{t('advisories')}</Text>
       <Btn

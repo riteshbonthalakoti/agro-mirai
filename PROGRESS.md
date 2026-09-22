@@ -80,16 +80,16 @@ is now Module 19 and the CNN disease model is now Module 20.)*
 <!-- STATE:START -->
 
 ### Recent commits
-- `60b80fe Cleanup sweep: remove repo-root junk, stale worktree, unused deps/imports; rewrite README`
-- `0cd11b9 Backup snapshot: full working tree before aggressive cleanup sweep`
-- `744d27f Fix CI: tests.api._otp_helpers import fails under plain pytest invocation`
-- `8d8740b Module 27: replace email+password /v2 auth with Name+Phone+OTP`
-- `858b1dc Revert "Module 26: migrate /v2 auth from custom sessions to Supabase Auth"`
-- `539243c Module 26: migrate /v2 auth from custom sessions to Supabase Auth`
-- `19a576f Module 25: extend language support to {en, kn, te, hi}`
-- `17a7936 Fix CI: voice TTS test failure (ffmpeg not on ubuntu-latest by default)`
-- `a419ee4 PROGRESS.md: add missing Module 22, 23, 24 entries and phase table rows`
-- `854f513 Add DELETE /v2/fields/{id} â€” expose already-implemented DataStore method`
+- `966a588 Remove AGRO_MIRAI_DEMO from main; kept on backup-agro-mirai-demo`
+- `0c975a2 Fix CI: rename AGRO_MIRAI_DEMO/test_cases.py so pytest stops collecting it`
+- `6e00b95 Commit the ONNX model the CNN service needs`
+- `e0d931d Add ONNX CNN service so photo scans work on Render's free tier`
+- `6e1f5ad NDVI: widen the Sentinel-2 search when no clear scene exists`
+- `91f2b87 Fix satellite NDVI on Render: install earthengine-api, accept key as JSON text`
+- `b1d28e3 Fix weather on Render (OpenWeatherMap fallback); wake sleeping server in the app`
+- `d757216 Config: document Sarvam as primary voice provider; declare Sarvam/Gemini env vars for Render`
+- `625f5ff Docs and demo: Module 36-39 handoff notes, demo package updates`
+- `0e8a7d1 Backend: Sarvam voice pipeline, leaf-photo gate, plain-language advisories`
 
 ### Module status
 - **01-foundation**: done
