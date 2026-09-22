@@ -178,3 +178,53 @@ def test_cnn_client_sends_service_token_when_configured(monkeypatch):
     monkeypatch.delenv("CNN_SERVICE_TOKEN")
     cnn_client.call_cnn_service(b"x", "f")
     assert seen["headers"] == {}
+
+
+def test_cnn_client_retries_once_on_network_failure_then_succeeds(monkeypatch):
+    from agro_mirai.api import cnn_client
+    import requests
+
+    calls = {"n": 0}
+
+    def flaky_post(url, **kw):
+        calls["n"] += 1
+        if calls["n"] == 1:
+            raise requests.exceptions.Timeout("cold start")
+        r = type("R", (), {"status_code": 200, "json": lambda self: {"ok": True}})()
+        return r
+
+    monkeypatch.setenv("CNN_SERVICE_URL", "http://cnn.example")
+    monkeypatch.setattr(cnn_client.requests, "post", flaky_post)
+    assert cnn_client.call_cnn_service(b"x", "f") == {"ok": True}
+    assert calls["n"] == 2
+
+
+def test_cnn_client_gives_up_after_two_network_failures(monkeypatch):
+    from agro_mirai.api import cnn_client
+    import requests
+
+    calls = {"n": 0}
+
+    def always_fails(url, **kw):
+        calls["n"] += 1
+        raise requests.exceptions.ConnectionError("still cold")
+
+    monkeypatch.setenv("CNN_SERVICE_URL", "http://cnn.example")
+    monkeypatch.setattr(cnn_client.requests, "post", always_fails)
+    assert cnn_client.call_cnn_service(b"x", "f") is None
+    assert calls["n"] == 2
+
+
+def test_cnn_client_does_not_retry_on_a_real_error_response(monkeypatch):
+    from agro_mirai.api import cnn_client
+
+    calls = {"n": 0}
+
+    def bad_response(url, **kw):
+        calls["n"] += 1
+        return type("R", (), {"status_code": 422, "json": lambda self: {}})()
+
+    monkeypatch.setenv("CNN_SERVICE_URL", "http://cnn.example")
+    monkeypatch.setattr(cnn_client.requests, "post", bad_response)
+    assert cnn_client.call_cnn_service(b"x", "f") is None
+    assert calls["n"] == 1
