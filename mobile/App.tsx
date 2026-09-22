@@ -33,6 +33,7 @@ import { C, S } from './src/theme';
 import { Banner, Btn } from './src/ui';
 import { Icon, IconName } from './icons';
 import { ToastProvider } from './src/toast';
+import { AnimatedSplashScreen } from './src/components/AnimatedSplashScreen';
 
 /** One consistent top bar for every main tab: no logo, no branding -- just
  *  the active field's name, and a chip switcher when there's more than one
@@ -136,14 +137,18 @@ function Root() {
   }, []);
 
   // Boot: saved language -> existing session (GET /v2/farmers/me) -> main.
+  const [splashDone, setSplashDone] = useState(false);
+  const [pendingPhase, setPendingPhase] = useState<Phase | null>(null);
+
   useEffect(() => {
     (async () => {
-      // Started immediately so the server is waking while the farmer picks a
-      // language / types their number, not after they tap.
       const awake = wakeServer(() => setWaking(true));
       const saved = await cacheGet<string>('lang');
       if (isLang(saved)) setLang(saved);
-      if (!isLang(saved)) return setPhase('lang');
+      if (!isLang(saved)) {
+        setPendingPhase('lang');
+        return;
+      }
       try {
         await awake;
         setWaking(false);
@@ -152,25 +157,34 @@ function Root() {
         cacheSet('farmer', me);
         if (isLang(me.preferred_language)) { setLang(me.preferred_language); cacheSet('lang', me.preferred_language); }
         await loadFields();
-        setPhase('main');
+        setPendingPhase('main');
       } catch (e) {
         const ae = e as ApiError;
-        if (ae.status === 401) return setPhase('auth');
-        // Server unreachable: open with whatever was saved, clearly marked offline.
+        if (ae.status === 401) {
+          setPendingPhase('auth');
+          return;
+        }
         const cachedFarmer = await cacheGet<Farmer>('farmer');
         if (cachedFarmer) {
           setFarmer(cachedFarmer);
           const cachedFields = (await cacheGet<Field[]>('fields')) || [];
           setFields(cachedFields);
           setFieldId(cachedFields[0]?.id ?? null);
-          setPhase('main');
+          setPendingPhase('main');
         } else {
           setBootError(ae.isNetwork ? makeT(saved)('cantReachServer') : ae.message);
-          setPhase('auth');
+          setPendingPhase('auth');
         }
       }
     })();
   }, [loadFields]);
+
+  // Transition from boot to the target phase once the 3-second animated splash completes
+  useEffect(() => {
+    if (splashDone && pendingPhase) {
+      setPhase(pendingPhase);
+    }
+  }, [splashDone, pendingPhase]);
 
   const changeLang = useCallback((l: Lang) => {
     setLang(l);
@@ -194,12 +208,7 @@ function Root() {
     : null;
 
   if (phase === 'boot') {
-    return (
-      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: S.xl }}>
-        <ActivityIndicator />
-        {waking ? <Text style={{ color: C.muted, marginTop: S.md, textAlign: 'center' }}>{t('serverWaking')}</Text> : null}
-      </View>
-    );
+    return <AnimatedSplashScreen onFinish={() => setSplashDone(true)} serverWaking={waking} />;
   }
   if (phase === 'lang') {
     return <LanguageScreen onPick={(l) => { changeLang(l); setPhase('perms'); }} />;
