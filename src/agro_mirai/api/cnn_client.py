@@ -44,21 +44,34 @@ def call_cnn_service(image_bytes: bytes, field_id: str, filename: str = "image.j
     Returns the parsed JSON body (a ``DiseaseRiskAlert``-shaped dict) on a
     200 response, or ``None`` on anything else — unset base URL, network
     error, timeout, or a non-200 status. Never raises.
+
+    Retries once on a network-level failure (timeout/connection error) only
+    — never on an application response (a real 4xx/5xx or bad JSON retries
+    just as pointlessly a second time). This exists because the free-tier
+    service can be mid-cold-start (single worker) when the first request
+    lands, e.g. right behind this process's own background /health warm-up
+    ping; a second attempt a moment later reaches an already-warm worker.
     """
     base_url = cnn_service_url()
     if not base_url:
         return None
 
-    try:
-        resp = requests.post(
-            f"{base_url.rstrip('/')}/predict",
-            files={"image": (filename, image_bytes)},
-            data={"field_id": field_id},
-            headers=_auth_headers(),
-            timeout=cnn_service_timeout(),
-        )
-    except requests.RequestException:
-        return None
+    last_exc: requests.RequestException | None = None
+    for attempt in range(2):
+        try:
+            resp = requests.post(
+                f"{base_url.rstrip('/')}/predict",
+                files={"image": (filename, image_bytes)},
+                data={"field_id": field_id},
+                headers=_auth_headers(),
+                timeout=cnn_service_timeout(),
+            )
+            break
+        except requests.RequestException as exc:
+            last_exc = exc
+            continue
+    else:
+        return None  # both attempts failed at the network level
 
     if resp.status_code != 200:
         return None
