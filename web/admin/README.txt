@@ -7,7 +7,10 @@ Same-origin setup: the host forwards /admin/*, /v2/* and /health to the Flask
 backend, so the session cookie is first-party.
   - Local:  BACKEND_URL=http://localhost:5000 node dev-server.mjs   (http://localhost:3100)
   - Vercel: vercel.json forwards to the Render backend (agro-mirai.onrender.com), so the
-            dashboard works with the laptop off. Voice and CNN are not on Render (see BACKEND.md).
+            dashboard works with the laptop off. Module 40: voice now runs via Sarvam AI's
+            hosted API (no local/Oracle service needed) and the leaf-disease CNN has its own
+            second free Render service (agro-mirai-cnn.onrender.com, ONNX Runtime) -- see
+            decisions/0025-onnx-cnn-service.md. Everything the app needs is cloud-hosted.
             Deploy with: vercel deploy --prod
 
 Backend must run with a cookie that survives this setup: FLASK_ENV=production
