@@ -41,7 +41,6 @@ jobs:
         run: >-
           pytest --ignore=tests/voice --ignore=tests/vision
           --ignore=services/cnn-inference --ignore=services/voice
-          --ignore=AGRO_MIRAI_DEMO
           --deselect tests/test_module_03_acquisition.py::test_open_meteo_live_forecast_call
           --deselect tests/test_module_03_acquisition.py::test_soilgrids_live_call
 
