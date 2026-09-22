@@ -1,9 +1,9 @@
 """Runs the demo test cases (backend + models) for real and writes results.
 
 Needs the demo backend running (run.bat) and internet. Inside the demo folder this
-file is test_cases.py:
+file is run_test_cases.py:
 
-    .\.venv\Scripts\python test_cases.py
+    .\.venv\Scripts\python run_test_cases.py
 
 It takes about 3 to 5 minutes and adds a few test fields and feedback entries to the
 local demo.db only, never to Supabase.
