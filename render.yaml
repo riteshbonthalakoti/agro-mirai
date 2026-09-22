@@ -84,7 +84,7 @@ services:
     plan: free
     region: singapore
     branch: main
-    buildCommand: pip install -r services/tabular-ml/requirements.txt
+    buildCommand: pip install -r services/tabular-ml/requirements.txt && python tools/train_crop_model.py && python tools/train_irrigation_model.py
     startCommand: 'PYTHONPATH=src:services/tabular-ml gunicorn -w 1 --threads 2 --timeout 120 -b 0.0.0.0:$PORT app:app'
     healthCheckPath: /health
     envVars:
