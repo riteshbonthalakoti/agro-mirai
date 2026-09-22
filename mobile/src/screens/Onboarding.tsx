@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { ImageBackground, KeyboardAvoidingView, Platform, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { Image, ImageBackground, KeyboardAvoidingView, Platform, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
 import { requestRecordingPermissionsAsync } from 'expo-audio';
@@ -76,9 +76,21 @@ export function LanguageScreen({ onPick }: { onPick: (l: Lang) => void }) {
   const t = makeT(sel ?? 'en');
   const byCode = Object.fromEntries(LANGS.map((l) => [l.code, l]));
 
-  const pick = (l: Lang) => {
+  // playOnboardingClip already self-cancels a stale request via its ticket
+  // system, but that only stops JS-side playback once the previous call's
+  // own await resolves -- tapping a second block before that happens could
+  // let both starts race. Force a clean stop first so at most one clip is
+  // ever mid-play.
+  const pick = async (l: Lang) => {
     setSel(l);
+    await stopAudio();
     playOnboardingClip('welcome', l).catch(() => {});
+  };
+
+  const continueTo = async () => {
+    if (!sel) return;
+    await stopAudio(); // don't let the greeting bleed into the next screen
+    onPick(sel);
   };
 
   useEffect(() => () => { stopAudio().catch(() => {}); }, []);
@@ -107,8 +119,11 @@ export function LanguageScreen({ onPick }: { onPick: (l: Lang) => void }) {
 
   return (
     <ScrollView contentContainerStyle={{ padding: S.xl, paddingTop: 80, flexGrow: 1 }}>
-      <Text style={st.h1}>Agro Mirai</Text>
-      <Text style={[st.body, { marginBottom: S.xl }]}>{t('chooseLanguage')}</Text>
+      <View style={{ alignItems: 'center', marginBottom: S.lg }}>
+        <Image source={require('../../assets/Agro_Mirai_Logo.png')} style={{ width: 84, height: 84, borderRadius: 20 }} resizeMode="contain" />
+        <Text style={[st.h1, { marginTop: S.md, marginBottom: 0 }]}>Agro Mirai</Text>
+        <Text style={[st.body, { marginTop: S.xs }]}>{t('chooseLanguage')}</Text>
+      </View>
 
       <Block code="en" big />
       <View style={{ height: S.md }} />
@@ -120,7 +135,7 @@ export function LanguageScreen({ onPick }: { onPick: (l: Lang) => void }) {
       </View>
 
       <View style={{ flex: 1 }} />
-      <Btn label={t('continue')} onPress={() => sel && onPick(sel)} disabled={!sel} style={{ marginTop: S.xl }} />
+      <Btn label={t('continue')} onPress={continueTo} disabled={!sel} style={{ marginTop: S.xl }} />
     </ScrollView>
   );
 }
