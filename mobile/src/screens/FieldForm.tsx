@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { Modal, Platform, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import * as Location from 'expo-location';
-import DateTimePicker, { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
 import { ApiError, Field, createField, patchField } from '../api';
 import { cropLabel, soilLabel, useApp } from '../ctx';
+import { DateField } from '../datepicker';
 import { Icon } from '../../icons';
 import { CROP_TYPES, SOIL_TYPES } from '../i18n';
 import { C, S } from '../theme';
@@ -14,65 +14,6 @@ const today = () => {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 };
-
-const toIso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-const parseIso = (s: string) => {
-  const d = /^\d{4}-\d{2}-\d{2}$/.test(s) ? new Date(s + 'T00:00:00') : new Date();
-  return isNaN(d.getTime()) ? new Date() : d;
-};
-const fmtNice = (s: string, locale: string) => {
-  const d = parseIso(s);
-  return d.toLocaleDateString(locale, { day: 'numeric', month: 'short', year: 'numeric' });
-};
-
-/** Themed date picker: shows the date like a real field, opens the native
- *  Android calendar dialog (or an iOS spinner sheet) on tap -- no free-text
- *  date typing. */
-function DateField({ value, onChange, locale }: { value: string; onChange: (iso: string) => void; locale: string }) {
-  const [iosOpen, setIosOpen] = useState(false);
-  const [iosDraft, setIosDraft] = useState(parseIso(value));
-
-  const open = () => {
-    if (Platform.OS === 'android') {
-      DateTimePickerAndroid.open({
-        value: parseIso(value),
-        mode: 'date',
-        display: 'calendar',
-        maximumDate: new Date(),
-        onChange: (_e, d) => { if (d) onChange(toIso(d)); },
-      });
-    } else {
-      setIosDraft(parseIso(value));
-      setIosOpen(true);
-    }
-  };
-
-  return (
-    <>
-      <TouchableOpacity
-        onPress={open}
-        style={{
-          flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-          borderWidth: 1, borderColor: C.border, borderRadius: 10,
-          paddingHorizontal: S.md, paddingVertical: 12, backgroundColor: C.bg,
-        }}
-      >
-        <Text style={{ fontSize: 16, color: C.text, fontWeight: '600' }}>{fmtNice(value, locale)}</Text>
-        <Icon name="chevron-down" size={18} color={C.muted} />
-      </TouchableOpacity>
-      {Platform.OS === 'ios' ? (
-        <Modal visible={iosOpen} transparent animationType="slide" onRequestClose={() => setIosOpen(false)}>
-          <View style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.3)' }}>
-            <View style={{ backgroundColor: C.bg, borderTopLeftRadius: 16, borderTopRightRadius: 16, padding: S.lg }}>
-              <DateTimePicker value={iosDraft} mode="date" display="spinner" maximumDate={new Date()} onChange={(_e, d) => d && setIosDraft(d)} />
-              <Btn label="Done" onPress={() => { onChange(toIso(iosDraft)); setIosOpen(false); }} style={{ marginTop: S.md }} />
-            </View>
-          </View>
-        </Modal>
-      ) : null}
-    </>
-  );
-}
 
 /** Add (no `initial`) or edit a field. Add posts to POST /v2/fields, which
  *  fetches weather + soil synchronously and starts NDVI in the background. */
@@ -173,7 +114,14 @@ export function FieldForm({ initial, onDone, onCancel }: { initial?: Field; onDo
 
   return (
     <ScrollView contentContainerStyle={{ padding: S.lg, paddingTop: 48 }} keyboardShouldPersistTaps="handled">
-      <Text style={st.h1}>{initial ? t('editField') : t('addField')}</Text>
+      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: S.sm }}>
+        {onCancel ? (
+          <TouchableOpacity onPress={onCancel} disabled={busy} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }} style={{ marginRight: S.sm }}>
+            <Icon name="chevron-back" size={24} color={C.text} />
+          </TouchableOpacity>
+        ) : null}
+        <Text style={[st.h1, { marginBottom: 0 }]}>{initial ? t('editField') : t('addField')}</Text>
+      </View>
       {err ? <Banner text={err} kind="error" /> : null}
       {busy && !initial ? <Banner text={t('fetchingFieldData')} /> : null}
 
@@ -199,7 +147,9 @@ export function FieldForm({ initial, onDone, onCancel }: { initial?: Field; onDo
 
       <Label>{t('sownOn')}</Label>
       <View style={{ flexDirection: 'row', gap: S.sm, alignItems: 'center' }}>
-        <View style={{ flex: 1 }}><DateField value={sown} onChange={setSown} locale={lang} /></View>
+        <View style={{ flex: 1 }}>
+          <DateField value={sown} onChange={setSown} locale={lang} maxDate={new Date()} doneLabel={t('save')} todayLabel={t('today')} />
+        </View>
         <Btn label={t('today')} kind="secondary" onPress={() => setSown(today())} />
       </View>
       <Muted style={{ marginTop: 4 }}>{t('sownOnHint')}</Muted>

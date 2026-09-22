@@ -219,8 +219,11 @@ function Root() {
           try { await loadFields(); } catch {}
           setAuthNotice('');
           setBootError('');
+          // Tied to local device state only, not whether the phone number is
+          // new server-side: a fresh install or "clear data" resets tourSeen
+          // and should show the tour again even for a returning phone number.
           const tourSeen = await cacheGet<boolean>('tourSeen');
-          setPhase(isNew && !tourSeen ? 'tour' : 'main');
+          setPhase(!tourSeen ? 'tour' : 'main');
         }}
       />
     );
