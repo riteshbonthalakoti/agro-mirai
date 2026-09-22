@@ -823,3 +823,15 @@ Hindi Piper voice on a machine with the `.venv/` voice stack, then run
 auto-skipped) end-to-end confirmation of all four languages — after
 that, the frontend phase (PRD, then Antigravity) is unblocked to ship
 `te`/`hi` in the mobile app for real.
+
+**Module 41 (3-Service Render Microservice Split & 12-Minute Keep-Alive Cron, 2026-09-23)**:
+Decoupled backend deployment on Render into 3 free-tier web services (512 MB RAM each) to solve peak memory usage and cold-start timeouts at zero cost:
+1. `agro-mirai` (Main API & Architecture): Handled Flask `/v1` and `/v2` REST routes, Supabase Postgres / SQLite DataStore, authentication, and acquisition adapters. Build-time training commands (`train_crop_model.py` and `train_irrigation_model.py`) removed from `render.yaml` to prevent RAM spikes during build.
+2. `agro-mirai-cnn` (CNN Disease ONNX Service): Microservice in `services/cnn-onnx` serving MobileNetV2 ONNX predictions over HTTP.
+3. `agro-mirai-tabular` (Tabular ML Service): New microservice in `services/tabular-ml` serving Crop Recommendation (`crop_rf.joblib`) and Irrigation Prediction (`irrigation_rf.joblib`) models via `POST /predict/crop` and `POST /predict/irrigation`.
+
+`RemoteCropModel` & `RemoteIrrigationModel` (`src/agro_mirai/models/remote_tabular_client.py`) delegate inference to `TABULAR_SERVICE_URL` (`https://agro-mirai-tabular.onrender.com`), falling back silently to local models/rules on network error or missing URL — ensuring zero API downtime or 500 errors.
+
+Created an automated GitHub Actions Keep-Alive workflow ([.github/workflows/keep_alive.yml](file:///c:/Projects/AGRO%20MIRAI/.github/workflows/keep_alive.yml)) scheduled for every 12 minutes (`cron: '*/12 * * * *'`) that pings `/health` on all 3 Render URLs to keep containers permanently awake without sleeping.
+
+Full test suite verified: `services/tabular-ml/tests/test_tabular_service.py` (3 passed), `tests/models/test_remote_tabular_client.py` (4 passed), main test suite clean. Documented in [decisions/0026-three-microservices-render-split.md](file:///c:/Projects/AGRO%20MIRAI/decisions/0026-three-microservices-render-split.md) and [docs/architecture.md](file:///c:/Projects/AGRO%20MIRAI/docs/architecture.md).

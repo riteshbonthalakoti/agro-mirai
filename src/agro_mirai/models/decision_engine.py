@@ -37,8 +37,13 @@ class DecisionEngine:
         explanation_service=None,
         voice_service=None,
     ):
-        self._crop_model = crop_model or CropRecommendationModel()
-        self._irrigation_model = irrigation_model or IrrigationPredictionModel()
+        from agro_mirai.models.remote_tabular_client import (
+            RemoteCropModel,
+            RemoteIrrigationModel,
+        )
+
+        self._crop_model = crop_model or RemoteCropModel()
+        self._irrigation_model = irrigation_model or RemoteIrrigationModel()
         self._disease_model = disease_model or DiseaseRiskModel()
         self._explanation_service = explanation_service or ExplanationService(
             crop_model=self._crop_model,
