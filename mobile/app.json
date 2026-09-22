@@ -28,6 +28,7 @@
       "favicon": "./assets/Agro_Mirai_Logo.png"
     },
     "plugins": [
+      "expo-av",
       "expo-audio",
       [
         "expo-camera",

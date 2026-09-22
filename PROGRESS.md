@@ -82,16 +82,16 @@ is now Module 19 and the CNN disease model is now Module 20.)*
 <!-- STATE:START -->
 
 ### Recent commits
+- `5c42d3a feat(mobile): add 3s animated splash screen Seed -> Growth -> Intelligence -> Agro Mirai`
+- `45b72be feat: commit tabular model joblib artifacts for instant deployment`
+- `be4ceb0 build: train tabular models during build on agro-mirai-tabular`
+- `f0d18b7 feat: 3-service Render microservice split, tabular ML service, RAM optimizations & keep-alive cron`
 - `11cd849 Mobile: fix tour/audio bugs, real profile redesign, own-themed date picker`
 - `5608f64 CNN client: retry once on a network-level failure`
 - `ae63cb9 Point the release build at Render even without an env var; add APK download to landing page`
 - `2ce126a Mobile: landmark photos on language picker, district lookup, themed date picker`
 - `06ae2ad Mobile: voice-narrated onboarding, phone-first login, shared header, scan zoom/history`
 - `966a588 Remove AGRO_MIRAI_DEMO from main; kept on backup-agro-mirai-demo`
-- `0c975a2 Fix CI: rename AGRO_MIRAI_DEMO/test_cases.py so pytest stops collecting it`
-- `6e00b95 Commit the ONNX model the CNN service needs`
-- `e0d931d Add ONNX CNN service so photo scans work on Render's free tier`
-- `6e1f5ad NDVI: widen the Sentinel-2 search when no clear scene exists`
 
 ### Module status
 - **01-foundation**: done
@@ -411,6 +411,9 @@ Remaining risk: the Render Blueprint apply + Supabase seed + live e2e
 smoke test are the one piece that needed a human in a browser and could
 not be completed in this session. Everything else (dependency pinning,
 WSGI config, gunicorn verification, docs, regression) is done.
+- **42-mobile-video-splash-screen-and-release**: done (2026-09-23)
+  Integrated `AGR-MIRAI-LOGO-ANIMATION.mp4` (16:9, 1920x1080) into React Native `AnimatedSplashScreen` via `expo-av` with portrait containment and seamless warm background `#F4F1E4`. Resolved JDK 17+ CMake build errors by adding JVM `--add-opens` flags in `gradle.properties` and narrowing `abiFilters` to `"arm64-v8a"` in `build.gradle`. Published GitHub Release `v1.3.0`. Diagnosed app launch crash to missing `"expo-av"` entry in `app.json` `plugins` array and fixed it. Documented in `docs/SESSION_HANDOFF_SPLASH_AND_RELEASE.md`.
+
 - **16-reliability-ci**: done
 - **17-et0-water-balance**: done
 - **18-crop-localization**: done
