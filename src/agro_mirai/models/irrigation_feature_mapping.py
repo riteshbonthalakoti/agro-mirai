@@ -70,7 +70,7 @@ def map_features(vector: FeatureVector) -> dict[str, float]:
             "irrigation feature mapping requires temp_c_mean_14d and "
             "humidity_pct_mean_14d to be non-None"
         )
-    season = vector.season
+    season = vector.season.lower() if vector.season else None
     if season is None and getattr(vector, "as_of", None) is not None:
         # Module 39: FeatureVector.season is derived from the SOWING month and
         # is deliberately None for sowings in Aug/Sep and Jan/Feb (outside the

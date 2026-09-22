@@ -340,5 +340,42 @@ into a request-handling module later.
 - API framework and routing (Module 11).
 - Model-serving shape for IrrigationAdvice / DiseaseRiskAlert
   (Modules 07-08).
-- Deployment split between Render (API) and Supabase (DB/auth) — open
-  question tracked in `PROGRESS.md`.
+- Deployment split between Render (API) and Supabase (DB/auth) — resolved in Module 16 / Decisions 0025 & 0026.
+
+## 3-Service Microservice Deployment & Free-Tier RAM Optimization (Decisions 0025 & 0026)
+
+To maintain 100% free hosting across all services while obeying Render's **512 MB RAM limit** per free web service, AGRO MIRAI is deployed as a decoupled 3-microservice architecture on Render:
+
+```
+                            ┌─────────────────────────────────┐
+                            │  Mobile App Client / Frontend   │
+                            └────────────────┬────────────────┘
+                                             │ REST API
+                                             ▼
+                            ┌─────────────────────────────────┐
+                            │  Service 1: `agro-mirai`        │
+                            │  (Main API & Architecture)      │
+                            │  Flask /v1 & /v2, Auth, DB,     │
+                            │  Adapters, Orchestration        │
+                            └────────┬───────────────┬────────┘
+                                     │               │
+                   HTTP /predict     │               │ HTTP /predict/crop & /irrigation
+                  (CNN image alert)  │               │ (Tabular RandomForest)
+                                     ▼               ▼
+          ┌────────────────────────────┐   ┌────────────────────────────┐
+          │ Service 2: `agro-mirai-cnn`│   │ Service 3: `agro-mirai-ml` │
+          │ (CNN ONNX Disease Service) │   │ (Tabular ML Service)       │
+          │ MobileNetV2 ONNX           │   │ Crop & Irrigation RF models│
+          └────────────────────────────┘   └────────────────────────────┘
+```
+
+1. **`agro-mirai` (Main Backend Service)**: Handles HTTP routing (`/v1` and `/v2`), user/farmer authentication, database persistence (Supabase Postgres in production), and external data acquisition adapters (Open-Meteo, SoilGrids, Earth Engine). It offloads heavy ML model weights to dedicated microservices.
+2. **`agro-mirai-cnn` (CNN Disease ONNX Service)**: Located in `services/cnn-onnx`, runs MobileNetV2 ONNX model predictions using `onnxruntime` + `Pillow` + `numpy`.
+3. **`agro-mirai-tabular` (Tabular ML Service)**: Located in `services/tabular-ml`, runs Scikit-Learn `RandomForestClassifier` predictions for Crop Recommendation and Irrigation Prediction (`POST /predict/crop` and `POST /predict/irrigation`).
+
+### Resilient Remote Delegation & Fallback
+The main API uses `RemoteCropModel` and `RemoteIrrigationModel` (`src/agro_mirai/models/remote_tabular_client.py`). If `TABULAR_SERVICE_URL` is set, inference requests are sent to the tabular service over HTTP. If the service is unreachable or unset, the main API degrades gracefully to local model/rule execution — preventing any 500 crashes.
+
+### 24/7 Zero-Cost Keep-Alive System
+Render Free Tier web services automatically spin down after 15 minutes of zero traffic. To prevent cold-start delays (50–60s) from affecting mobile users, an automated **GitHub Actions Keep-Alive Workflow** (`.github/workflows/keep_alive.yml`) runs on a 12-minute schedule (`cron: '*/12 * * * *'`), sending HTTP GET `/health` requests to all 3 Render URLs to keep all instances permanently awake at zero cost.
+

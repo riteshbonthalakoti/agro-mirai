@@ -99,3 +99,5 @@ One entry per architectural decision record.
   deliberately not auto-translated (a considered, reversible default,
   not an oversight).
 - `0025-onnx-cnn-service.md` — The leaf CNN is exported to ONNX and served by a second free Render service (`services/cnn-onnx`, onnxruntime instead of torch) because Render's 512 MB tier cannot run torch and Hugging Face Docker Spaces now need a paid plan. Verified identical to the torch model; adds an optional shared-secret header (`CNN_SERVICE_TOKEN`); the main API's `/health` warms it.
+- `0026-three-microservices-render-split.md` — Decoupled AGRO MIRAI on Render into 3 free-tier web services (512 MB RAM each): `agro-mirai` (Main API & Architecture), `agro-mirai-cnn` (CNN ONNX Disease service), and `agro-mirai-tabular` (Tabular ML service in `services/tabular-ml`). Added `RemoteCropModel`/`RemoteIrrigationModel` with resilient local fallbacks, removed build-time model training commands, and added an automated GitHub Actions 12-minute keep-alive cron job (`.github/workflows/keep_alive.yml`) to keep all 3 services awake 24/7 at zero cost.
+

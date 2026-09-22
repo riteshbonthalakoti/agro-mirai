@@ -6,10 +6,7 @@ services:
     plan: free
     region: singapore
     branch: main
-    buildCommand: >-
-      pip install -r requirements.txt &&
-      python tools/train_crop_model.py &&
-      python tools/train_irrigation_model.py
+    buildCommand: pip install -r requirements.txt
     startCommand: 'PYTHONPATH=src gunicorn -w 1 --threads 2 --timeout 120 -b 0.0.0.0:$PORT "agro_mirai.api.app:create_app()"'
     healthCheckPath: /health
     envVars:
@@ -17,15 +14,24 @@ services:
         value: production
       - key: PYTHONPATH
         value: src
-      # Without this, Render defaults to its rolling latest Python
-      # (observed: 3.14.3), which broke the first deploy — scikit-learn
-      # ==1.4.2 (requirements.txt) has no build path there (its own
-      # build-time numpy==2.0.0rc1 pin has no cp314 wheel). Pinned to
-      # match the interpreter this project is actually built/tested
-      # against, per docs/TOOLING.md's verified "python 3.12.10".
       - key: PYTHON_VERSION
         value: 3.12.10
-      # Set these in the Render dashboard, never commit real values:
+      - key: TABULAR_SERVICE_URL
+        value: https://agro-mirai-tabular.onrender.com
+      - key: CNN_SERVICE_URL
+        value: https://agro-mirai-cnn.onrender.com
+      - key: CNN_SERVICE_TIMEOUT_S
+        value: "15"
+      - key: VOICE_SERVICE_TIMEOUT_S
+        value: "30"
+      - key: OTP_RATE_LIMIT
+        value: 5 per minute
+      - key: TTS_RATE_LIMIT
+        value: 20 per minute
+      - key: STT_RATE_LIMIT
+        value: 10 per minute
+      - key: SESSION_COOKIE_SAMESITE
+        value: None
       - key: API_KEY
         sync: false
       - key: FARMER_ID
@@ -38,10 +44,6 @@ services:
         sync: false
       - key: SENTRY_DSN
         sync: false
-      - key: OTP_RATE_LIMIT
-        value: 5 per minute
-      # Module 40 — Sarvam AI voice (speech-to-text, answers, text-to-speech,
-      # translation). Set in the Render dashboard, never here.
       - key: SARVAM_API_KEY_1
         sync: false
       - key: SARVAM_API_KEY_2
@@ -50,34 +52,41 @@ services:
         sync: false
       - key: GEMINI_API_KEY
         sync: false
-      # Earth Engine service-account key as JSON *text* (no key file on Render).
       - key: EE_SERVICE_ACCOUNT_JSON
         sync: false
-      # Weather fallback when Open-Meteo rate-limits Render's shared IP.
       - key: OPENWEATHER_API_KEY
         sync: false
-      # Module 21 — Oracle VM heavy-inference services. Optional; unset
-      # degrades to "CNN image path / remote voice unavailable" rather
-      # than failing. Set once the Oracle VM (docs/deploy/oracle-vm-setup.md)
-      # exists.
-      - key: CNN_SERVICE_URL
-        sync: false
-      - key: CNN_SERVICE_TIMEOUT_S
-        value: "15"
       - key: VOICE_SERVICE_URL
         sync: false
-      - key: VOICE_SERVICE_TIMEOUT_S
-        value: "30"
-      # Module 23 — /v2/advisories/{id}/audio and /v2/stt rate limits,
-      # tighter than the general RATE_LIMIT (decisions/0020, section 7).
-      - key: TTS_RATE_LIMIT
-        value: 20 per minute
-      - key: STT_RATE_LIMIT
-        value: 10 per minute
-      # Module 24 — CORS + session cookie hardening for browser/mobile clients.
-      # CORS_ORIGINS: comma-separated allowed origins for /v2/* endpoints; set
-      # in Render dashboard to your frontend domain(s) once deployed.
       - key: CORS_ORIGINS
         sync: false
-      - key: SESSION_COOKIE_SAMESITE
-        value: None
+
+  - type: web
+    name: agro-mirai-cnn
+    runtime: python
+    repo: https://github.com/riteshbonthalakoti/agro-mirai
+    plan: free
+    region: singapore
+    branch: main
+    buildCommand: pip install -r services/cnn-onnx/requirements.txt
+    startCommand: 'PYTHONPATH=src:services/cnn-onnx gunicorn -w 1 --threads 2 --timeout 180 -b 0.0.0.0:$PORT app:app'
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.10
+      - key: CNN_SERVICE_TOKEN
+        sync: false
+
+  - type: web
+    name: agro-mirai-tabular
+    runtime: python
+    repo: https://github.com/riteshbonthalakoti/agro-mirai
+    plan: free
+    region: singapore
+    branch: main
+    buildCommand: pip install -r services/tabular-ml/requirements.txt
+    startCommand: 'PYTHONPATH=src:services/tabular-ml gunicorn -w 1 --threads 2 --timeout 120 -b 0.0.0.0:$PORT app:app'
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.10

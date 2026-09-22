@@ -102,6 +102,7 @@ def create_app(model_factory=None) -> Flask:
     app.config["MAX_CONTENT_LENGTH"] = 10 * 1024 * 1024
     get_model = model_factory or _load
 
+    @app.get("/")
     @app.get("/health")
     def health():
         try:

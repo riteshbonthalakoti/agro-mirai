@@ -168,9 +168,11 @@ def create_app(config: dict | None = None) -> Flask:
     if config:
         app.config.update(config)
 
+    from agro_mirai.models.remote_tabular_client import RemoteCropModel, RemoteIrrigationModel
+
     store = app.config.get("DATA_STORE") or _build_default_store(app)
-    crop_model = app.config.get("CROP_MODEL") or CropRecommendationModel()
-    irrigation_model = app.config.get("IRRIGATION_MODEL") or IrrigationPredictionModel()
+    crop_model = app.config.get("CROP_MODEL") or RemoteCropModel()
+    irrigation_model = app.config.get("IRRIGATION_MODEL") or RemoteIrrigationModel()
     disease_model = app.config.get("DISEASE_MODEL") or DiseaseRiskModel()
     decision_engine = app.config.get("DECISION_ENGINE") or DecisionEngine(
         crop_model=crop_model,

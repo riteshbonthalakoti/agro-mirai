@@ -1,0 +1,26 @@
+name: Render Keep-Alive Ping
+
+on:
+  schedule:
+    # Trigger every 12 minutes to keep Render Free instances permanently awake
+    - cron: '*/12 * * * *'
+  workflow_dispatch:
+
+jobs:
+  ping-services:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Main API (agro-mirai)
+        run: |
+          echo "Pinging https://agro-mirai.onrender.com/health..."
+          curl -s -m 30 https://agro-mirai.onrender.com/health || true
+
+      - name: Ping CNN Service (agro-mirai-cnn)
+        run: |
+          echo "Pinging https://agro-mirai-cnn.onrender.com/health..."
+          curl -s -m 30 https://agro-mirai-cnn.onrender.com/health || true
+
+      - name: Ping Tabular ML Service (agro-mirai-tabular)
+        run: |
+          echo "Pinging https://agro-mirai-tabular.onrender.com/health..."
+          curl -s -m 30 https://agro-mirai-tabular.onrender.com/health || true
