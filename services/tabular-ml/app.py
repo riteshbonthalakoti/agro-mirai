@@ -25,6 +25,8 @@ from agro_mirai.models.crop_recommendation_model import CropRecommendationModel
 from agro_mirai.models.irrigation_prediction_model import IrrigationPredictionModel
 from agro_mirai.processing.feature_builder import FeatureVector
 
+_HERE = Path(__file__).resolve().parent
+
 _crop_model: CropRecommendationModel | None = None
 _irrigation_model: IrrigationPredictionModel | None = None
 _load_error: str | None = None
@@ -37,8 +39,19 @@ def _get_models():
     if _load_error is not None:
         raise RuntimeError(_load_error)
     try:
-        _crop_model = CropRecommendationModel()
-        _irrigation_model = IrrigationPredictionModel()
+        crop_path = _HERE / "model" / "crop_rf.joblib"
+        irrigation_path = _HERE / "model" / "irrigation_rf.joblib"
+
+        if crop_path.exists():
+            _crop_model = CropRecommendationModel(model_path=crop_path)
+        else:
+            _crop_model = CropRecommendationModel()
+
+        if irrigation_path.exists():
+            _irrigation_model = IrrigationPredictionModel(model_path=irrigation_path)
+        else:
+            _irrigation_model = IrrigationPredictionModel()
+
         return _crop_model, _irrigation_model
     except Exception as exc:
         _load_error = str(exc)
