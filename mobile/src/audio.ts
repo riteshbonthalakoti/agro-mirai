@@ -33,6 +33,54 @@ async function playUri(uri: string, ticket: number, onDone: () => void) {
   p.play();
 }
 
+/** Bundled onboarding clips (mobile/assets/audio) -- static requires, since RN
+ *  needs the asset graph at bundle time; no network, no server, no API key.
+ *  Missing files (e.g. a language added without recording it yet) resolve to
+ *  null so callers can skip playback instead of crashing. */
+const ONBOARDING_CLIPS: Record<string, Record<string, number>> = {
+  welcome: {
+    en: require('../assets/audio/welcome_en.mp3'), kn: require('../assets/audio/welcome_kn.mp3'),
+    te: require('../assets/audio/welcome_te.mp3'), hi: require('../assets/audio/welcome_hi.mp3'),
+  },
+  tour_home: {
+    en: require('../assets/audio/tour_home_en.mp3'), kn: require('../assets/audio/tour_home_kn.mp3'),
+    te: require('../assets/audio/tour_home_te.mp3'), hi: require('../assets/audio/tour_home_hi.mp3'),
+  },
+  tour_data: {
+    en: require('../assets/audio/tour_data_en.mp3'), kn: require('../assets/audio/tour_data_kn.mp3'),
+    te: require('../assets/audio/tour_data_te.mp3'), hi: require('../assets/audio/tour_data_hi.mp3'),
+  },
+  tour_advice: {
+    en: require('../assets/audio/tour_advice_en.mp3'), kn: require('../assets/audio/tour_advice_kn.mp3'),
+    te: require('../assets/audio/tour_advice_te.mp3'), hi: require('../assets/audio/tour_advice_hi.mp3'),
+  },
+  tour_scan: {
+    en: require('../assets/audio/tour_scan_en.mp3'), kn: require('../assets/audio/tour_scan_kn.mp3'),
+    te: require('../assets/audio/tour_scan_te.mp3'), hi: require('../assets/audio/tour_scan_hi.mp3'),
+  },
+};
+export type OnboardingClip = keyof typeof ONBOARDING_CLIPS;
+
+/** Plays a bundled onboarding clip fully offline. Resolves once playback
+ *  starts (not once it finishes) unless `onDone` is given. */
+export async function playOnboardingClip(clip: OnboardingClip, lang: string, onDone?: () => void): Promise<boolean> {
+  const src = ONBOARDING_CLIPS[clip]?.[lang] ?? ONBOARDING_CLIPS[clip]?.en;
+  if (src === undefined) return false;
+  const ticket = ++current;
+  try { player?.remove(); } catch {}
+  await setAudioModeAsync({ allowsRecording: false, playsInSilentMode: true });
+  if (ticket !== current) return false;
+  const p = createAudioPlayer(src);
+  player = p;
+  if (onDone) {
+    p.addListener('playbackStatusUpdate', (s: any) => {
+      if (s.didJustFinish && ticket === current) onDone();
+    });
+  }
+  p.play();
+  return true;
+}
+
 /** File extension matching the server's audio type (players pick the decoder from it). */
 function extFor(mime?: string | null): string {
   const m = (mime || '').toLowerCase();

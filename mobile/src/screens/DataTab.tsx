@@ -5,10 +5,10 @@ import { fmtDate, useApp } from '../ctx';
 import { errorText, useLoad } from '../hooks';
 import { Key } from '../i18n';
 import { Icon, IconName } from '../../icons';
+import { SkeletonCard } from '../skeleton';
 import { cacheGet, cacheSet, formatTime } from '../storage';
 import { C, S } from '../theme';
 import { Banner, Btn, KV, Muted } from '../ui';
-import { FieldPicker } from './HomeTab';
 
 const AUTO_REFRESH_MS = 30 * 60 * 1000;
 
@@ -98,12 +98,19 @@ export function DataTab() {
   const soil = d?.soil;
   const ndvi = d?.ndvi.latest;
 
+  if (sum.loading && !d) {
+    return (
+      <ScrollView contentContainerStyle={{ padding: S.lg, paddingTop: S.md }}>
+        <SkeletonCard /><SkeletonCard /><SkeletonCard />
+      </ScrollView>
+    );
+  }
+
   return (
     <ScrollView
-      contentContainerStyle={{ padding: S.lg, paddingTop: 48 }}
+      contentContainerStyle={{ padding: S.lg, paddingTop: S.md }}
       refreshControl={<RefreshControl refreshing={sum.loading || updating} onRefresh={() => doRefresh(false)} />}
     >
-      <FieldPicker />
       {sum.error ? <Banner text={errorText(t, sum.error)} kind="error" /> : null}
       {updating ? <Banner text={t('updatingNow')} /> : null}
       {msg ? <Banner text={msg} kind="ok" /> : null}

@@ -5,6 +5,7 @@ import { ApiError, Field, createField, patchField } from '../api';
 import { cropLabel, soilLabel, useApp } from '../ctx';
 import { CROP_TYPES, SOIL_TYPES } from '../i18n';
 import { S } from '../theme';
+import { useToast } from '../toast';
 import { Banner, Btn, Chip, Input, Label, Muted, st } from '../ui';
 
 const today = () => {
@@ -16,6 +17,7 @@ const today = () => {
  *  fetches weather + soil synchronously and starts NDVI in the background. */
 export function FieldForm({ initial, onDone, onCancel }: { initial?: Field; onDone: (f: Field) => void; onCancel?: () => void }) {
   const { t, lang } = useApp();
+  const toast = useToast();
   const [name, setName] = useState(initial?.name ?? '');
   const [area, setArea] = useState(initial ? String(initial.area_ha) : '');
   const [lat, setLat] = useState(initial ? String(initial.latitude) : '');
@@ -65,6 +67,7 @@ export function FieldForm({ initial, onDone, onCancel }: { initial?: Field; onDo
     setBusy(true);
     try {
       const saved = initial ? await patchField(initial.id, payload) : await createField(payload);
+      toast.show(initial ? t('fieldUpdated') : t('fieldAdded'), 'ok');
       onDone(saved);
     } catch (e) {
       const ae = e as ApiError;

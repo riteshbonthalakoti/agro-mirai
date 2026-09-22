@@ -26,14 +26,47 @@ import { DataTab } from './src/screens/DataTab';
 import { FieldForm } from './src/screens/FieldForm';
 import { HomeTab } from './src/screens/HomeTab';
 import { MeTab } from './src/screens/MeTab';
-import { AuthScreen, LanguageScreen } from './src/screens/Onboarding';
+import { AuthScreen, LanguageScreen, PermissionsScreen, TourScreen } from './src/screens/Onboarding';
 import { ScanTab } from './src/screens/ScanTab';
 import { cacheGet, cacheSet, clearFarmerCache } from './src/storage';
 import { C, S } from './src/theme';
 import { Banner, Btn } from './src/ui';
 import { Icon, IconName } from './icons';
+import { ToastProvider } from './src/toast';
 
-type Phase = 'boot' | 'lang' | 'auth' | 'main';
+/** One consistent top bar for every main tab: no logo, no branding -- just
+ *  the active field's name, and a chip switcher when there's more than one
+ *  field. Deliberately plain, per design direction: the app should feel
+ *  the same at the top no matter which tab is open. */
+function Header() {
+  const ctx = React.useContext(AppCtx);
+  if (!ctx || !ctx.field) return null;
+  const { field, fields, selectField } = ctx;
+  return (
+    <View style={{ paddingHorizontal: S.lg, paddingTop: S.md, paddingBottom: S.sm, backgroundColor: C.bg, borderBottomWidth: 1, borderBottomColor: C.border }}>
+      <Text style={{ fontSize: 22, fontWeight: '700', color: C.text }} numberOfLines={1}>{field.name}</Text>
+      {fields.length > 1 ? (
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginTop: S.xs }}>
+          {fields.map((f) => (
+            <TouchableOpacity
+              key={f.id}
+              onPress={() => selectField(f.id)}
+              style={{
+                borderWidth: 1, borderColor: f.id === field.id ? C.accent : C.border,
+                backgroundColor: f.id === field.id ? C.accent : 'transparent',
+                borderRadius: 14, paddingHorizontal: S.sm, paddingVertical: 4, marginRight: S.xs, marginTop: 4,
+              }}
+            >
+              <Text style={{ fontSize: 12, color: f.id === field.id ? C.accentText : C.muted }}>{f.name}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      ) : null}
+    </View>
+  );
+}
+
+type Phase = 'boot' | 'lang' | 'perms' | 'auth' | 'tour' | 'main';
 type Tab = 'home' | 'data' | 'advice' | 'scan' | 'me';
 
 const isLang = (v: unknown): v is Lang => LANGS.some((l) => l.code === v);
@@ -44,7 +77,9 @@ export default function App() {
       <SafeAreaProvider>
         <StatusBar barStyle="dark-content" backgroundColor={C.bg} />
         <SafeAreaView style={{ flex: 1, backgroundColor: C.bg }} edges={['top', 'bottom']}>
-          <Root />
+          <ToastProvider>
+            <Root />
+          </ToastProvider>
         </SafeAreaView>
       </SafeAreaProvider>
     </ErrorBoundary>
@@ -167,24 +202,32 @@ function Root() {
     );
   }
   if (phase === 'lang') {
-    return <LanguageScreen onPick={(l) => { changeLang(l); setPhase('auth'); }} />;
+    return <LanguageScreen onPick={(l) => { changeLang(l); setPhase('perms'); }} />;
+  }
+  if (phase === 'perms') {
+    return <PermissionsScreen lang={lang} onDone={() => setPhase('auth')} />;
   }
   if (phase === 'auth' || !ctx) {
     return (
       <AuthScreen
         lang={lang}
         notice={authNotice || bootError}
-        onLoggedIn={async (f) => {
+        onLoggedIn={async (f, isNew) => {
           setFarmer(f);
           cacheSet('farmer', f);
           try { await patchMe({ preferred_language: lang }); } catch {}
           try { await loadFields(); } catch {}
           setAuthNotice('');
           setBootError('');
-          setPhase('main');
+          const tourSeen = await cacheGet<boolean>('tourSeen');
+          setPhase(isNew && !tourSeen ? 'tour' : 'main');
         }}
       />
     );
+  }
+
+  if (phase === 'tour') {
+    return <TourScreen lang={lang} onDone={() => { cacheSet('tourSeen', true); setPhase('main'); }} />;
   }
 
   const finishForm = async (saved: Field) => {
@@ -211,6 +254,7 @@ function Root() {
           </View>
         ) : (
           <>
+            <Header />
             <View style={{ flex: 1 }}>
               {tab === 'home' && <HomeTab />}
               {tab === 'data' && <DataTab />}

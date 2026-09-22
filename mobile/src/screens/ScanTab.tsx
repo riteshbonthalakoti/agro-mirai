@@ -1,15 +1,32 @@
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Image, ScrollView, Text, View } from 'react-native';
+import { ActivityIndicator, Image, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
-import { File as ExpoFile } from 'expo-file-system';
+import { File as ExpoFile, Paths } from 'expo-file-system';
 import { ApiError, DiseaseAlert, getDiseaseRisk, scanLeaf } from '../api';
 import { diseaseAction, fmtDate, levelLabel, useApp } from '../ctx';
+import { SkeletonCard } from '../skeleton';
 import { cacheGet, cacheSet } from '../storage';
-import { levelColor, S } from '../theme';
+import { levelColor, S, C } from '../theme';
 import { Badge, Banner, Btn, Card, Muted } from '../ui';
-import { FieldPicker } from './HomeTab';
+import { ZoomModal } from '../zoom';
 
-type HistoryItem = { id: string; date: string; disease: string; risk: string; source: string | null; confidence: number };
+type HistoryItem = { id: string; date: string; disease: string; risk: string; source: string | null; confidence: number; action?: string | null };
+
+/** Server history has no photo (nothing about the image itself is stored
+ *  server-side). Scans made on THIS device get their photo copied into
+ *  persistent local storage, keyed by scan id, so past scans stay openable
+ *  after the app restarts. A scan made on another device/phone has no local
+ *  photo -- its card says so honestly instead of showing a blank/broken image. */
+async function savePhotoLocally(id: string, sourceUri: string): Promise<string | null> {
+  try {
+    const dst = new ExpoFile(Paths.document, 'scans', `${id}.jpg`);
+    if (!dst.parentDirectory.exists) dst.parentDirectory.create({ intermediates: true });
+    await new ExpoFile(sourceUri).copy(dst, { overwrite: true });
+    return dst.uri;
+  } catch {
+    return null;
+  }
+}
 
 export function ScanTab() {
   const { field, t, lang } = useApp();
@@ -17,11 +34,19 @@ export function ScanTab() {
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<DiseaseAlert | null>(null);
   const [err, setErr] = useState('');
-  const [history, setHistory] = useState<HistoryItem[]>([]);
+  const [history, setHistory] = useState<HistoryItem[] | null>(null);
+  const [photos, setPhotos] = useState<Record<string, string>>({});
+  const [zoomUri, setZoomUri] = useState<string | null>(null);
+  const [openItem, setOpenItem] = useState<HistoryItem | null>(null);
+
+  useEffect(() => {
+    cacheGet<Record<string, string>>('scanPhotos').then((p) => p && setPhotos(p));
+  }, []);
 
   // History comes from the server (every photo scan is stored there), so it
   // survives reinstalling the app or switching phones. The device cache only
-  // paints instantly / covers being offline.
+  // paints instantly / covers being offline. Photos themselves stay local
+  // (see savePhotoLocally) since the server never stores the image.
   useEffect(() => {
     let alive = true;
     cacheGet<HistoryItem[]>('scans').then((h) => alive && h && setHistory(h));
@@ -36,11 +61,12 @@ export function ScanTab() {
           .map((a) => ({
             id: a.id, date: a.created_at, disease: a.disease_translated || a.disease,
             risk: a.risk_level, source: a.source ?? null, confidence: a.confidence,
+            action: diseaseAction(t, a.risk_level, a.recommended_action),
           }));
         setHistory(fromServer);
         cacheSet('scans', fromServer);
       })
-      .catch(() => {});
+      .catch(() => alive && setHistory((h) => h ?? []));
     return () => { alive = false; };
   }, [field?.id, lang]);
 
@@ -65,11 +91,18 @@ export function ScanTab() {
         return;
       }
       setResult(r);
+      const localUri = await savePhotoLocally(r.id, imageUri);
+      if (localUri) {
+        const nextPhotos = { ...photos, [r.id]: localUri };
+        setPhotos(nextPhotos);
+        cacheSet('scanPhotos', nextPhotos);
+      }
       const item: HistoryItem = {
         id: r.id, date: new Date().toISOString(), disease: r.disease_translated || r.disease,
         risk: r.risk_level, source: r.source ?? null, confidence: r.confidence,
+        action: diseaseAction(t, r.risk_level, r.recommended_action),
       };
-      const next = [item, ...history].slice(0, 30);
+      const next = [item, ...(history ?? [])].slice(0, 30);
       setHistory(next);
       cacheSet('scans', next);
     } catch (e) {
@@ -105,8 +138,7 @@ export function ScanTab() {
   };
 
   return (
-    <ScrollView contentContainerStyle={{ padding: S.lg, paddingTop: 48 }}>
-      <FieldPicker />
+    <ScrollView contentContainerStyle={{ padding: S.lg, paddingTop: S.md }}>
       <Card title={t('scanTitle')}>
         <Muted>{t('scanSub')}</Muted>
         <View style={{ flexDirection: 'row', gap: S.sm, marginTop: S.md }}>
@@ -116,7 +148,12 @@ export function ScanTab() {
       </Card>
 
       {err ? <Banner text={err} kind="error" /> : null}
-      {uri ? <Image source={{ uri }} style={{ width: '100%', height: 220, borderRadius: 10, marginBottom: S.md }} resizeMode="cover" /> : null}
+      {uri ? (
+        <TouchableOpacity onPress={() => setZoomUri(uri)} activeOpacity={0.9}>
+          <Image source={{ uri }} style={{ width: '100%', height: 220, borderRadius: 10, marginBottom: S.md }} resizeMode="cover" />
+          <Muted style={{ marginTop: -S.sm, marginBottom: S.md }}>{t('tapToZoom')}</Muted>
+        </TouchableOpacity>
+      ) : null}
       {busy ? (
         <View style={{ alignItems: 'center', padding: S.lg }}>
           <ActivityIndicator />
@@ -132,14 +169,65 @@ export function ScanTab() {
       ) : null}
 
       <Text style={[{ fontSize: 16, fontWeight: '700', marginTop: S.md, marginBottom: S.sm }]}>{t('scanHistory')}</Text>
-      {history.length === 0 ? <Muted>{t('noScans')}</Muted> : null}
-      {history.map((h) => (
-        <View key={h.id} style={{ paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: '#DDE1D9' }}>
-          <Text style={{ fontSize: 14, fontWeight: '600' }}>{h.disease}</Text>
-          <Muted>{`${fmtDate(h.date, true)} · ${levelLabel(t, h.risk)}`}</Muted>
-        </View>
+      {history === null ? <SkeletonCard /> : null}
+      {history !== null && history.length === 0 ? <Muted>{t('noScans')}</Muted> : null}
+      {history?.map((h) => (
+        <TouchableOpacity
+          key={h.id}
+          onPress={() => setOpenItem(h)}
+          activeOpacity={0.7}
+          style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: S.sm, borderBottomWidth: 1, borderBottomColor: C.border }}
+        >
+          {photos[h.id] ? (
+            <Image source={{ uri: photos[h.id] }} style={{ width: 48, height: 48, borderRadius: 8, marginRight: S.md }} />
+          ) : (
+            <View style={{ width: 48, height: 48, borderRadius: 8, marginRight: S.md, backgroundColor: C.surface }} />
+          )}
+          <View style={{ flex: 1 }}>
+            <Text style={{ fontSize: 14, fontWeight: '600' }}>{h.disease}</Text>
+            <Muted>{`${fmtDate(h.date, true)} · ${levelLabel(t, h.risk)}`}</Muted>
+          </View>
+        </TouchableOpacity>
       ))}
       <View style={{ height: S.xl }} />
+
+      <ZoomModal uri={zoomUri} visible={!!zoomUri} onClose={() => setZoomUri(null)} />
+
+      {openItem ? (
+        <ScanDetailModal
+          item={openItem}
+          photoUri={photos[openItem.id] ?? null}
+          onClose={() => setOpenItem(null)}
+          onZoom={(u) => setZoomUri(u)}
+        />
+      ) : null}
     </ScrollView>
+  );
+}
+
+function ScanDetailModal({ item, photoUri, onClose, onZoom }: { item: HistoryItem; photoUri: string | null; onClose: () => void; onZoom: (uri: string) => void }) {
+  const { t } = useApp();
+  return (
+    <View style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' }}>
+      <View style={{ backgroundColor: C.bg, borderTopLeftRadius: 18, borderTopRightRadius: 18, padding: S.lg, paddingBottom: S.xl }}>
+        {photoUri ? (
+          <TouchableOpacity onPress={() => onZoom(photoUri)} activeOpacity={0.9}>
+            <Image source={{ uri: photoUri }} style={{ width: '100%', height: 200, borderRadius: 10, marginBottom: S.sm }} resizeMode="cover" />
+            <Muted style={{ marginBottom: S.md }}>{t('tapToZoom')}</Muted>
+          </TouchableOpacity>
+        ) : (
+          <View style={{ backgroundColor: C.surface, borderRadius: 10, padding: S.lg, marginBottom: S.md, alignItems: 'center' }}>
+            <Muted>{t('scanPhotoNotOnDevice')}</Muted>
+          </View>
+        )}
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+          <Text style={{ fontSize: 20, fontWeight: '700', flex: 1 }}>{item.disease}</Text>
+          <Badge label={levelLabel(t, item.risk)} color={levelColor(item.risk)} />
+        </View>
+        <Muted style={{ marginTop: 4 }}>{fmtDate(item.date, true)}</Muted>
+        {item.action ? <Text style={{ marginTop: S.md, fontSize: 14, lineHeight: 20 }}>{item.action}</Text> : null}
+        <Btn label={t('close')} kind="secondary" onPress={onClose} style={{ marginTop: S.lg }} />
+      </View>
+    </View>
   );
 }
