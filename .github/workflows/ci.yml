@@ -41,8 +41,12 @@ jobs:
         run: >-
           pytest --ignore=tests/voice --ignore=tests/vision
           --ignore=services/cnn-inference --ignore=services/voice
+          --ignore=AGRO_MIRAI_DEMO
           --deselect tests/test_module_03_acquisition.py::test_open_meteo_live_forecast_call
           --deselect tests/test_module_03_acquisition.py::test_soilgrids_live_call
+
+      - name: Run ONNX CNN service tests
+        run: pip install -r services/cnn-onnx/requirements.txt && pytest services/cnn-onnx/tests -q
 
       # Module 12's voice/AI4Bharat stack (torch, transformers, etc.) needs
       # the project-local .venv/ with transformers pinned to 4.49.0 — see

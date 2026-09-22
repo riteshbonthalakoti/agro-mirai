@@ -467,7 +467,7 @@ Every one of them was really run on the demo backend, so the Status and Work Don
 **Optional: run all test cases live in front of the faculty.** With the server running (Terminal 1), type in Terminal 2:
 
 ```
-.\.venv\Scripts\python test_cases.py
+.\.venv\Scripts\python run_test_cases.py
 ```
 
 It takes 1 to 5 minutes (it calls the live weather, soil and satellite services) and prints one line per test case,
