@@ -64,6 +64,10 @@ export function AnimatedSplashScreen({ onFinish, serverWaking = false }: Animate
           isLooping={false}
           useNativeControls={false}
           onPlaybackStatusUpdate={handlePlaybackStatusUpdate}
+          onError={(error) => {
+            console.warn('Splash video playback error:', error);
+            triggerFinish();
+          }}
         />
       </View>
     </AnimatedView>
