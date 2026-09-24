@@ -14,7 +14,7 @@ CC BY 4.0, github.com/pratikkayal/PlantDoc-Dataset, "Cropped-PlantDoc") is
 internet photos with real backgrounds, closer to what a farmer's phone takes.
 
 What it does: measures the OLD model on PlantDoc's test split (the honest
-field number), fine-tunes on PlantDoc train + a PlantVillage replay sample
+field number), fine-tunes on PlantDoc train + a PlantVillage replay sample (90/class, from the Hugging Face copy)
 (so lab-image classes are not forgotten) with a distillation term from the old
 model and label smoothing, picks the epoch on a PlantDoc validation slice (not
 the test split), then reports old vs new on the untouched PlantDoc test split
@@ -116,36 +116,48 @@ random.Random(SEED).shuffle(pd_train_all)
 n_val = max(1, int(0.10 * len(pd_train_all)))
 pd_val, pd_train = pd_train_all[:n_val], pd_train_all[n_val:]
 
-# --------------------------------------------------- PlantVillage replay (tfds)
+# ---------------------------------------- PlantVillage replay (Hugging Face)
+# tensorflow-datasets' PlantVillage link is dead; the original authors' repo on
+# Hugging Face (mohanty/PlantVillage, CC BY-SA 3.0) has the images in data.zip and
+# the official train/test file lists in splits/.
 pv_replay, pv_hold = [], []
 try:
-    import tensorflow_datasets as tfds
+    import io
+    import zipfile
 
-    ds, info = tfds.load("plant_village", split="train", with_info=True, as_supervised=True)
-    tf_names = info.features["label"].names
-    tf_to_idx = {}
-    for i, n in enumerate(tf_names):
-        k = pv_key.get(norm(n))
-        if k is not None:
-            tf_to_idx[i] = idx_of[k]
-    print("tfds classes mapped:", len(tf_to_idx), "of", len(tf_names), flush=True)
-    per_class = defaultdict(int)
+    subprocess.run([sys.executable, "-m", "pip", "-q", "install", "huggingface_hub"], check=False)
+    from huggingface_hub import hf_hub_download
+
+    REPO = "mohanty/PlantVillage"
+    zf = zipfile.ZipFile(hf_hub_download(REPO, "data.zip", repo_type="dataset"))
+    zip_names = set(zf.namelist())
+    by_suffix = {n.split("/color/", 1)[1]: n for n in zip_names if "/color/" in n and not n.endswith("/")}
     PV_DIR = Path("/content/pv")
     PV_DIR.mkdir(exist_ok=True)
-    N_REPLAY, N_HOLD = 60, 25
-    for img, lab in tfds.as_numpy(ds):
-        ci = tf_to_idx.get(int(lab))
-        if ci is None:
-            continue
-        c = per_class[ci]
-        if c >= N_REPLAY + N_HOLD:
-            if all(v >= N_REPLAY + N_HOLD for v in per_class.values()) and len(per_class) == len(tf_to_idx):
-                break
-            continue
-        per_class[ci] += 1
-        p = PV_DIR / f"{ci}_{c}.jpg"
-        Image.fromarray(img).save(p, quality=92)
-        (pv_replay if c < N_REPLAY else pv_hold).append((str(p), ci))
+    N_REPLAY, N_HOLD = 90, 40
+
+    def sample(list_file, per_class, tag):
+        lines = Path(hf_hub_download(REPO, list_file, repo_type="dataset")).read_text().splitlines()
+        by_class = defaultdict(list)
+        for line in lines:
+            parts = line.strip().split("/")
+            if len(parts) == 4 and norm(parts[2]) in pv_key:
+                by_class[idx_of[pv_key[norm(parts[2])]]].append(line.strip())
+        out = []
+        rng = random.Random(SEED)
+        for ci, files in sorted(by_class.items()):
+            rng.shuffle(files)
+            for k, f in enumerate(files[:per_class]):
+                zn = f if f in zip_names else by_suffix.get(f.split("/color/", 1)[1])
+                if zn is None:
+                    continue
+                path = PV_DIR / f"{tag}_{ci}_{k}.jpg"
+                Image.open(io.BytesIO(zf.read(zn))).convert("RGB").save(path, quality=92)
+                out.append((str(path), ci))
+        return out
+
+    pv_replay = sample("splits/color_train.txt", N_REPLAY, "tr")
+    pv_hold = sample("splits/color_test.txt", N_HOLD, "te")
 except Exception as e:  # noqa: BLE001
     print("!! PlantVillage replay unavailable, training with distillation only:", repr(e), flush=True)
 print("PV replay:", len(pv_replay), "PV holdout:", len(pv_hold), flush=True)
@@ -177,7 +189,7 @@ class DS(torch.utils.data.Dataset):
         return self.tf(Image.open(p).convert("RGB")), y
 
 
-REPEAT_PD = 3
+REPEAT_PD = 2
 train_items = pd_train * REPEAT_PD + pv_replay
 train_dl = torch.utils.data.DataLoader(DS(train_items, train_tf), batch_size=32, shuffle=True, num_workers=2, drop_last=True)
 mk = lambda items: torch.utils.data.DataLoader(DS(items, eval_tf), batch_size=64, shuffle=False, num_workers=2)  # noqa: E731
@@ -249,10 +261,10 @@ for blk in list(model.features)[-6:]:
 for p in model.classifier.parameters():
     p.requires_grad = True
 params = [p for p in model.parameters() if p.requires_grad]
-EPOCHS = 14
+EPOCHS = 12
 opt = torch.optim.AdamW(params, lr=3e-4, weight_decay=1e-4)
 sched = torch.optim.lr_scheduler.OneCycleLR(opt, max_lr=3e-4, total_steps=EPOCHS * len(train_dl), pct_start=0.15)
-KD_W, KD_T = 0.3, 2.0
+KD_W, KD_T = 0.5, 2.0
 best_acc, best_state, history = -1.0, None, []
 t0 = time.time()
 for ep in range(1, EPOCHS + 1):
@@ -311,14 +323,14 @@ report = {
     "plantdoc_unmapped_folders_skipped": dict(un1 + un2),
     "plantvillage_replay_images": len(pv_replay), "plantvillage_sample_images": len(pv_hold),
     "epochs": EPOCHS, "best_epoch_chosen_on": "PlantDoc validation slice (10% of train), never the test split",
-    "recipe": "unfreeze last 6 feature blocks, AdamW 3e-4 one-cycle, label smoothing 0.1, KD from old model (w=0.3, T=2), PlantDoc x3 + PV replay",
+    "recipe": "unfreeze last 6 feature blocks, AdamW 3e-4 one-cycle, label smoothing 0.1, KD from old model (w=0.5, T=2), PlantDoc x2 + PV replay (90/class)",
     "trained_at_utc": time.strftime("%Y-%m-%d", time.gmtime()),
     "baseline_old_model": base, "new_model": new,
     "onnx_max_abs_diff_vs_torch": max_diff, "onnx_size_mb": round(onnx_path.stat().st_size / 1e6, 2),
     "history": history,
     "caveats": [
         "PlantDoc is small (~2.5k images) and internet-scraped; its test split is the best available stand-in for phone photos, not real farmer photos from Karnataka.",
-        "PV sample images are drawn from data the OLD model was trained on, so that column measures forgetting, not generalisation.",
+        "PV holdout = official PlantVillage color TEST split files (40/class), which the old model did see in training, so this column measures forgetting, not generalisation.",
     ],
 }
 (OUT / "disease_cnn_plantdoc_eval.json").write_text(json.dumps(report, indent=2))
