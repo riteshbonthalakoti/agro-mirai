@@ -56,6 +56,41 @@ Each `modules/NN-<name>/` directory carries a `STATUS` file
 (`not-started` / `in-progress` / `done`) that `tools/update_state.py` reads
 to build the phase table in `PROGRESS.md`.
 
+## Commands
+
+All Python runs with `PYTHONPATH=src` (no installed package).
+
+```bash
+pip install -r requirements-dev.txt                 # main API + test deps (no torch)
+python tools/train_crop_model.py && python tools/train_irrigation_model.py   # build gitignored models/*.joblib (needed before tests)
+python tools/seed_fixture.py --backend sqlite --db-path agro_mirai.db        # seed farm-001/002 (timestamps shifted to "today")
+PYTHONPATH=src python -m flask --app agro_mirai.api.app:create_app run       # dev server
+python tools/check_specs.py                          # validate specs/ contracts (CI gate)
+python tools/update_state.py                         # regenerate PROGRESS.md state block
+
+# main suite (exactly what CI runs)
+PYTHONPATH=src pytest --ignore=tests/voice --ignore=tests/vision --ignore=services/cnn-inference --ignore=services/voice
+PYTHONPATH=src pytest tests/models/test_decision_engine.py::test_name -q     # single test
+pytest services/cnn-onnx/tests services/cnn-inference/tests services/tabular-ml/tests -q   # per-service suites
+pytest services/voice/tests -q                       # needs system ffmpeg
+.venv/Scripts/python.exe -m pytest tests/voice -q    # voice stack only; needs .venv (transformers==4.49.0)
+ruff check src tools tests                           # lint, non-blocking in CI
+```
+
+Mobile app (`mobile/`, Expo/React Native): `npx expo run:android`. Admin static UI: `web/admin` (Vercel).
+Live-network tests (`test_open_meteo_live_forecast_call`, `test_soilgrids_live_call`) are flaky; CI deselects them.
+
+## Architecture (big picture)
+
+Data flow: `acquisition/` (weather, SoilGrids, GEE NDVI w/ cache fallback) -> `persistence/` (`DataStore` repository: `SQLiteDataStore` | `SupabaseDataStore`) -> `processing/feature_builder.py` (`FeatureVector`) -> `models/` (crop RF, irrigation RF + ET0 water balance, disease rules/CNN) -> `ExplanationService` -> `DecisionEngine.recommend` (`Advisory`) -> `api/` (Flask, `create_app()` factory; singletons in `app.extensions`, never globals).
+
+- **API surfaces**: `/v1` = frozen shared-`API_KEY` routes (demo/back-compat); `/v2` = session-cookie auth (Name+Phone+OTP for farmers, email+password for admins), per-farmer tenant isolation (cross-tenant access returns 404, not 403). Both call the same auth-agnostic handlers in `api/value_endpoints.py` — add logic there, not in route files. Server-rendered Jinja2 frontend + `/admin` live in the same Flask process.
+- **Contracts**: `specs/core/{schema.yaml,enums.md,openapi.yaml,repository-interface.md}` are the source of truth and additive-only; `check_specs.py` enforces them. Schema changes need matching `migrations/{sqlite,postgres}/NNN_*.sql`.
+- **Degrade, never fail**: every external dependency has a fallback (GEE->NDVI cache, CNN service->rule-based disease model, tabular service->local models, missing temp window->wider window, voice down->503 `VOICE_UNAVAILABLE`). Route boundaries turn data-exhaustion `ValueError`s into 422, never 500.
+- **Deployment (Render, 3 services, see `render.yaml`)**: `agro-mirai` (main API), `agro-mirai-cnn` (`services/cnn-onnx`), `agro-mirai-tabular` (`services/tabular-ml`); `services/cnn-inference` and `services/voice` (torch/AI4Bharat) are separate containers for an Oracle VM (`docker-compose.yml`). torch/transformers are deliberately kept out of the main `requirements.txt`; the main process talks to them over HTTP (`cnn_client.py`, `RemoteVoiceService`, `remote_tabular_client.py`).
+- **Voice**: `VoiceService` protocol (`voice/interface.py`), `V1_LANGUAGES = {en,kn,te,hi}` is the single allowlist — import it, never duplicate.
+- **Decisions**: rationale for each non-obvious call lives in `decisions/NNNN-*.md`; `PROGRESS.md` holds handoff state. The long "Current phase" section below is a historical per-module changelog — skim, don't treat as instructions.
+
 ## Current phase
 
 **Modules 01–25 and 27 are complete. Module 26 (Supabase Auth migration) was tried, implemented correctly, and then reverted (`git revert dc97804`) at Ritesh's explicit decision to keep auth fully self-owned — see `decisions/0022-supabase-auth-migration.md` (kept, marked superseded) and `decisions/0023-name-phone-otp-auth.md`. `/v2` farmer auth is now Name+Phone+OTP (`POST /v2/auth/request-otp` / `POST /v2/auth/verify-otp`) — no password, no email required from a farmer; the OTP is logged to the server's own output today, no SMS provider wired up yet. The `/admin` dashboard's email+password login (out-of-band-provisioned admin accounts) is unchanged. Supabase remains available only as an optional `DataStore` backend, not as an auth provider. The backend/production-hardening push (Modules 16–23, `docs/ROADMAP_PRODUCTION.md`) that took the project from "capstone MVP" toward "production grade" is finished — Module 23 froze `specs/core/openapi.yaml` as the contract the frontend gets built against (Module 27's `/v2/auth/*` path replacement is the one post-freeze exception, since the frontend phase hadn't started when either Module 26 or 27 landed). Next: the frontend phase (PRD, then Antigravity — React Native + Expo mobile app, Next.js landing page, Module 19's Jinja2 admin kept as-is), not yet started, now free to build against the OTP auth contract instead of email+password or Supabase Auth.** Module 16 (Reliability & CI Hardening — workstream A) landed 2026-08-29: GitHub Actions CI (`.github/workflows/ci.yml`, gates on `pytest --ignore=tests/voice` + `check_specs.py`, non-blocking `ruff` lint), Sentry error monitoring (`sentry-sdk[flask]`, no-op without `SENTRY_DSN`), request-id structured logging, an input-validation audit of `POST /fields`/`POST /feedback` (real gaps found and fixed — see `src/agro_mirai/api/validation.py`), `tools/backup_supabase.py` + `docs/BACKUPS.md`, and per-API-key rate limiting (Flask-Limiter, 60/min default).

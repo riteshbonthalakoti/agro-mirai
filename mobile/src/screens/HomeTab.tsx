@@ -71,6 +71,7 @@ export function HomeTab() {
         {c ? (
           <>
             <Text style={{ fontSize: 24, fontWeight: '700', color: C.text }}>{cropLabel(lang, c.recommended_crop)}</Text>
+            {typeof c.confidence === 'number' ? <KV k={t('modelConfidence')} v={`${Math.round(c.confidence * 100)}%`} /> : null}
             {c.alternatives && c.alternatives.length ? (
               <KV k={t('alternatives')} v={c.alternatives.map((a) => cropLabel(lang, a)).join(', ')} />
             ) : null}

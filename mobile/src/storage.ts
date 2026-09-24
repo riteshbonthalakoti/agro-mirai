@@ -26,7 +26,7 @@ export async function cacheSet(key: string, value: unknown): Promise<void> {
 export async function clearFarmerCache(): Promise<void> {
   try {
     const keys = await AsyncStorage.getAllKeys();
-    const mine = keys.filter((k) => k.startsWith(P) && k !== P + 'lang');
+    const mine = keys.filter((k) => k.startsWith(P) && !['lang', 'permsAsked', 'tourSeen'].some((d) => k === P + d));
     if (mine.length) await AsyncStorage.multiRemove(mine);
   } catch {
     // ignore
