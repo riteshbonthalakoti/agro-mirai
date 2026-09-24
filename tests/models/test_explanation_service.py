@@ -316,3 +316,28 @@ def test_summary_translated_none_when_no_voice_service():
 
     assert explanation.summary_translated is None
     assert explanation.summary_translated_lang is None
+
+
+def test_explain_crop_degrades_when_model_artifact_missing_and_no_tabular_service(monkeypatch):
+    """Main API process on Render has no model files; with the tabular service
+    unreachable, explanations must degrade to method='unavailable', never raise."""
+    from datetime import datetime, timezone
+
+    from agro_mirai.models.explanation_service import ExplanationService
+    from agro_mirai.persistence.models import CropRecommendation
+
+    monkeypatch.delenv("TABULAR_SERVICE_URL", raising=False)
+
+    class _NoModel:
+        @property
+        def _model(self):
+            raise FileNotFoundError("crop_rf.joblib not found")
+
+    rec = CropRecommendation(
+        id="r1", field_id="f1", created_at=datetime.now(timezone.utc),
+        recommended_crop="rice", confidence=0.9, alternatives=["maize"], rationale="x", season="kharif",
+    )
+    exp = ExplanationService(crop_model=_NoModel()).explain_crop(rec, features=None)  # features unused on this path
+    assert exp.method == "unavailable"
+    assert exp.top_contributions == []
+    assert "unavailable" in exp.summary_en

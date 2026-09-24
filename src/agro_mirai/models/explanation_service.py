@@ -11,8 +11,11 @@ full reasoning.
 """
 from __future__ import annotations
 
+import logging
+import os
 import uuid
-from datetime import datetime, timezone
+from dataclasses import asdict
+from datetime import date, datetime, timezone
 
 import pandas as pd
 
@@ -42,6 +45,12 @@ from agro_mirai.persistence.models import (
 from agro_mirai.processing.feature_builder import FeatureVector
 
 _TOP_K = 3
+_log = logging.getLogger(__name__)
+
+
+def _ser_features(features: FeatureVector) -> dict:
+    d = asdict(features)
+    return {k: (v.isoformat() if isinstance(v, (datetime, date)) else v) for k, v in d.items()}
 
 
 def _direction(contribution: float) -> str:
@@ -74,7 +83,63 @@ class ExplanationService:
             return None
         return self._voice_service.translate(summary_en, "en", target_lang)
 
+    def _remote_contributions(self, kind: str, features: FeatureVector) -> list[FeatureContribution] | None:
+        """Ask the tabular service (which holds the trained models) for SHAP
+        contributions. Returns None on any failure so callers can degrade."""
+        url = os.environ.get("TABULAR_SERVICE_URL", "").rstrip("/")
+        if not url:
+            return None
+        try:
+            import requests
+
+            resp = requests.post(f"{url}/explain/{kind}", json={"feature_vector": _ser_features(features)}, timeout=25)
+            if resp.status_code != 200:
+                _log.warning("tabular /explain/%s returned HTTP %s", kind, resp.status_code)
+                return None
+            return [FeatureContribution(**c) for c in resp.json()["top_contributions"]]
+        except Exception as exc:  # noqa: BLE001 - degrade, never fail
+            _log.warning("tabular /explain/%s failed: %s", kind, exc)
+            return None
+
+    def _finish(self, top, subject_type, subject_id, field_id, label, target_lang, extra="", method="shap_tree"):
+        summary_en = _summary_en(label, top) if top else (
+            f"The trained model's factor breakdown for this {label} is temporarily unavailable; the result itself is unaffected."
+        )
+        summary_en += extra
+        summary_kn = self._translate(summary_en)
+        return Explanation(
+            id=str(uuid.uuid4()), field_id=field_id, created_at=datetime.now(timezone.utc),
+            subject_type=subject_type, subject_id=subject_id,
+            method=method if top else "unavailable", top_contributions=top,
+            summary_en=summary_en, summary_kn=summary_kn,
+            summary_translated=summary_kn if target_lang == "kn" else self._translate(summary_en, target_lang),
+            summary_translated_lang=target_lang if self._voice_service is not None else None,
+        )
+
     def explain_crop(
+        self, recommendation: CropRecommendation, features: FeatureVector, target_lang: str = "kn"
+    ) -> Explanation:
+        try:
+            return self._explain_crop_local(recommendation, features, target_lang)
+        except Exception as exc:  # model artifact not present in this process
+            _log.info("local crop explanation unavailable (%s); using tabular service", exc)
+        top = self._remote_contributions("crop", features) or []
+        return self._finish(top, "crop_recommendation", recommendation.id, recommendation.field_id,
+                            f"recommendation of {recommendation.recommended_crop}", target_lang,
+                            extra=_regional_fit_note(recommendation))
+
+    def explain_irrigation(
+        self, advice: IrrigationAdvice, features: FeatureVector, target_lang: str = "kn"
+    ) -> Explanation:
+        try:
+            return self._explain_irrigation_local(advice, features, target_lang)
+        except Exception as exc:
+            _log.info("local irrigation explanation unavailable (%s); using tabular service", exc)
+        top = self._remote_contributions("irrigation", features) or []
+        return self._finish(top, "irrigation_advice", advice.id, advice.field_id,
+                            f"{advice.urgency} irrigation urgency", target_lang)
+
+    def _explain_crop_local(
         self,
         recommendation: CropRecommendation,
         features: FeatureVector,
@@ -128,7 +193,7 @@ class ExplanationService:
             summary_translated_lang=target_lang if self._voice_service is not None else None,
         )
 
-    def explain_irrigation(
+    def _explain_irrigation_local(
         self, advice: IrrigationAdvice, features: FeatureVector, target_lang: str = "kn"
     ) -> Explanation:
         import shap

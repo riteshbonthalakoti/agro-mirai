@@ -104,6 +104,34 @@ def create_app() -> Flask:
         except Exception as exc:
             return jsonify({"error": {"code": "INFERENCE_ERROR", "message": str(exc)}}), 422
 
+    @app.post("/explain/crop")
+    def explain_crop():
+        """SHAP factor breakdown for the crop model (kept here so the main
+        API process never loads model artifacts or SHAP)."""
+        try:
+            data = request.get_json(force=True)
+            if not data or "feature_vector" not in data:
+                return jsonify({"error": {"code": "BAD_REQUEST", "message": "feature_vector is required"}}), 400
+            from agro_mirai.models.explanation_service import ExplanationService
+
+            features = _dict_to_feature_vector(data["feature_vector"])
+            crop_model, _ = _get_models()
+            rec = crop_model.predict(features)
+            exp = ExplanationService(crop_model=crop_model)._explain_crop_local(rec, features)
+            return jsonify({
+                "method": exp.method,
+                "recommended_crop": rec.recommended_crop,
+                "top_contributions": [asdict(c) for c in exp.top_contributions],
+            }), 200
+        except Exception as exc:
+            return jsonify({"error": {"code": "EXPLAIN_ERROR", "message": str(exc)}}), 422
+
+    @app.post("/explain/irrigation")
+    def explain_irrigation():
+        # SHAP over the 60 MB irrigation forest is not enabled on the 512 MB
+        # free tier; callers degrade to an "unavailable" explanation.
+        return jsonify({"error": {"code": "NOT_ENABLED", "message": "irrigation explanations are disabled on this instance"}}), 501
+
     @app.post("/predict/irrigation")
     def predict_irrigation():
         try:

@@ -26,6 +26,15 @@ def _serialize_features(features: FeatureVector) -> dict:
     return res
 
 
+def _post_with_retry(url: str, payload: dict, timeout_s: float):
+    """One retry: a free-tier service that was just spun up or recycled often
+    drops the first connection (observed: RemoteProtocolError 'Server disconnected')."""
+    try:
+        return requests.post(url, json=payload, timeout=timeout_s)
+    except (requests.ConnectionError, requests.Timeout):
+        return requests.post(url, json=payload, timeout=timeout_s * 2)
+
+
 def _parse_datetime(val: str | datetime | None) -> datetime | None:
     if val is None:
         return None
@@ -62,7 +71,7 @@ class RemoteCropModel:
                     "feature_vector": _serialize_features(features),
                     "top_k": top_k,
                 }
-                resp = requests.post(url, json=payload, timeout=self._timeout_s)
+                resp = _post_with_retry(url, payload, self._timeout_s)
                 if resp.status_code == 200:
                     data = resp.json()
                     return CropRecommendation(
@@ -109,7 +118,7 @@ class RemoteIrrigationModel:
                 payload = {
                     "feature_vector": _serialize_features(features),
                 }
-                resp = requests.post(url, json=payload, timeout=self._timeout_s)
+                resp = _post_with_retry(url, payload, self._timeout_s)
                 if resp.status_code == 200:
                     data = resp.json()
                     return IrrigationAdvice(
