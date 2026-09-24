@@ -118,7 +118,7 @@ When the APK was installed and opened on a physical phone, the app crashed immed
 - Checking `mobile/app.json` revealed `expo-av` was missing from the `plugins` array.
 
 ### Fix Applied
-Updated `mobile/app.json`:
+1. Updated `mobile/app.json`:
 ```json
     "plugins": [
       "expo-av",
@@ -135,6 +135,10 @@ Updated `mobile/app.json`:
       "@react-native-community/datetimepicker"
     ]
 ```
+
+2. Added `onError` handler to `<Video />` in `mobile/src/components/AnimatedSplashScreen.tsx` as a fallback safeguard so if any video playback error occurs, it smoothly transitions to main app instead of crashing/hanging.
+
+3. Added `buildFeatures { prefab false }` to `mobile/android/app/build.gradle` to prevent JDK 21 / JBR Prefab CLI reflection warnings during CMake tasks.
 
 ---
 
@@ -154,3 +158,4 @@ To complete the release:
    ```
 3. **Verify on Device:**
    Install on Android phone via `adb install` or direct download link and test splash animation & seamless transition to main screen.
+
