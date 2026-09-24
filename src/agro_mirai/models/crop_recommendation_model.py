@@ -145,7 +145,12 @@ class CropRecommendationModel:
         keeping = None
         if keep_current and features.crop_type in ecocrop.table():
             keeping = features.crop_type
-            best = next(f for f in fits if f.crop == keeping)
+            # already sown, so the sowing-month penalty must not count against it
+            no_season = ecocrop.score_crops(
+                temp, features.soil_ph, features.soil_type, features.rainfall_mm_sum_30d,
+                regional, None, features.annual_rain_mm_est,
+            )
+            best = next(f for f in no_season if f.crop == keeping)
         alternatives = [f.crop for f in fits if f.crop != best.crop][:top_k]
 
         fit = check_regional_fit(best.crop, alternatives)
