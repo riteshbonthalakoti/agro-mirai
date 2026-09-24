@@ -77,9 +77,20 @@ def predict_or_422(fn, *args):
         raise ApiError(422, "INSUFFICIENT_DATA", str(exc)) from None
 
 
+def _annual_rain(field):
+    """12-month rain at the field; short wait, None if slow or down."""
+    try:
+        from agro_mirai.acquisition.open_meteo import annual_rainfall_mm
+
+        return annual_rainfall_mm(field.latitude, field.longitude, timeout_s=2.5)
+    except Exception:  # noqa: BLE001 - optional signal
+        return None
+
+
 def compute_recommendation(store, ext: dict, farmer_id: str, field_id: str) -> dict:
     field = get_field_or_404(store, farmer_id, field_id)
     features = features_or_422(store, farmer_id, field)
+    features = dataclasses.replace(features, annual_rain_mm_est=_annual_rain(field))
     try:
         recommendation = ext["crop_model"].predict(features)
     except ValueError as exc:

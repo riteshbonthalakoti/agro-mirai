@@ -12,6 +12,11 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import date
 
+from agro_mirai.processing.weather_series import (
+    daily_dicts,
+    one_row_per_day,
+    split_past_and_forecast,
+)
 from agro_mirai.models.soil_type_typical_values import (
     lookup_typical_moisture_pct,
     lookup_typical_values,
@@ -98,6 +103,18 @@ class FeatureVector:
     longitude: float | None = None
     soil_type: str | None = None
 
+    # Module 43: forecast + daily series (additive). The forecast used to be
+    # stored and never read.
+    rain_forecast_mm_3d: float | None = None
+    rain_forecast_mm_7d: float | None = None
+    forecast_days_available: int = 0
+    wind_mps_mean_7d: float | None = None
+        #: one dict per day (see weather_series.daily_dicts): the last ~30 days
+    #: up to as_of, then forecast days. None when built from old fixtures.
+    daily_weather: list | None = None
+    #: rain over the last 12 months at the field (Open-Meteo archive); filled in by the API layer
+    annual_rain_mm_est: float | None = None
+
 
 class FeatureBuilder:
     """Stateless; ``build`` is the only entry point."""
@@ -110,9 +127,9 @@ class FeatureBuilder:
         ndvi_readings: list[NDVIReading],
         as_of: date,
     ) -> FeatureVector:
-        weather_in_range = [
-            w for w in weather_readings if w.observed_at.date() <= as_of
-        ]
+        # one row per day (no double counting of current/forecast/daily rows)
+        day_rows = one_row_per_day(weather_readings)
+        weather_in_range, forecast_rows = split_past_and_forecast(day_rows, as_of)
         if not weather_in_range:
             raise ValueError(
                 f"FeatureBuilder requires at least one WeatherReading with "
@@ -139,6 +156,19 @@ class FeatureBuilder:
         r30, t30, h30 = weather_windows[30]
         tmin7, tmax7 = _temp_min_max_window(weather_in_range, as_of, 7)
 
+        fc_next = [w for w in forecast_rows if w.observed_at.date().toordinal() - as_of.toordinal() <= 7]
+        fc3 = [w for w in fc_next if w.observed_at.date().toordinal() - as_of.toordinal() <= 3]
+        rain_fc_3d = sum(w.rainfall_mm or 0.0 for w in fc3) if fc3 else None
+        rain_fc_7d = sum(w.rainfall_mm or 0.0 for w in fc_next) if fc_next else None
+        winds = [
+            w.wind_mps for w in weather_in_range
+            if w.wind_mps is not None and 0 <= as_of.toordinal() - w.observed_at.date().toordinal() < 7
+        ]
+        recent_past = [
+            w for w in weather_in_range if as_of.toordinal() - w.observed_at.date().toordinal() < 35
+        ]
+        daily = daily_dicts(recent_past + fc_next)
+
         return FeatureVector(
             field_id=field.id,
             as_of=as_of,
@@ -164,6 +194,11 @@ class FeatureBuilder:
             crop_type=field.current_crop,
             longitude=field.longitude,
             soil_type=field.soil_type,
+            rain_forecast_mm_3d=rain_fc_3d,
+            rain_forecast_mm_7d=rain_fc_7d,
+            forecast_days_available=len(fc_next),
+            wind_mps_mean_7d=(sum(winds) / len(winds)) if winds else None,
+            daily_weather=daily,
             **soil_features,
         )
 
