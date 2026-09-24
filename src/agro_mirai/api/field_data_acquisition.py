@@ -102,6 +102,44 @@ def _ndvi_reading_from_row(row: dict[str, Any]) -> NDVIReading:
     )
 
 
+def _fallback_weather_rows(field_input: FieldInput) -> list[dict[str, Any]]:
+    """Open-Meteo is refusing us: current conditions from OpenWeatherMap,
+    observed history from NASA POWER and the forecast from MET Norway, all
+    three fetched in parallel. Any subset is fine; [] only if all fail."""
+    from concurrent.futures import ThreadPoolExecutor
+
+    from agro_mirai.acquisition import weather_fallbacks as wf
+
+    def current() -> list[dict[str, Any]]:
+        try:
+            rows = OpenWeatherMapAdapter().fetch(field_input)
+            for row in rows:
+                # a single current reading reports min == max == temp, which would
+                # read as "no day/night swing" in the ET0 balance; drop them
+                if row.get("temp_min_c") == row.get("temp_max_c"):
+                    row.pop("temp_min_c", None)
+                    row.pop("temp_max_c", None)
+            return rows
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("OpenWeatherMap failed field=%s (%s: %s)", field_input.field_id, type(exc).__name__, exc)
+            return []
+
+    lat, lon, fid = field_input.latitude, field_input.longitude, field_input.field_id
+    with ThreadPoolExecutor(max_workers=3) as pool:
+        futures = [
+            pool.submit(current),
+            pool.submit(wf.nasa_power_history, lat, lon, fid, HISTORY_DAYS),
+            pool.submit(wf.metno_forecast, lat, lon, fid),
+        ]
+        results = [f.result() for f in futures]
+    rows = [r for part in results for r in part]
+    logger.info(
+        "weather fallback field=%s current=%d history=%d forecast=%d",
+        fid, len(results[0]), len(results[1]), len(results[2]),
+    )
+    return rows
+
+
 def fetch_and_save_weather(store, farmer_id: str, field_input: FieldInput) -> bool:
     """Fetch+persist weather rows for a field. Returns True on success,
     False (logged, never raised) on any adapter/store failure."""
@@ -110,25 +148,14 @@ def fetch_and_save_weather(store, farmer_id: str, field_input: FieldInput) -> bo
         rows = WeatherAdapter(past_days=HISTORY_DAYS).fetch(field_input)
     except Exception as exc:  # noqa: BLE001 — degrade-not-fail per adapter
         # Open-Meteo rate-limits shared hosting IPs (429 "daily limit
-        # exceeded" seen on Render), so fall back to OpenWeatherMap.
+        # exceeded" seen on Render), so use the backup sources.
         logger.warning(
-            "weather primary source failed field=%s (%s: %s); trying OpenWeatherMap",
+            "weather primary source failed field=%s (%s: %s); trying backup sources",
             field_input.field_id, type(exc).__name__, exc,
         )
-        try:
-            rows = OpenWeatherMapAdapter().fetch(field_input)
-            for row in rows:
-                # A single current reading reports min == max == temp, which
-                # would read as "no day/night swing" in the ET0 water balance;
-                # drop them so the documented +/-4C estimate applies instead.
-                if row.get("temp_min_c") == row.get("temp_max_c"):
-                    row.pop("temp_min_c", None)
-                    row.pop("temp_max_c", None)
-        except Exception as exc2:  # noqa: BLE001
-            logger.warning(
-                "weather acquisition failed field=%s (fallback %s: %s)",
-                field_input.field_id, type(exc2).__name__, exc2,
-            )
+        rows = _fallback_weather_rows(field_input)
+        if not rows:
+            logger.warning("weather acquisition failed field=%s (all sources)", field_input.field_id)
             return False
     try:
         for row in rows:

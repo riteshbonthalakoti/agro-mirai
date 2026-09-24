@@ -101,3 +101,22 @@ def test_model_falls_back_without_daily_weather():
     advice = IrrigationPredictionModel().predict(_fv(None))
     assert advice.urgency in ("low", "moderate", "high")
     assert "Water balance" in advice.rationale
+
+
+def test_lagging_weather_source_gets_gap_filled():
+    daily = [d for d in _days(rain=4.0, n_future=0) if d["date"] <= (AS_OF - timedelta(days=3)).isoformat()]
+    b = _balance(daily)
+    assert b is not None and b.gap_days_estimated == 3
+    assert "estimated" in _rationale(b)
+
+
+def test_stale_weather_is_refused():
+    daily = [d for d in _days(rain=4.0, n_future=0) if d["date"] <= (AS_OF - timedelta(days=9)).isoformat()]
+    assert _balance(daily) is None
+
+
+def _rationale(b):
+    from agro_mirai.models.irrigation_prediction_model import _rationale_from_balance
+
+    u, dep, w, _ = _decide(b)
+    return _rationale_from_balance(b, u, dep, w)
