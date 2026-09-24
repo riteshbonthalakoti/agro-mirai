@@ -6,7 +6,7 @@ export type IconName =
   | 'play' | 'pause' | 'chevron-down' | 'chevron-up' | 'chevron-back'
   | 'chevron-right' | 'bolt' | 'gallery' | 'globe' | 'user' | 'field'
   | 'mic' | 'thermo' | 'speaker' | 'logout' | 'close' | 'location'
-  | 'settings' | 'check' | 'alert' | 'info' | 'bug' | 'image' | 'plus';
+  | 'settings' | 'bell' | 'check' | 'alert' | 'info' | 'bug' | 'image' | 'plus';
 
 type IconProps = { name: IconName; size?: number; color?: string };
 
@@ -49,6 +49,8 @@ export function Icon({ name, size = 18, color = '#23281F' }: IconProps) {
       return (<Svg width={size} height={size} viewBox="0 0 24 24"><Rect x={3.5} y={4.5} width={17} height={15} rx={2} {...stroke} /><Circle cx={8.3} cy={9.5} r={1.6} fill={color} /><Path d="M4 17l5-5 4 4 3-3 4 4" {...stroke} /></Svg>);
     case 'globe':
       return (<Svg width={size} height={size} viewBox="0 0 24 24"><Circle cx={12} cy={12} r={8} stroke={color} strokeWidth={1.6} fill="none" /><Ellipse cx={12} cy={12} rx={3.2} ry={8} stroke={color} strokeWidth={1.6} fill="none" /><Path d="M4.2 9.5h15.6M4.2 14.5h15.6" stroke={color} strokeWidth={1.6} fill="none" /></Svg>);
+    case 'bell':
+      return (<Svg width={size} height={size} viewBox="0 0 24 24"><Path d="M6 16.5V11a6 6 0 1 1 12 0v5.5l1.5 1.5h-15L6 16.5Z" {...stroke} /><Path d="M10 20.5a2 2 0 0 0 4 0" {...stroke} /></Svg>);
     case 'user':
       return (<Svg width={size} height={size} viewBox="0 0 24 24"><Circle cx={12} cy={8.2} r={3.5} stroke={color} strokeWidth={1.6} fill="none" /><Path d="M5 20c1-4 4-5.8 7-5.8s6 1.8 7 5.8" {...stroke} /></Svg>);
     case 'field':

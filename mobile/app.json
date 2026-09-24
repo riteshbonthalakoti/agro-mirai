@@ -21,7 +21,8 @@
         "android.permission.MODIFY_AUDIO_SETTINGS",
         "android.permission.FOREGROUND_SERVICE",
         "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK",
-        "android.permission.CAMERA"
+        "android.permission.CAMERA",
+        "android.permission.POST_NOTIFICATIONS"
       ]
     },
     "web": {
@@ -30,6 +31,7 @@
     "plugins": [
       "expo-av",
       "expo-audio",
+      ["expo-notifications", { "icon": "./assets/notification-icon.png", "color": "#2E7D32" }],
       [
         "expo-camera",
         {

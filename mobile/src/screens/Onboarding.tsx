@@ -1,11 +1,12 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Image, ImageBackground, KeyboardAvoidingView, Platform, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { Image, ImageBackground, KeyboardAvoidingView, Modal, Platform, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
 import { requestRecordingPermissionsAsync } from 'expo-audio';
 import { ApiError, Farmer, requestOtp, verifyOtp } from '../api';
 import { playOnboardingClip, stopAudio } from '../audio';
 import { makeT } from '../ctx';
+import { requestNotificationPermission } from '../notifications';
 import { Icon, IconName } from '../../icons';
 import { LANGS, Lang } from '../i18n';
 import { C, S } from '../theme';
@@ -25,15 +26,17 @@ export function PermissionsScreen({ lang, onDone }: { lang: Lang; onDone: () => 
     try { await ImagePicker.requestCameraPermissionsAsync(); } catch {}
     try { await ImagePicker.requestMediaLibraryPermissionsAsync(); } catch {}
     try { await requestRecordingPermissionsAsync(); } catch {}
+    await requestNotificationPermission();
     setBusy(false);
     onDone();
   };
 
-  const ROWS: { icon: IconName; titleKey: 'permLocationLabel' | 'permCamera' | 'permGallery' | 'permMic'; bodyKey: 'permLocationBody' | 'permCameraBody' | 'permGalleryBody' | 'permMicBody' }[] = [
+  const ROWS: { icon: IconName; titleKey: 'permLocationLabel' | 'permCamera' | 'permGallery' | 'permMic' | 'permNotif'; bodyKey: 'permLocationBody' | 'permCameraBody' | 'permGalleryBody' | 'permMicBody' | 'permNotifBody' }[] = [
     { icon: 'location', titleKey: 'permLocationLabel', bodyKey: 'permLocationBody' },
     { icon: 'camera', titleKey: 'permCamera', bodyKey: 'permCameraBody' },
     { icon: 'gallery', titleKey: 'permGallery', bodyKey: 'permGalleryBody' },
     { icon: 'mic', titleKey: 'permMic', bodyKey: 'permMicBody' },
+    { icon: 'bell', titleKey: 'permNotif', bodyKey: 'permNotifBody' },
   ];
 
   return (
@@ -189,6 +192,64 @@ const normalizePhone = (raw: string) => {
   return digits ? `+91${digits.slice(-10)}` : '';
 };
 
+const TERMS: [string, string][] = [
+  ['Using Agro Mirai', 'Agro Mirai gives farming advice (crop, irrigation and disease-risk guidance) based on your field details and public weather, soil and satellite data. It is guidance to support your decisions, not a guarantee of results. Please use your own judgement and local expert advice, especially before applying chemicals.'],
+  ['Your account', 'You sign in with your phone number. Keep your one-time code private and give us accurate details about yourself and your fields. You are responsible for activity on your account.'],
+  ['Acceptable use', 'Do not misuse the service, attempt to break or overload it, or upload photos or content that you do not have the right to share.'],
+  ['Availability', 'We work to keep the service running but it may occasionally be unavailable or change. Some features need an internet connection.'],
+  ['Changes', 'We may update these terms as the app improves. Continuing to use the app after an update means you accept the new terms.'],
+];
+const PRIVACY: [string, string][] = [
+  ['What we collect', 'Your name and phone number; your field details (name, location, crop, soil type, area); leaf photos you scan; and voice you record when you ask a question. Location, camera, microphone and notification access are only used for those features, and only with your permission.'],
+  ['How we use it', 'To create your farming advice and alerts, to check leaf photos for disease, to read advice aloud in your language, and to keep your account secure.'],
+  ['Where it goes', 'Your data is stored on our secure servers. Photos and voice may be processed by our analysis services to produce results. We do not sell your personal data.'],
+  ['Your choices', 'You can turn off any permission in your phone settings at any time, edit or delete your fields in the app, and sign out. To have your account and data deleted, contact the Agro Mirai team.'],
+];
+
+function LegalModal({ kind, onClose, lang }: { kind: 'terms' | 'privacy' | null; onClose: () => void; lang: Lang }) {
+  const t = makeT(lang);
+  const rows = kind === 'privacy' ? PRIVACY : TERMS;
+  return (
+    <Modal visible={kind !== null} animationType="slide" transparent onRequestClose={onClose}>
+      <View style={{ flex: 1, backgroundColor: 'rgba(16,24,16,0.5)', justifyContent: 'flex-end' }}>
+        <View style={{ backgroundColor: C.bg, borderTopLeftRadius: 20, borderTopRightRadius: 20, maxHeight: '85%', padding: S.lg }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: S.md }}>
+            <Text style={{ flex: 1, fontSize: 20, fontWeight: '700', color: C.text }}>{kind === 'privacy' ? t('privacyLabel') : t('termsLabel')}</Text>
+            <TouchableOpacity onPress={onClose}><Text style={{ color: C.accent, fontWeight: '700' }}>{t('close')}</Text></TouchableOpacity>
+          </View>
+          <ScrollView>
+            {rows.map(([h, b]) => (
+              <View key={h} style={{ marginBottom: S.lg }}>
+                <Text style={{ fontWeight: '700', color: C.text, fontSize: 15 }}>{h}</Text>
+                <Text style={{ color: C.muted, fontSize: 14, lineHeight: 21, marginTop: 2 }}>{b}</Text>
+              </View>
+            ))}
+            <Text style={{ color: C.muted, fontSize: 11, marginBottom: S.lg }}>Draft text (English) - to be reviewed before public release.</Text>
+          </ScrollView>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
+/** Dismissible, auto-hiding notice (replaces the permanent banner on sign-in). */
+function Notice({ text, onClose, lang }: { text: string; onClose: () => void; lang: Lang }) {
+  const t = makeT(lang);
+  useEffect(() => {
+    const id = setTimeout(onClose, 6000);
+    return () => clearTimeout(id);
+  }, [text, onClose]);
+  return (
+    <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF6E0', borderRadius: 12, borderWidth: 1, borderColor: '#F0DCA8', paddingVertical: S.sm, paddingLeft: S.md, paddingRight: S.xs, marginBottom: S.md }}>
+      <Icon name="info" size={18} color={C.warn} />
+      <Text style={{ flex: 1, color: '#5C4300', fontSize: 13, marginHorizontal: S.sm }}>{text}</Text>
+      <TouchableOpacity onPress={onClose} accessibilityLabel={t('dismiss')} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} style={{ padding: S.sm }}>
+        <Icon name="close" size={16} color={C.warn} />
+      </TouchableOpacity>
+    </View>
+  );
+}
+
 export function AuthScreen({ lang, onLoggedIn, notice }: { lang: Lang; onLoggedIn: (f: Farmer, isNew: boolean) => void; notice?: string }) {
   const t = makeT(lang);
   // Phone first, always -- name is only asked for when the backend actually
@@ -202,6 +263,10 @@ export function AuthScreen({ lang, onLoggedIn, notice }: { lang: Lang; onLoggedI
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
   const [cooldown, setCooldown] = useState(0);
+  const [noticeOpen, setNoticeOpen] = useState(true);
+  const [legal, setLegal] = useState<'terms' | 'privacy' | null>(null);
+  const closeNotice = React.useCallback(() => setNoticeOpen(false), []);
+  useEffect(() => { setNoticeOpen(true); }, [notice]);
 
   useEffect(() => {
     if (cooldown <= 0) return;
@@ -258,10 +323,13 @@ export function AuthScreen({ lang, onLoggedIn, notice }: { lang: Lang; onLoggedI
   };
 
   return (
-    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
-      <ScrollView contentContainerStyle={{ padding: S.xl, paddingTop: 80 }} keyboardShouldPersistTaps="handled">
+    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1, backgroundColor: '#F1EEE1' }}>
+      <ScrollView contentContainerStyle={{ padding: S.xl, paddingTop: 56 }} keyboardShouldPersistTaps="handled">
+        <View style={{ alignItems: 'center', marginBottom: S.xl }}>
+          <Image source={require('../../assets/logo-mark.png')} style={{ width: 112, height: 112 }} resizeMode="contain" />
+        </View>
         <Text style={st.h1}>{t('signIn')}</Text>
-        {notice ? <Banner text={notice} /> : null}
+        {notice && noticeOpen ? <Notice text={notice} onClose={closeNotice} lang={lang} /> : null}
         {err ? <Banner text={err} kind="error" /> : null}
         {step === 'phone' ? (
           <>
@@ -299,7 +367,14 @@ export function AuthScreen({ lang, onLoggedIn, notice }: { lang: Lang; onLoggedI
             <Btn label={cooldown > 0 ? `${t('sendOtp')} (${cooldown})` : t('sendOtp')} kind="secondary" onPress={() => requestWithName(isNew ? name.trim() : '')} disabled={cooldown > 0} style={{ marginTop: S.md }} />
           </>
         )}
+        <Text style={{ textAlign: 'center', color: C.muted, fontSize: 12, lineHeight: 18, marginTop: S.xl }}>
+          {t('legalAgree')}{' '}
+          <Text style={{ color: C.accent, fontWeight: '700' }} onPress={() => setLegal('terms')}>{t('termsLabel')}</Text>
+          {' '}{t('legalAnd')}{' '}
+          <Text style={{ color: C.accent, fontWeight: '700' }} onPress={() => setLegal('privacy')}>{t('privacyLabel')}</Text>
+        </Text>
       </ScrollView>
+      <LegalModal kind={legal} onClose={() => setLegal(null)} lang={lang} />
     </KeyboardAvoidingView>
   );
 }
