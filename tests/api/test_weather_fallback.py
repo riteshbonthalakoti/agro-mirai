@@ -25,7 +25,7 @@ def _fi():
 
 
 def _patch(monkeypatch, primary, fallback):
-    monkeypatch.setattr(acq, "WeatherAdapter", lambda: primary)
+    monkeypatch.setattr(acq, "WeatherAdapter", lambda **kw: primary)
     monkeypatch.setattr(acq, "OpenWeatherMapAdapter", lambda: fallback)
 
 

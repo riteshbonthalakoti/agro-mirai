@@ -169,7 +169,7 @@ def test_explain_irrigation_uses_water_balance_rationale(service):
 
     # urgency is rule-based now, so no SHAP contributions
     assert explanation.top_contributions == []
-    assert "Water balance" in explanation.summary_en
+    assert "soil water" in explanation.summary_en or "Water balance" in explanation.summary_en
 
 
 def test_explain_disease_full_scoring_path(service):

@@ -106,3 +106,54 @@ def hargreaves_samani_et0(
 
     et0 = 0.0023 * (temp_mean_c + 17.8) * math.sqrt(temp_max_c - temp_min_c) * ra_mm
     return max(0.0, et0)
+
+
+def _sat_vp_kpa(t_c: float) -> float:
+    return 0.6108 * math.exp(17.27 * t_c / (t_c + 237.3))
+
+
+def penman_monteith_et0(
+    *,
+    temp_mean_c: float,
+    temp_min_c: float,
+    temp_max_c: float,
+    rh_mean_pct: float,
+    wind10_max_ms: float,
+    latitude_deg: float,
+    day_of_year: int,
+    elevation_m: float = 500.0,
+) -> float:
+    """FAO-56 Penman-Monteith ET0 (mm/day), Eq 6, for when we do have
+    humidity and wind (Open-Meteo gives both daily).
+
+    Solar radiation is not measured: it is estimated from the daily
+    temperature range (Hargreaves, FAO-56 Eq 50, kRs 0.17). Wind from
+    Open-Meteo is the daily MAX at 10 m, so a mean at 2 m is guessed as
+    0.6 x max x 0.748 (log profile), floored at 0.5 m/s as FAO-56 advises.
+    """
+    ra = extraterrestrial_radiation_mj(latitude_deg, day_of_year)
+    trange = max(temp_max_c - temp_min_c, 0.0)
+    rso = (0.75 + 2e-5 * elevation_m) * ra
+    rs = min(0.17 * math.sqrt(trange) * ra, rso) if rso > 0 else 0.0
+
+    es = 0.5 * (_sat_vp_kpa(temp_max_c) + _sat_vp_kpa(temp_min_c))
+    ea = es * min(max(rh_mean_pct, 5.0), 100.0) / 100.0
+
+    rns = (1 - 0.23) * rs
+    ratio = min(max(rs / rso, 0.3), 1.0) if rso > 0 else 0.5
+    rnl = (
+        4.903e-9
+        * (((temp_max_c + 273.16) ** 4 + (temp_min_c + 273.16) ** 4) / 2)
+        * (0.34 - 0.14 * math.sqrt(max(ea, 0.0)))
+        * (1.35 * ratio - 0.35)
+    )
+    rn = rns - rnl
+
+    delta = 4098 * _sat_vp_kpa(temp_mean_c) / (temp_mean_c + 237.3) ** 2
+    pressure = 101.3 * ((293 - 0.0065 * elevation_m) / 293) ** 5.26
+    gamma = 0.000665 * pressure
+    u2 = max(0.5, 0.6 * wind10_max_ms * 0.748)
+
+    num = 0.408 * delta * rn + gamma * 900 / (temp_mean_c + 273) * u2 * (es - ea)
+    et0 = num / (delta + gamma * (1 + 0.34 * u2))
+    return max(et0, 0.0)

@@ -29,6 +29,7 @@ from pathlib import Path
 
 from agro_mirai.models.crop_coefficients import growth_stage_for, kc_for
 from agro_mirai.models.evapotranspiration import hargreaves_samani_et0
+from agro_mirai.models.soil_water_balance import BalanceResult, effective_rain, run_balance
 from agro_mirai.persistence.models import IrrigationAdvice
 from agro_mirai.processing.feature_builder import FeatureVector
 
@@ -141,12 +142,107 @@ def _urgency_from_deficit(deficit_mm: float, demand_mm: float) -> str:
     return "low"
 
 
+_LEVELS = ("low", "moderate", "high")
+_MAX_DEPTH_MM = 60.0
+
+
+def _decide(b: BalanceResult) -> tuple[str, float, bool, int]:
+    """Returns (urgency, depth_mm, waiting_for_rain, window_days)."""
+    share = b.depletion_share
+    level = 2 if share >= 1.0 else 1 if share >= 0.6 else 0
+    if b.stress_in_days is not None:
+        if b.stress_in_days <= 1:
+            level = max(level, 2)
+        elif b.stress_in_days <= 3:
+            level = max(level, 1)
+
+    # rain in the next 3 days that would soak in
+    eff_rain_3d = b.rain_forecast_3d_mm * 0.85 if b.rain_forecast_3d_mm >= 4 else 0.0
+    waiting = eff_rain_3d >= 8 and eff_rain_3d >= 0.5 * b.depletion_mm
+    if waiting and level > 0:
+        level -= 1
+
+    depth = b.depletion_mm - (eff_rain_3d if waiting else 0.0)
+    depth = min(max(depth, 2.0), _MAX_DEPTH_MM)
+
+    urgency = _LEVELS[level]
+    if b.stress_in_days is not None and urgency != "high":
+        days = max(1, min(b.stress_in_days, 7))
+    else:
+        days = _URGENCY_TO_WINDOW_DAYS[urgency]
+    if urgency == "high":
+        days = 1
+    return urgency, depth, waiting, days
+
+
+def _rationale_from_balance(b: BalanceResult, urgency: str, depth: float, waiting: bool) -> str:
+    crop = b.crop or "crop"
+    if b.depletion_share >= 1.0:
+        soil = f"The soil water your {crop} can easily use is used up (estimated from {b.days_used} days of weather)."
+    else:
+        soil = (
+            f"About {b.depletion_share * 100:.0f}% of the soil water your {crop} can easily use "
+            f"is gone (estimated from {b.days_used} days of weather)."
+        )
+    parts = [soil, f"It is using about {b.etc_mm_day:.1f} mm of water a day."]
+    parts.append(f"Rain in the last 7 days: {b.rain_past_7d_mm:.0f} mm.")
+    if b.projected_depletion_mm:
+        parts.append(
+            f"Forecast rain: {b.rain_forecast_3d_mm:.0f} mm in the next 3 days, "
+            f"{b.rain_forecast_7d_mm:.0f} mm in the next 7."
+        )
+    if waiting:
+        parts.append(f"Rain is coming soon, so wait and check again; if it does not rain, water about {depth:.0f} mm.")
+    elif urgency == "high":
+        parts.append(f"Water now, about {depth:.0f} mm.")
+    elif urgency == "moderate":
+        when = f"within {b.stress_in_days} day(s)" if b.stress_in_days else "in the next few days"
+        parts.append(f"Water {when}, about {depth:.0f} mm.")
+    else:
+        if b.stress_in_days:
+            parts.append(f"No watering needed yet. Plan to water in about {b.stress_in_days} day(s).")
+        else:
+            parts.append("No watering needed for now.")
+    return " ".join(parts)
+
+
 class IrrigationPredictionModel:
     def __init__(self, model_path: Path | None = None):
         # no trained artifact any more; model_path is ignored
         self._model = None
 
+    def _predict_daily(self, features: FeatureVector) -> IrrigationAdvice | None:
+        if not features.daily_weather:
+            return None
+        b = run_balance(
+            features.daily_weather,
+            as_of=features.as_of,
+            crop=features.crop_type,
+            days_since_sowing=features.days_since_sowing,
+            soil_type=features.soil_type,
+            latitude=features.latitude,
+        )
+        if b is None:
+            return None
+        urgency, depth, waiting, days = _decide(b)
+        created_at = datetime.now(timezone.utc)
+        return IrrigationAdvice(
+            id=str(uuid.uuid4()),
+            field_id=features.field_id,
+            created_at=created_at,
+            recommended_depth_mm=round(depth, 1),
+            window_start_at=created_at,
+            window_end_at=created_at + timedelta(days=days),
+            urgency=urgency,
+            rationale=_rationale_from_balance(b, urgency, depth, waiting),
+        )
+
     def predict(self, features: FeatureVector) -> IrrigationAdvice:
+        # best path: daily soil water balance over real weather + forecast
+        advice = self._predict_daily(features)
+        if advice is not None:
+            return advice
+        # not enough daily weather: 7-day shortcut (fields with no history)
         et0, etc, deficit_mm, depth_mm = _water_balance(features)
         urgency = _urgency_from_deficit(deficit_mm, etc * _DEFICIT_WINDOW_DAYS)
 

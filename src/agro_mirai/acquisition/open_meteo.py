@@ -64,10 +64,13 @@ class WeatherAdapter(Adapter):
         self,
         timeout_s: float = DEFAULT_TIMEOUT_S,
         forecast_days: int = DEFAULT_FORECAST_DAYS,
+        past_days: int = 0,
         session: requests.Session | None = None,
     ) -> None:
         self.timeout_s = timeout_s
         self.forecast_days = forecast_days
+        # >0 also returns that many days of recent observed weather in the same call
+        self.past_days = past_days
         self._session = session or requests.Session()
 
     # -- public API --------------------------------------------------------
@@ -82,6 +85,8 @@ class WeatherAdapter(Adapter):
             "timezone": "UTC",
             "forecast_days": self.forecast_days,
         }
+        if self.past_days:
+            params["past_days"] = self.past_days
         payload = self._get_with_retry(FORECAST_URL, params)
         return self._map_forecast(payload, field)
 
@@ -113,11 +118,22 @@ class WeatherAdapter(Adapter):
         daily = payload.get("daily") or {}
         daily_dates: list[str] = daily.get("time") or []
 
+        # index of today inside the daily arrays (0 unless past_days was asked for)
+        today_idx = 0
+        current = payload.get("current")
+        if self.past_days and current and daily_dates:
+            today_str = str(current["time"])[:10]
+            today_idx = daily_dates.index(today_str) if today_str in daily_dates else self.past_days
+
+        # Recent past days -> observed daily rows
+        if today_idx:
+            readings.extend(
+                self._daily_rows(daily, daily_dates[:today_idx], field, is_forecast=False, start=0)
+            )
+
         # Current conditions -> one observed (is_forecast=False) reading,
         # enriched with today's daily min/max when the dates line up.
-        current = payload.get("current")
         if current:
-            today_idx = 0 if daily_dates else None
             reading = {
                 "id": new_id(),
                 "observed_at": iso_from_minute(current["time"]),
@@ -128,16 +144,17 @@ class WeatherAdapter(Adapter):
             self._maybe(reading, "humidity_pct", current.get("relative_humidity_2m"))
             self._maybe(reading, "rainfall_mm", current.get("precipitation"))
             self._maybe(reading, "wind_mps", current.get("wind_speed_10m"))
-            if today_idx is not None:
+            if daily_dates:
                 self._maybe(reading, "temp_min_c", _at(daily, "temperature_2m_min", today_idx))
                 self._maybe(reading, "temp_max_c", _at(daily, "temperature_2m_max", today_idx))
             if field.field_id:
                 reading["field_id"] = field.field_id
             readings.append(reading)
 
-        # Remaining daily entries -> forecast rows (skip index 0, already
-        # represented by the current reading above).
-        start = 1 if current else 0
+        # Today's daily row (day total incl. the forecast rest of the day) only
+        # when history was asked for; otherwise index today_idx is the "current"
+        # reading above and forecast rows start the day after.
+        start = today_idx + (1 if current and not self.past_days else 0)
         readings.extend(
             self._daily_rows(daily, daily_dates, field, is_forecast=True, start=start)
         )
@@ -234,3 +251,40 @@ def _at(daily: dict[str, Any], key: str, idx: int) -> Any:
     if not isinstance(arr, list) or idx >= len(arr):
         return None
     return arr[idx]
+
+
+_annual_rain_cache: dict[tuple[float, float], float | None] = {}
+
+
+def annual_rainfall_mm(latitude: float, longitude: float, timeout_s: float = 6.0) -> float | None:
+    """Rain over the last ~12 months at this spot (Open-Meteo archive, one call).
+
+    Cached per ~10 km cell for the life of the process. None on any failure,
+    callers just skip the rainfall check then. The archive lags ~2 days, so
+    the window ends 3 days ago and the sum is scaled to a full year.
+    """
+    from datetime import date, timedelta
+
+    key = (round(latitude, 1), round(longitude, 1))
+    if key in _annual_rain_cache:
+        return _annual_rain_cache[key]
+    end = date.today() - timedelta(days=3)
+    start = end - timedelta(days=364)
+    try:
+        resp = requests.get(
+            ARCHIVE_URL,
+            params={
+                "latitude": latitude, "longitude": longitude,
+                "start_date": start.isoformat(), "end_date": end.isoformat(),
+                "daily": "precipitation_sum", "timezone": "UTC",
+            },
+            timeout=timeout_s,
+        )
+        resp.raise_for_status()
+        vals = [v for v in (resp.json().get("daily") or {}).get("precipitation_sum", []) if v is not None]
+        total = sum(vals) * 365.0 / len(vals) if len(vals) >= 300 else None
+    except Exception:  # noqa: BLE001 - optional signal
+        total = None
+    if total is not None:  # don't cache failures
+        _annual_rain_cache[key] = total
+    return total

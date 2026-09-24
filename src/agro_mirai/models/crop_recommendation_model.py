@@ -46,6 +46,34 @@ def _fit_word(score: float) -> str:
     return "weak"
 
 
+def _current_crop_note(features: FeatureVector, fits, temp: float) -> str:
+    """How the crop already in the field compares (season ignored: it is sown)."""
+    crop = features.crop_type
+    if not crop or crop not in ecocrop.table():
+        return ""
+    mine = ecocrop.score_crops(
+        temp, features.soil_ph, features.soil_type, features.rainfall_mm_sum_30d, None, None,
+        features.annual_rain_mm_est,
+    )
+    fit = next(f for f in mine if f.crop == crop)
+    word = _fit_word(fit.score)
+    if word == "weak":
+        return f" Your current crop, {crop}, is a weak fit for these conditions; a different crop may do better next season."
+    return f" Your current crop, {crop}, is a {word} fit for these conditions, so keep growing it."
+
+
+def _greenness_note(features: FeatureVector) -> str:
+    """Satellite greenness (NDVI) only matters if a crop is already growing."""
+    if not features.crop_type or not features.ndvi_data_available or features.ndvi_latest is None:
+        return ""
+    age = features.days_since_sowing
+    if features.ndvi_trend is not None and features.ndvi_trend <= -0.08:
+        return " Satellite greenness has dropped recently; check the crop for water stress or disease."
+    if age is not None and age > 45 and features.ndvi_latest < 0.3:
+        return " Satellite greenness is low for a crop this age; check the field."
+    return ""
+
+
 class CropRecommendationModel:
     def __init__(self, model_path: Path | None = None):
         # no trained artifact any more
@@ -64,6 +92,8 @@ class CropRecommendationModel:
             features.soil_type,
             features.rainfall_mm_sum_30d,
             regional,
+            features.as_of.month,
+            features.annual_rain_mm_est,
         )
         best = fits[0]
         alternatives = [f.crop for f in fits[1 : 1 + top_k]]
@@ -75,8 +105,14 @@ class CropRecommendationModel:
             + ecocrop.describe(best, temp, features.soil_ph)
             + "."
         )
+        if best.season_fit < 1.0:
+            rationale += " It is a bit early or late in the year to sow it."
+        elif best.season_fit == 1.0 and best.crop in ecocrop.SOWING_MONTHS:
+            rationale += " This is a good time of year to sow it."
         if alternatives:
             rationale += f" Other options: {', '.join(alternatives)}."
+        rationale += _current_crop_note(features, fits, temp)
+        rationale += _greenness_note(features)
         if features.soil_chemistry_source and "fallback" in features.soil_chemistry_source:
             rationale += " Soil values are typical for your soil type, not measured."
         if fit.out_of_region and regional is not None:

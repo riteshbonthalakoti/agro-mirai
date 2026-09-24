@@ -148,3 +148,21 @@ def test_bellary_black_soil_gets_a_regional_crop(model):
     rec = model.predict(_full_vector(temp_c_mean_14d=26.5, soil_ph=8.0, soil_type="black",
                                      rainfall_mm_sum_30d=100.0, latitude=15.1, longitude=76.9))
     assert rec.recommended_crop in {"cotton", "chickpea", "pigeonpeas", "maize", "rice"}
+
+
+def test_current_crop_and_greenness_notes(model):
+    good = model.predict(_full_vector(crop_type="cotton", temp_c_mean_14d=27.0, soil_ph=7.0))
+    assert "Your current crop, cotton" in good.rationale
+    poor = model.predict(_full_vector(crop_type="apple", temp_c_mean_14d=33.0))
+    assert "weak fit" in poor.rationale
+    falling = model.predict(_full_vector(crop_type="cotton", ndvi_data_available=True,
+                                         ndvi_latest=0.4, ndvi_trend=-0.12))
+    assert "greenness has dropped" in falling.rationale
+    nothing = model.predict(_full_vector(crop_type=None))
+    assert "current crop" not in nothing.rationale
+
+
+def test_rationale_mentions_sowing_time(model):
+    rec = model.predict(_full_vector(as_of=date(2026, 7, 10), latitude=15.1, longitude=76.9,
+                                     soil_type="black", temp_c_mean_14d=27.0))
+    assert "time of year" in rec.rationale or "early or late" in rec.rationale

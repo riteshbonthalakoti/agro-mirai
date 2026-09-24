@@ -40,6 +40,13 @@ from agro_mirai.persistence.models import NDVIReading, SoilSample, WeatherReadin
 
 logger = logging.getLogger("agro_mirai.api.field_data_acquisition")
 
+# days of recent observed weather pulled with the forecast; the soil water
+# balance needs a few weeks of rain/heat, not just today
+HISTORY_DAYS = 30
+# don't re-hit the weather API for the same field more often than this
+_REFRESH_MIN_GAP_S = 3 * 3600
+_last_refresh: dict[str, float] = {}
+
 
 def _parse_dt(value: str) -> datetime:
     # Adapters emit either "...Z" or a plain ISO string; both parse via
@@ -100,7 +107,7 @@ def fetch_and_save_weather(store, farmer_id: str, field_input: FieldInput) -> bo
     False (logged, never raised) on any adapter/store failure."""
     rows = None
     try:
-        rows = WeatherAdapter().fetch(field_input)
+        rows = WeatherAdapter(past_days=HISTORY_DAYS).fetch(field_input)
     except Exception as exc:  # noqa: BLE001 — degrade-not-fail per adapter
         # Open-Meteo rate-limits shared hosting IPs (429 "daily limit
         # exceeded" seen on Render), so fall back to OpenWeatherMap.
@@ -190,4 +197,40 @@ def acquire_field_data(store, farmer_id: str, field_id: str, latitude: float, lo
 
     threading.Thread(target=_bg_ndvi, daemon=True, name=f"ndvi-fetch-{field_id}").start()
 
+    def _bg_rain() -> None:
+        # warms the 12-month rainfall cache so the first crop suggestion is fast
+        try:
+            from agro_mirai.acquisition.open_meteo import annual_rainfall_mm
+
+            annual_rainfall_mm(latitude, longitude, timeout_s=15.0)
+        except Exception:  # noqa: BLE001
+            pass
+
+    threading.Thread(target=_bg_rain, daemon=True, name=f"rain-warm-{field_id}").start()
+
     return results
+
+
+def ensure_fresh_weather(store, farmer_id: str, field, as_of, weather_rows) -> bool:
+    """Refetch weather when what we hold is stale or has no history.
+
+    Stale = nothing for today. No history = fewer than 7 distinct observed
+    days in the last 14 (old fields only ever got today + forecast). At most
+    once per _REFRESH_MIN_GAP_S per field, and never raises. Returns True if
+    new rows were saved."""
+    import time
+
+    days = {w.observed_at.date() for w in weather_rows}
+    today = as_of
+    recent = [d for d in days if 0 <= (today - d).days < 14]
+    stale = today not in days
+    thin = len(recent) < 7
+    if not (stale or thin):
+        return False
+    now = time.monotonic()
+    if now - _last_refresh.get(field.id, -1e9) < _REFRESH_MIN_GAP_S:
+        return False
+    _last_refresh[field.id] = now
+    return fetch_and_save_weather(
+        store, farmer_id, FieldInput(latitude=field.latitude, longitude=field.longitude, field_id=field.id)
+    )

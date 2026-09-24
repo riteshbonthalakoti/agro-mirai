@@ -196,6 +196,7 @@ def test_irrigation_endpoint_returns_422_not_500_when_all_temp_windows_empty(
         vector.temp_c_mean_7d = None
         vector.temp_c_mean_14d = None
         vector.temp_c_mean_30d = None
+        vector.daily_weather = None  # the daily balance would otherwise still answer
         return vector
 
     monkeypatch.setattr(features_module.FeatureBuilder, "build", staticmethod(_build_with_no_temp_data))
