@@ -31,8 +31,14 @@ SOIL_TYPE_TYPICAL_VALUES: dict[str, dict[str, float]] = {
     "desert": {"ph": 8.5, "nitrogen_mg_per_kg": 120.0, "phosphorus_mg_per_kg": 6.0, "potassium_mg_per_kg": 180.0, "organic_carbon_pct": 0.20},
     "saline": {"ph": 8.8, "nitrogen_mg_per_kg": 150.0, "phosphorus_mg_per_kg": 7.0, "potassium_mg_per_kg": 220.0, "organic_carbon_pct": 0.30},
     "peaty": {"ph": 5.0, "nitrogen_mg_per_kg": 350.0, "phosphorus_mg_per_kg": 9.0, "potassium_mg_per_kg": 100.0, "organic_carbon_pct": 2.50},
-    # "unknown" is deliberately absent: no typical values to fall back to
-    # when the farmer hasn't picked a real soil type either.
+}
+
+# Backup for fields with no soil type ("unknown" / not picked): the plain
+# average of the eight profiles above, so the models still answer instead
+# of failing. Rough on purpose, the app should nudge farmers to pick a type.
+_GENERIC = {
+    key: round(sum(v[key] for v in SOIL_TYPE_TYPICAL_VALUES.values()) / len(SOIL_TYPE_TYPICAL_VALUES), 2)
+    for key in ("ph", "nitrogen_mg_per_kg", "phosphorus_mg_per_kg", "potassium_mg_per_kg", "organic_carbon_pct")
 }
 
 # Module 34 follow-up 3: typical topsoil field-capacity moisture (% by
@@ -62,15 +68,14 @@ SOIL_TYPE_FIELD_CAPACITY_PCT: dict[str, float] = {
     "saline": 30.0,
     "peaty": 55.0,
 }
+_GENERIC_MOISTURE_PCT = round(sum(SOIL_TYPE_FIELD_CAPACITY_PCT.values()) / len(SOIL_TYPE_FIELD_CAPACITY_PCT), 1)
 
 
 def lookup_typical_values(soil_type: str | None) -> dict[str, float] | None:
-    if not soil_type:
-        return None
-    return SOIL_TYPE_TYPICAL_VALUES.get(soil_type.strip().lower())
+    key = (soil_type or "").strip().lower()
+    return SOIL_TYPE_TYPICAL_VALUES.get(key, _GENERIC)
 
 
 def lookup_typical_moisture_pct(soil_type: str | None) -> float | None:
-    if not soil_type:
-        return None
-    return SOIL_TYPE_FIELD_CAPACITY_PCT.get(soil_type.strip().lower())
+    key = (soil_type or "").strip().lower()
+    return SOIL_TYPE_FIELD_CAPACITY_PCT.get(key, _GENERIC_MOISTURE_PCT)
