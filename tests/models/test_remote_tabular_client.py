@@ -109,3 +109,13 @@ def test_remote_irrigation_model_fallback(sample_feature_vector):
         res = client.predict(sample_feature_vector)
         assert res.urgency == "low"
         assert mock_local.predict.called
+
+
+@pytest.mark.parametrize("cls", [RemoteCropModel, RemoteIrrigationModel])
+def test_service_422_raises_value_error_not_local_fallback(cls, sample_feature_vector):
+    resp = MagicMock(status_code=422)
+    resp.json.return_value = {"error": {"code": "INFERENCE_ERROR", "message": "soil data missing"}}
+    model = cls(service_url="http://tabular.test")
+    with patch("agro_mirai.models.remote_tabular_client.requests.post", return_value=resp):
+        with pytest.raises(ValueError, match="soil data missing"):
+            model.predict(sample_feature_vector)
