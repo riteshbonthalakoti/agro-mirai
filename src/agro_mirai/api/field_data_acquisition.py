@@ -46,6 +46,8 @@ HISTORY_DAYS = 30
 # don't re-hit the weather API for the same field more often than this
 _REFRESH_MIN_GAP_S = 3 * 3600
 _last_refresh: dict[str, float] = {}
+_WEATHER_WAIT_S = 20.0
+_SOIL_WAIT_S = 5.0
 
 
 def _parse_dt(value: str) -> datetime:
@@ -158,18 +160,58 @@ def fetch_and_save_weather(store, farmer_id: str, field_input: FieldInput) -> bo
             logger.warning("weather acquisition failed field=%s (all sources)", field_input.field_id)
             return False
     try:
-        for row in rows:
-            store.save_weather_reading(farmer_id, _weather_reading_from_row(row))
+        readings = _new_weather_readings(store, farmer_id, field_input, rows)
+        saved = _save_weather_batch(store, farmer_id, readings)
         logger.info(
-            "weather acquisition ok field=%s rows=%d source=%s",
-            field_input.field_id, len(rows), rows[0].get("source") if rows else "-",
+            "weather acquisition ok field=%s rows=%d saved=%d source=%s",
+            field_input.field_id, len(rows), saved, rows[0].get("source") if rows else "-",
         )
-        return True
+        return saved > 0 or not readings
     except Exception as exc:  # noqa: BLE001
         logger.warning(
             "weather save failed field=%s (%s: %s)", field_input.field_id, type(exc).__name__, exc
         )
         return False
+
+
+def _new_weather_readings(store, farmer_id, field_input, rows) -> list[WeatherReading]:
+    """Rows to store: forecast rows always (they change), observed days only if
+    we do not already hold that day (each refresh re-fetches a month of history)."""
+    readings = [_weather_reading_from_row(r) for r in rows]
+    try:
+        have = {
+            w.observed_at.date()
+            for w in store.list_weather_readings(farmer_id, field_input.field_id, limit=1000)
+            if not w.is_forecast and w.observed_at.hour == 0 and w.observed_at.minute == 0
+        }
+    except Exception:  # noqa: BLE001 - worst case we store duplicates, dedupe on read copes
+        have = set()
+    return [
+        r for r in readings
+        if r.is_forecast or r.observed_at.date() not in have
+        or not (r.observed_at.hour == 0 and r.observed_at.minute == 0)
+    ]
+
+
+def _save_weather_batch(store, farmer_id, readings) -> int:
+    """Bulk save; if the bulk call fails, one row at a time so a dropped
+    connection loses at most the rows it hit, not the whole month."""
+    if not readings:
+        return 0
+    bulk = getattr(store, "save_weather_readings", None)
+    if callable(bulk):
+        try:
+            return int(bulk(farmer_id, readings))
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("bulk weather save failed (%s: %s); saving row by row", type(exc).__name__, exc)
+    saved = 0
+    for r in readings:
+        try:
+            store.save_weather_reading(farmer_id, r)
+            saved += 1
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("weather row save failed (%s: %s)", type(exc).__name__, exc)
+    return saved
 
 
 def fetch_and_save_soil(store, farmer_id: str, field_input: FieldInput) -> bool:
@@ -206,7 +248,7 @@ def acquire_field_data(store, farmer_id: str, field_id: str, latitude: float, lo
     """Sync weather+soil (fast, ~5s combined measured), background NDVI
     (slow, GEE can run close to its own 20s timeout before cache fallback).
 
-    Returns the sync-path results immediately: {"weather": bool, "soil": bool}.
+    Returns {"weather": bool|None, "soil": bool|None}; None means still running.
     NDVI's result is not known synchronously — it is fired in a daemon
     thread and merely logged when it finishes, per the sync-vs-background
     decision above. Callers (create_field / refresh-data) should tell the
@@ -214,10 +256,25 @@ def acquire_field_data(store, farmer_id: str, field_id: str, latitude: float, lo
     """
     field_input = FieldInput(latitude=latitude, longitude=longitude, field_id=field_id)
 
-    results = {
-        "weather": fetch_and_save_weather(store, farmer_id, field_input),
-        "soil": fetch_and_save_soil(store, farmer_id, field_input),
+    # weather and soil run side by side (was one after the other, ~25 s on
+    # Render, mostly SoilGrids). Weather is needed for any advice so we wait
+    # for it; soil gets a few seconds, then finishes in the background and
+    # the models use the soil-type typical values until it lands.
+    outcome: dict[str, bool | None] = {"weather": None, "soil": None}
+
+    def _run(key: str, fn) -> None:
+        outcome[key] = fn(store, farmer_id, field_input)
+
+    threads = {
+        "weather": threading.Thread(target=_run, args=("weather", fetch_and_save_weather), daemon=True, name=f"wx-{field_id}"),
+        "soil": threading.Thread(target=_run, args=("soil", fetch_and_save_soil), daemon=True, name=f"soil-{field_id}"),
     }
+    for t in threads.values():
+        t.start()
+    threads["weather"].join(timeout=_WEATHER_WAIT_S)
+    threads["soil"].join(timeout=_SOIL_WAIT_S)
+    # None = still running (reported as "gathering"), True/False = finished
+    results = dict(outcome)
 
     def _bg_ndvi() -> None:
         fetch_and_save_ndvi(store, farmer_id, field_input)

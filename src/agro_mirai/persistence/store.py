@@ -89,6 +89,10 @@ class DataStore(Protocol):
         self, farmer_id: str, reading: WeatherReading
     ) -> WeatherReading: ...
 
+    def save_weather_readings(
+        self, farmer_id: str, readings: list[WeatherReading]
+    ) -> int: ...  # bulk insert, returns rows saved (additive, Module 43)
+
     def list_weather_readings(
         self,
         farmer_id: str,

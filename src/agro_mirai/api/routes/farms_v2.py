@@ -34,6 +34,10 @@ _REQUIRED_FIELD_KEYS = ("name", "latitude", "longitude", "area_ha")
 _ALLOWED_LANGUAGE_CODES = V1_LANGUAGES
 
 
+def _status_word(done):
+    return "gathering" if done is None else "ready" if done else "unavailable"
+
+
 @farms_v2_bp.get("/farmers/me")
 @require_session_auth
 def get_me():
@@ -159,8 +163,8 @@ def create_field():
 
     response = to_json(saved)
     response["data_acquisition"] = {
-        "weather": "ready" if data_status["weather"] else "unavailable",
-        "soil": "ready" if data_status["soil"] else "unavailable",
+        "weather": _status_word(data_status["weather"]),
+        "soil": _status_word(data_status["soil"]),
         # NDVI is always still in flight at response time by design —
         # the mobile client must not imply it is ready yet.
         "ndvi": "gathering",
@@ -261,8 +265,8 @@ def refresh_field_data(field_id: str):
         {
             "field_id": field.id,
             "data_acquisition": {
-                "weather": "ready" if data_status["weather"] else "unavailable",
-                "soil": "ready" if data_status["soil"] else "unavailable",
+                "weather": _status_word(data_status["weather"]),
+                "soil": _status_word(data_status["soil"]),
                 "ndvi": "gathering",
             },
         }
