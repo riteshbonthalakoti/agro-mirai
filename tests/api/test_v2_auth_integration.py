@@ -94,6 +94,18 @@ def test_request_otp_is_new_farmer_true_on_first_call_false_on_repeat():
     first = _request_otp(client, phone, name="Bob")
     assert first.get_json()["is_new_farmer"] is True
 
+    # asking for a code alone creates no account...
+    assert app.extensions["data_store"].get_farmer_by_phone(phone) is None
+
+    # ...verifying it does, and only then is the phone a known farmer
+    from agro_mirai.auth.otp import otp_store
+
+    code = otp_store._pending[phone].code
+    assert client.post("/v2/auth/verify-otp", json={"phone": phone, "otp": code}).status_code == 200
+    assert app.extensions["data_store"].get_farmer_by_phone(phone) is not None
+
+    client.post("/v2/auth/logout")
+    otp_store._pending.clear()  # skip the resend cooldown
     second = _request_otp(client, phone, name="Bob")
     assert second.get_json()["is_new_farmer"] is False
 
@@ -237,6 +249,26 @@ def test_request_otp_for_existing_phone_does_not_require_name():
     registration does."""
     app = _app()
     client = app.test_client()
-    _request_otp(client, "+919444444444", name="Dave")
+    _login(client, "+919444444444", name="Dave")
+    client.post("/v2/auth/logout")
+    from agro_mirai.auth.otp import otp_store
+
+    otp_store._pending.clear()  # skip the resend cooldown
     resp = client.post("/v2/auth/request-otp", json={"phone": "+919444444444"})
     assert resp.status_code == 200
+
+
+def test_second_code_request_within_seconds_is_refused():
+    client = _app().test_client()
+    assert _request_otp(client, "+919876500077", name="Eve").status_code == 200
+    again = _request_otp(client, "+919876500077", name="Eve")
+    assert again.status_code == 429
+    assert again.get_json()["error"]["code"] == "RATE_LIMIT_EXCEEDED"
+
+
+def test_unverified_requests_never_create_farmers():
+    app = _app()
+    client = app.test_client()
+    for i in range(5):
+        assert _request_otp(client, f"+91987650{i:04d}", name="Spam").status_code == 200
+    assert app.extensions["data_store"].list_all_farmers() == []

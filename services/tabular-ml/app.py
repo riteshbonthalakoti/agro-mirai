@@ -80,6 +80,19 @@ def _serialize_domain_model(obj: object) -> dict:
 def create_app() -> Flask:
     app = Flask(__name__)
 
+    @app.before_request
+    def _check_service_token():
+        # Enforced only when TABULAR_SERVICE_TOKEN is set on this service;
+        # /health stays open for Render's checks.
+        expected = os.environ.get("TABULAR_SERVICE_TOKEN", "").strip()
+        if not expected or request.path in ("/", "/health"):
+            return None
+        import hmac
+
+        if not hmac.compare_digest(request.headers.get("X-Service-Token", ""), expected):
+            return jsonify({"error": {"code": "UNAUTHORIZED", "message": "invalid service token"}}), 401
+        return None
+
     @app.get("/")
     @app.get("/health")
     def health():

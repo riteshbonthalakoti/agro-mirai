@@ -7,7 +7,7 @@ services:
     region: singapore
     branch: main
     buildCommand: pip install -r requirements.txt
-    startCommand: 'PYTHONPATH=src gunicorn -w 1 --threads 2 --timeout 120 -b 0.0.0.0:$PORT "agro_mirai.api.app:create_app()"'
+    startCommand: 'PYTHONPATH=src gunicorn -w 1 --threads 4 --timeout 120 -b 0.0.0.0:$PORT "agro_mirai.api.app:create_app()"'
     healthCheckPath: /health
     envVars:
       - key: FLASK_ENV

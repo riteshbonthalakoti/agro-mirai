@@ -28,7 +28,7 @@ from agro_mirai.api.errors import ApiError
 from agro_mirai.api.login_rate_limit import otp_request_limiter
 from agro_mirai.api.serializers import farmer_to_public_json
 from agro_mirai.api.session_auth import issue_session, clear_session
-from agro_mirai.auth.otp import otp_store, send_otp
+from agro_mirai.auth.otp import ResendTooSoon, otp_store, send_otp
 from agro_mirai.auth.validation import validate_name, validate_otp_code, validate_phone
 from agro_mirai.persistence.models import Farmer
 from agro_mirai.persistence.store import ConflictError
@@ -84,9 +84,11 @@ def request_otp():
     farmer = store.get_farmer_by_phone(phone)
     is_new_farmer = farmer is None
 
+    signup = None
     if farmer is None:
-        # First time this phone has ever requested an OTP: name is
-        # required so the new farmer record has one.
+        # First time this phone has ever asked for an OTP: check the name and
+        # language now, but only create the account once the code is verified
+        # (so nobody can fill the farmer table by requesting codes).
         try:
             validate_name(name)
         except ValueError as e:
@@ -98,23 +100,12 @@ def request_otp():
                 "BAD_REQUEST",
                 f"preferred_language must be one of: {', '.join(sorted(V1_LANGUAGES))}",
             )
+        signup = {"name": name, "preferred_language": preferred_language}
 
-        now = datetime.now(timezone.utc)
-        farmer = Farmer(
-            id=str(uuid.uuid4()),
-            created_at=now,
-            updated_at=now,
-            name=name,
-            preferred_language=preferred_language,
-            phone=phone,
-            role="farmer",
-        )
-        try:
-            farmer = store.save_farmer(farmer)
-        except ConflictError as e:
-            raise ApiError(409, "CONFLICT", "Phone already registered") from e
-
-    code = otp_store.issue(phone)
+    try:
+        code = otp_store.issue(phone, signup=signup)
+    except ResendTooSoon:
+        raise ApiError(429, "RATE_LIMIT_EXCEEDED", "Please wait a few seconds before asking for another code") from None
     send_otp(phone, code)
 
     # Additive field (ADR 0017/0023's additive-only rule): lets the client
@@ -139,15 +130,29 @@ def verify_otp():
     except ValueError as e:
         raise ApiError(400, "BAD_REQUEST", str(e)) from e
 
-    if not otp_store.verify(phone, code):
+    ok, signup = otp_store.verify_with_signup(phone, code)
+    if not ok:
         raise ApiError(401, "UNAUTHORIZED", "Invalid or expired OTP")
 
     store = current_app.extensions["data_store"]
     farmer = store.get_farmer_by_phone(phone)
+    if farmer is None and signup:
+        now = datetime.now(timezone.utc)
+        farmer = Farmer(
+            id=str(uuid.uuid4()),
+            created_at=now,
+            updated_at=now,
+            name=signup["name"],
+            preferred_language=signup["preferred_language"],
+            phone=phone,
+            role="farmer",
+        )
+        try:
+            farmer = store.save_farmer(farmer)
+        except ConflictError:
+            # two verifications raced: the other one made the account
+            farmer = store.get_farmer_by_phone(phone)
     if farmer is None:
-        # OTP was valid but the farmer record vanished between
-        # request-otp and verify-otp (e.g. deleted) -- not a client error
-        # to spam retries against, but no session to issue either.
         raise ApiError(401, "UNAUTHORIZED", "No account for this phone number")
 
     issue_session(farmer.id, farmer.role)

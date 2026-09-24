@@ -33,18 +33,18 @@ def _request_otp(client, phone="+919000000099"):
 def test_otp_requests_within_limit_get_200_not_429():
     app = _app("3 per minute")
     client = app.test_client()
-    for _ in range(3):
-        resp = _request_otp(client)
+    for i in range(3):
+        resp = _request_otp(client, phone=f"+91900000010{i}")
         assert resp.status_code == 200
 
 
 def test_exceeding_otp_request_limit_returns_429():
     app = _app("3 per minute")
     client = app.test_client()
-    for _ in range(3):
-        _request_otp(client)
+    for i in range(3):
+        _request_otp(client, phone=f"+91900000010{i}")
 
-    resp = _request_otp(client)
+    resp = _request_otp(client, phone="+919000000109")
     assert resp.status_code == 429
     assert resp.get_json()["error"]["code"] == "RATE_LIMIT_EXCEEDED"
 
@@ -68,3 +68,19 @@ def test_otp_rate_limit_is_independent_of_general_rate_limit():
         _request_otp(client)
     resp = _request_otp(client)
     assert resp.status_code == 429
+
+
+def test_each_client_ip_behind_the_proxy_gets_its_own_limit():
+    """Behind the Render load balancer every request comes from one address;
+    ProxyFix makes the limiter use X-Forwarded-For so farmers do not share a bucket."""
+    client = _app("2 per minute").test_client()
+
+    def ask(ip, n):
+        return client.post(
+            "/v2/auth/request-otp",
+            json={"phone": f"+91900000{n:04d}", "name": "F", "preferred_language": "en"},
+            headers={"X-Forwarded-For": ip},
+        ).status_code
+
+    assert [ask("1.1.1.1", 1), ask("1.1.1.1", 2), ask("1.1.1.1", 3)] == [200, 200, 429]
+    assert ask("2.2.2.2", 4) == 200  # another farmer is not locked out
