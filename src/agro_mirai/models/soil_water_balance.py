@@ -16,7 +16,7 @@ orders. They are starting points, not field measurements.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import date
+from datetime import date, timedelta
 
 from agro_mirai.models.crop_coefficients import growth_stage_for, kc_for
 from agro_mirai.models.evapotranspiration import (
@@ -93,6 +93,37 @@ def _et0_for(day: dict, lat: float, elevation_m: float) -> tuple[float, str]:
     )
 
 
+_MAX_GAP_DAYS = 5
+
+
+def _fill_gaps(past: list[dict], as_of: date) -> tuple[list[dict], int]:
+    """Past days sorted by date, with any missing days up to ``as_of`` filled
+    by repeating the previous day's weather with no rain. Backup weather
+    sources lag a few days, so the newest days are often absent. Returns
+    (days, number_filled); (days, -1) if the gap is too big to trust."""
+    by_date = {d["date"]: d for d in past}
+    first = date.fromisoformat(past[0]["date"])
+    out, filled, prev = [], 0, None
+    day = first
+    while day <= as_of:
+        key = day.isoformat()
+        if key in by_date:
+            prev = by_date[key]
+            out.append(prev)
+        else:
+            out.append({**prev, "date": key, "rain": 0.0, "estimated": True})
+            filled += 1
+        day += timedelta(days=1)
+    # a long run of made-up days at the end means the data is stale
+    trailing = 0
+    for d in reversed(out):
+        if d.get("estimated"):
+            trailing += 1
+        else:
+            break
+    return out, (-1 if trailing > _MAX_GAP_DAYS else filled)
+
+
 @dataclass
 class BalanceResult:
     crop: str | None
@@ -112,6 +143,8 @@ class BalanceResult:
     stress_in_days: int | None
     #: depletion (mm) projected for each forecast day, no irrigation
     projected_depletion_mm: list[float] = field(default_factory=list)
+    #: newest days that had no data and were estimated (weather sources lag)
+    gap_days_estimated: int = 0
 
     @property
     def depletion_share(self) -> float:
@@ -135,6 +168,9 @@ def run_balance(
         return None
     past.sort(key=lambda d: d["date"])
     future.sort(key=lambda d: d["date"])
+    past, gap_days = _fill_gaps(past, as_of)
+    if gap_days < 0:
+        return None
 
     lat = latitude if latitude is not None else 15.0
     elev = elevation_m if elevation_m is not None else 500.0
@@ -190,4 +226,5 @@ def run_balance(
         rain_forecast_7d_mm=rain_sum(future, 7),
         days_used=len(past), et0_method=method,
         stress_in_days=stress_in, projected_depletion_mm=projected,
+        gap_days_estimated=gap_days,
     )

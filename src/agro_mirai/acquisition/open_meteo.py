@@ -16,6 +16,7 @@ anywhere in this file; the only "conversion" is that request parameter.
 """
 from __future__ import annotations
 
+import logging
 import time
 from typing import Any
 
@@ -268,23 +269,30 @@ def annual_rainfall_mm(latitude: float, longitude: float, timeout_s: float = 6.0
     key = (round(latitude, 1), round(longitude, 1))
     if key in _annual_rain_cache:
         return _annual_rain_cache[key]
-    end = date.today() - timedelta(days=3)
-    start = end - timedelta(days=364)
-    try:
-        resp = requests.get(
-            ARCHIVE_URL,
-            params={
-                "latitude": latitude, "longitude": longitude,
-                "start_date": start.isoformat(), "end_date": end.isoformat(),
-                "daily": "precipitation_sum", "timezone": "UTC",
-            },
-            timeout=timeout_s,
-        )
-        resp.raise_for_status()
-        vals = [v for v in (resp.json().get("daily") or {}).get("precipitation_sum", []) if v is not None]
-        total = sum(vals) * 365.0 / len(vals) if len(vals) >= 300 else None
-    except Exception:  # noqa: BLE001 - optional signal
-        total = None
+    # NASA POWER first: ~1.5 s and no rate limit trouble; Open-Meteo archive is
+    # the backup (7 s+ cold, and 429s on shared IPs)
+    from agro_mirai.acquisition.weather_fallbacks import nasa_power_annual_rain
+
+    total = nasa_power_annual_rain(latitude, longitude, timeout_s=max(timeout_s, 8.0))
+    if total is None:
+        end = date.today() - timedelta(days=3)
+        start = end - timedelta(days=364)
+        try:
+            resp = requests.get(
+                ARCHIVE_URL,
+                params={
+                    "latitude": latitude, "longitude": longitude,
+                    "start_date": start.isoformat(), "end_date": end.isoformat(),
+                    "daily": "precipitation_sum", "timezone": "UTC",
+                },
+                timeout=timeout_s,
+            )
+            resp.raise_for_status()
+            vals = [v for v in (resp.json().get("daily") or {}).get("precipitation_sum", []) if v is not None]
+            total = sum(vals) * 365.0 / len(vals) if len(vals) >= 300 else None
+        except Exception as exc:  # noqa: BLE001 - optional signal
+            logging.getLogger(__name__).warning("Open-Meteo annual rain failed: %s: %s", type(exc).__name__, exc)
+            total = None
     if total is not None:  # don't cache failures
         _annual_rain_cache[key] = total
     return total

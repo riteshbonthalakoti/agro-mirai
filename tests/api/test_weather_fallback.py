@@ -24,9 +24,14 @@ def _fi():
     return FieldInput(latitude=15.1, longitude=76.9, field_id="f1")
 
 
-def _patch(monkeypatch, primary, fallback):
+def _patch(monkeypatch, primary, fallback, history=None, forecast=None):
+    from agro_mirai.acquisition import weather_fallbacks as wf
+
     monkeypatch.setattr(acq, "WeatherAdapter", lambda **kw: primary)
     monkeypatch.setattr(acq, "OpenWeatherMapAdapter", lambda: fallback)
+    # no live network from these tests
+    monkeypatch.setattr(wf, "nasa_power_history", lambda *a, **k: history or [])
+    monkeypatch.setattr(wf, "metno_forecast", lambda *a, **k: forecast or [])
 
 
 def _adapter(result):
@@ -78,3 +83,20 @@ def test_store_failure_returns_false(monkeypatch):
     store.save_weather_reading.side_effect = RuntimeError("db down")
     _patch(monkeypatch, _adapter([_row("open_meteo")]), _adapter([]))
     assert acq.fetch_and_save_weather(store, "farmer", _fi()) is False
+
+
+def test_backup_chain_combines_current_history_and_forecast(monkeypatch):
+    store = MagicMock()
+    hist = [dict(_row("nasa_power"), id=f"h{i}") for i in range(3)]
+    fc = [dict(_row("met_norway"), id="m1", is_forecast=True)]
+    _patch(monkeypatch, _adapter(RuntimeError("429")), _adapter([_row("openweathermap")]), hist, fc)
+    assert acq.fetch_and_save_weather(store, "farmer", _fi()) is True
+    sources = sorted(c[0][1].source for c in store.save_weather_reading.call_args_list)
+    assert sources == ["met_norway", "nasa_power", "nasa_power", "nasa_power", "openweathermap"]
+
+
+def test_history_and_forecast_alone_are_enough(monkeypatch):
+    store = MagicMock()
+    _patch(monkeypatch, _adapter(RuntimeError("429")), _adapter(RuntimeError("no key")),
+           [dict(_row("nasa_power"), id="h1")], [])
+    assert acq.fetch_and_save_weather(store, "farmer", _fi()) is True

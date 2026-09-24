@@ -186,6 +186,8 @@ def _rationale_from_balance(b: BalanceResult, urgency: str, depth: float, waitin
         )
     parts = [soil, f"It is using about {b.etc_mm_day:.1f} mm of water a day."]
     parts.append(f"Rain in the last 7 days: {b.rain_past_7d_mm:.0f} mm.")
+    if b.gap_days_estimated:
+        parts.append(f"(The latest {b.gap_days_estimated} day(s) of weather are estimated.)")
     if b.projected_depletion_mm:
         parts.append(
             f"Forecast rain: {b.rain_forecast_3d_mm:.0f} mm in the next 3 days, "
