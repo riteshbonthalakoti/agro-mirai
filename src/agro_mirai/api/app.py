@@ -127,10 +127,30 @@ def _configure_logging(app: Flask) -> None:
     app.logger.propagate = True
 
 
+def _random_secret_key() -> str:
+    """FLASK_SECRET_KEY unset: never fall back to a value anyone can read in the
+    repo (session cookies carry the role, so that would allow forged admin
+    sessions). A random per-process key just means sessions end on restart."""
+    import secrets
+
+    logging.getLogger("agro_mirai.api.app").warning(
+        "FLASK_SECRET_KEY is not set; using a random key (sessions reset on every restart)"
+    )
+    return secrets.token_hex(32)
+
+
 def create_app(config: dict | None = None) -> Flask:
     app = Flask(__name__)
 
-    app.secret_key = os.environ.get("FLASK_SECRET_KEY", "dev-only-secret-not-for-prod")
+    app.secret_key = os.environ.get("FLASK_SECRET_KEY") or _random_secret_key()
+    # Render puts one load balancer in front of us: without this every farmer
+    # looks like the same IP and the per-IP rate limits become global.
+    if os.environ.get("TRUST_PROXY", "1") == "1":
+        from werkzeug.middleware.proxy_fix import ProxyFix
+
+        app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=0)
+    # bug-report photos travel as base64 in JSON (~14 MB); nothing else needs more
+    app.config["MAX_CONTENT_LENGTH"] = 20 * 1024 * 1024
     app.config["API_KEY"] = os.environ.get("API_KEY", "")
     app.config["FARMER_ID"] = os.environ.get("FARMER_ID", "")
     app.config["DATABASE_URL"] = os.environ.get("DATABASE_URL", "agro_mirai.db")

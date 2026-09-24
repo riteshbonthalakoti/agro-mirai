@@ -26,13 +26,19 @@ def _serialize_features(features: FeatureVector) -> dict:
     return res
 
 
+def service_headers() -> dict:
+    """X-Service-Token for the tabular service when TABULAR_SERVICE_TOKEN is set."""
+    token = os.environ.get("TABULAR_SERVICE_TOKEN", "").strip()
+    return {"X-Service-Token": token} if token else {}
+
+
 def _post_with_retry(url: str, payload: dict, timeout_s: float):
     """One retry: a free-tier service that was just spun up or recycled often
     drops the first connection (observed: RemoteProtocolError 'Server disconnected')."""
     try:
-        return requests.post(url, json=payload, timeout=timeout_s)
+        return requests.post(url, json=payload, timeout=timeout_s, headers=service_headers())
     except (requests.ConnectionError, requests.Timeout):
-        return requests.post(url, json=payload, timeout=timeout_s * 2)
+        return requests.post(url, json=payload, timeout=timeout_s * 2, headers=service_headers())
 
 
 def _raise_if_bad_input(resp):

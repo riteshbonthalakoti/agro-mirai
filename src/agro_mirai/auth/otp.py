@@ -41,11 +41,23 @@ OTP_TTL = timedelta(minutes=10)
 MAX_VERIFY_ATTEMPTS = 5
 
 
+MIN_RESEND = timedelta(seconds=15)
+MAX_PENDING = 5000
+
+
+class ResendTooSoon(Exception):
+    """A code was issued for this phone a moment ago."""
+
+
 @dataclass
 class _PendingOtp:
     code: str
     expires_at: datetime
     attempts: int = 0
+    issued_at: datetime | None = None
+    #: name / language for a phone we have never seen; the account is only
+    #: created once the code is verified (no accounts from unverified requests)
+    signup: dict | None = None
 
 
 class OtpStore:
@@ -57,14 +69,30 @@ class OtpStore:
         self._lock = threading.Lock()
         self._pending: dict[str, _PendingOtp] = {}
 
-    def issue(self, phone: str, now: datetime | None = None) -> str:
+    def issue(self, phone: str, now: datetime | None = None, signup: dict | None = None) -> str:
         now = now or datetime.now(timezone.utc)
         code = f"{secrets.randbelow(10 ** OTP_LENGTH):0{OTP_LENGTH}d}"
         with self._lock:
-            self._pending[phone] = _PendingOtp(code=code, expires_at=now + OTP_TTL)
+            old = self._pending.get(phone)
+            if old is not None and old.issued_at and now - old.issued_at < MIN_RESEND:
+                raise ResendTooSoon()
+            if len(self._pending) >= MAX_PENDING:
+                # drop expired codes; if still full, the oldest ones
+                for k in [k for k, v in self._pending.items() if now > v.expires_at]:
+                    del self._pending[k]
+                while len(self._pending) >= MAX_PENDING:
+                    del self._pending[next(iter(self._pending))]
+            self._pending[phone] = _PendingOtp(
+                code=code, expires_at=now + OTP_TTL, issued_at=now, signup=signup
+            )
         return code
 
     def verify(self, phone: str, code: str, now: datetime | None = None) -> bool:
+        return self.verify_with_signup(phone, code, now)[0]
+
+    def verify_with_signup(
+        self, phone: str, code: str, now: datetime | None = None
+    ) -> tuple[bool, dict | None]:
         """True iff `code` matches the pending OTP for `phone` and it
         hasn't expired or been guessed too many times. A correct or
         exhausted verification consumes the pending OTP (one-shot, and a
@@ -74,18 +102,18 @@ class OtpStore:
         with self._lock:
             pending = self._pending.get(phone)
             if pending is None:
-                return False
+                return False, None
             if now > pending.expires_at:
                 del self._pending[phone]
-                return False
+                return False, None
             pending.attempts += 1
             if pending.attempts > MAX_VERIFY_ATTEMPTS:
                 del self._pending[phone]
-                return False
+                return False, None
             if not secrets.compare_digest(pending.code, code):
-                return False
+                return False, None
             del self._pending[phone]
-            return True
+            return True, pending.signup
 
 
 def send_otp(phone: str, code: str) -> None:

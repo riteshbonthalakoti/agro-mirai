@@ -92,7 +92,12 @@ class ExplanationService:
         try:
             import requests
 
-            resp = requests.post(f"{url}/explain/{kind}", json={"feature_vector": _ser_features(features)}, timeout=25)
+            from agro_mirai.models.remote_tabular_client import service_headers
+
+            resp = requests.post(
+                f"{url}/explain/{kind}", json={"feature_vector": _ser_features(features)},
+                timeout=25, headers=service_headers(),
+            )
             if resp.status_code != 200:
                 _log.warning("tabular /explain/%s returned HTTP %s", kind, resp.status_code)
                 return None
