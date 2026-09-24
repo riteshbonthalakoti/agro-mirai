@@ -69,3 +69,54 @@ def disease_display_name(raw_class: str) -> str:
     if is_healthy:
         return f"{crop_label}: no disease detected (healthy foliage)"
     return f"{crop_label}: {disease}"
+
+
+#: Below this top-1 probability the photo model is guessing; we say so.
+UNSURE_BELOW = 0.55
+
+_CROP_LABEL_TO_TYPE = {
+    "Corn (maize)": "maize", "Apple": "apple", "Grape": "grapes", "Orange": "orange",
+}
+
+
+def is_unsure(confidence: float) -> bool:
+    return confidence < UNSURE_BELOW
+
+
+def unsure_texts(raw_class: str, alternatives: list[tuple[str, float]]) -> tuple[str, str]:
+    """(disease label, action) for a low-confidence photo answer: an honest
+    "not sure" with the runners-up, instead of a confident-looking guess."""
+    guess = disease_display_name(raw_class)
+    others = "; ".join(f"{disease_display_name(c)} ({p * 100:.0f}%)" for c, p in alternatives if c != raw_class)
+    action = (
+        "The photo is not clear enough to be sure. Retake it close up in daylight, one leaf filling the frame, "
+        "and include a leaf that shows the problem."
+    )
+    if others:
+        action += f" Other possibilities: {others}."
+    action += " If the plant looks unwell, show it to your local agriculture officer."
+    return f"Not sure. Best guess: {guess}", action
+
+
+def photo_coverage_note(field_crop: str | None, predicted_disease_label: str) -> str:
+    """Extra sentence when the photo model may not suit the field's crop."""
+    if not field_crop:
+        return ""
+    if field_crop not in CNN_COVERED_CROP_TYPES:
+        return (
+            f" Note: the photo model was not trained on {field_crop} leaves, "
+            "so treat this result as a rough guide only."
+        )
+    predicted_crop = predicted_disease_label.split(":", 1)[0].strip()
+    predicted_type = _CROP_LABEL_TO_TYPE.get(predicted_crop)
+    if predicted_type is None and predicted_crop and not predicted_disease_label.startswith("Not sure"):
+        return (
+            f" Note: this looks like a {predicted_crop.lower()} leaf but your field grows {field_crop}. "
+            "Take the photo from your own plants."
+        )
+    if predicted_type is not None and predicted_type != field_crop:
+        return (
+            f" Note: this looks like a {predicted_crop.lower()} leaf but your field grows {field_crop}. "
+            "Take the photo from your own plants."
+        )
+    return ""

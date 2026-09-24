@@ -232,7 +232,10 @@ def compute_disease_risk(store, ext: dict, farmer_id: str, field_id: str, target
         store.save_disease_risk_alert(farmer_id, alert)
 
     alerts = store.list_disease_risk_alerts(farmer_id, field_id)
-    return {"items": [_with_disease_translation(to_json(a), target_lang) for a in alerts]}
+    return {
+        "items": [_with_disease_translation(to_json(a), target_lang) for a in alerts],
+        "details": _details(ext["disease_model"], features),
+    }
 
 
 def compute_advisories(store, ext: dict, farmer_id: str, field_id: str, generate: bool = True) -> dict:
@@ -275,6 +278,12 @@ def compute_disease_risk_image(
 
     disease_model = ext["disease_model"]
     alert = resolve_disease_alert(disease_model, features, field_id, image_bytes=image_bytes)
+    if alert.source == "cnn":
+        from agro_mirai.models.disease_cnn_labels import photo_coverage_note
+
+        note = photo_coverage_note(field.current_crop, alert.disease or "")
+        if note:
+            alert = dataclasses.replace(alert, recommended_action=(alert.recommended_action or "") + note)
 
     saved = store.save_disease_risk_alert(farmer_id, alert)
     return _with_disease_translation(to_json(saved), target_lang)
