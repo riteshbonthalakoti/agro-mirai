@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from agro_mirai.models.disease_named_risks import NamedRiskResult, score_named
 from agro_mirai.processing.feature_builder import FeatureVector
 
 _HUMIDITY_WEIGHT = 0.40
@@ -57,6 +58,8 @@ class DiseaseRiskScore:
     disease: str
     recommended_action: str
     window_days: int
+    #: crop-specific reading (None for crops we have no disease list for)
+    named: NamedRiskResult | None = None
 
 
 def _clip(value: float, lower: float, upper: float) -> float:
@@ -109,6 +112,10 @@ def score_disease_risk(vector: FeatureVector) -> DiseaseRiskScore:
         + _TEMP_WEIGHT * temp_score
         + _NDVI_WEIGHT * ndvi_score
     )
+    named = score_named(vector)
+    if named is not None:
+        # half the generic weather score, half the crop-specific reading
+        score = 0.5 * score + 0.5 * named.score
     risk_level = _risk_level_for(score)
 
     confidence = 0.5
@@ -116,13 +123,23 @@ def score_disease_risk(vector: FeatureVector) -> DiseaseRiskScore:
         confidence += 0.3
     if vector.rainfall_mm_sum_7d is not None and vector.humidity_pct_mean_14d is not None:
         confidence += 0.2
+    if named is not None and named.days_counted >= 5:
+        confidence += 0.1  # a real week of daily weather backs the reading
     confidence = _clip(confidence, 0.0, 1.0)
+
+    disease = _RISK_DISEASE
+    action = _RISK_ACTION[risk_level]
+    if named is not None:
+        disease = f"{named.risk.name} (weather-based risk, not a diagnosis)"
+        if risk_level != "low":
+            action = f"{action} {named.risk.action}"
 
     return DiseaseRiskScore(
         score=score,
         risk_level=risk_level,
         confidence=confidence,
-        disease=_RISK_DISEASE,
-        recommended_action=_RISK_ACTION[risk_level],
+        disease=disease,
+        recommended_action=action,
         window_days=_RISK_WINDOW_DAYS[risk_level],
+        named=named,
     )

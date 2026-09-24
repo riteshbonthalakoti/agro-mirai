@@ -103,3 +103,19 @@ def test_real_model_identifies_real_samples():
             pytest.skip("demo samples not present")
         got, conf = svc.classify(session, names, Image.open(f))
         assert got == cls and conf > 0.9
+
+
+def test_low_confidence_answer_is_not_sure_and_never_severe():
+    alert = svc.build_alert(
+        "Corn_(maize)___Northern_Leaf_Blight", 0.40, "f1",
+        [("Corn_(maize)___Northern_Leaf_Blight", 0.40), ("Corn_(maize)___Common_rust_", 0.30)],
+    )
+    assert alert["disease"].startswith("Not sure")
+    assert alert["risk_level"] == "moderate"
+    assert "Common rust" in alert["recommended_action"]
+
+
+def test_confident_answer_is_unchanged():
+    alert = svc.build_alert("Corn_(maize)___Northern_Leaf_Blight", 0.93, "f1", [])
+    assert alert["disease"] == "Corn (maize): Northern Leaf Blight"
+    assert alert["risk_level"] == "severe"

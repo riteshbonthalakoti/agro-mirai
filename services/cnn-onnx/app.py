@@ -68,31 +68,45 @@ def preprocess(image: Image.Image) -> np.ndarray:
     return arr.transpose(2, 0, 1)[None].astype(np.float32)
 
 
-def classify(session, names: list[str], image: Image.Image) -> tuple[str, float]:
+def classify_top(session, names: list[str], image: Image.Image, k: int = 3) -> list[tuple[str, float]]:
     logits = session.run(None, {"input": preprocess(image)})[0][0]
     exp = np.exp(logits - logits.max())
     probs = exp / exp.sum()
-    idx = int(probs.argmax())
-    return names[idx], float(probs[idx])
+    order = np.argsort(-probs)[:k]
+    return [(names[int(i)], float(probs[int(i)])) for i in order]
 
 
-def build_alert(raw_class: str, confidence: float, field_id: str) -> dict:
-    from agro_mirai.models.disease_cnn_labels import disease_display_name, risk_level_for
+def classify(session, names: list[str], image: Image.Image) -> tuple[str, float]:
+    return classify_top(session, names, image, 1)[0]
+
+
+def build_alert(raw_class: str, confidence: float, field_id: str, alternatives=None) -> dict:
+    from agro_mirai.models.disease_cnn_labels import (
+        disease_display_name,
+        is_unsure,
+        risk_level_for,
+        unsure_texts,
+    )
     from agro_mirai.models.disease_risk_scoring import RISK_ACTION, RISK_WINDOW_DAYS
 
     risk = risk_level_for(raw_class, confidence)
+    disease = disease_display_name(raw_class)
+    action = RISK_ACTION[risk]
+    if is_unsure(confidence):
+        disease, action = unsure_texts(raw_class, alternatives or [])
+        risk = "moderate"  # never a confident "healthy" or "severe" from a guess
     now = datetime.now(timezone.utc).replace(microsecond=0)
     fmt = "%Y-%m-%dT%H:%M:%SZ"
     return {
         "id": str(uuid.uuid4()),
         "field_id": field_id,
         "created_at": now.strftime(fmt),
-        "disease": disease_display_name(raw_class),
+        "disease": disease,
         "risk_level": risk,
         "confidence": confidence,
         "window_start_at": now.strftime(fmt),
         "window_end_at": (now + timedelta(days=RISK_WINDOW_DAYS[risk])).strftime(fmt),
-        "recommended_action": RISK_ACTION[risk],
+        "recommended_action": action,
     }
 
 
@@ -127,8 +141,9 @@ def create_app(model_factory=None) -> Flask:
             return jsonify({"error": {"code": "MODEL_UNAVAILABLE", "message": str(exc)}}), 503
         try:
             image = Image.open(request.files["image"].stream)
-            raw_class, confidence = classify(session, names, image)
-            return jsonify(build_alert(raw_class, confidence, field_id)), 200
+            top = classify_top(session, names, image, 3)
+            raw_class, confidence = top[0]
+            return jsonify(build_alert(raw_class, confidence, field_id, top)), 200
         except Exception as exc:  # noqa: BLE001
             return jsonify({"error": {"code": "INFERENCE_ERROR", "message": str(exc)}}), 422
 

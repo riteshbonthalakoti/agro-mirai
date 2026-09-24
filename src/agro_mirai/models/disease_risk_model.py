@@ -35,3 +35,26 @@ class DiseaseRiskModel:
             window_end_at=created_at + timedelta(days=result.window_days),
             recommended_action=result.recommended_action,
         )
+
+    def details_for(self, features: FeatureVector) -> dict:
+        """Numbers behind the reading for the app (not stored)."""
+        result = score_disease_risk(features)
+        n = result.named
+        base = {
+            "method": "weather_rules",
+            "crop_specific": n is not None,
+            "score": round(result.score, 2),
+            "rain_forecast_3d_mm": features.rain_forecast_mm_3d,
+            "rain_forecast_7d_mm": features.rain_forecast_mm_7d,
+        }
+        if n is None:
+            return {**base, "named_disease": None, "note": "No crop-specific disease list for this crop yet."}
+        return {
+            **base,
+            "named_disease": n.risk.name,
+            "favourable_temp_c": [n.risk.temp_lo, n.risk.temp_hi],
+            "humid_days_last_7": n.humid_days_7d,
+            "wet_days_last_7": n.wet_days_7d,
+            "days_counted": n.days_counted,
+            "trend": n.trend,
+        }
