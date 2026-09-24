@@ -1,10 +1,15 @@
-"""``CropRecommendationModel`` — loads the trained artifact, predicts.
+"""``CropRecommendationModel`` - ranks crops for a field.
 
-Wraps the sklearn ``RandomForestClassifier`` trained by
-``tools/train_crop_model.py`` so callers (Modules 09-10) never touch
-sklearn directly. Input is a Module 05 ``FeatureVector``; output is a
-schema-valid ``CropRecommendation``
-(``src/agro_mirai/persistence/models.py``), per ``specs/core/schema.yaml``.
+Used to wrap a RandomForest trained on the Kaggle crop dataset, but that
+model needs plant-available N/P/K which we never really have for a field,
+so live picks were wrong (watermelon for a cotton field). It now ranks the
+22 crops with the FAO EcoCrop ranges (temperature, soil pH, soil texture, a
+soft rainfall check) in ``ecocrop.py``. See decisions/0027. No model file
+is needed; ``model_path`` is only kept so old callers still work.
+
+Input is a ``FeatureVector``; output is a schema-valid
+``CropRecommendation`` (``persistence/models.py``). ``confidence`` is now
+the suitability score (0-1), not a class probability.
 """
 from __future__ import annotations
 
@@ -12,13 +17,12 @@ import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 
-import pandas as pd
-
-from agro_mirai.models.crop_feature_mapping import (
-    MODEL_FEATURE_COLUMNS,
-    map_features,
+from agro_mirai.models import ecocrop
+from agro_mirai.models.regional_suitability import (
+    BELLARY_REGIONAL_CROPS,
+    check_regional_fit,
+    in_karnataka_bbox,
 )
-from agro_mirai.models.regional_suitability import check_regional_fit
 from agro_mirai.persistence.models import CropRecommendation
 from agro_mirai.processing.feature_builder import FeatureVector
 
@@ -27,46 +31,74 @@ DEFAULT_MODEL_PATH = (
 )
 
 
+def _temperature(features: FeatureVector) -> float:
+    for t in (features.temp_c_mean_14d, features.temp_c_mean_7d, features.temp_c_mean_30d):
+        if t is not None:
+            return t
+    raise ValueError("crop suggestion needs some recent temperature data for this field")
+
+
+def _fit_word(score: float) -> str:
+    if score >= 0.8:
+        return "good"
+    if score >= 0.5:
+        return "fair"
+    return "weak"
+
+
 class CropRecommendationModel:
-    def __init__(self, model_path: Path = DEFAULT_MODEL_PATH):
-        if not model_path.exists():
-            raise FileNotFoundError(
-                f"{model_path} not found. Train it first:\n"
-                "  python tools/train_crop_model.py"
+    def __init__(self, model_path: Path | None = None):
+        # no trained artifact any more
+        self._model = None
+
+    def predict(self, features: FeatureVector, top_k: int = 3) -> CropRecommendation:
+        temp = _temperature(features)
+        regional = (
+            BELLARY_REGIONAL_CROPS
+            if in_karnataka_bbox(features.latitude, features.longitude)
+            else None
+        )
+        fits = ecocrop.score_crops(
+            temp,
+            features.soil_ph,
+            features.soil_type,
+            features.rainfall_mm_sum_30d,
+            regional,
+        )
+        best = fits[0]
+        alternatives = [f.crop for f in fits[1 : 1 + top_k]]
+
+        fit = check_regional_fit(best.crop, alternatives)
+
+        rationale = (
+            f"{best.crop.capitalize()} is a {_fit_word(best.score)} fit: "
+            + ecocrop.describe(best, temp, features.soil_ph)
+            + "."
+        )
+        if alternatives:
+            rationale += f" Other options: {', '.join(alternatives)}."
+        if features.soil_chemistry_source and "fallback" in features.soil_chemistry_source:
+            rationale += " Soil values are typical for your soil type, not measured."
+        if fit.out_of_region and regional is not None:
+            from agro_mirai.models.explanation_service import _regional_fit_note
+
+            rationale += _regional_fit_note(
+                CropRecommendation(
+                    id="", field_id="", created_at=datetime.now(timezone.utc),
+                    recommended_crop=best.crop, confidence=best.score,
+                    out_of_region=fit.out_of_region,
+                    regional_alternative=fit.regional_alternative,
+                )
             )
-        import joblib
-
-        self._model = joblib.load(model_path)
-
-    def predict(
-        self, features: FeatureVector, top_k: int = 3
-    ) -> CropRecommendation:
-        """Predicts a crop for ``features``'s field.
-
-        ``top_k`` bounds ``alternatives`` (the top-k crops by predicted
-        probability, excluding the top prediction itself).
-        """
-        row = map_features(features)
-        x = pd.DataFrame([row], columns=MODEL_FEATURE_COLUMNS)
-
-        probabilities = self._model.predict_proba(x)[0]
-        classes = self._model.classes_
-        ranked = sorted(zip(classes, probabilities), key=lambda p: -p[1])
-
-        recommended_crop, confidence = ranked[0]
-        alternatives = [crop for crop, _ in ranked[1 : 1 + top_k]]
-
-        # Module 18: Bellary/Karnataka regional-suitability sanity layer.
-        # A flag, never a silent override — decisions/0016.
-        fit = check_regional_fit(recommended_crop, alternatives)
 
         return CropRecommendation(
             id=str(uuid.uuid4()),
             field_id=features.field_id,
             created_at=datetime.now(timezone.utc),
-            recommended_crop=recommended_crop,
-            confidence=float(confidence),
+            recommended_crop=best.crop,
+            confidence=float(best.score),
             alternatives=alternatives,
+            rationale=rationale,
             season=features.season,
             out_of_region=fit.out_of_region,
             regional_alternative=fit.regional_alternative,

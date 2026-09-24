@@ -26,15 +26,9 @@ from check_specs import (  # noqa: E402
 )
 
 from agro_mirai.models.crop_recommendation_model import (  # noqa: E402
-    DEFAULT_MODEL_PATH,
     CropRecommendationModel,
 )
 from agro_mirai.processing.feature_builder import FeatureVector  # noqa: E402
-
-pytestmark = pytest.mark.skipif(
-    not DEFAULT_MODEL_PATH.exists(),
-    reason="models/crop_rf.joblib not present — run tools/train_crop_model.py first",
-)
 
 
 def _full_vector(**overrides) -> FeatureVector:
@@ -133,10 +127,24 @@ def test_predict_regional_alternative_only_set_when_out_of_region(model):
         assert rec.out_of_region is True
 
 
-def test_predict_raises_on_missing_soil(model):
+def test_predict_works_without_soil_data(model):
+    # soil isn't needed any more (temperature does the work, pH is optional)
     vector = _full_vector(soil_data_available=False, soil_ph=None,
                            soil_nitrogen_mg_per_kg=None,
                            soil_phosphorus_mg_per_kg=None,
                            soil_potassium_mg_per_kg=None)
+    rec = model.predict(vector)
+    assert rec.recommended_crop
+    assert rec.rationale
+
+
+def test_predict_raises_without_any_temperature(model):
+    vector = _full_vector(temp_c_mean_7d=None, temp_c_mean_14d=None, temp_c_mean_30d=None)
     with pytest.raises(ValueError):
         model.predict(vector)
+
+
+def test_bellary_black_soil_gets_a_regional_crop(model):
+    rec = model.predict(_full_vector(temp_c_mean_14d=26.5, soil_ph=8.0, soil_type="black",
+                                     rainfall_mm_sum_30d=100.0, latitude=15.1, longitude=76.9))
+    assert rec.recommended_crop in {"cotton", "chickpea", "pigeonpeas", "maize", "rice"}

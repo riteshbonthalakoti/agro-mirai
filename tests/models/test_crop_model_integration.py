@@ -30,7 +30,6 @@ from check_specs import (  # noqa: E402
 )
 
 from agro_mirai.models.crop_recommendation_model import (  # noqa: E402
-    DEFAULT_MODEL_PATH,
     CropRecommendationModel,
 )
 from agro_mirai.persistence.models import (  # noqa: E402
@@ -42,11 +41,6 @@ from agro_mirai.persistence.models import (  # noqa: E402
 from agro_mirai.processing.feature_builder import FeatureBuilder  # noqa: E402
 
 FIXTURES_DIR = ROOT / "specs" / "domains" / "fixtures"
-
-pytestmark = pytest.mark.skipif(
-    not DEFAULT_MODEL_PATH.exists(),
-    reason="models/crop_rf.joblib not present — run tools/train_crop_model.py first",
-)
 
 
 def _pdt(value: str) -> datetime:

@@ -69,6 +69,13 @@ BELLARY_REGIONAL_CROPS: frozenset[str] = frozenset(
 )
 
 
+def in_karnataka_bbox(lat: float | None, lon: float | None) -> bool:
+    """Rough Karnataka bounding box (same one the API layer uses)."""
+    if lat is None or lon is None:
+        return False
+    return 11.5 <= lat <= 18.5 and 74.0 <= lon <= 78.6
+
+
 @dataclass(frozen=True)
 class RegionalFitResult:
     """Outcome of checking one `CropRecommendation`'s top prediction

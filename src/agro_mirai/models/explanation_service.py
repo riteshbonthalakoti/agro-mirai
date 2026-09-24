@@ -110,7 +110,7 @@ class ExplanationService:
         return Explanation(
             id=str(uuid.uuid4()), field_id=field_id, created_at=datetime.now(timezone.utc),
             subject_type=subject_type, subject_id=subject_id,
-            method=method if top else "unavailable", top_contributions=top,
+            method=method if (top or fallback) else "unavailable", top_contributions=top,
             summary_en=summary_en, summary_kn=summary_kn,
             summary_translated=summary_kn if target_lang == "kn" else self._translate(summary_en, target_lang),
             summary_translated_lang=target_lang if self._voice_service is not None else None,
@@ -119,6 +119,11 @@ class ExplanationService:
     def explain_crop(
         self, recommendation: CropRecommendation, features: FeatureVector, target_lang: str = "kn"
     ) -> Explanation:
+        if recommendation.rationale:
+            # rule-based pick (EcoCrop): the model already wrote the reason
+            return self._finish([], "crop_recommendation", recommendation.id, recommendation.field_id,
+                                f"recommendation of {recommendation.recommended_crop}", target_lang,
+                                method="rule_weight", fallback=recommendation.rationale)
         try:
             return self._explain_crop_local(recommendation, features, target_lang)
         except Exception as exc:  # model artifact not present in this process
@@ -134,11 +139,13 @@ class ExplanationService:
         try:
             return self._explain_irrigation_local(advice, features, target_lang)
         except Exception as exc:
-            _log.info("local irrigation explanation unavailable (%s); using tabular service", exc)
-        top = self._remote_contributions("irrigation", features) or []
+            # urgency is rule-based now (water balance), nothing for SHAP to
+            # explain, so just use the advice's own rationale
+            _log.info("irrigation explanation: no SHAP (%s); using water-balance rationale", exc)
+        top = []
         return self._finish(top, "irrigation_advice", advice.id, advice.field_id,
                             f"{advice.urgency} irrigation urgency", target_lang,
-                            fallback=advice.rationale)
+                            method="rule_weight", fallback=advice.rationale)
 
     def _explain_crop_local(
         self,

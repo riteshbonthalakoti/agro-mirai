@@ -26,16 +26,9 @@ from check_specs import (  # noqa: E402
 )
 
 from agro_mirai.models.irrigation_prediction_model import (  # noqa: E402
-    DEFAULT_MODEL_PATH,
     IrrigationPredictionModel,
 )
 from agro_mirai.processing.feature_builder import FeatureVector  # noqa: E402
-
-pytestmark = pytest.mark.skipif(
-    not DEFAULT_MODEL_PATH.exists(),
-    reason="models/irrigation_rf.joblib not present — run tools/train_irrigation_model.py first",
-)
-
 
 def _full_vector(**overrides) -> FeatureVector:
     defaults = dict(
@@ -150,10 +143,29 @@ def test_predict_propagates_field_id(model):
     assert rec.field_id == "zz000001-0000-4000-8000-000000000009"
 
 
-def test_predict_raises_on_missing_soil(model):
+def test_predict_works_without_soil_data(model):
+    # urgency comes from the water balance now, so no soil is needed
     vector = _full_vector(soil_data_available=False, soil_ph=None, soil_moisture_pct=None)
-    with pytest.raises(ValueError):
-        model.predict(vector)
+    advice = model.predict(vector)
+    assert advice.urgency in ("low", "moderate", "high")
+    assert advice.recommended_depth_mm >= 2.0
+
+
+def test_urgency_follows_rain_share():
+    from agro_mirai.models.irrigation_prediction_model import _urgency_from_deficit
+
+    assert _urgency_from_deficit(0.0, 30.0) == "low"
+    assert _urgency_from_deficit(15.0, 30.0) == "moderate"
+    assert _urgency_from_deficit(28.0, 30.0) == "high"
+    assert _urgency_from_deficit(5.0, 0.0) == "low"
+
+
+def test_heavy_rain_gives_low_urgency(model):
+    assert model.predict(_full_vector(rainfall_mm_sum_7d=200.0)).urgency == "low"
+
+
+def test_no_rain_gives_high_urgency(model):
+    assert model.predict(_full_vector(rainfall_mm_sum_7d=0.0)).urgency == "high"
 
 
 def test_predict_falls_back_to_14d_mean_when_7d_temp_is_none(model):

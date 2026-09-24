@@ -131,7 +131,7 @@ def test_recommendation_endpoint_end_to_end(seeded_app):
     assert body["field_id"] == field_id
     assert 0.0 <= body["confidence"] <= 1.0
     # Module 39: the crop pick carries its own SHAP-based "why" (it used to be null).
-    assert body["rationale"] and "recommendation of" in body["rationale"]
+    assert body["rationale"] and "fit" in body["rationale"]
 
 
 def test_irrigation_endpoint_end_to_end(seeded_app):

@@ -6,7 +6,10 @@ touch sklearn directly. Input is a Module 05 ``FeatureVector``; output
 is a schema-valid ``IrrigationAdvice``
 (``src/agro_mirai/persistence/models.py``), per ``specs/core/schema.yaml``.
 
-``urgency`` is a trained classifier output (unchanged from Module 07).
+``urgency`` used to come from a RandomForest (72% accuracy, barely useful);
+it is now worked out from the same FAO-56 water balance as the depth, see
+``_urgency_from_deficit`` below and decisions/0027. No model file is needed
+any more, so the ``model_path`` argument is only kept for old callers.
 ``recommended_depth_mm`` is now derived from an ET0 (Hargreaves-Samani)
 x Kc water balance against ``rainfall_mm_sum_7d``, not a fixed lookup
 keyed off urgency — see ``decisions/0015-et0-water-balance.md``, which
@@ -24,14 +27,8 @@ import uuid
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-import pandas as pd
-
 from agro_mirai.models.crop_coefficients import growth_stage_for, kc_for
 from agro_mirai.models.evapotranspiration import hargreaves_samani_et0
-from agro_mirai.models.irrigation_feature_mapping import (
-    MODEL_FEATURE_COLUMNS,
-    map_features,
-)
 from agro_mirai.persistence.models import IrrigationAdvice
 from agro_mirai.processing.feature_builder import FeatureVector
 
@@ -41,11 +38,10 @@ DEFAULT_MODEL_PATH = (
     / "irrigation_rf.joblib"
 )
 
-_LABEL_TO_URGENCY = {
-    "Low": "low",
-    "Medium": "moderate",
-    "High": "high",
-}
+# Share of the 7-day crop water demand that rain did NOT cover. Cut-offs
+# are a judgement call around FAO-56's usual 50% allowable depletion.
+_MODERATE_DEFICIT_SHARE = 0.35
+_HIGH_DEFICIT_SHARE = 0.70
 
 _URGENCY_TO_WINDOW_DAYS = {
     "low": 5,
@@ -134,28 +130,33 @@ def _water_balance(features: FeatureVector) -> tuple[float, float, float, float]
     return et0, etc, deficit_mm, depth_mm
 
 
-class IrrigationPredictionModel:
-    def __init__(self, model_path: Path = DEFAULT_MODEL_PATH):
-        if not model_path.exists():
-            raise FileNotFoundError(
-                f"{model_path} not found. Train it first:\n"
-                "  python tools/train_irrigation_model.py"
-            )
-        import joblib
+def _urgency_from_deficit(deficit_mm: float, demand_mm: float) -> str:
+    if demand_mm <= 0:
+        return "low"
+    share = deficit_mm / demand_mm
+    if share >= _HIGH_DEFICIT_SHARE:
+        return "high"
+    if share >= _MODERATE_DEFICIT_SHARE:
+        return "moderate"
+    return "low"
 
-        self._model = joblib.load(model_path)
+
+class IrrigationPredictionModel:
+    def __init__(self, model_path: Path | None = None):
+        # no trained artifact any more; model_path is ignored
+        self._model = None
 
     def predict(self, features: FeatureVector) -> IrrigationAdvice:
-        row = map_features(features)
-        x = pd.DataFrame([row], columns=MODEL_FEATURE_COLUMNS)
-
-        label = self._model.predict(x)[0]
-        urgency = _LABEL_TO_URGENCY[label]
-
         et0, etc, deficit_mm, depth_mm = _water_balance(features)
+        urgency = _urgency_from_deficit(deficit_mm, etc * _DEFICIT_WINDOW_DAYS)
 
         created_at = datetime.now(timezone.utc)
         window_days = _URGENCY_TO_WINDOW_DAYS[urgency]
+        soil_note = (
+            f"soil moisture {features.soil_moisture_pct:.1f}%"
+            if features.soil_moisture_pct is not None
+            else "soil moisture not available"
+        )
 
         return IrrigationAdvice(
             id=str(uuid.uuid4()),
@@ -166,9 +167,8 @@ class IrrigationPredictionModel:
             window_end_at=created_at + timedelta(days=window_days),
             urgency=urgency,
             rationale=(
-                f"Predicted irrigation need: {label.lower()} "
-                f"(soil moisture {features.soil_moisture_pct:.1f}%, "
-                f"season {features.season}). Water balance: ET0="
+                f"Predicted irrigation need: {'medium' if urgency == 'moderate' else urgency} "
+                f"({soil_note}). Water balance: ET0="
                 f"{et0:.2f}mm/day, crop ETc={etc:.2f}mm/day over "
                 f"{_DEFICIT_WINDOW_DAYS:.0f} days minus "
                 f"{features.rainfall_mm_sum_7d:.1f}mm rainfall received "
