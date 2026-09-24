@@ -293,6 +293,28 @@ class SupabaseDataStore:
         res = self._client.table("weather_readings").select("*").eq("id", reading.id).execute()
         return self._row_to_weather(res.data[0])
 
+    def save_weather_readings(self, farmer_id: str, readings: list[WeatherReading]) -> int:
+        """One ownership check and one upsert for the whole batch (a single
+        row costs 3 round trips, which made saving a month of weather take 10 s)."""
+        if not readings:
+            return 0
+        for field_id in {r.field_id for r in readings}:
+            self._require_owned_field(farmer_id, field_id)
+        payload = [
+            {
+                "id": r.id, "field_id": r.field_id, "observed_at": _dt(r.observed_at),
+                "source": r.source, "temp_c": r.temp_c, "temp_min_c": r.temp_min_c,
+                "temp_max_c": r.temp_max_c, "humidity_pct": r.humidity_pct,
+                "rainfall_mm": r.rainfall_mm, "wind_mps": r.wind_mps, "is_forecast": r.is_forecast,
+            }
+            for r in readings
+        ]
+        try:
+            self._client.table("weather_readings").upsert(payload).execute()
+        except Exception as e:  # pragma: no cover
+            raise ConflictError(str(e)) from e
+        return len(payload)
+
     def list_weather_readings(
         self, farmer_id: str, field_id: str, since: datetime | None = None, limit: int = 50
     ) -> list[WeatherReading]:

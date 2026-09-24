@@ -192,6 +192,31 @@ class TestWeatherReading:
         assert old.id not in ids
 
 
+class TestWeatherBulkSave:
+    def test_bulk_save_and_list(self, store, farmer, field):
+        rows = [
+            WeatherReading(
+                id=_new_uuid(), field_id=field.id, observed_at=_now() - timedelta(days=i),
+                source="nasa_power", temp_c=26.0 + i, is_forecast=False, rainfall_mm=float(i),
+            )
+            for i in range(5)
+        ]
+        assert store.save_weather_readings(farmer.id, rows) == 5
+        got = {r.id for r in store.list_weather_readings(farmer.id, field.id, limit=100)}
+        assert {r.id for r in rows} <= got
+
+    def test_empty_batch_is_a_noop(self, store, farmer, field):
+        assert store.save_weather_readings(farmer.id, []) == 0
+
+    def test_other_farmers_field_is_refused(self, store, farmer, field):
+        row = WeatherReading(
+            id=_new_uuid(), field_id=field.id, observed_at=_now(),
+            source="nasa_power", temp_c=25.0, is_forecast=False,
+        )
+        with pytest.raises(Exception):
+            store.save_weather_readings(_new_uuid(), [row])
+
+
 class TestSoilSample:
     def test_save_and_list(self, store, farmer, field):
         s = SoilSample(

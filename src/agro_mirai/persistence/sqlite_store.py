@@ -441,6 +441,33 @@ class SQLiteDataStore:
         ).fetchone()
         return self._row_to_weather(row)
 
+    def save_weather_readings(self, farmer_id: str, readings: list[WeatherReading]) -> int:
+        if not readings:
+            return 0
+        for field_id in {r.field_id for r in readings}:
+            self._require_owned_field(farmer_id, field_id)
+        try:
+            self._conn.executemany(
+                """
+                INSERT INTO weather_readings (id, field_id, observed_at, source, temp_c, temp_min_c,
+                    temp_max_c, humidity_pct, rainfall_mm, wind_mps, is_forecast)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                [
+                    (
+                        r.id, r.field_id, _dt_to_text(r.observed_at), r.source, r.temp_c,
+                        r.temp_min_c, r.temp_max_c, r.humidity_pct, r.rainfall_mm, r.wind_mps,
+                        1 if r.is_forecast else 0,
+                    )
+                    for r in readings
+                ],
+            )
+            self._conn.commit()
+        except sqlite3.IntegrityError as e:
+            self._conn.rollback()
+            raise ConflictError(str(e)) from e
+        return len(readings)
+
     def list_weather_readings(
         self, farmer_id: str, field_id: str, since: datetime | None = None, limit: int = 50
     ) -> list[WeatherReading]:
