@@ -166,3 +166,12 @@ def test_rationale_mentions_sowing_time(model):
     rec = model.predict(_full_vector(as_of=date(2026, 7, 10), latitude=15.1, longitude=76.9,
                                      soil_type="black", temp_c_mean_14d=27.0))
     assert "time of year" in rec.rationale or "early or late" in rec.rationale
+
+
+def test_keep_current_ignores_the_sowing_month_penalty(model):
+    # cotton is "off season" to sow in February but it is already growing:
+    # the same field gets the same confidence whatever the month
+    feb = model.predict(_full_vector(crop_type="cotton", as_of=date(2026, 2, 10), temp_c_mean_14d=27.0), keep_current=True)
+    jul = model.predict(_full_vector(crop_type="cotton", as_of=date(2026, 7, 10), temp_c_mean_14d=27.0), keep_current=True)
+    assert feb.recommended_crop == jul.recommended_crop == "cotton"
+    assert feb.confidence == jul.confidence
