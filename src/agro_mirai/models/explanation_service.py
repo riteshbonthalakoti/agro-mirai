@@ -101,9 +101,9 @@ class ExplanationService:
             _log.warning("tabular /explain/%s failed: %s", kind, exc)
             return None
 
-    def _finish(self, top, subject_type, subject_id, field_id, label, target_lang, extra="", method="shap_tree"):
+    def _finish(self, top, subject_type, subject_id, field_id, label, target_lang, extra="", method="shap_tree", fallback=None):
         summary_en = _summary_en(label, top) if top else (
-            f"The trained model's factor breakdown for this {label} is temporarily unavailable; the result itself is unaffected."
+            fallback or f"The trained model's factor breakdown for this {label} is temporarily unavailable; the result itself is unaffected."
         )
         summary_en += extra
         summary_kn = self._translate(summary_en)
@@ -137,7 +137,8 @@ class ExplanationService:
             _log.info("local irrigation explanation unavailable (%s); using tabular service", exc)
         top = self._remote_contributions("irrigation", features) or []
         return self._finish(top, "irrigation_advice", advice.id, advice.field_id,
-                            f"{advice.urgency} irrigation urgency", target_lang)
+                            f"{advice.urgency} irrigation urgency", target_lang,
+                            fallback=advice.rationale)
 
     def _explain_crop_local(
         self,
