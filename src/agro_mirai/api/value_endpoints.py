@@ -77,6 +77,19 @@ def predict_or_422(fn, *args):
         raise ApiError(422, "INSUFFICIENT_DATA", str(exc)) from None
 
 
+def _details(model, features, **kw):
+    """Structured numbers for the app (additive ``details`` object). Never
+    blocks the answer: models without ``details_for`` or any error give None."""
+    fn = getattr(model, "details_for", None)
+    if not callable(fn):
+        return None
+    try:
+        res = fn(features, **kw)
+    except Exception:  # noqa: BLE001 - extra info only
+        return None
+    return res if isinstance(res, dict) else None
+
+
 def _annual_rain(field):
     """12-month rain at the field; short wait, None if slow or down."""
     try:
@@ -87,12 +100,17 @@ def _annual_rain(field):
         return None
 
 
-def compute_recommendation(store, ext: dict, farmer_id: str, field_id: str) -> dict:
+def compute_recommendation(
+    store, ext: dict, farmer_id: str, field_id: str, keep_current: bool = False
+) -> dict:
     field = get_field_or_404(store, farmer_id, field_id)
     features = features_or_422(store, farmer_id, field)
     features = dataclasses.replace(features, annual_rain_mm_est=_annual_rain(field))
     try:
-        recommendation = ext["crop_model"].predict(features)
+        if keep_current:
+            recommendation = ext["crop_model"].predict(features, keep_current=True)
+        else:
+            recommendation = ext["crop_model"].predict(features)
     except ValueError as exc:
         # Soil N/P/K missing (SoilGrids has no P/K and the farmer picked no
         # soil type to fall back on): a clear 422 the app can show, not a 500.
@@ -123,6 +141,7 @@ def compute_recommendation(store, ext: dict, farmer_id: str, field_id: str) -> d
         out["out_of_region"] = None
         out["regional_alternative"] = None
     out["rationale_plain"] = plain_advisory(out.get("rationale") or "", drop_regional_caveat=not local) or None
+    out["details"] = _details(ext["crop_model"], features, keep_current=keep_current)
     return out
 
 
@@ -133,6 +152,7 @@ def compute_irrigation(store, ext: dict, farmer_id: str, field_id: str) -> dict:
     saved = store.save_irrigation_advice(farmer_id, advice)
     out = to_json(saved)
     out["rationale_plain"] = plain_irrigation(out.get("rationale"))
+    out["details"] = _details(ext["irrigation_model"], features)
     return out
 
 

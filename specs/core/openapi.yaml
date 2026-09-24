@@ -498,6 +498,14 @@ paths:
     get:
       summary: Get the most recent CropRecommendation for a Field owned by the session-authenticated Farmer.
       security: [ { sessionCookie: [] } ]
+      parameters:
+        - name: keep_current
+          in: query
+          required: false
+          description: >
+            When true and the Field has a known current_crop, advise on that crop
+            (fit, watch-outs) instead of proposing a switch. Ignored otherwise.
+          schema: { type: boolean, default: false }
       responses:
         '200':
           description: The recommendation.
@@ -1127,6 +1135,12 @@ components:
       type: object
       required: [id, field_id, created_at, recommended_crop, confidence]
       properties:
+        details:
+          type: object
+          additionalProperties: true
+          description: >
+            Structured numbers behind the advice for the app to show as tiles (computed on
+            each request, not stored). Keys may grow over time; clients must ignore unknown keys.
         id: { type: string, format: uuid }
         field_id: { type: string, format: uuid }
         created_at: { type: string, format: date-time }
@@ -1152,6 +1166,12 @@ components:
       type: object
       required: [id, field_id, created_at, recommended_depth_mm, window_start_at, window_end_at, urgency]
       properties:
+        details:
+          type: object
+          additionalProperties: true
+          description: >
+            Structured numbers behind the advice for the app to show as tiles (computed on
+            each request, not stored). Keys may grow over time; clients must ignore unknown keys.
         id: { type: string, format: uuid }
         field_id: { type: string, format: uuid }
         created_at: { type: string, format: date-time }

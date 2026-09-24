@@ -31,7 +31,10 @@ value_v2_bp = Blueprint("value_v2", __name__, url_prefix="/v2")
 @require_session_auth
 def get_recommendation(field_id: str):
     store = current_app.extensions["data_store"]
-    body = value_endpoints.compute_recommendation(store, current_app.extensions, g.farmer_id, field_id)
+    keep_current = request.args.get("keep_current", "").lower() in ("1", "true", "yes")
+    body = value_endpoints.compute_recommendation(
+        store, current_app.extensions, g.farmer_id, field_id, keep_current=keep_current
+    )
     return jsonify(body), 200
 
 
