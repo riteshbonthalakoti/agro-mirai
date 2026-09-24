@@ -239,6 +239,36 @@ class IrrigationPredictionModel:
             rationale=_rationale_from_balance(b, urgency, depth, waiting),
         )
 
+    def details_for(self, features: FeatureVector) -> dict:
+        """Numbers behind the advice, for the app to show as tiles instead of a
+        paragraph. Recomputes the balance (milliseconds); not stored."""
+        b = run_balance(
+            features.daily_weather or [],
+            as_of=features.as_of,
+            crop=features.crop_type,
+            days_since_sowing=features.days_since_sowing,
+            soil_type=features.soil_type,
+            latitude=features.latitude,
+        )
+        if b is None:
+            return {"method": "weekly_shortcut"}
+        urgency, depth, waiting, _days = _decide(b)
+        return {
+            "method": "soil_water_balance",
+            # share of the water the crop can easily use that is already gone (can pass 100)
+            "soil_water_used_pct": round(b.depletion_share * 100),
+            "days_until_water": b.stress_in_days,
+            "waiting_for_rain": waiting,
+            "rain_last_7d_mm": round(b.rain_past_7d_mm, 1),
+            "rain_forecast_3d_mm": round(b.rain_forecast_3d_mm, 1),
+            "rain_forecast_7d_mm": round(b.rain_forecast_7d_mm, 1),
+            "crop_water_use_mm_per_day": round(b.etc_mm_day, 1),
+            "crop_stage": b.stage,
+            "weather_days_used": b.days_used,
+            "weather_days_estimated": b.gap_days_estimated,
+            "et0_method": b.et0_method,
+        }
+
     def predict(self, features: FeatureVector) -> IrrigationAdvice:
         # best path: daily soil water balance over real weather + forecast
         advice = self._predict_daily(features)

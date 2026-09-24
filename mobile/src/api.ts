@@ -109,10 +109,24 @@ export type CropRec = {
   id: string; recommended_crop: string; confidence: number; alternatives?: string[] | null;
   rationale?: string | null; season?: string | null; out_of_region?: boolean | null;
   regional_alternative?: string | null; rationale_plain?: string | null; created_at: string;
+  details?: CropDetails | null;
+};
+export type CropDetails = {
+  method: string; mode: 'best_fit' | 'keep_current';
+  ranking: { crop: string; score: number; fit: 'good' | 'fair' | 'weak'; good_time_to_sow: boolean }[];
+  current_crop?: { crop: string; score: number; fit: string; verdict: 'keep' | 'switch_next_season' } | null;
+  temperature_c?: number; soil_ph?: number | null; soil_values_measured?: boolean; annual_rain_mm?: number | null; sowing_month?: number;
 };
 export type Irrigation = {
   id: string; recommended_depth_mm: number; window_start_at: string; window_end_at: string;
   urgency: string; rationale?: string | null; rationale_plain?: string | null; created_at: string;
+  details?: IrrigationDetails | null;
+};
+export type IrrigationDetails = {
+  method: 'soil_water_balance' | 'weekly_shortcut';
+  soil_water_used_pct?: number; days_until_water?: number | null; waiting_for_rain?: boolean;
+  rain_last_7d_mm?: number; rain_forecast_3d_mm?: number; rain_forecast_7d_mm?: number;
+  crop_water_use_mm_per_day?: number; crop_stage?: string; weather_days_used?: number; weather_days_estimated?: number; et0_method?: string;
 };
 export type DiseaseAlert = {
   id: string; disease: string; disease_translated?: string; risk_level: string; confidence: number;
@@ -164,7 +178,8 @@ export const refreshData = (id: string) =>
 export const dataSummary = (id: string) => request<DataSummary>(`/v2/fields/${id}/data-summary`, {}, { timeout: 15000 });
 
 // ---- the three models + advisory ---------------------------------------------
-export const getRecommendation = (id: string) => request<CropRec>(`/v2/fields/${id}/recommendation`, {}, { timeout: 30000 });
+export const getRecommendation = (id: string, keepCurrent = false) =>
+  request<CropRec>(`/v2/fields/${id}/recommendation${keepCurrent ? '?keep_current=true' : ''}`, {}, { timeout: 30000 });
 export const getIrrigation = (id: string) => request<Irrigation>(`/v2/fields/${id}/irrigation`, {}, { timeout: 30000 });
 export const getDiseaseRisk = (id: string, lang: string) =>
   request<{ items: DiseaseAlert[] }>(`/v2/fields/${id}/disease-risk?language=${lang}`, {}, { timeout: 30000 }).then((r) => r.items);

@@ -204,3 +204,57 @@ def test_irrigation_endpoint_returns_422_not_500_when_all_temp_windows_empty(
     resp = client.get(f"/fields/{field_id}/irrigation", headers=_auth())
     assert resp.status_code == 422
     assert resp.get_json()["error"]["code"] == "INSUFFICIENT_DATA"
+
+
+def test_recommendation_and_irrigation_carry_details_object(seeded_app):
+    """Module 43: structured numbers (additive `details`) for the app to show as tiles."""
+    from agro_mirai.api import value_endpoints
+
+    application, field_id = seeded_app
+    store = application.extensions["data_store"]
+    farmer_id = application.config["FARMER_ID"]
+
+    crop = value_endpoints.compute_recommendation(store, application.extensions, farmer_id, field_id)
+    d = crop["details"]
+    assert d["method"] == "ecocrop_rules" and d["mode"] == "best_fit"
+    assert 1 <= len(d["ranking"]) <= 5
+    assert {"crop", "score", "fit", "good_time_to_sow"} <= set(d["ranking"][0])
+
+    irr = value_endpoints.compute_irrigation(store, application.extensions, farmer_id, field_id)
+    assert irr["details"]["method"] in ("soil_water_balance", "weekly_shortcut")
+
+
+def test_keep_current_crop_advises_on_the_crop_already_growing(seeded_app):
+    from agro_mirai.api import value_endpoints
+
+    application, field_id = seeded_app
+    store = application.extensions["data_store"]
+    farmer_id = application.config["FARMER_ID"]
+    field = store.get_field(farmer_id, field_id)
+    assert field.current_crop  # fixture field has a current crop
+
+    kept = value_endpoints.compute_recommendation(
+        store, application.extensions, farmer_id, field_id, keep_current=True
+    )
+    assert kept["recommended_crop"] == field.current_crop
+    assert kept["rationale"].startswith("Keeping your current crop")
+    assert kept["details"]["mode"] == "keep_current"
+    assert field.current_crop not in kept["alternatives"]
+
+
+def test_keep_current_without_a_current_crop_gives_the_normal_pick(seeded_app):
+    import dataclasses
+
+    from agro_mirai.api import value_endpoints
+
+    application, field_id = seeded_app
+    store = application.extensions["data_store"]
+    farmer_id = application.config["FARMER_ID"]
+    field = store.get_field(farmer_id, field_id)
+    store.save_field(farmer_id, dataclasses.replace(field, current_crop=None))
+
+    out = value_endpoints.compute_recommendation(
+        store, application.extensions, farmer_id, field_id, keep_current=True
+    )
+    assert not out["rationale"].startswith("Keeping")
+    assert out["details"]["mode"] == "best_fit"
