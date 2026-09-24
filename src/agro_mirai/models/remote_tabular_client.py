@@ -35,6 +35,18 @@ def _post_with_retry(url: str, payload: dict, timeout_s: float):
         return requests.post(url, json=payload, timeout=timeout_s * 2)
 
 
+def _raise_if_bad_input(resp):
+    """A 422 from the service means the field's data is not enough for the
+    model. Falling back to a local model would not help (and the local
+    artifacts are not deployed), so pass the reason up as a ValueError."""
+    if resp.status_code == 422:
+        try:
+            msg = resp.json()["error"]["message"]
+        except Exception:
+            msg = "not enough field data for this model"
+        raise ValueError(msg)
+
+
 def _parse_datetime(val: str | datetime | None) -> datetime | None:
     if val is None:
         return None
@@ -86,7 +98,10 @@ class RemoteCropModel:
                         out_of_region=data.get("out_of_region"),
                         regional_alternative=data.get("regional_alternative"),
                     )
+                _raise_if_bad_input(resp)
                 logger.warning(f"Tabular service /predict/crop returned HTTP {resp.status_code}, falling back to local")
+            except ValueError:
+                raise
             except Exception as exc:
                 logger.warning(f"Tabular service /predict/crop failed: {exc}, falling back to local")
 
@@ -131,7 +146,10 @@ class RemoteIrrigationModel:
                         urgency=data["urgency"],
                         rationale=data.get("rationale"),
                     )
+                _raise_if_bad_input(resp)
                 logger.warning(f"Tabular service /predict/irrigation returned HTTP {resp.status_code}, falling back to local")
+            except ValueError:
+                raise
             except Exception as exc:
                 logger.warning(f"Tabular service /predict/irrigation failed: {exc}, falling back to local")
 
