@@ -335,7 +335,7 @@ def test_explain_crop_degrades_when_model_artifact_missing_and_no_tabular_servic
 
     rec = CropRecommendation(
         id="r1", field_id="f1", created_at=datetime.now(timezone.utc),
-        recommended_crop="rice", confidence=0.9, alternatives=["maize"], rationale="x", season="kharif",
+        recommended_crop="rice", confidence=0.9, alternatives=["maize"], rationale=None, season="kharif",
     )
     exp = ExplanationService(crop_model=_NoModel()).explain_crop(rec, features=None)  # features unused on this path
     assert exp.method == "unavailable"

@@ -92,7 +92,7 @@ def plain_advisory(body: str, drop_regional_caveat: bool = False) -> str:
 
 
 _WB_RE = re.compile(
-    r"Predicted irrigation need: (\w+) \(soil moisture ([\d.]+)%.*?\)\. Water balance: "
+    r"Predicted irrigation need: (\w+) \((?:soil moisture ([\d.]+)%)?.*?\)\. Water balance: "
     r"ET0=([\d.]+)mm/day, crop ETc=([\d.]+)mm/day over (\d+) days minus ([\d.]+)mm rainfall received "
     r"= (-?[\d.]+)mm net deficit -> ([\d.]+)mm recommended\.",
     re.S,
@@ -110,7 +110,8 @@ def plain_irrigation(rationale: str | None) -> str | None:
     return (
         f"Your crop needs about {total:.0f} mm of water over the next {days} days. "
         f"About {float(rain):.0f} mm of rain has fallen, so about {float(rec):.0f} mm of "
-        f"watering is recommended. Soil moisture is {float(moisture):.0f}%."
+        f"watering is recommended."
+        + (f" Soil moisture is {float(moisture):.0f}%." if moisture else "")
     )
 
 

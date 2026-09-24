@@ -95,6 +95,8 @@ class FeatureVector:
     temp_c_max_7d: float | None = None
     latitude: float | None = None
     crop_type: str | None = None
+    longitude: float | None = None
+    soil_type: str | None = None
 
 
 class FeatureBuilder:
@@ -160,6 +162,8 @@ class FeatureBuilder:
             temp_c_max_7d=tmax7,
             latitude=field.latitude,
             crop_type=field.current_crop,
+            longitude=field.longitude,
+            soil_type=field.soil_type,
             **soil_features,
         )
 

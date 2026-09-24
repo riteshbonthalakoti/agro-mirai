@@ -154,24 +154,22 @@ def test_explain_crop_top_contributor_is_agronomically_sensible(service):
 
     explanation = service.explain_crop(recommendation, vector)
 
-    assert explanation.method == "shap_tree"
-    assert len(explanation.top_contributions) == 3
-    agronomic_features = {"N", "P", "K", "temperature", "humidity", "ph", "rainfall"}
-    assert all(c.feature_name in agronomic_features for c in explanation.top_contributions)
-    assert isinstance(explanation.summary_en, str)
+    # crop pick is rule-based (EcoCrop) now: the reason is the model's own text
+    assert explanation.method == "rule_weight"
+    assert recommendation.recommended_crop.capitalize() in explanation.summary_en
+    assert "fit" in explanation.summary_en
     assert "{" not in explanation.summary_en and "}" not in explanation.summary_en
 
 
-def test_explain_irrigation_soil_moisture_is_a_top_contributor(service):
+def test_explain_irrigation_uses_water_balance_rationale(service):
     vector, _ = _vector_for_first_field("farm-001.json", as_of=date(2026, 8, 24))
     advice = IrrigationPredictionModel().predict(vector)
 
     explanation = service.explain_irrigation(advice, vector)
 
-    assert explanation.method == "shap_tree"
-    top_names = {c.feature_name for c in explanation.top_contributions}
-    assert "Soil_Moisture" in top_names
-    assert isinstance(explanation.summary_en, str)
+    # urgency is rule-based now, so no SHAP contributions
+    assert explanation.top_contributions == []
+    assert "Water balance" in explanation.summary_en
 
 
 def test_explain_disease_full_scoring_path(service):
