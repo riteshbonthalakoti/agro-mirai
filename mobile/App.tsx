@@ -186,7 +186,9 @@ function RootInner({ lang, setLang }: { lang: Lang; setLang: (l: Lang) => void }
         cacheSet('farmer', me);
         if (isLang(me.preferred_language)) { setLang(me.preferred_language); cacheSet('lang', me.preferred_language); }
         await loadFields();
-        setPendingPhase('main');
+        // people who were already signed in before notifications existed never saw the permission
+        // screen: ask everything once here too (per-install, remembered in permsV2)
+        setPendingPhase((await cacheGet<boolean>('permsV2')) ? 'main' : 'perms');
       } catch (e) {
         const ae = e as ApiError;
         if (ae.status === 401) {
@@ -202,7 +204,7 @@ function RootInner({ lang, setLang }: { lang: Lang; setLang: (l: Lang) => void }
           const cachedFields = (await cacheGet<Field[]>('fields')) || [];
           setFields(cachedFields);
           setFieldId(cachedFields[0]?.id ?? null);
-          setPendingPhase('main');
+          setPendingPhase((await cacheGet<boolean>('permsV2')) ? 'main' : 'perms');
         } else {
           setBootError(ae.isNetwork ? makeT(isLang(saved) ? saved : 'en')('cantReachServer') : ae.message);
           setPendingPhase(isLang(saved) ? 'auth' : 'lang');
@@ -301,7 +303,7 @@ function RootInner({ lang, setLang }: { lang: Lang; setLang: (l: Lang) => void }
     );
   }
   if (phase === 'perms') {
-    return <PermissionsScreen lang={lang} onDone={() => { cacheSet('permsAsked', true); setPhase('auth'); }} />;
+    return <PermissionsScreen lang={lang} onDone={() => { cacheSet('permsAsked', true); cacheSet('permsV2', true); setPhase(farmer ? 'main' : 'auth'); }} />;
   }
   if (phase === 'auth' || !ctx) {
     return (

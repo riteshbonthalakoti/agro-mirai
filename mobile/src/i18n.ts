@@ -358,6 +358,9 @@ const en = {
   notifDailyTitle: 'Today on your farm',
   soundsTitle: 'Sounds & vibration',
   soundsSub: 'Soft taps and sounds when you press, scan or clear something.',
+  testNotifButton: 'Send a test notification',
+  testNotifTitle: 'Agro Mirai',
+  testNotifBody: 'Notifications are working. Farm alerts will appear here.',
 };
 
 export type Key = keyof typeof en;
@@ -695,6 +698,9 @@ const kn: Dict = {
   notifDailyTitle: 'ಇಂದು ನಿಮ್ಮ ಹೊಲದಲ್ಲಿ',
   soundsTitle: 'ಶಬ್ದ ಮತ್ತು ಕಂಪನ',
   soundsSub: 'ಒತ್ತಿದಾಗ, ಸ್ಕ್ಯಾನ್ ಮಾಡಿದಾಗ ಅಥವಾ ತೆರವುಗೊಳಿಸಿದಾಗ ಮೃದು ಸ್ಪರ್ಶ ಮತ್ತು ಶಬ್ದಗಳು.',
+  testNotifButton: 'ಪರೀಕ್ಷಾ ಅಧಿಸೂಚನೆ ಕಳುಹಿಸಿ',
+  testNotifTitle: 'ಅಗ್ರೋ ಮಿರಾಯ್',
+  testNotifBody: 'ಅಧಿಸೂಚನೆಗಳು ಕೆಲಸ ಮಾಡುತ್ತಿವೆ. ಹೊಲದ ಎಚ್ಚರಿಕೆಗಳು ಇಲ್ಲಿ ಬರುತ್ತವೆ.',
 };
 
 const te: Dict = {
@@ -1029,6 +1035,9 @@ const te: Dict = {
   notifDailyTitle: 'ఈ రోజు మీ పొలంలో',
   soundsTitle: 'శబ్దాలు & కంపనం',
   soundsSub: 'నొక్కినప్పుడు, స్కాన్ చేసినప్పుడు లేదా క్లియర్ చేసినప్పుడు మృదువైన స్పర్శ మరియు శబ్దాలు.',
+  testNotifButton: 'పరీక్ష నోటిఫికేషన్ పంపండి',
+  testNotifTitle: 'అగ్రో మిరాయ్',
+  testNotifBody: 'నోటిఫికేషన్లు పనిచేస్తున్నాయి. పొలం హెచ్చరికలు ఇక్కడ వస్తాయి.',
 };
 
 const hi: Dict = {
@@ -1363,6 +1372,9 @@ const hi: Dict = {
   notifDailyTitle: 'आज आपके खेत में',
   soundsTitle: 'आवाज़ और कंपन',
   soundsSub: 'दबाने, स्कैन करने या साफ़ करने पर हल्के स्पर्श और आवाज़ें।',
+  testNotifButton: 'टेस्ट नोटिफिकेशन भेजें',
+  testNotifTitle: 'एग्रो मिराई',
+  testNotifBody: 'नोटिफिकेशन काम कर रहे हैं। खेत की चेतावनियां यहां मिलेंगी।',
 };
 
 export const STRINGS: Record<Lang, Dict> = { en, kn, te, hi };

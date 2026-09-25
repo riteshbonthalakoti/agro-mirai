@@ -6,6 +6,7 @@ import { API_BASE_URL, ApiError, deleteField, patchMe, sendBugReport } from '../
 import { cropLabel, useApp } from '../ctx';
 import { errorText } from '../hooks';
 import { feedback, setFeedbackEnabled, useFeedbackEnabled } from '../feedback';
+import { useNotifications } from '../notifications';
 import { Icon } from '../../icons';
 import { LANGS } from '../i18n';
 import { C, S } from '../theme';
@@ -79,6 +80,7 @@ export function MeTab() {
   };
 
   const feedbackOn = useFeedbackEnabled();
+  const { notify } = useNotifications();
   const confirmDelete = (id: string) => {
     feedback.warning();
     Alert.alert(t('deleteField'), t('deleteConfirm'), [
@@ -160,6 +162,12 @@ export function MeTab() {
             trackColor={{ true: C.accent }}
           />
         </View>
+        <Btn
+          label={t('testNotifButton')}
+          kind="secondary"
+          onPress={() => notify({ title: t('testNotifTitle'), body: t('testNotifBody') })}
+          style={{ marginTop: S.md }}
+        />
       </Card>
 
       <Card title={t('language')}>
