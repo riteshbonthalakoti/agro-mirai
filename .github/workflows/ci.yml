@@ -21,11 +21,6 @@ jobs:
         run: |
           pip install -r requirements.txt -r requirements-dev.txt
 
-      - name: Train model artifacts
-        run: |
-          python tools/train_crop_model.py
-          python tools/train_irrigation_model.py
-
       - name: Check specs contracts
         run: python tools/check_specs.py
 

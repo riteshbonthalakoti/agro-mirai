@@ -82,16 +82,16 @@ is now Module 19 and the CNN disease model is now Module 20.)*
 <!-- STATE:START -->
 
 ### Recent commits
-- `5c42d3a feat(mobile): add 3s animated splash screen Seed -> Growth -> Intelligence -> Agro Mirai`
-- `45b72be feat: commit tabular model joblib artifacts for instant deployment`
-- `be4ceb0 build: train tabular models during build on agro-mirai-tabular`
-- `f0d18b7 feat: 3-service Render microservice split, tabular ML service, RAM optimizations & keep-alive cron`
-- `11cd849 Mobile: fix tour/audio bugs, real profile redesign, own-themed date picker`
-- `5608f64 CNN client: retry once on a network-level failure`
-- `ae63cb9 Point the release build at Render even without an env var; add APK download to landing page`
-- `2ce126a Mobile: landmark photos on language picker, district lookup, themed date picker`
-- `06ae2ad Mobile: voice-narrated onboarding, phone-first login, shared header, scan zoom/history`
-- `966a588 Remove AGRO_MIRAI_DEMO from main; kept on backup-agro-mirai-demo`
+- `fcd83f7 docs: notifications, haptics/sounds, OTP autofill plan`
+- `f37799c ask notification (and other) permissions once at start for already-signed-in users too; test notification button in Me`
+- `4921ac9 haptics and sounds: tap ticks, success/warning/error, shutter, smooth clear (sound+vibration, also empties the tray), sounds on/off switch`
+- `7101643 notifications: real Android notification always (even when app is open), daily 7am reminder with today's advice`
+- `cb9d0e2 leaf scan redesign: in-app camera with square guide, auto-crop+shrink, progress screen, clear result/not-sure/error screens; show server disease advice (translated)`
+- `3bd017a login, me, add field (acres/guntas), advice auto-load, scan tips, empty state; one forecast row per day (replace stale forecasts on refresh)`
+- `90a9cf9 keep-current crop score: no regional penalty, matches details`
+- `d7272a5 mobile: field chips in one scrolling row, fit label matches shown crop; retry dropped supabase connections hidden inside ConflictError`
+- `da7d8ad mobile home: Today line, irrigation/crop/disease details, keep-current toggle, friendlier server errors`
+- `ad9731e adr 0028: crop hint results`
 
 ### Module status
 - **01-foundation**: done
@@ -411,9 +411,6 @@ Remaining risk: the Render Blueprint apply + Supabase seed + live e2e
 smoke test are the one piece that needed a human in a browser and could
 not be completed in this session. Everything else (dependency pinning,
 WSGI config, gunicorn verification, docs, regression) is done.
-- **42-mobile-video-splash-screen-and-release**: done (2026-09-23)
-  Integrated `AGR-MIRAI-LOGO-ANIMATION.mp4` (16:9, 1920x1080) into React Native `AnimatedSplashScreen` via `expo-av` with portrait containment and seamless warm background `#F4F1E4`. Resolved JDK 17+ CMake build errors by adding JVM `--add-opens` flags in `gradle.properties` and narrowing `abiFilters` to `"arm64-v8a"` in `build.gradle`. Published GitHub Release `v1.3.0`. Diagnosed app launch crash to missing `"expo-av"` entry in `app.json` `plugins` array and fixed it. Documented in `docs/SESSION_HANDOFF_SPLASH_AND_RELEASE.md`.
-
 - **16-reliability-ci**: done
 - **17-et0-water-balance**: done
 - **18-crop-localization**: done

@@ -20,7 +20,3 @@ jobs:
           echo "Pinging https://agro-mirai-cnn.onrender.com/health..."
           curl -s -m 30 https://agro-mirai-cnn.onrender.com/health || true
 
-      - name: Ping Tabular ML Service (agro-mirai-tabular)
-        run: |
-          echo "Pinging https://agro-mirai-tabular.onrender.com/health..."
-          curl -s -m 30 https://agro-mirai-tabular.onrender.com/health || true

@@ -15,19 +15,8 @@ import pytest
 
 from agro_mirai.api.app import create_app
 from agro_mirai.auth.password import hash_password
-from agro_mirai.models.crop_recommendation_model import (
-    DEFAULT_MODEL_PATH as CROP_MODEL_PATH,
-)
-from agro_mirai.models.irrigation_prediction_model import (
-    DEFAULT_MODEL_PATH as IRRIGATION_MODEL_PATH,
-)
 from agro_mirai.persistence.models import Farmer
 from agro_mirai.persistence.sqlite_store import SQLiteDataStore
-
-pytestmark = pytest.mark.skipif(
-    not CROP_MODEL_PATH.exists() or not IRRIGATION_MODEL_PATH.exists(),
-    reason="models/*.joblib not present — run tools/train_*.py first",
-)
 
 
 def _app_and_client():
