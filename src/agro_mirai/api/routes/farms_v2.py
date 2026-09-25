@@ -295,13 +295,19 @@ def field_data_summary(field_id: str):
     if field is None:
         raise ApiError(404, "NOT_FOUND", "Field not found")
 
-    weather = store.list_weather_readings(g.farmer_id, field.id, limit=200)
+    from agro_mirai.processing.weather_series import one_row_per_day
+
+    weather = store.list_weather_readings(g.farmer_id, field.id, limit=400)
     observed = sorted((w for w in weather if not w.is_forecast), key=lambda w: w.observed_at)
     now = datetime.now(timezone.utc)
+    # one row per calendar day: repeated refreshes used to list the same forecast day several times
     upcoming = sorted(
-        (w for w in weather if w.is_forecast and w.observed_at.date() >= now.date()),
+        one_row_per_day(
+            [w for w in weather if w.is_forecast and w.observed_at.date() >= now.date()]
+        ).values(),
         key=lambda w: w.observed_at,
     )
+    observed_days = sorted(one_row_per_day(observed).values(), key=lambda w: w.observed_at)
     soil = store.list_soil_samples(g.farmer_id, field.id, limit=20)
     latest_soil = max(soil, key=lambda s: s.observed_at) if soil else None
     ndvi = sorted(
@@ -339,7 +345,7 @@ def field_data_summary(field_id: str):
             "soil_used": soil_used,
             "weather": {
                 "current": to_json(observed[-1]) if observed else None,
-                "recent": [to_json(w) for w in observed[-7:]],
+                "recent": [to_json(w) for w in observed_days[-7:]],
                 "forecast": [to_json(w) for w in upcoming[:7]],
             },
             "soil": to_json(latest_soil) if latest_soil else None,

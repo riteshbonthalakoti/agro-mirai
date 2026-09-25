@@ -281,14 +281,14 @@ export function AuthScreen({ lang, onLoggedIn, notice }: { lang: Lang; onLoggedI
       setIsNew(r.is_new_farmer);
       setStep('otp');
       setOtp('');
-      setCooldown(30);
+      setCooldown(20);
     } catch (e) {
       const ae = e as ApiError;
       if (ae.status === 400 && ae.message === 'name is required') {
         // First time this phone has been seen -- now ask for a name.
         setStep('name');
       } else {
-        setErr(ae.isNetwork ? t('cantReachServer') : ae.status === 429 ? t('pleaseWait') : ae.message);
+        setErr(ae.isNetwork ? t('cantReachServer') : ae.status === 429 ? t('tooManyRequests') : ae.status >= 500 ? t('serverBusy') : ae.message);
       }
     } finally {
       setBusy(false);
@@ -316,11 +316,18 @@ export function AuthScreen({ lang, onLoggedIn, notice }: { lang: Lang; onLoggedI
       onLoggedIn(farmer, isNew);
     } catch (e) {
       const ae = e as ApiError;
-      setErr(ae.isNetwork ? t('cantReachServer') : t('invalidOtp'));
+      setErr(ae.isNetwork ? t('cantReachServer') : ae.status >= 500 ? t('serverBusy') : t('invalidOtp'));
+      setOtp('');
     } finally {
       setBusy(false);
     }
   };
+
+  // no need to press Verify: it goes as soon as the 6th digit is in
+  useEffect(() => {
+    if (step === 'otp' && otp.length === 6 && !busy) verify();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [otp]);
 
   return (
     <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1, backgroundColor: '#F1EEE1' }}>
@@ -329,6 +336,7 @@ export function AuthScreen({ lang, onLoggedIn, notice }: { lang: Lang; onLoggedI
           <Image source={require('../../assets/logo-mark.png')} style={{ width: 112, height: 112 }} resizeMode="contain" />
         </View>
         <Text style={st.h1}>{t('signIn')}</Text>
+        {step === 'phone' ? <Muted style={{ marginBottom: S.sm }}>{t('signInWelcome')}</Muted> : null}
         {notice && noticeOpen ? <Notice text={notice} onClose={closeNotice} lang={lang} /> : null}
         {err ? <Banner text={err} kind="error" /> : null}
         {step === 'phone' ? (
@@ -346,6 +354,7 @@ export function AuthScreen({ lang, onLoggedIn, notice }: { lang: Lang; onLoggedI
                 autoFocus
               />
             </View>
+            <Muted style={{ marginTop: S.sm }}>{t('signInNoPassword')}</Muted>
             <Btn label={t('sendOtp')} onPress={submitPhone} busy={busy} disabled={cooldown > 0} style={{ marginTop: S.xl }} />
           </>
         ) : step === 'name' ? (
@@ -359,12 +368,31 @@ export function AuthScreen({ lang, onLoggedIn, notice }: { lang: Lang; onLoggedI
           </>
         ) : (
           <>
-            <Muted>+91 {phone}</Muted>
+            <Muted>{t('otpSentTo')}</Muted>
+            <Text style={{ fontSize: 18, fontWeight: '700', color: C.text, marginTop: 2 }}>{`+91 ${phone}`}</Text>
             <Label>{t('otpLabel')}</Label>
-            <Input value={otp} onChangeText={(v) => setOtp(v.replace(/[^0-9]/g, '').slice(0, 6))} keyboardType="number-pad" maxLength={6} autoFocus />
-            <Btn label={t('verify')} onPress={verify} busy={busy} disabled={otp.length < 6} style={{ marginTop: S.xl }} />
-            <Btn label={t('changeNumber')} kind="secondary" onPress={() => { setStep('phone'); setErr(''); }} style={{ marginTop: S.md }} />
-            <Btn label={cooldown > 0 ? `${t('sendOtp')} (${cooldown})` : t('sendOtp')} kind="secondary" onPress={() => requestWithName(isNew ? name.trim() : '')} disabled={cooldown > 0} style={{ marginTop: S.md }} />
+            <Input
+              value={otp}
+              onChangeText={(v) => setOtp(v.replace(/[^0-9]/g, '').slice(0, 6))}
+              keyboardType="number-pad"
+              maxLength={6}
+              autoFocus
+              textContentType="oneTimeCode"
+              autoComplete="sms-otp"
+              style={{ fontSize: 28, fontWeight: '700', letterSpacing: 10, textAlign: 'center', paddingVertical: 14 }}
+            />
+            <Btn label={t('verify')} onPress={verify} busy={busy} disabled={otp.length < 6} style={{ marginTop: S.lg }} />
+            {/* resend sits right under the code box so the keyboard never hides it */}
+            <TouchableOpacity
+              onPress={() => requestWithName(isNew ? name.trim() : '')}
+              disabled={cooldown > 0 || busy}
+              style={{ alignItems: 'center', paddingVertical: S.md }}
+            >
+              <Text style={{ color: cooldown > 0 ? C.muted : C.accent, fontWeight: '700', fontSize: 15 }}>
+                {cooldown > 0 ? t('resendIn').replace('{s}', String(cooldown)) : t('resendCode')}
+              </Text>
+            </TouchableOpacity>
+            <Btn label={t('changeNumber')} kind="secondary" onPress={() => { setStep('phone'); setErr(''); }} />
           </>
         )}
         <Text style={{ textAlign: 'center', color: C.muted, fontSize: 12, lineHeight: 18, marginTop: S.xl }}>

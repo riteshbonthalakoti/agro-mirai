@@ -468,6 +468,17 @@ class SQLiteDataStore:
             raise ConflictError(str(e)) from e
         return len(readings)
 
+    def delete_weather_forecasts(self, farmer_id: str, field_id: str, from_date: str) -> int:
+        """Drop forecast rows dated from ``from_date`` on: a fresh fetch replaces them, so
+        old forecasts for the same days must not pile up next to the new ones."""
+        self._require_owned_field(farmer_id, field_id)
+        cur = self._conn.execute(
+            "DELETE FROM weather_readings WHERE field_id = ? AND is_forecast = 1 AND observed_at >= ?",
+            (field_id, from_date),
+        )
+        self._conn.commit()
+        return cur.rowcount or 0
+
     def list_weather_readings(
         self, farmer_id: str, field_id: str, since: datetime | None = None, limit: int = 50
     ) -> list[WeatherReading]:

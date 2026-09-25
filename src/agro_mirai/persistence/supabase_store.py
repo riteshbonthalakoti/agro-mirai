@@ -315,6 +315,15 @@ class SupabaseDataStore:
             raise ConflictError(str(e)) from e
         return len(payload)
 
+    def delete_weather_forecasts(self, farmer_id: str, field_id: str, from_date: str) -> int:
+        self._require_owned_field(farmer_id, field_id)
+        res = (
+            self._client.table("weather_readings").delete()
+            .eq("field_id", field_id).eq("is_forecast", True).gte("observed_at", from_date)
+            .execute()
+        )
+        return len(res.data or [])
+
     def list_weather_readings(
         self, farmer_id: str, field_id: str, since: datetime | None = None, limit: int = 50
     ) -> list[WeatherReading]:

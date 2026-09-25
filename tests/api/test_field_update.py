@@ -147,3 +147,27 @@ def test_data_summary_cross_tenant_404(client):
 
 def test_data_summary_requires_session(client):
     assert client.get("/v2/fields/x/data-summary").status_code == 401
+
+
+def test_data_summary_lists_each_forecast_day_once(app, client):
+    from datetime import datetime, timedelta, timezone
+
+    from agro_mirai.persistence.models import Field_, WeatherReading
+
+    _register_and_login(client)
+    store = app.extensions["data_store"]
+    farmer_id = client.get("/v2/farmers/me").get_json()["id"]
+    now = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+    field_id = "f0000000-0000-4000-8000-000000000002"
+    store.save_field(farmer_id, Field_(
+        id=field_id, farmer_id=farmer_id, created_at=now, updated_at=now,
+        name="Plot", latitude=15.0, longitude=76.0, area_ha=1.0))
+    # three refreshes left three copies of the same two forecast days
+    for copy in range(3):
+        for d in (1, 2):
+            store.save_weather_reading(farmer_id, WeatherReading(
+                id=f"fc-{copy}-{d}", field_id=field_id, observed_at=now + timedelta(days=d),
+                source="open-meteo", temp_c=30.0 + copy, is_forecast=True))
+    body = client.get(f"/v2/fields/{field_id}/data-summary").get_json()
+    dates = [w["observed_at"][:10] for w in body["weather"]["forecast"]]
+    assert len(dates) == 2 and len(set(dates)) == 2

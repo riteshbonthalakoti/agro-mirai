@@ -67,7 +67,7 @@ const en = {
   permMicBody: 'To ask a farming question out loud.',
   permAllow: 'Allow all',
   permSkip: 'Not now',
-  newHereNamePrompt: "We haven't seen this number before -- what should we call you?",
+  newHereNamePrompt: "We haven't seen this number before — what should we call you?",
 
   // tabs
   tabHome: 'Home',
@@ -310,6 +310,22 @@ const en = {
   riskRising: 'Risk rising',
   tooManyRequests: 'Please wait a few seconds and try again.',
   serverBusy: 'The server is busy or waking up. Please try again in a minute.',
+  useThisField: 'Use this field',
+  signOutAsk: 'Sign out of Agro Mirai?',
+  areaUnit: 'Area unit',
+  unitAcre: 'Acres',
+  unitGunta: 'Guntas',
+  unitHectare: 'Hectares',
+  areaAsHa: 'about {ha} hectares',
+  signInWelcome: 'Welcome! Sign in to get advice for your farm.',
+  signInNoPassword: 'No password needed. We send a 6-digit code to this number.',
+  otpSentTo: 'We sent a 6-digit code to',
+  resendCode: 'Resend code',
+  resendIn: 'Resend code in {s}s',
+  welcomeName: 'Welcome, {name}!',
+  emptyFieldsHelp: 'Add your field to get water, crop and disease advice.',
+  scanTip: 'Tip: fill the frame with one leaf, in daylight.',
+  scanCoverage: 'Most accurate for apple, maize, grape and orange. For other crops it is only a rough guide.',
 };
 
 export type Key = keyof typeof en;
@@ -363,7 +379,7 @@ const kn: Dict = {
   permMicBody: 'ಕೃಷಿಗೆ ಸಂಬಂಧಿಸಿದ ಪ್ರಶ್ನೆಯನ್ನು ಗಟ್ಟಿಯಾಗಿ ಕೇಳಲು.',
   permAllow: 'ಎಲ್ಲರಿಗೂ ಅನುಮತಿಸಿ',
   permSkip: 'ಈಗಲ್ಲ',
-  newHereNamePrompt: 'ಈ ಸಂಖ್ಯೆ ನಮಗೆ ಹೊಸದು -- ನಿಮ್ಮನ್ನು ಏನೆಂದು ಕರೆಯಬೇಕು?',
+  newHereNamePrompt: 'ಈ ಸಂಖ್ಯೆ ನಮಗೆ ಹೊಸದು — ನಿಮ್ಮನ್ನು ಏನೆಂದು ಕರೆಯಬೇಕು?',
 
   tabHome: 'ಮುಖಪುಟ',
   tabData: 'ಹೊಲದ ಮಾಹಿತಿ',
@@ -599,6 +615,22 @@ const kn: Dict = {
   riskRising: 'ಅಪಾಯ ಹೆಚ್ಚುತ್ತಿದೆ',
   tooManyRequests: 'ದಯವಿಟ್ಟು ಕೆಲವು ಸೆಕೆಂಡುಗಳು ಕಾಯಿರಿ, ನಂತರ ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.',
   serverBusy: 'ಸರ್ವರ್ ಬ್ಯುಸಿಯಾಗಿದೆ ಅಥವಾ ಎಚ್ಚರವಾಗುತ್ತಿದೆ. ದಯವಿಟ್ಟು ಒಂದು ನಿಮಿಷದ ನಂತರ ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.',
+  useThisField: 'ಈ ಹೊಲ ಬಳಸಿ',
+  signOutAsk: 'ಅಗ್ರೋ ಮಿರಾಯ್‌ನಿಂದ ಸೈನ್ ಔಟ್ ಆಗಬೇಕೆ?',
+  areaUnit: 'ವಿಸ್ತೀರ್ಣದ ಘಟಕ',
+  unitAcre: 'ಎಕರೆ',
+  unitGunta: 'ಗುಂಟೆ',
+  unitHectare: 'ಹೆಕ್ಟೇರ್',
+  areaAsHa: 'ಸುಮಾರು {ha} ಹೆಕ್ಟೇರ್',
+  signInWelcome: 'ಸ್ವಾಗತ! ನಿಮ್ಮ ಜಮೀನಿಗೆ ಸಲಹೆ ಪಡೆಯಲು ಸೈನ್ ಇನ್ ಮಾಡಿ.',
+  signInNoPassword: 'ಪಾಸ್‌ವರ್ಡ್ ಬೇಕಿಲ್ಲ. ಈ ಸಂಖ್ಯೆಗೆ 6 ಅಂಕಿಯ ಕೋಡ್ ಕಳುಹಿಸುತ್ತೇವೆ.',
+  otpSentTo: 'ನಾವು 6 ಅಂಕಿಯ ಕೋಡ್ ಕಳುಹಿಸಿದ್ದೇವೆ:',
+  resendCode: 'ಕೋಡ್ ಮತ್ತೆ ಕಳುಹಿಸಿ',
+  resendIn: 'ಕೋಡ್ ಮತ್ತೆ ಕಳುಹಿಸಲು {s} ಸೆಕೆಂಡ್',
+  welcomeName: 'ಸ್ವಾಗತ, {name}!',
+  emptyFieldsHelp: 'ನೀರು, ಬೆಳೆ ಮತ್ತು ರೋಗ ಸಲಹೆ ಪಡೆಯಲು ನಿಮ್ಮ ಹೊಲವನ್ನು ಸೇರಿಸಿ.',
+  scanTip: 'ಸಲಹೆ: ಹಗಲು ಬೆಳಕಿನಲ್ಲಿ ಒಂದು ಎಲೆ ಚೌಕಟ್ಟು ತುಂಬುವಂತೆ ಫೋಟೋ ತೆಗೆಯಿರಿ.',
+  scanCoverage: 'ಸೇಬು, ಮೆಕ್ಕೆಜೋಳ, ದ್ರಾಕ್ಷಿ ಮತ್ತು ಕಿತ್ತಳೆಗೆ ಹೆಚ್ಚು ನಿಖರ. ಇತರ ಬೆಳೆಗಳಿಗೆ ಇದು ಅಂದಾಜು ಮಾತ್ರ.',
 };
 
 const te: Dict = {
@@ -649,7 +681,7 @@ const te: Dict = {
   permMicBody: 'వ్యవసాయానికి సంబంధించిన ప్రశ్నను బిగ్గరగా అడగడానికి.',
   permAllow: 'అన్నింటినీ అనుమతించు.',
   permSkip: 'ఇప్పుడు కాదు',
-  newHereNamePrompt: 'ఈ నంబర్ మాకు కొత్తది -- మిమ్మల్ని ఏమని పిలవాలి?',
+  newHereNamePrompt: 'ఈ నంబర్ మాకు కొత్తది — మిమ్మల్ని ఏమని పిలవాలి?',
 
   tabHome: 'హోమ్',
   tabData: 'పొలం డేటా',
@@ -885,6 +917,22 @@ const te: Dict = {
   riskRising: 'ప్రమాదం పెరుగుతోంది',
   tooManyRequests: 'దయచేసి కొన్ని సెకన్లు ఆగి మళ్లీ ప్రయత్నించండి.',
   serverBusy: 'సర్వర్ బిజీగా ఉంది లేదా మేల్కొంటోంది. దయచేసి ఒక నిమిషం తర్వాత మళ్లీ ప్రయత్నించండి.',
+  useThisField: 'ఈ పొలం వాడండి',
+  signOutAsk: 'అగ్రో మిరాయ్ నుండి సైన్ అవుట్ చేయాలా?',
+  areaUnit: 'విస్తీర్ణ యూనిట్',
+  unitAcre: 'ఎకరాలు',
+  unitGunta: 'గుంటలు',
+  unitHectare: 'హెక్టార్లు',
+  areaAsHa: 'సుమారు {ha} హెక్టార్లు',
+  signInWelcome: 'స్వాగతం! మీ పొలానికి సలహా పొందడానికి సైన్ ఇన్ చేయండి.',
+  signInNoPassword: 'పాస్‌వర్డ్ అవసరం లేదు. ఈ నంబర్‌కు 6 అంకెల కోడ్ పంపుతాము.',
+  otpSentTo: 'మేము 6 అంకెల కోడ్ పంపాము:',
+  resendCode: 'కోడ్ మళ్లీ పంపండి',
+  resendIn: 'కోడ్ మళ్లీ పంపడానికి {s} సెకన్లు',
+  welcomeName: 'స్వాగతం, {name}!',
+  emptyFieldsHelp: 'నీరు, పంట మరియు వ్యాధి సలహా పొందడానికి మీ పొలాన్ని జోడించండి.',
+  scanTip: 'చిట్కా: పగటి వెలుతురులో ఒక ఆకు ఫ్రేమ్ నిండేలా ఫోటో తీయండి.',
+  scanCoverage: 'ఆపిల్, మొక్కజొన్న, ద్రాక్ష, నారింజకు ఎక్కువ కచ్చితత్వం. ఇతర పంటలకు ఇది సుమారు మార్గదర్శి మాత్రమే.',
 };
 
 const hi: Dict = {
@@ -935,7 +983,7 @@ const hi: Dict = {
   permMicBody: 'खेती से संबंधित कोई सवाल ज़ोर से पूछना।',
   permAllow: 'सभी को अनुमति दें',
   permSkip: 'अभी नहीं',
-  newHereNamePrompt: 'यह नंबर हमारे लिए नया है -- आपको क्या कहकर बुलाएँ?',
+  newHereNamePrompt: 'यह नंबर हमारे लिए नया है — आपको क्या कहकर बुलाएँ?',
 
   tabHome: 'होम',
   tabData: 'खेत डेटा',
@@ -1171,6 +1219,22 @@ const hi: Dict = {
   riskRising: 'खतरा बढ़ रहा है',
   tooManyRequests: 'कृपया कुछ सेकंड रुकें और फिर कोशिश करें।',
   serverBusy: 'सर्वर व्यस्त है या शुरू हो रहा है। कृपया एक मिनट बाद फिर कोशिश करें।',
+  useThisField: 'यह खेत चुनें',
+  signOutAsk: 'क्या आप एग्रो मिराई से साइन आउट करना चाहते हैं?',
+  areaUnit: 'क्षेत्रफल की इकाई',
+  unitAcre: 'एकड़',
+  unitGunta: 'गुंटा',
+  unitHectare: 'हेक्टेयर',
+  areaAsHa: 'लगभग {ha} हेक्टेयर',
+  signInWelcome: 'स्वागत है! अपने खेत के लिए सलाह पाने हेतु साइन इन करें।',
+  signInNoPassword: 'पासवर्ड की जरूरत नहीं। हम इस नंबर पर 6 अंकों का कोड भेजेंगे।',
+  otpSentTo: 'हमने 6 अंकों का कोड भेजा है:',
+  resendCode: 'कोड फिर से भेजें',
+  resendIn: 'कोड दोबारा भेजने के लिए {s} सेकंड',
+  welcomeName: 'स्वागत है, {name}!',
+  emptyFieldsHelp: 'पानी, फसल और रोग की सलाह पाने के लिए अपना खेत जोड़ें।',
+  scanTip: 'सुझाव: दिन की रोशनी में एक पत्ती को पूरे फ्रेम में लें।',
+  scanCoverage: 'सेब, मक्का, अंगूर और संतरे के लिए सबसे सटीक। अन्य फसलों के लिए यह केवल मोटा अंदाज़ा है।',
 };
 
 export const STRINGS: Record<Lang, Dict> = { en, kn, te, hi };

@@ -141,6 +141,8 @@ export function ScanTab() {
     <ScrollView contentContainerStyle={{ padding: S.lg, paddingTop: S.md }}>
       <Card title={t('scanTitle')}>
         <Muted>{t('scanSub')}</Muted>
+        <Muted style={{ marginTop: 4 }}>{t('scanTip')}</Muted>
+        <Muted style={{ marginTop: 4 }}>{t('scanCoverage')}</Muted>
         <View style={{ flexDirection: 'row', gap: S.sm, marginTop: S.md }}>
           <Btn label={t('takePhoto')} onPress={camera} disabled={busy} style={{ flex: 1 }} />
           <Btn label={t('pickGallery')} kind="secondary" onPress={gallery} disabled={busy} style={{ flex: 1 }} />

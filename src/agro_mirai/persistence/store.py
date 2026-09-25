@@ -93,6 +93,10 @@ class DataStore(Protocol):
         self, farmer_id: str, readings: list[WeatherReading]
     ) -> int: ...  # bulk insert, returns rows saved (additive, Module 43)
 
+    def delete_weather_forecasts(
+        self, farmer_id: str, field_id: str, from_date: str
+    ) -> int: ...  # forecast rows dated >= from_date (YYYY-MM-DD); returns rows removed (additive)
+
     def list_weather_readings(
         self,
         farmer_id: str,
