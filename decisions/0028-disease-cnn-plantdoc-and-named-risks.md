@@ -32,3 +32,8 @@ Run 1 had no PlantVillage replay (the loader failed) and forgot lab photos, so r
 ## Data licences / attribution
 - PlantDoc (Cropped-PlantDoc): Singh, Jain, Jain, Kayal, Kumawat, Batra, "PlantDoc: A Dataset for Visual Plant Disease Detection", ACM CoDS-COMAD 2020, CC BY 4.0. https://github.com/pratikkayal/PlantDoc-Dataset
 - PlantVillage: Hughes & Salathe 2015, Mohanty et al. 2016; copy used for replay/evaluation: huggingface.co/datasets/mohanty/PlantVillage (CC BY-SA 3.0).
+
+## Update: crop hint and leaf gate (measured in production, 2026-09-25)
+- **Crop hint.** The farmer already tells us the crop, so for the 4 crops the photo model covers (apple, maize, grapes, orange) only that crop's classes now compete (`class_indices_for_crop`, service form field `crop`, softmax renormalised). Wrong-plant guard: confidence is scaled by (share of the unconstrained answer sitting on that crop's classes / 0.4, max 1), so a photo that does not look like the field's crop becomes "not sure" instead of a forced guess. Other crops are untouched.
+- **Measured** by scanning 68 real PlantDoc test photos (apple, maize, grapes; 8 folders) through the production API twice, on a field of the right crop (hint) and on a cotton field (no hint, same model): top-1 counting "best guess" **55.9% -> 75.0%**; confident answers 30 -> 45 of 68, with accuracy when confident 76.7% -> 82.2%; "not sure" 38 -> 23. Small sample (68 photos, about +/-10 points), same PlantDoc test split as above.
+- **Leaf gate**: lesion colours now count as plant with >= 4% green (was 8%); a heavily scabbed apple leaf (5% green) had been rejected. Skin/wall-toned test images are still rejected.
