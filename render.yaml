@@ -16,8 +16,6 @@ services:
         value: src
       - key: PYTHON_VERSION
         value: 3.12.10
-      - key: TABULAR_SERVICE_URL
-        value: https://agro-mirai-tabular.onrender.com
       - key: CNN_SERVICE_URL
         value: https://agro-mirai-cnn.onrender.com
       - key: CNN_SERVICE_TIMEOUT_S
@@ -76,17 +74,3 @@ services:
         value: 3.12.10
       - key: CNN_SERVICE_TOKEN
         sync: false
-
-  - type: web
-    name: agro-mirai-tabular
-    runtime: python
-    repo: https://github.com/riteshbonthalakoti/agro-mirai
-    plan: free
-    region: singapore
-    branch: main
-    buildCommand: pip install -r services/tabular-ml/requirements.txt
-    startCommand: 'PYTHONPATH=src:services/tabular-ml gunicorn -w 1 --threads 2 --timeout 120 -b 0.0.0.0:$PORT app:app'
-    healthCheckPath: /health
-    envVars:
-      - key: PYTHON_VERSION
-        value: 3.12.10

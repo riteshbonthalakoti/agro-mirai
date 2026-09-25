@@ -1,28 +1,20 @@
 """``ExplanationService`` — turns a Module 06/07/08 prediction into a
 uniform ``Explanation`` Module 10 can attach to any advisory output.
 
-Modules 06/07 (trained ``RandomForestClassifier`` artifacts) are
-explained with ``shap.TreeExplainer``. Module 08 (a rule-based weighted
-score, no trained artifact) is explained by reading the same weighted
-terms ``score_disease_risk`` already computes and reporting them as
-direct feature attributions, labeled ``method="rule_weight"`` — never
-presented as SHAP. See ``decisions/0010-explainability.md`` for the
-full reasoning.
+Crop and irrigation advice are rule-based (decisions/0027) and already
+carry their own plain-language ``rationale``, which is what is reported
+here. The disease score (Module 08) is explained by reading the same
+weighted terms ``score_disease_risk`` already computes and reporting them
+as direct feature attributions, labeled ``method="rule_weight"``. There is
+no SHAP any more: the RandomForests it explained were retired. See
+``decisions/0010-explainability.md`` (history) and ``decisions/0029``.
 """
 from __future__ import annotations
 
 import logging
-import os
 import uuid
-from dataclasses import asdict
-from datetime import date, datetime, timezone
+from datetime import datetime, timezone
 
-import pandas as pd
-
-from agro_mirai.models.crop_feature_mapping import (
-    MODEL_FEATURE_COLUMNS as CROP_FEATURE_COLUMNS,
-)
-from agro_mirai.models.crop_feature_mapping import map_features as map_crop_features
 from agro_mirai.models.disease_risk_scoring import (
     _HUMIDITY_WEIGHT,
     _NDVI_WEIGHT,
@@ -31,12 +23,6 @@ from agro_mirai.models.disease_risk_scoring import (
     score_disease_risk,
 )
 from agro_mirai.models.explanation import Explanation, FeatureContribution
-from agro_mirai.models.irrigation_feature_mapping import (
-    MODEL_FEATURE_COLUMNS as IRRIGATION_FEATURE_COLUMNS,
-)
-from agro_mirai.models.irrigation_feature_mapping import (
-    map_features as map_irrigation_features,
-)
 from agro_mirai.persistence.models import (
     CropRecommendation,
     DiseaseRiskAlert,
@@ -46,11 +32,6 @@ from agro_mirai.processing.feature_builder import FeatureVector
 
 _TOP_K = 3
 _log = logging.getLogger(__name__)
-
-
-def _ser_features(features: FeatureVector) -> dict:
-    d = asdict(features)
-    return {k: (v.isoformat() if isinstance(v, (datetime, date)) else v) for k, v in d.items()}
 
 
 def _direction(contribution: float) -> str:
@@ -83,32 +64,9 @@ class ExplanationService:
             return None
         return self._voice_service.translate(summary_en, "en", target_lang)
 
-    def _remote_contributions(self, kind: str, features: FeatureVector) -> list[FeatureContribution] | None:
-        """Ask the tabular service (which holds the trained models) for SHAP
-        contributions. Returns None on any failure so callers can degrade."""
-        url = os.environ.get("TABULAR_SERVICE_URL", "").rstrip("/")
-        if not url:
-            return None
-        try:
-            import requests
-
-            from agro_mirai.models.remote_tabular_client import service_headers
-
-            resp = requests.post(
-                f"{url}/explain/{kind}", json={"feature_vector": _ser_features(features)},
-                timeout=25, headers=service_headers(),
-            )
-            if resp.status_code != 200:
-                _log.warning("tabular /explain/%s returned HTTP %s", kind, resp.status_code)
-                return None
-            return [FeatureContribution(**c) for c in resp.json()["top_contributions"]]
-        except Exception as exc:  # noqa: BLE001 - degrade, never fail
-            _log.warning("tabular /explain/%s failed: %s", kind, exc)
-            return None
-
-    def _finish(self, top, subject_type, subject_id, field_id, label, target_lang, extra="", method="shap_tree", fallback=None):
+    def _finish(self, top, subject_type, subject_id, field_id, label, target_lang, extra="", method="rule_weight", fallback=None):
         summary_en = _summary_en(label, top) if top else (
-            fallback or f"The trained model's factor breakdown for this {label} is temporarily unavailable; the result itself is unaffected."
+            fallback or f"No detailed breakdown is available for this {label}; the result itself is unaffected."
         )
         summary_en += extra
         summary_kn = self._translate(summary_en)
@@ -124,132 +82,21 @@ class ExplanationService:
     def explain_crop(
         self, recommendation: CropRecommendation, features: FeatureVector, target_lang: str = "kn"
     ) -> Explanation:
-        if recommendation.rationale:
-            # rule-based pick (EcoCrop): the model already wrote the reason
-            return self._finish([], "crop_recommendation", recommendation.id, recommendation.field_id,
-                                f"recommendation of {recommendation.recommended_crop}", target_lang,
-                                method="rule_weight", fallback=recommendation.rationale)
-        try:
-            return self._explain_crop_local(recommendation, features, target_lang)
-        except Exception as exc:  # model artifact not present in this process
-            _log.info("local crop explanation unavailable (%s); using tabular service", exc)
-        top = self._remote_contributions("crop", features) or []
-        return self._finish(top, "crop_recommendation", recommendation.id, recommendation.field_id,
-                            f"recommendation of {recommendation.recommended_crop}", target_lang,
-                            extra=_regional_fit_note(recommendation))
+        # rule-based pick (EcoCrop): the model already wrote the reason
+        return self._finish(
+            [], "crop_recommendation", recommendation.id, recommendation.field_id,
+            f"recommendation of {recommendation.recommended_crop}", target_lang,
+            method="rule_weight", fallback=recommendation.rationale,
+        )
 
     def explain_irrigation(
         self, advice: IrrigationAdvice, features: FeatureVector, target_lang: str = "kn"
     ) -> Explanation:
-        try:
-            return self._explain_irrigation_local(advice, features, target_lang)
-        except Exception as exc:
-            # urgency is rule-based now (water balance), nothing for SHAP to
-            # explain, so just use the advice's own rationale
-            _log.info("irrigation explanation: no SHAP (%s); using water-balance rationale", exc)
-        top = []
-        return self._finish(top, "irrigation_advice", advice.id, advice.field_id,
-                            f"{advice.urgency} irrigation urgency", target_lang,
-                            method="rule_weight", fallback=advice.rationale)
-
-    def _explain_crop_local(
-        self,
-        recommendation: CropRecommendation,
-        features: FeatureVector,
-        target_lang: str = "kn",
-    ) -> Explanation:
-        import shap
-
-        row = map_crop_features(features)
-        x = pd.DataFrame([row], columns=CROP_FEATURE_COLUMNS)
-
-        model = self._crop_model._model  # noqa: SLF001 — internal sklearn handle, Module 09 only
-        explainer = shap.TreeExplainer(model)
-        shap_values = explainer.shap_values(x)
-
-        class_index = list(model.classes_).index(recommendation.recommended_crop)
-        # Multi-class TreeExplainer output is either a list of per-class
-        # arrays or a single (n_samples, n_features, n_classes) array,
-        # depending on the shap version — handle both.
-        if isinstance(shap_values, list):
-            per_feature = shap_values[class_index][0]
-        else:
-            per_feature = shap_values[0, :, class_index]
-
-        contributions = [
-            FeatureContribution(
-                feature_name=name,
-                feature_value=float(row[name]),
-                contribution=float(value),
-                direction=_direction(value),
-            )
-            for name, value in zip(CROP_FEATURE_COLUMNS, per_feature)
-        ]
-        top = sorted(contributions, key=lambda c: -abs(c.contribution))[:_TOP_K]
-
-        summary_en = _summary_en(
-            f"recommendation of {recommendation.recommended_crop}", top
-        )
-        summary_en += _regional_fit_note(recommendation)
-        summary_kn = self._translate(summary_en)
-        return Explanation(
-            id=str(uuid.uuid4()),
-            field_id=recommendation.field_id,
-            created_at=datetime.now(timezone.utc),
-            subject_type="crop_recommendation",
-            subject_id=recommendation.id,
-            method="shap_tree",
-            top_contributions=top,
-            summary_en=summary_en,
-            summary_kn=summary_kn,
-            summary_translated=summary_kn if target_lang == "kn" else self._translate(summary_en, target_lang),
-            summary_translated_lang=target_lang if self._voice_service is not None else None,
-        )
-
-    def _explain_irrigation_local(
-        self, advice: IrrigationAdvice, features: FeatureVector, target_lang: str = "kn"
-    ) -> Explanation:
-        import shap
-
-        row = map_irrigation_features(features)
-        x = pd.DataFrame([row], columns=IRRIGATION_FEATURE_COLUMNS)
-
-        model = self._irrigation_model._model  # noqa: SLF001
-        explainer = shap.TreeExplainer(model)
-        shap_values = explainer.shap_values(x)
-
-        predicted_label = model.predict(x)[0]
-        class_index = list(model.classes_).index(predicted_label)
-        if isinstance(shap_values, list):
-            per_feature = shap_values[class_index][0]
-        else:
-            per_feature = shap_values[0, :, class_index]
-
-        contributions = [
-            FeatureContribution(
-                feature_name=name,
-                feature_value=float(row[name]),
-                contribution=float(value),
-                direction=_direction(value),
-            )
-            for name, value in zip(IRRIGATION_FEATURE_COLUMNS, per_feature)
-        ]
-        top = sorted(contributions, key=lambda c: -abs(c.contribution))[:_TOP_K]
-
-        summary_en = _summary_en(f"{advice.urgency} irrigation urgency", top)
-        summary_kn = self._translate(summary_en)
-        return Explanation(
-            id=str(uuid.uuid4()),
-            field_id=advice.field_id,
-            created_at=datetime.now(timezone.utc),
-            subject_type="irrigation_advice",
-            subject_id=advice.id,
-            method="shap_tree",
-            top_contributions=top,
-            summary_en=summary_en,
-            summary_kn=summary_kn,
-            summary_translated=summary_kn if target_lang == "kn" else self._translate(summary_en, target_lang),
-            summary_translated_lang=target_lang if self._voice_service is not None else None,
+        # urgency and depth come from one soil-water balance; its rationale is the explanation
+        return self._finish(
+            [], "irrigation_advice", advice.id, advice.field_id,
+            f"{advice.urgency} irrigation urgency", target_lang,
+            method="rule_weight", fallback=advice.rationale,
         )
 
     def explain_disease(

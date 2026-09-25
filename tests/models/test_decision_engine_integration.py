@@ -17,25 +17,7 @@ ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT / "tools") not in sys.path:
     sys.path.insert(0, str(ROOT / "tools"))
 
-from agro_mirai.models.crop_recommendation_model import (  # noqa: E402
-    DEFAULT_MODEL_PATH as CROP_MODEL_PATH,
-    CropRecommendationModel,
-)
-from agro_mirai.models.irrigation_prediction_model import (  # noqa: E402
-    DEFAULT_MODEL_PATH as IRRIGATION_MODEL_PATH,
-)
-
-try:
-    import shap  # noqa: F401
-
-    _SHAP_AVAILABLE = True
-except ImportError:
-    _SHAP_AVAILABLE = False
-
-pytestmark = pytest.mark.skipif(
-    not _SHAP_AVAILABLE or not CROP_MODEL_PATH.exists() or not IRRIGATION_MODEL_PATH.exists(),
-    reason="shap not installed, or models/*.joblib not present — pip install shap and/or run tools/train_*.py first",
-)
+from agro_mirai.models.crop_recommendation_model import CropRecommendationModel  # noqa: E402
 
 from check_specs import (  # noqa: E402
     ENUMS_PATH,

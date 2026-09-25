@@ -19,15 +19,9 @@ ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT / "tools") not in sys.path:
     sys.path.insert(0, str(ROOT / "tools"))
 
-from agro_mirai.models.crop_recommendation_model import (  # noqa: E402
-    DEFAULT_MODEL_PATH as CROP_MODEL_PATH,
-)
 from agro_mirai.models.crop_recommendation_model import CropRecommendationModel  # noqa: E402
 from agro_mirai.models.disease_risk_model import DiseaseRiskModel  # noqa: E402
 from agro_mirai.models.explanation_service import ExplanationService  # noqa: E402
-from agro_mirai.models.irrigation_prediction_model import (  # noqa: E402
-    DEFAULT_MODEL_PATH as IRRIGATION_MODEL_PATH,
-)
 from agro_mirai.models.irrigation_prediction_model import (  # noqa: E402
     IrrigationPredictionModel,
 )
@@ -40,18 +34,6 @@ from agro_mirai.persistence.models import (  # noqa: E402
 from agro_mirai.processing.feature_builder import FeatureBuilder  # noqa: E402
 
 FIXTURES_DIR = ROOT / "specs" / "domains" / "fixtures"
-
-try:
-    import shap  # noqa: F401
-
-    _SHAP_AVAILABLE = True
-except ImportError:
-    _SHAP_AVAILABLE = False
-
-pytestmark = pytest.mark.skipif(
-    not _SHAP_AVAILABLE or not CROP_MODEL_PATH.exists() or not IRRIGATION_MODEL_PATH.exists(),
-    reason="shap not installed, or models/*.joblib not present — pip install shap and/or run tools/train_*.py first",
-)
 
 
 def _pdt(value: str) -> datetime:

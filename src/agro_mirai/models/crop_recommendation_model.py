@@ -15,7 +15,6 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime, timezone
-from pathlib import Path
 
 from agro_mirai.models import ecocrop
 from agro_mirai.models.regional_suitability import (
@@ -25,11 +24,6 @@ from agro_mirai.models.regional_suitability import (
 )
 from agro_mirai.persistence.models import CropRecommendation
 from agro_mirai.processing.feature_builder import FeatureVector
-
-DEFAULT_MODEL_PATH = (
-    Path(__file__).resolve().parent.parent.parent.parent / "models" / "crop_rf.joblib"
-)
-
 
 def _temperature(features: FeatureVector) -> float:
     for t in (features.temp_c_mean_14d, features.temp_c_mean_7d, features.temp_c_mean_30d):
@@ -75,8 +69,8 @@ def _greenness_note(features: FeatureVector) -> str:
 
 
 class CropRecommendationModel:
-    def __init__(self, model_path: Path | None = None):
-        # no trained artifact any more
+    def __init__(self):
+        # rules only, no trained model file
         self._model = None
 
     def _rank(self, features: FeatureVector):

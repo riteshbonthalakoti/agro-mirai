@@ -25,19 +25,12 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime, timedelta, timezone
-from pathlib import Path
 
 from agro_mirai.models.crop_coefficients import growth_stage_for, kc_for
 from agro_mirai.models.evapotranspiration import hargreaves_samani_et0
 from agro_mirai.models.soil_water_balance import BalanceResult, effective_rain, run_balance
 from agro_mirai.persistence.models import IrrigationAdvice
 from agro_mirai.processing.feature_builder import FeatureVector
-
-DEFAULT_MODEL_PATH = (
-    Path(__file__).resolve().parent.parent.parent.parent
-    / "models"
-    / "irrigation_rf.joblib"
-)
 
 # Share of the 7-day crop water demand that rain did NOT cover. Cut-offs
 # are a judgement call around FAO-56's usual 50% allowable depletion.
@@ -209,8 +202,8 @@ def _rationale_from_balance(b: BalanceResult, urgency: str, depth: float, waitin
 
 
 class IrrigationPredictionModel:
-    def __init__(self, model_path: Path | None = None):
-        # no trained artifact any more; model_path is ignored
+    def __init__(self):
+        # rules only, no trained model file
         self._model = None
 
     def _predict_daily(self, features: FeatureVector) -> IrrigationAdvice | None:

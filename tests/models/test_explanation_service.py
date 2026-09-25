@@ -1,19 +1,14 @@
 """Unit tests for ExplanationService — plumbing only.
 
-Modules 06/07 explanations mock shap.TreeExplainer entirely so these
-tests don't require the trained artifacts; the disease path needs no
-mocking since it has no model to mock. See
-decisions/0010-explainability.md for why the disease path is exact
-weight x signal decomposition, not SHAP.
+Crop and irrigation advice are rule-based and carry their own rationale, which is
+what gets reported; the disease path is an exact weight x signal decomposition
+(decisions/0010, 0029). No trained model is involved anywhere.
 """
 from __future__ import annotations
 
 import uuid
 from datetime import date, datetime, timezone
-from unittest.mock import MagicMock, patch
-
-import numpy as np
-import pytest
+from unittest.mock import MagicMock
 
 from agro_mirai.models.explanation import Explanation
 from agro_mirai.models.explanation_service import ExplanationService
@@ -23,18 +18,6 @@ from agro_mirai.persistence.models import (
     IrrigationAdvice,
 )
 from agro_mirai.processing.feature_builder import FeatureVector
-
-try:
-    import shap  # noqa: F401
-
-    _SHAP_AVAILABLE = True
-except ImportError:
-    _SHAP_AVAILABLE = False
-
-pytestmark = pytest.mark.skipif(
-    not _SHAP_AVAILABLE,
-    reason="shap not installed — pip install shap to run these tests",
-)
 
 
 def _vector(**overrides) -> FeatureVector:
@@ -66,163 +49,56 @@ def _vector(**overrides) -> FeatureVector:
     return FeatureVector(**defaults)
 
 
-class _FakeSklearnModel:
-    """Minimal stand-in with just the attributes ExplanationService touches."""
-
-    def __init__(self, classes):
-        self.classes_ = np.array(classes)
-
-    def predict(self, x):
-        return np.array([self.classes_[0]])
-
-
-def _fake_tree_explainer(n_features: int, n_classes: int, as_list: bool):
-    explainer = MagicMock()
-    if as_list:
-        explainer.shap_values.return_value = [
-            np.full((1, n_features), 0.0) + i * 0.1 for i in range(n_classes)
-        ]
-    else:
-        arr = np.zeros((1, n_features, n_classes))
-        for c in range(n_classes):
-            arr[0, :, c] = c * 0.1
-        explainer.shap_values.return_value = arr
-    return explainer
-
-
-@pytest.mark.parametrize("as_list", [True, False])
-def test_explain_crop_shape(as_list):
-    classes = ["rice", "maize", "cotton"]
-    model_wrapper = MagicMock()
-    model_wrapper._model = _FakeSklearnModel(classes)
-
-    service = ExplanationService(crop_model=model_wrapper)
-    recommendation = CropRecommendation(
-        id=str(uuid.uuid4()),
-        field_id="ff000001-0000-4000-8000-000000000001",
-        created_at=datetime.now(timezone.utc),
-        recommended_crop="rice",
-        confidence=0.9,
-        alternatives=["maize"],
-        season="kharif",
+def _rec(**kw):
+    base = dict(
+        id=str(uuid.uuid4()), field_id="ff000001-0000-4000-8000-000000000001",
+        created_at=datetime.now(timezone.utc), recommended_crop="rice", confidence=0.9,
+        alternatives=["maize"], season="kharif",
     )
+    base.update(kw)
+    return CropRecommendation(**base)
 
-    with patch("shap.TreeExplainer") as mock_cls:
-        mock_cls.return_value = _fake_tree_explainer(7, 3, as_list)
-        explanation = service.explain_crop(recommendation, _vector())
+
+def test_explain_crop_reports_the_rationale_the_model_wrote():
+    rec = _rec(rationale="Rice is a good fit: the temperature (26C) is in its ideal range.")
+    explanation = ExplanationService().explain_crop(rec, _vector())
 
     assert isinstance(explanation, Explanation)
-    assert explanation.method == "shap_tree"
+    assert explanation.method == "rule_weight"
     assert explanation.subject_type == "crop_recommendation"
-    assert explanation.subject_id == recommendation.id
-    assert 1 <= len(explanation.top_contributions) <= 3
-    assert all(c.direction in ("increases", "decreases") for c in explanation.top_contributions)
+    assert explanation.subject_id == rec.id
+    assert explanation.summary_en == rec.rationale
+    assert explanation.top_contributions == []
     assert explanation.summary_kn is None
 
 
-def test_explain_crop_no_caveat_when_in_region():
-    classes = ["rice", "maize", "cotton"]
-    model_wrapper = MagicMock()
-    model_wrapper._model = _FakeSklearnModel(classes)
-
-    service = ExplanationService(crop_model=model_wrapper)
-    recommendation = CropRecommendation(
-        id=str(uuid.uuid4()),
-        field_id="ff000001-0000-4000-8000-000000000001",
-        created_at=datetime.now(timezone.utc),
-        recommended_crop="rice",
-        confidence=0.9,
-        alternatives=["maize"],
-        season="kharif",
-        out_of_region=False,
-        regional_alternative=None,
-    )
-
-    with patch("shap.TreeExplainer") as mock_cls:
-        mock_cls.return_value = _fake_tree_explainer(7, 3, as_list=True)
-        explanation = service.explain_crop(recommendation, _vector())
-
-    assert "caveat" not in explanation.summary_en.lower()
+def test_explain_crop_without_a_rationale_says_no_breakdown_and_never_raises():
+    explanation = ExplanationService().explain_crop(_rec(rationale=None), features=None)
+    assert explanation.method == "unavailable"
+    assert "No detailed breakdown" in explanation.summary_en
 
 
-def test_explain_crop_caveat_with_regional_alternative():
-    classes = ["rice", "maize", "grapes"]
-    model_wrapper = MagicMock()
-    model_wrapper._model = _FakeSklearnModel(classes)
-
-    service = ExplanationService(crop_model=model_wrapper)
-    recommendation = CropRecommendation(
-        id=str(uuid.uuid4()),
-        field_id="ff000001-0000-4000-8000-000000000001",
-        created_at=datetime.now(timezone.utc),
-        recommended_crop="grapes",
-        confidence=0.7,
-        alternatives=["rice", "maize"],
-        season="kharif",
-        out_of_region=True,
-        regional_alternative="rice",
-    )
-
-    with patch("shap.TreeExplainer") as mock_cls:
-        mock_cls.return_value = _fake_tree_explainer(7, 3, as_list=True)
-        explanation = service.explain_crop(recommendation, _vector())
-
-    summary = explanation.summary_en.lower()
-    assert "caveat" in summary
-    assert "grapes" in summary
-    assert "rice" in summary
-
-
-def test_explain_crop_caveat_with_no_regional_alternative():
-    classes = ["papaya", "banana", "grapes"]
-    model_wrapper = MagicMock()
-    model_wrapper._model = _FakeSklearnModel(classes)
-
-    service = ExplanationService(crop_model=model_wrapper)
-    recommendation = CropRecommendation(
-        id=str(uuid.uuid4()),
-        field_id="ff000001-0000-4000-8000-000000000001",
-        created_at=datetime.now(timezone.utc),
-        recommended_crop="grapes",
-        confidence=0.6,
-        alternatives=["papaya", "banana"],
-        season="kharif",
-        out_of_region=True,
-        regional_alternative=None,
-    )
-
-    with patch("shap.TreeExplainer") as mock_cls:
-        mock_cls.return_value = _fake_tree_explainer(7, 3, as_list=True)
-        explanation = service.explain_crop(recommendation, _vector())
-
-    summary = explanation.summary_en.lower()
-    assert "caveat" in summary
-    assert "none" in summary
-
-
-def test_explain_irrigation_shape():
-    model_wrapper = MagicMock()
-    model_wrapper._model = _FakeSklearnModel(["Low", "Medium", "High"])
-
-    service = ExplanationService(irrigation_model=model_wrapper)
+def test_explain_irrigation_reports_the_water_balance_rationale():
     advice = IrrigationAdvice(
-        id=str(uuid.uuid4()),
-        field_id="ff000001-0000-4000-8000-000000000001",
-        created_at=datetime.now(timezone.utc),
-        recommended_depth_mm=25.0,
-        window_start_at=datetime.now(timezone.utc),
-        window_end_at=datetime.now(timezone.utc),
-        urgency="moderate",
-        rationale="test",
+        id=str(uuid.uuid4()), field_id="ff000001-0000-4000-8000-000000000001",
+        created_at=datetime.now(timezone.utc), recommended_depth_mm=25.0,
+        window_start_at=datetime.now(timezone.utc), window_end_at=datetime.now(timezone.utc),
+        urgency="moderate", rationale="About 60% of the soil water is gone. Water within 2 day(s).",
     )
-
-    with patch("shap.TreeExplainer") as mock_cls:
-        mock_cls.return_value = _fake_tree_explainer(8, 3, as_list=True)
-        explanation = service.explain_irrigation(advice, _vector())
-
-    assert explanation.method == "shap_tree"
+    explanation = ExplanationService().explain_irrigation(advice, _vector())
+    assert explanation.method == "rule_weight"
     assert explanation.subject_type == "irrigation_advice"
-    assert len(explanation.top_contributions) == 3
+    assert explanation.summary_en == advice.rationale
+
+
+def test_regional_caveat_text_variants():
+    from agro_mirai.models.explanation_service import _regional_fit_note
+
+    assert _regional_fit_note(_rec(out_of_region=False)) == ""
+    with_alt = _regional_fit_note(_rec(out_of_region=True, regional_alternative="chickpea"))
+    assert "caveat" in with_alt.lower() and "chickpea" in with_alt
+    none_alt = _regional_fit_note(_rec(out_of_region=True, regional_alternative=None))
+    assert "caveat" in none_alt.lower() and "none" in none_alt.lower()
 
 
 def test_explain_disease_labels_contributing_factor_not_shap():
@@ -316,28 +192,3 @@ def test_summary_translated_none_when_no_voice_service():
 
     assert explanation.summary_translated is None
     assert explanation.summary_translated_lang is None
-
-
-def test_explain_crop_degrades_when_model_artifact_missing_and_no_tabular_service(monkeypatch):
-    """Main API process on Render has no model files; with the tabular service
-    unreachable, explanations must degrade to method='unavailable', never raise."""
-    from datetime import datetime, timezone
-
-    from agro_mirai.models.explanation_service import ExplanationService
-    from agro_mirai.persistence.models import CropRecommendation
-
-    monkeypatch.delenv("TABULAR_SERVICE_URL", raising=False)
-
-    class _NoModel:
-        @property
-        def _model(self):
-            raise FileNotFoundError("crop_rf.joblib not found")
-
-    rec = CropRecommendation(
-        id="r1", field_id="f1", created_at=datetime.now(timezone.utc),
-        recommended_crop="rice", confidence=0.9, alternatives=["maize"], rationale=None, season="kharif",
-    )
-    exp = ExplanationService(crop_model=_NoModel()).explain_crop(rec, features=None)  # features unused on this path
-    assert exp.method == "unavailable"
-    assert exp.top_contributions == []
-    assert "unavailable" in exp.summary_en

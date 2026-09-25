@@ -379,3 +379,4 @@ The main API uses `RemoteCropModel` and `RemoteIrrigationModel` (`src/agro_mirai
 ### 24/7 Zero-Cost Keep-Alive System
 Render Free Tier web services automatically spin down after 15 minutes of zero traffic. To prevent cold-start delays (50–60s) from affecting mobile users, an automated **GitHub Actions Keep-Alive Workflow** (`.github/workflows/keep_alive.yml`) runs on a 12-minute schedule (`cron: '*/12 * * * *'`), sending HTTP GET `/health` requests to all 3 Render URLs to keep all instances permanently awake at zero cost.
 
+> **Update (Module 44):** the `agro-mirai-tabular` service and `RemoteCropModel`/`RemoteIrrigationModel` described above were removed. Crop and irrigation advice run in the main API as rules (EcoCrop, water balance). See decisions/0029.

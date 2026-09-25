@@ -71,7 +71,7 @@ python tools/update_state.py                         # regenerate PROGRESS.md st
 # main suite (exactly what CI runs)
 PYTHONPATH=src pytest --ignore=tests/voice --ignore=tests/vision --ignore=services/cnn-inference --ignore=services/voice
 PYTHONPATH=src pytest tests/models/test_decision_engine.py::test_name -q     # single test
-pytest services/cnn-onnx/tests services/cnn-inference/tests services/tabular-ml/tests -q   # per-service suites
+pytest services/cnn-onnx/tests services/cnn-inference/tests -q   # per-service suites
 pytest services/voice/tests -q                       # needs system ffmpeg
 .venv/Scripts/python.exe -m pytest tests/voice -q    # voice stack only; needs .venv (transformers==4.49.0)
 ruff check src tools tests                           # lint, non-blocking in CI
@@ -86,8 +86,8 @@ Data flow: `acquisition/` (weather, SoilGrids, GEE NDVI w/ cache fallback) -> `p
 
 - **API surfaces**: `/v1` = frozen shared-`API_KEY` routes (demo/back-compat); `/v2` = session-cookie auth (Name+Phone+OTP for farmers, email+password for admins), per-farmer tenant isolation (cross-tenant access returns 404, not 403). Both call the same auth-agnostic handlers in `api/value_endpoints.py` — add logic there, not in route files. Server-rendered Jinja2 frontend + `/admin` live in the same Flask process.
 - **Contracts**: `specs/core/{schema.yaml,enums.md,openapi.yaml,repository-interface.md}` are the source of truth and additive-only; `check_specs.py` enforces them. Schema changes need matching `migrations/{sqlite,postgres}/NNN_*.sql`.
-- **Degrade, never fail**: every external dependency has a fallback (GEE->NDVI cache, CNN service->rule-based disease model, tabular service->local models, missing temp window->wider window, voice down->503 `VOICE_UNAVAILABLE`). Route boundaries turn data-exhaustion `ValueError`s into 422, never 500.
-- **Deployment (Render, 3 services, see `render.yaml`)**: `agro-mirai` (main API), `agro-mirai-cnn` (`services/cnn-onnx`), `agro-mirai-tabular` (`services/tabular-ml`); `services/cnn-inference` and `services/voice` (torch/AI4Bharat) are separate containers for an Oracle VM (`docker-compose.yml`). torch/transformers are deliberately kept out of the main `requirements.txt`; the main process talks to them over HTTP (`cnn_client.py`, `RemoteVoiceService`, `remote_tabular_client.py`).
+- **Degrade, never fail**: every external dependency has a fallback (GEE->NDVI cache, CNN service->rule-based disease model, missing temp window->wider window, voice down->503 `VOICE_UNAVAILABLE`). Route boundaries turn data-exhaustion `ValueError`s into 422, never 500.
+- **Deployment (Render, 2 services, see `render.yaml`)**: `agro-mirai` (main API, crop/irrigation run in-process as rules) and `agro-mirai-cnn` (`services/cnn-onnx`); `services/cnn-inference` and `services/voice` (torch/AI4Bharat) are separate containers for an Oracle VM (`docker-compose.yml`). torch/transformers are deliberately kept out of the main `requirements.txt`; the main process talks to them over HTTP (`cnn_client.py`, `RemoteVoiceService`).
 - **Voice**: `VoiceService` protocol (`voice/interface.py`), `V1_LANGUAGES = {en,kn,te,hi}` is the single allowlist — import it, never duplicate.
 - **Decisions**: rationale for each non-obvious call lives in `decisions/NNNN-*.md`; `PROGRESS.md` holds handoff state. The long "Current phase" section below is a historical per-module changelog — skim, don't treat as instructions.
 
@@ -870,3 +870,5 @@ Decoupled backend deployment on Render into 3 free-tier web services (512 MB RAM
 Created an automated GitHub Actions Keep-Alive workflow ([.github/workflows/keep_alive.yml](file:///c:/Projects/AGRO%20MIRAI/.github/workflows/keep_alive.yml)) scheduled for every 12 minutes (`cron: '*/12 * * * *'`) that pings `/health` on all 3 Render URLs to keep containers permanently awake without sleeping.
 
 Full test suite verified: `services/tabular-ml/tests/test_tabular_service.py` (3 passed), `tests/models/test_remote_tabular_client.py` (4 passed), main test suite clean. Documented in [decisions/0026-three-microservices-render-split.md](file:///c:/Projects/AGRO%20MIRAI/decisions/0026-three-microservices-render-split.md) and [docs/architecture.md](file:///c:/Projects/AGRO%20MIRAI/docs/architecture.md).
+
+**Module 44 (cleanup, 2026-09-25)**: the retired RandomForest crop/irrigation models, the `agro-mirai-tabular` Render service, SHAP and their training tools were removed; see `decisions/0029-remove-tabular-service-and-rf-models.md`.
