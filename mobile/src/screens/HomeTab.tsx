@@ -81,6 +81,8 @@ export function HomeTab() {
   const d = dis.data?.items?.[0];
   const dd = dis.data?.details;
   const today = todayLine(t, i, d, dd);
+  // the server's crop-specific advice is English: translate it (cached), fall back to the generic line
+  const diseaseAdvice = useTranslated([d?.recommended_action], lang);
   const firstLoad = busy && !c && !i && !d;
 
   if (firstLoad) {
@@ -156,7 +158,7 @@ export function HomeTab() {
           <>
             <Text style={{ fontSize: 16, fontWeight: '600', color: C.text }}>{d.disease_translated || d.disease}</Text>
             {dd?.trend === 'rising' ? <Badge label={t('riskRising')} color={levelColor('high')} /> : null}
-            <Text style={[st.body, { marginTop: S.sm }]}>{diseaseAction(t, d.risk_level, d.recommended_action)}</Text>
+            <Text style={[st.body, { marginTop: S.sm }]}>{diseaseAdvice.out[0] || diseaseAction(t, d.risk_level, d.recommended_action)}</Text>
           </>
         ) : dis.loading ? <Muted>{t('loading')}</Muted> : !dis.error ? <Muted>{t('notComputed')}</Muted> : null}
         <ErrorBox load={dis} />
