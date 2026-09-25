@@ -336,3 +336,23 @@ class TestAdvisoryAndFeedback:
 class TestHealth:
     def test_ping(self, store):
         assert store.ping() is True
+
+
+class TestWeatherForecastReplace:
+    def test_delete_forecasts_from_date_keeps_history(self, store, farmer, field):
+        now = _now()
+        day = lambda i: now + timedelta(days=i)  # noqa: E731
+        rows = [
+            WeatherReading(id=_new_uuid(), field_id=field.id, observed_at=day(-3), source="x", temp_c=25.0, is_forecast=False),
+            WeatherReading(id=_new_uuid(), field_id=field.id, observed_at=day(1), source="x", temp_c=26.0, is_forecast=True),
+            WeatherReading(id=_new_uuid(), field_id=field.id, observed_at=day(2), source="x", temp_c=27.0, is_forecast=True),
+        ]
+        store.save_weather_readings(farmer.id, rows)
+        removed = store.delete_weather_forecasts(farmer.id, field.id, day(0).date().isoformat())
+        assert removed == 2
+        left = {r.id for r in store.list_weather_readings(farmer.id, field.id, limit=100)}
+        assert rows[0].id in left and rows[1].id not in left and rows[2].id not in left
+
+    def test_other_farmers_field_is_refused(self, store, farmer, field):
+        with pytest.raises(Exception):
+            store.delete_weather_forecasts(_new_uuid(), field.id, "2000-01-01")

@@ -296,7 +296,7 @@ function AskCard() {
           alignItems: 'center',
           justifyContent: 'center',
           gap: S.sm,
-          backgroundColor: '#16a34a',
+          backgroundColor: '#2E7D32',
           borderRadius: 16,
           paddingVertical: 16,
           paddingHorizontal: S.lg,
@@ -390,6 +390,25 @@ export function AdviceTab() {
   const [createErr, setCreateErr] = useState('');
   const [refreshing, setRefreshing] = useState(false);
 
+  // open with real content: show saved advice, and if there is none yet make today's once
+  // (before, the tab was blank until the farmer found and pressed the button)
+  const autoFor = useRef<string | null>(null);
+  useEffect(() => {
+    if (!id || autoFor.current === id) return;
+    autoFor.current = id;
+    (async () => {
+      try {
+        const data = await getAdvisories(id, false);
+        setAdvisories(data);
+        setLoaded(true);
+        if (data.length === 0) load(true);
+      } catch {
+        // the button below still works
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id]);
+
   const load = async (generate: boolean) => {
     if (!id) return;
     setCreateErr('');
@@ -422,12 +441,12 @@ export function AdviceTab() {
         style={{ marginBottom: S.md }}
       />
       {createErr ? <Banner text={createErr} kind="error" /> : null}
-      {loaded && advisories && advisories.length === 0 ? (
+      {loaded && advisories && advisories.length === 0 && !creating ? (
         <Muted>{t('noAdvisories')}</Muted>
       ) : null}
       {!loaded ? (
         <Muted style={{ textAlign: 'center', marginTop: S.xl }}>
-          Tap "Get today's advice" to load recommendations for your field.
+          {t('loading')}
         </Muted>
       ) : null}
       {(advisories || []).map((a) => <AdvisoryCard key={a.id} a={a} />)}

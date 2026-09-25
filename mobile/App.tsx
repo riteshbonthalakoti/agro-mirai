@@ -341,8 +341,9 @@ function RootInner({ lang, setLang }: { lang: Lang; setLang: (l: Lang) => void }
         ) : fields.length === 0 ? (
           <View style={{ flex: 1 }}>
             <View style={{ padding: S.lg, paddingTop: 64 }}>
-              <Text style={{ fontSize: 22, fontWeight: '700', color: C.text }}>{t('noFieldTitle')}</Text>
-              <Text style={{ color: C.muted, marginTop: S.sm }}>{t('noFieldBody')}</Text>
+              <Text style={{ fontSize: 24, fontWeight: '700', color: C.text }}>{t('welcomeName').replace('{name}', (farmer?.name || '').split(' ')[0])}</Text>
+              <Text style={{ fontSize: 18, fontWeight: '600', color: C.text, marginTop: S.md }}>{t('noFieldTitle')}</Text>
+              <Text style={{ color: C.muted, marginTop: S.sm }}>{t('emptyFieldsHelp')}</Text>
               <Btn label={t('addField')} onPress={() => setForm({})} style={{ marginTop: S.lg }} />
               <Btn label={t('signOut')} kind="secondary" onPress={signOut} style={{ marginTop: S.md }} />
             </View>

@@ -161,6 +161,7 @@ def fetch_and_save_weather(store, farmer_id: str, field_input: FieldInput) -> bo
             return False
     try:
         readings = _new_weather_readings(store, farmer_id, field_input, rows)
+        _drop_stale_forecasts(store, farmer_id, field_input, readings)
         saved = _save_weather_batch(store, farmer_id, readings)
         logger.info(
             "weather acquisition ok field=%s rows=%d saved=%d source=%s",
@@ -172,6 +173,22 @@ def fetch_and_save_weather(store, farmer_id: str, field_input: FieldInput) -> bo
             "weather save failed field=%s (%s: %s)", field_input.field_id, type(exc).__name__, exc
         )
         return False
+
+
+def _drop_stale_forecasts(store, farmer_id, field_input, readings) -> None:
+    """A new forecast supersedes the old one for the same days. Without this every refresh
+    left another copy of each forecast day (the app listed "25 Sept" twice)."""
+    forecasts = [r for r in readings if r.is_forecast]
+    if not forecasts:
+        return
+    first = min(r.observed_at for r in forecasts).date().isoformat()
+    remover = getattr(store, "delete_weather_forecasts", None)
+    if not callable(remover):
+        return
+    try:
+        remover(farmer_id, field_input.field_id, first)
+    except Exception as exc:  # noqa: BLE001 - duplicates are ugly, not fatal
+        logger.warning("stale forecast cleanup failed field=%s (%s: %s)", field_input.field_id, type(exc).__name__, exc)
 
 
 def _new_weather_readings(store, farmer_id, field_input, rows) -> list[WeatherReading]:

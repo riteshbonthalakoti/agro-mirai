@@ -10,6 +10,11 @@ import { C, S } from '../theme';
 import { useToast } from '../toast';
 import { Banner, Btn, Chip, Input, Label, Muted, st } from '../ui';
 
+// farmers here think in acres and guntas; the backend stores hectares
+type Unit = 'acre' | 'gunta' | 'ha';
+const HA_PER: Record<Unit, number> = { acre: 0.404686, gunta: 0.0101171, ha: 1 };
+const trimNum = (n: number) => String(Math.round(n * 100) / 100);
+
 const today = () => {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -21,7 +26,8 @@ export function FieldForm({ initial, onDone, onCancel }: { initial?: Field; onDo
   const { t, lang } = useApp();
   const toast = useToast();
   const [name, setName] = useState(initial?.name ?? '');
-  const [area, setArea] = useState(initial ? String(initial.area_ha) : '');
+  const [unit, setUnit] = useState<Unit>('acre');
+  const [area, setArea] = useState(initial ? trimNum(initial.area_ha / HA_PER.acre) : '');
   const [lat, setLat] = useState(initial ? String(initial.latitude) : '');
   const [lon, setLon] = useState(initial ? String(initial.longitude) : '');
   const [soil, setSoil] = useState<string | null>(initial?.soil_type ?? null);
@@ -85,7 +91,7 @@ export function FieldForm({ initial, onDone, onCancel }: { initial?: Field; onDo
 
   const submit = async () => {
     setErr('');
-    const areaN = parseFloat(area);
+    const areaN = Math.round(parseFloat(area) * HA_PER[unit] * 10000) / 10000;
     const latN = parseFloat(lat);
     const lonN = parseFloat(lon);
     if (!name.trim()) return setErr(t('fieldNameRequired'));
@@ -130,6 +136,24 @@ export function FieldForm({ initial, onDone, onCancel }: { initial?: Field; onDo
 
       <Label>{t('area')}</Label>
       <Input value={area} onChangeText={setArea} keyboardType="decimal-pad" />
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginTop: S.sm }}>
+        {(['acre', 'gunta', 'ha'] as Unit[]).map((u) => (
+          <Chip
+            key={u}
+            label={t(u === 'acre' ? 'unitAcre' : u === 'gunta' ? 'unitGunta' : 'unitHectare')}
+            selected={unit === u}
+            onPress={() => {
+              // keep the same land size when the unit changes
+              const n = parseFloat(area);
+              if (n > 0) setArea(trimNum((n * HA_PER[unit]) / HA_PER[u]));
+              setUnit(u);
+            }}
+          />
+        ))}
+      </View>
+      {unit !== 'ha' && parseFloat(area) > 0 ? (
+        <Muted>{t('areaAsHa').replace('{ha}', trimNum(parseFloat(area) * HA_PER[unit]))}</Muted>
+      ) : null}
 
       <Label>{t('location')}</Label>
       <Btn label={t('useMyLocation')} kind="secondary" onPress={useMyLocation} busy={locating} />

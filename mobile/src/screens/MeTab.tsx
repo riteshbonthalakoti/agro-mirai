@@ -163,7 +163,7 @@ export function MeTab() {
             </View>
             <Muted style={{ marginLeft: 24 }}>{`${f.area_ha} ${t('ha')} · ${cropLabel(lang, f.current_crop)} · ${f.latitude.toFixed(3)}, ${f.longitude.toFixed(3)}`}</Muted>
             <View style={{ flexDirection: 'row', gap: S.sm, marginTop: S.sm, marginLeft: 24 }}>
-              {field?.id !== f.id ? <Btn label={t('activeField')} kind="secondary" onPress={() => selectField(f.id)} style={{ flex: 1 }} /> : null}
+              {field?.id !== f.id ? <Btn label={t('useThisField')} kind="secondary" onPress={() => selectField(f.id)} style={{ flex: 1 }} /> : null}
               <Btn label={t('edit')} kind="secondary" onPress={() => openFieldForm(f)} style={{ flex: 1 }} />
               <Btn label={t('delete')} kind="danger" onPress={() => confirmDelete(f.id)} style={{ flex: 1 }} />
             </View>
@@ -194,7 +194,7 @@ export function MeTab() {
         <KV k={t('version')} v={Constants.expoConfig?.version} />
         <Muted style={{ fontSize: 11 }}>{API_BASE_URL}</Muted>
       </View>
-      <Btn label={t('signOut')} kind="danger" onPress={signOut} style={{ marginTop: S.lg, marginBottom: S.xl }} />
+      <Btn label={t('signOut')} kind="danger" onPress={() => Alert.alert(t('signOut'), t('signOutAsk'), [{ text: t('cancel'), style: 'cancel' }, { text: t('signOut'), style: 'destructive', onPress: signOut }])} style={{ marginTop: S.lg, marginBottom: S.xl }} />
     </ScrollView>
   );
 }
