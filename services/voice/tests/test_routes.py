@@ -80,7 +80,7 @@ def test_translate_missing_field_400():
 
 def test_speech_to_text_success():
     client = _client(lambda: _StubVoice())
-    data = {"audio": (io.BytesIO(b"fake"), "clip.wav"), "expected_lang": "en"}
+    data = {"audio": (io.BytesIO(b"RIFFfake"), "clip.wav"), "expected_lang": "en"}
     resp = client.post("/speech-to-text", data=data, content_type="multipart/form-data")
     assert resp.status_code == 200
     body = resp.get_json()
@@ -90,7 +90,7 @@ def test_speech_to_text_success():
 
 def test_speech_to_text_success_te_expected_lang():
     client = _client(lambda: _StubVoice())
-    data = {"audio": (io.BytesIO(b"fake"), "clip.wav"), "expected_lang": "te"}
+    data = {"audio": (io.BytesIO(b"RIFFfake"), "clip.wav"), "expected_lang": "te"}
     resp = client.post("/speech-to-text", data=data, content_type="multipart/form-data")
     assert resp.status_code == 200
     assert resp.get_json()["detected_lang"] == "te"
@@ -98,7 +98,7 @@ def test_speech_to_text_success_te_expected_lang():
 
 def test_speech_to_text_success_hi_expected_lang():
     client = _client(lambda: _StubVoice())
-    data = {"audio": (io.BytesIO(b"fake"), "clip.wav"), "expected_lang": "hi"}
+    data = {"audio": (io.BytesIO(b"RIFFfake"), "clip.wav"), "expected_lang": "hi"}
     resp = client.post("/speech-to-text", data=data, content_type="multipart/form-data")
     assert resp.status_code == 200
     assert resp.get_json()["detected_lang"] == "hi"
@@ -150,6 +150,6 @@ def test_model_unavailable_returns_503_not_500():
         raise FileNotFoundError("weights missing")
 
     client = _client(_boom)
-    data = {"audio": (io.BytesIO(b"fake"), "clip.wav")}
+    data = {"audio": (io.BytesIO(b"RIFFfake"), "clip.wav")}
     resp = client.post("/speech-to-text", data=data, content_type="multipart/form-data")
     assert resp.status_code == 503
