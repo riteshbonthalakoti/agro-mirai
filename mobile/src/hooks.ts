@@ -60,6 +60,9 @@ export function errorText(t: (k: Key) => string, e: ApiError | null): string {
   if (e.code === 'NO_WEATHER_DATA') return t('noWeatherData');
   if (e.code === 'INSUFFICIENT_DATA') return t('insufficientData');
   if (e.status === 401) return t('sessionExpired');
+  if (e.status === 429) return t('tooManyRequests');
+  // raw 500s say "An unexpected error occurred"; on the free server that usually means it is busy or waking up
+  if (e.status >= 500) return t('serverBusy');
   return e.message || t('genericError');
 }
 
