@@ -62,3 +62,41 @@ def test_real_leaf_samples_accepted():
         pytest.skip("demo samples not present")
     for f in files:
         assert looks_like_plant_photo(open(f, "rb").read()), f
+
+
+def test_mostly_diseased_leaf_with_little_green_is_accepted():
+    # brown/orange lesion tones with a little green and real texture (a heavily scabbed leaf)
+    import io
+
+    import numpy as np
+    from PIL import Image
+
+    from agro_mirai.api.leaf_gate import looks_like_plant_photo
+
+    rng = np.random.default_rng(3)
+    img = np.zeros((256, 256, 3), np.uint8)
+    img[..., 0] = rng.integers(90, 235, (256, 256))  # brown/orange with real light/dark variation
+    img[..., 1] = rng.integers(50, 150, (256, 256))
+    img[..., 2] = rng.integers(10, 60, (256, 256))
+    img[:, :24] = (60, 140, 50)  # a strip of healthy green
+    buf = io.BytesIO()
+    Image.fromarray(img).save(buf, "JPEG")
+    assert looks_like_plant_photo(buf.getvalue()) is True
+
+
+def test_skin_toned_photo_stays_rejected():
+    import io
+
+    import numpy as np
+    from PIL import Image
+
+    from agro_mirai.api.leaf_gate import looks_like_plant_photo
+
+    rng = np.random.default_rng(4)
+    img = np.zeros((256, 256, 3), np.uint8)
+    img[..., 0] = rng.integers(190, 235, (256, 256))
+    img[..., 1] = rng.integers(140, 180, (256, 256))
+    img[..., 2] = rng.integers(110, 150, (256, 256))
+    buf = io.BytesIO()
+    Image.fromarray(img).save(buf, "JPEG")
+    assert looks_like_plant_photo(buf.getvalue()) is False
