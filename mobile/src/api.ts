@@ -128,6 +128,11 @@ export type IrrigationDetails = {
   rain_last_7d_mm?: number; rain_forecast_3d_mm?: number; rain_forecast_7d_mm?: number;
   crop_water_use_mm_per_day?: number; crop_stage?: string; weather_days_used?: number; weather_days_estimated?: number; et0_method?: string;
 };
+export type DiseaseDetails = {
+  method: string; crop_specific?: boolean; score?: number; named_disease?: string | null;
+  trend?: 'rising' | 'steady' | 'easing'; humid_days_last_7?: number; wet_days_last_7?: number;
+  rain_forecast_3d_mm?: number | null; rain_forecast_7d_mm?: number | null; favourable_temp_c?: [number, number];
+};
 export type DiseaseAlert = {
   id: string; disease: string; disease_translated?: string; risk_level: string; confidence: number;
   recommended_action?: string | null; source?: string | null; created_at: string;
@@ -181,6 +186,9 @@ export const dataSummary = (id: string) => request<DataSummary>(`/v2/fields/${id
 export const getRecommendation = (id: string, keepCurrent = false) =>
   request<CropRec>(`/v2/fields/${id}/recommendation${keepCurrent ? '?keep_current=true' : ''}`, {}, { timeout: 30000 });
 export const getIrrigation = (id: string) => request<Irrigation>(`/v2/fields/${id}/irrigation`, {}, { timeout: 30000 });
+// same call, but keeps the `details` object (trend, wet days) next to the items
+export const getDiseaseRiskFull = (id: string, lang: string) =>
+  request<{ items: DiseaseAlert[]; details?: DiseaseDetails | null }>(`/v2/fields/${id}/disease-risk?language=${lang}`, {}, { timeout: 30000 });
 export const getDiseaseRisk = (id: string, lang: string) =>
   request<{ items: DiseaseAlert[] }>(`/v2/fields/${id}/disease-risk?language=${lang}`, {}, { timeout: 30000 }).then((r) => r.items);
 // generate=false only lists stored advisories (opening the tab); generate=true
