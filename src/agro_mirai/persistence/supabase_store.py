@@ -765,19 +765,35 @@ class SupabaseDataStore:
 # a dropped/reset connection is retried (new connection each time) a couple of
 # times before it is allowed to surface. HTTP-level errors (bad row, missing
 # table, ...) are NOT retried.
+def _is_transport_error(exc: BaseException) -> bool:
+    """True if ``exc`` is, or was raised from, a dropped/reset connection. The save
+    methods wrap every failure in ConflictError, which used to hide the httpx error
+    from the retry below (found live: irrigation 500 "Server disconnected")."""
+    import httpx
+
+    cur: BaseException | None = exc
+    for _ in range(5):
+        if cur is None:
+            return False
+        if isinstance(cur, httpx.TransportError):
+            return True
+        cur = cur.__cause__ or cur.__context__
+    return False
+
+
 def _with_transport_retry(method):
     import functools
     import time
 
     @functools.wraps(method)
     def wrapper(*args, **kwargs):
-        import httpx
-
         last = None
         for attempt in range(3):
             try:
                 return method(*args, **kwargs)
-            except (httpx.TransportError, httpx.RemoteProtocolError) as exc:  # noqa: PERF203
+            except Exception as exc:  # noqa: BLE001,PERF203
+                if not _is_transport_error(exc):
+                    raise
                 last = exc
                 time.sleep(0.3 * (attempt + 1))
         raise last
