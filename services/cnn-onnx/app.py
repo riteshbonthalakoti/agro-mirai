@@ -44,6 +44,9 @@ def _load_temperature() -> float:
 
 
 _TEMPERATURE = _load_temperature()
+# with a crop hint, confidence is full only if at least this much of the free (unconstrained)
+# probability already sits on that crop's classes
+_CROP_MASS_FULL_CONFIDENCE = 0.4
 
 _IMG_SIZE = 224
 _MEAN = np.array([0.485, 0.456, 0.406], dtype=np.float32)
@@ -84,12 +87,30 @@ def preprocess(image: Image.Image) -> np.ndarray:
     return arr.transpose(2, 0, 1)[None].astype(np.float32)
 
 
-def classify_top(session, names: list[str], image: Image.Image, k: int = 3) -> list[tuple[str, float]]:
+def classify_top(
+    session, names: list[str], image: Image.Image, k: int = 3, crop: str | None = None
+) -> list[tuple[str, float]]:
+    """Top-k (class, probability). With ``crop`` (one of the crops the model covers) only
+    that crop's classes compete and probabilities are renormalised among them."""
+    from agro_mirai.models.disease_cnn_labels import class_indices_for_crop
+
     logits = session.run(None, {"input": preprocess(image)})[0][0] / _TEMPERATURE
+    allowed = class_indices_for_crop(names, crop)
+    penalty = 1.0
+    if allowed:
+        free = np.exp(logits - logits.max())
+        free /= free.sum()
+        # how much of the unconstrained answer sits on this crop's classes: if the photo
+        # does not look like the field's crop at all, confidence is scaled down so the
+        # answer becomes "not sure" instead of a forced, confident guess
+        penalty = min(1.0, float(free[allowed].sum()) / _CROP_MASS_FULL_CONFIDENCE)
+        masked = np.full_like(logits, -np.inf)
+        masked[allowed] = logits[allowed]
+        logits = masked
     exp = np.exp(logits - logits.max())
     probs = exp / exp.sum()
     order = np.argsort(-probs)[:k]
-    return [(names[int(i)], float(probs[int(i)])) for i in order]
+    return [(names[int(i)], float(probs[int(i)]) * penalty) for i in order if probs[int(i)] > 0.0]
 
 
 def classify(session, names: list[str], image: Image.Image) -> tuple[str, float]:
@@ -157,7 +178,7 @@ def create_app(model_factory=None) -> Flask:
             return jsonify({"error": {"code": "MODEL_UNAVAILABLE", "message": str(exc)}}), 503
         try:
             image = Image.open(request.files["image"].stream)
-            top = classify_top(session, names, image, 3)
+            top = classify_top(session, names, image, 3, crop=(request.form.get("crop") or "").strip() or None)
             raw_class, confidence = top[0]
             return jsonify(build_alert(raw_class, confidence, field_id, top)), 200
         except Exception as exc:  # noqa: BLE001

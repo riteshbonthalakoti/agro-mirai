@@ -79,6 +79,15 @@ _CROP_LABEL_TO_TYPE = {
 }
 
 
+def class_indices_for_crop(class_names: list[str], crop_type: str | None) -> list[int]:
+    """Indices of the classes that belong to ``crop_type`` (only the 4 crops the model
+    knows), or [] when the crop is unknown or not covered. The farmer already told us the
+    crop, so the model only has to choose between that crop's diseases."""
+    if not crop_type or crop_type not in CNN_COVERED_CROP_TYPES:
+        return []
+    return [i for i, n in enumerate(class_names) if crop_type_for(n) == crop_type]
+
+
 def is_unsure(confidence: float) -> bool:
     return confidence < UNSURE_BELOW
 

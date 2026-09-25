@@ -28,6 +28,7 @@ def resolve_disease_alert(
     field_id: str,
     image_bytes: bytes | None = None,
     cnn_caller: CnnCaller | None = None,
+    crop_type: str | None = None,
 ) -> DiseaseRiskAlert:
     """Returns a ``DiseaseRiskAlert`` for ``field_id``.
 
@@ -49,7 +50,10 @@ def resolve_disease_alert(
     if cnn_caller is None:
         from agro_mirai.api.cnn_client import call_cnn_service as cnn_caller  # noqa: PLC0415
 
-    cnn_result = cnn_caller(image_bytes, field_id)
+    try:
+        cnn_result = cnn_caller(image_bytes, field_id, crop_type=crop_type) if crop_type else cnn_caller(image_bytes, field_id)
+    except TypeError:  # a caller that predates the crop hint
+        cnn_result = cnn_caller(image_bytes, field_id)
     if cnn_result is not None:
         try:
             return _alert_from_cnn_json(cnn_result)
