@@ -3,6 +3,7 @@ import { RefreshControl, ScrollView, Text, TouchableOpacity, View } from 'react-
 import { getDiseaseRiskFull, getIrrigation, getRecommendation, Irrigation, DiseaseAlert, DiseaseDetails } from '../api';
 import { cropLabel, diseaseAction, fmtDate, levelLabel, useApp } from '../ctx';
 import { errorText, Load, useLoad, useTranslated } from '../hooks';
+import { useNotifications } from '../notifications';
 import { SkeletonCard } from '../skeleton';
 import { C, levelColor, S } from '../theme';
 import { Badge, Banner, Btn, Card, KV, Muted, st } from '../ui';
@@ -81,6 +82,12 @@ export function HomeTab() {
   const d = dis.data?.items?.[0];
   const dd = dis.data?.details;
   const today = todayLine(t, i, d, dd);
+  const { setDailyReminder } = useNotifications();
+  useEffect(() => {
+    // tomorrow's 7:00 notification carries the latest advice, even if the app is closed by then
+    if (today?.text) setDailyReminder(t('notifDailyTitle'), today.text);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [today?.text, lang]);
   // the server's crop-specific advice is English: translate it (cached), fall back to the generic line
   const diseaseAdvice = useTranslated([d?.recommended_action], lang);
   const firstLoad = busy && !c && !i && !d;

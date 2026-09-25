@@ -5,10 +5,12 @@ import { cacheGet, cacheSet } from './storage';
 import { C, S, levelColor } from './theme';
 
 /** Notification system: one `notify()` entry point.
- *   - app in foreground  -> themed in-app banner (the OS banner is suppressed)
- *   - app in background  -> real system notification (local today; a backend
- *     push arriving while backgrounded is displayed by the OS itself)
- *   - always             -> saved to a persistent inbox (bell in the header)
+ *   - every alert      -> a real Android system notification (heads-up banner, sound, notification
+ *                          shade), whether the app is open or not
+ *   - always           -> also saved to a persistent inbox (bell in the header)
+ *   - Expo Go only     -> the OS layer is unavailable there, so a themed in-app banner stands in
+ *   - daily reminder   -> `setDailyReminder(text)` schedules a 7:00 notification with today's advice;
+ *                         the OS delivers it even when the app is closed
  *  Remote push needs a dev/release build + backend token registration --
  *  see docs/MOBILE_ONBOARDING_NOTIFICATIONS.md. */
 
@@ -18,9 +20,11 @@ type NotifCtx = {
   unread: number;
   notify: (n: { id?: string; title: string; body: string; severity?: string }) => void;
   openInbox: () => void;
+  /** Schedules the 7:00 daily reminder (replaces the previous one). No-op without the OS layer/permission. */
+  setDailyReminder: (title: string, body: string) => void;
 };
 
-const Ctx = createContext<NotifCtx>({ items: [], unread: 0, notify: () => {}, openInbox: () => {} });
+const Ctx = createContext<NotifCtx>({ items: [], unread: 0, notify: () => {}, openInbox: () => {}, setDailyReminder: () => {} });
 export const useNotifications = () => useContext(Ctx);
 
 // Expo Go (Android, SDK 53+) logs a hard error the moment expo-notifications is
@@ -33,11 +37,12 @@ const Notifications: typeof import('expo-notifications') | null =
 const INBOX_KEY = 'inbox';
 const MAX_ITEMS = 50;
 const CHANNEL = 'alerts';
+const DAILY_ID = 'daily-advice';
 
 Notifications?.setNotificationHandler({
-  // The in-app banner replaces the OS banner while the app is open.
+  // Real Android notification even while the app is open (heads-up banner + shade + sound).
   handleNotification: async () => ({
-    shouldShowBanner: false, shouldShowList: true, shouldPlaySound: false, shouldSetBadge: false,
+    shouldShowBanner: true, shouldShowList: true, shouldPlaySound: true, shouldSetBadge: false,
   }),
 });
 
@@ -100,15 +105,32 @@ export function NotificationsProvider({ children, t }: { children: React.ReactNo
     seen.current.add(id);
     const item: Notif = { id, title: n.title, body: n.body, severity: n.severity, ts: Date.now(), read: false };
     setItems((cur) => persist([item, ...cur].slice(0, MAX_ITEMS)));
-    if (AppState.currentState === 'active') {
-      showBanner(item);
-    } else {
-      Notifications?.scheduleNotificationAsync({
-        content: { title: n.title, body: n.body, color: '#2E7D32', data: { id } },
+    if (Notifications) {
+      // always a real system notification; the inbox above keeps the history
+      Notifications.scheduleNotificationAsync({
+        content: { title: n.title, body: n.body, color: '#2E7D32', data: { id, severity: n.severity } },
         trigger: Platform.OS === 'android' ? { channelId: CHANNEL } as any : null,
       }).catch(() => {});
+    } else if (AppState.currentState === 'active') {
+      showBanner(item); // Expo Go: no OS layer, use the in-app banner
     }
   }, [showBanner]);
+
+  const setDailyReminder = useCallback((title: string, body: string) => {
+    if (!Notifications) return;
+    (async () => {
+      try {
+        const perm = await Notifications.getPermissionsAsync();
+        if (!perm.granted) return;
+        await Notifications.cancelScheduledNotificationAsync(DAILY_ID).catch(() => {});
+        await Notifications.scheduleNotificationAsync({
+          identifier: DAILY_ID,
+          content: { title, body, color: '#2E7D32', data: { id: `daily-${new Date().toDateString()}` } },
+          trigger: { type: Notifications.SchedulableTriggerInputTypes.DAILY, hour: 7, minute: 0, channelId: CHANNEL },
+        });
+      } catch {}
+    })();
+  }, []);
 
   // Pushes that arrive while the app is open, and taps on a notification.
   useEffect(() => {
@@ -127,8 +149,8 @@ export function NotificationsProvider({ children, t }: { children: React.ReactNo
   }, []);
 
   const value = useMemo<NotifCtx>(
-    () => ({ items, unread: items.filter((n) => !n.read).length, notify, openInbox }),
-    [items, notify, openInbox],
+    () => ({ items, unread: items.filter((n) => !n.read).length, notify, openInbox, setDailyReminder }),
+    [items, notify, openInbox, setDailyReminder],
   );
 
   return (
