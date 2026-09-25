@@ -1,0 +1,1 @@
+{"temperature": 1.35, "fitted_on": "PlantDoc validation slice (10% of train), tools/calibrate_disease_cnn.py", "note": "softmax(logits / T); lowers field-photo calibration error 0.233 -> 0.109"}

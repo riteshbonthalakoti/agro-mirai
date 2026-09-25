@@ -119,3 +119,27 @@ def test_confident_answer_is_unchanged():
     alert = svc.build_alert("Corn_(maize)___Northern_Leaf_Blight", 0.93, "f1", [])
     assert alert["disease"] == "Corn (maize): Northern Leaf Blight"
     assert alert["risk_level"] == "severe"
+
+
+def test_temperature_softens_confidence_but_keeps_the_answer(monkeypatch):
+    session = _Session((6.0, 1.0))
+    names = ["Tomato___Late_blight", "Tomato___healthy"]
+    monkeypatch.setattr(svc, "_TEMPERATURE", 1.0)
+    raw = svc.classify_top(session, names, Image.new("RGB", (64, 64), "green"), 2)
+    monkeypatch.setattr(svc, "_TEMPERATURE", 2.5)
+    soft = svc.classify_top(session, names, Image.new("RGB", (64, 64), "green"), 2)
+    assert raw[0][0] == soft[0][0] == "Tomato___Late_blight"
+    assert soft[0][1] < raw[0][1]
+
+
+def test_missing_or_bad_calibration_file_means_temperature_one(tmp_path, monkeypatch):
+    monkeypatch.setattr(svc, "CALIBRATION_PATH", tmp_path / "nope.json")
+    assert svc._load_temperature() == 1.0
+    bad = tmp_path / "bad.json"
+    bad.write_text('{"temperature": 999}')
+    monkeypatch.setattr(svc, "CALIBRATION_PATH", bad)
+    assert svc._load_temperature() == 1.0
+    good = tmp_path / "good.json"
+    good.write_text('{"temperature": 1.8}')
+    monkeypatch.setattr(svc, "CALIBRATION_PATH", good)
+    assert svc._load_temperature() == 1.8

@@ -29,6 +29,22 @@ _HERE = Path(__file__).resolve().parent
 MODEL_PATH = Path(os.environ.get("CNN_ONNX_PATH") or _HERE / "model" / "disease_cnn_mobilenetv2.onnx")
 CLASS_NAMES_PATH = Path(os.environ.get("CNN_CLASS_NAMES_PATH") or _HERE / "model" / "disease_cnn_class_names.json")
 
+# Fitted on a held-out slice of real-world-style photos (tools/calibrate_disease_cnn.py) so
+# the confidence we report roughly matches how often the model is right. Optional file:
+# without it the temperature is 1.0 and confidences are the raw softmax.
+CALIBRATION_PATH = Path(os.environ.get("CNN_CALIBRATION_PATH") or _HERE / "model" / "disease_cnn_calibration.json")
+
+
+def _load_temperature() -> float:
+    try:
+        t = float(json.loads(CALIBRATION_PATH.read_text(encoding="utf-8"))["temperature"])
+        return t if 0.25 <= t <= 10.0 else 1.0
+    except Exception:  # noqa: BLE001 - missing/invalid file means no calibration
+        return 1.0
+
+
+_TEMPERATURE = _load_temperature()
+
 _IMG_SIZE = 224
 _MEAN = np.array([0.485, 0.456, 0.406], dtype=np.float32)
 _STD = np.array([0.229, 0.224, 0.225], dtype=np.float32)
@@ -69,7 +85,7 @@ def preprocess(image: Image.Image) -> np.ndarray:
 
 
 def classify_top(session, names: list[str], image: Image.Image, k: int = 3) -> list[tuple[str, float]]:
-    logits = session.run(None, {"input": preprocess(image)})[0][0]
+    logits = session.run(None, {"input": preprocess(image)})[0][0] / _TEMPERATURE
     exp = np.exp(logits - logits.max())
     probs = exp / exp.sum()
     order = np.argsort(-probs)[:k]

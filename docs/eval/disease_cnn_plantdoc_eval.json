@@ -1,0 +1,219 @@
+{
+  "what": "MobileNetV2 disease CNN, PlantVillage-trained (old) vs fine-tuned on PlantDoc + PlantVillage replay (new)",
+  "plantdoc": "Cropped-PlantDoc, Singh et al. 2020 (CoDS-COMAD), CC BY 4.0",
+  "plantdoc_train_images": 2108,
+  "plantdoc_val_images": 234,
+  "plantdoc_test_images": 236,
+  "plantdoc_unmapped_folders_skipped": {},
+  "plantvillage_replay_images": 3420,
+  "plantvillage_sample_images": 1512,
+  "epochs": 12,
+  "best_epoch_chosen_on": "PlantDoc validation slice (10% of train), never the test split",
+  "recipe": "unfreeze last 6 feature blocks, AdamW 3e-4 one-cycle, label smoothing 0.1, KD from old model (w=0.5, T=2), PlantDoc x2 + PV replay (90/class)",
+  "trained_at_utc": "2026-09-25",
+  "baseline_old_model": {
+    "plantdoc_test": {
+      "n": 236,
+      "top1": 0.2245762711864407,
+      "macro_f1": 0.20107493009707775,
+      "ece": 0.5983825586104797,
+      "mean_confidence": 0.8229588866233826,
+      "share_answered_when_confident": 0.8559322033898306,
+      "accuracy_when_confident": 0.2524752475247525,
+      "top3": 0.4364406779661017
+    },
+    "plantvillage_sample": {
+      "n": 1512,
+      "top1": 0.9940476190476191,
+      "macro_f1": 0.9940687457781326,
+      "ece": 0.003956953349409859,
+      "mean_confidence": 0.9916032552719116,
+      "share_answered_when_confident": 0.9986772486772487,
+      "accuracy_when_confident": 0.9953642384105961,
+      "top3": 1.0
+    }
+  },
+  "new_model": {
+    "plantdoc_test": {
+      "n": 236,
+      "top1": 0.4576271186440678,
+      "macro_f1": 0.4571161465081313,
+      "ece": 0.23304867731817697,
+      "mean_confidence": 0.6727476119995117,
+      "share_answered_when_confident": 0.6610169491525424,
+      "accuracy_when_confident": 0.5128205128205128,
+      "top3": 0.7669491525423728
+    },
+    "plantvillage_sample": {
+      "n": 1512,
+      "top1": 0.9874338624338624,
+      "macro_f1": 0.9874760303052101,
+      "ece": 0.014088644434219985,
+      "mean_confidence": 0.9733765721321106,
+      "share_answered_when_confident": 0.9933862433862434,
+      "accuracy_when_confident": 0.9893475366178429,
+      "top3": 1.0
+    }
+  },
+  "onnx_max_abs_diff_vs_torch": 2.6226043701171875e-06,
+  "onnx_size_mb": 9.06,
+  "history": [
+    {
+      "epoch": 1,
+      "train_loss": 6.012122885519717,
+      "plantdoc_val_top1": 0.2692307692307692,
+      "plantdoc_val_ece": 0.28875676803609246
+    },
+    {
+      "epoch": 2,
+      "train_loss": 3.8632124992979673,
+      "plantdoc_val_top1": 0.3547008547008547,
+      "plantdoc_val_ece": 0.23047533395708117
+    },
+    {
+      "epoch": 3,
+      "train_loss": 3.3964689980034066,
+      "plantdoc_val_top1": 0.38461538461538464,
+      "plantdoc_val_ece": 0.23793981230666494
+    },
+    {
+      "epoch": 4,
+      "train_loss": 3.224758540882784,
+      "plantdoc_val_top1": 0.44017094017094016,
+      "plantdoc_val_ece": 0.18196514376208311
+    },
+    {
+      "epoch": 5,
+      "train_loss": 3.1316948027170004,
+      "plantdoc_val_top1": 0.42735042735042733,
+      "plantdoc_val_ece": 0.2286337710853316
+    },
+    {
+      "epoch": 6,
+      "train_loss": 3.048917029084278,
+      "plantdoc_val_top1": 0.4358974358974359,
+      "plantdoc_val_ece": 0.178223409013361
+    },
+    {
+      "epoch": 7,
+      "train_loss": 2.99704480672083,
+      "plantdoc_val_top1": 0.46153846153846156,
+      "plantdoc_val_ece": 0.15921547423061144
+    },
+    {
+      "epoch": 8,
+      "train_loss": 2.9372156597986945,
+      "plantdoc_val_top1": 0.47435897435897434,
+      "plantdoc_val_ece": 0.17355144915417728
+    },
+    {
+      "epoch": 9,
+      "train_loss": 2.885552725872072,
+      "plantdoc_val_top1": 0.47435897435897434,
+      "plantdoc_val_ece": 0.18581130132715926
+    },
+    {
+      "epoch": 10,
+      "train_loss": 2.830786677969604,
+      "plantdoc_val_top1": 0.4829059829059829,
+      "plantdoc_val_ece": 0.14998548051230928
+    },
+    {
+      "epoch": 11,
+      "train_loss": 2.8342140802816185,
+      "plantdoc_val_top1": 0.47435897435897434,
+      "plantdoc_val_ece": 0.16675015175953894
+    },
+    {
+      "epoch": 12,
+      "train_loss": 2.802288043398817,
+      "plantdoc_val_top1": 0.4658119658119658,
+      "plantdoc_val_ece": 0.16443407497344872
+    }
+  ],
+  "caveats": [
+    "PlantDoc is small (~2.5k images) and internet-scraped; its test split is the best available stand-in for phone photos, not real farmer photos from Karnataka.",
+    "PV holdout = official PlantVillage color TEST split files (40/class), which the old model did see in training, so this column measures forgetting, not generalisation."
+  ],
+  "calibration": {
+    "temperature": 1.35,
+    "plantdoc_test_T1": {
+      "n": 236,
+      "top1": 0.4576271186440678,
+      "macro_f1": 0.4571161465081313,
+      "ece": 0.23304867832842516,
+      "mean_confidence": 0.6727476119995117,
+      "share_answered_when_confident": 0.6610169491525424,
+      "accuracy_when_confident": 0.5128205128205128,
+      "top3": 0.7669491525423728
+    },
+    "plantdoc_test_fitted": {
+      "n": 236,
+      "top1": 0.4576271186440678,
+      "macro_f1": 0.4571161465081313,
+      "ece": 0.10868223200915224,
+      "mean_confidence": 0.5529630184173584,
+      "share_answered_when_confident": 0.4788135593220339,
+      "accuracy_when_confident": 0.5929203539823009,
+      "top3": 0.7669491525423728
+    },
+    "plantvillage_T1": {
+      "n": 1512,
+      "top1": 0.9874338624338624,
+      "macro_f1": 0.9874760303052101,
+      "ece": 0.014088644434219985,
+      "mean_confidence": 0.9733765721321106,
+      "share_answered_when_confident": 0.9933862433862434,
+      "accuracy_when_confident": 0.9893475366178429,
+      "top3": 1.0
+    },
+    "plantvillage_fitted": {
+      "n": 1512,
+      "top1": 0.9874338624338624,
+      "macro_f1": 0.9874760303052101,
+      "ece": 0.037865051891280206,
+      "mean_confidence": 0.9495686292648315,
+      "share_answered_when_confident": 0.9801587301587301,
+      "accuracy_when_confident": 0.9939271255060729,
+      "top3": 1.0
+    },
+    "plantdoc_test_threshold_table_fitted": [
+      {
+        "threshold": 0.3,
+        "share_answered": 0.8898305084745762,
+        "accuracy_when_answered": 0.48095238095238096
+      },
+      {
+        "threshold": 0.4,
+        "share_answered": 0.7245762711864406,
+        "accuracy_when_answered": 0.5087719298245614
+      },
+      {
+        "threshold": 0.5,
+        "share_answered": 0.5635593220338984,
+        "accuracy_when_answered": 0.5413533834586466
+      },
+      {
+        "threshold": 0.55,
+        "share_answered": 0.4788135593220339,
+        "accuracy_when_answered": 0.5929203539823009
+      },
+      {
+        "threshold": 0.6,
+        "share_answered": 0.4110169491525424,
+        "accuracy_when_answered": 0.6494845360824743
+      },
+      {
+        "threshold": 0.7,
+        "share_answered": 0.2669491525423729,
+        "accuracy_when_answered": 0.6825396825396826
+      },
+      {
+        "threshold": 0.8,
+        "share_answered": 0.15677966101694915,
+        "accuracy_when_answered": 0.7027027027027027
+      }
+    ]
+  },
+  "shipped": "Run 2 (with PlantVillage replay). Run 1 (no replay) reached 52.1% top-1 on PlantDoc test but only 78.6% on PlantVillage, so it was not shipped."
+}
