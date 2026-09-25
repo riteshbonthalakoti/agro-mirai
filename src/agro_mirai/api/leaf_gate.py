@@ -23,6 +23,9 @@ from PIL import Image
 
 #: Fraction of pixels that must look like living foliage.
 MIN_PLANT_FRACTION = 0.10
+#: Lesion colours count as plant only next to this much real foliage. Was 0.08, which
+#: rejected a badly diseased apple-scab leaf (5% green, 9% lesions); 0.04 keeps skin/wood out.
+_MIN_GREEN_FOR_LESIONS = 0.04
 #: Minimum tonal variation / edge share; rejects flat colour images.
 MIN_LUM_STD = 0.04
 MIN_EDGE_FRACTION = 0.02
@@ -42,7 +45,7 @@ def plant_stats(image_bytes: bytes) -> dict[str, float]:
     green_frac = float(green.mean())
     lesion_frac = float(lesion.mean())
     # lesions only count when there is real foliage around them
-    plant_frac = green_frac + (lesion_frac if green_frac >= 0.08 else 0.0)
+    plant_frac = green_frac + (lesion_frac if green_frac >= _MIN_GREEN_FOR_LESIONS else 0.0)
 
     # A real leaf photo has veins, edges and tonal variation; a green screen,
     # green wall or solid-colour image is flat. Measure luminance spread and
