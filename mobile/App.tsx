@@ -61,21 +61,23 @@ function Header() {
         </TouchableOpacity>
       </View>
       {fields.length > 1 ? (
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginTop: S.xs }}>
+        // one scrollable row: with several fields the chips used to wrap into many rows and push the content off screen
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="handled" style={{ marginTop: S.xs }} contentContainerStyle={{ paddingRight: S.lg }}>
           {fields.map((f) => (
             <TouchableOpacity
               key={f.id}
               onPress={() => selectField(f.id)}
+              hitSlop={{ top: 6, bottom: 6, left: 2, right: 2 }}
               style={{
                 borderWidth: 1, borderColor: f.id === field.id ? C.accent : C.border,
                 backgroundColor: f.id === field.id ? C.accent : 'transparent',
-                borderRadius: 14, paddingHorizontal: S.sm, paddingVertical: 4, marginRight: S.xs, marginTop: 4,
+                borderRadius: 16, paddingHorizontal: S.md, paddingVertical: 6, marginRight: S.sm,
               }}
             >
-              <Text style={{ fontSize: 12, color: f.id === field.id ? C.accentText : C.muted }}>{f.name}</Text>
+              <Text style={{ fontSize: 13, color: f.id === field.id ? C.accentText : C.muted }}>{f.name}</Text>
             </TouchableOpacity>
           ))}
-        </View>
+        </ScrollView>
       ) : null}
     </View>
   );

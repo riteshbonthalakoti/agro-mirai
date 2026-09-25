@@ -106,9 +106,13 @@ export function HomeTab() {
         {c ? (
           <>
             <Text style={{ fontSize: 24, fontWeight: '700', color: C.text }}>{cropLabel(lang, c.recommended_crop)}</Text>
-            {c.details?.ranking?.[0] ? (
-              <KV k={t('modelConfidence')} v={`${Math.round(c.confidence * 100)}% · ${t(c.details.ranking[0].fit === 'good' ? 'fitGood' : c.details.ranking[0].fit === 'fair' ? 'fitFair' : 'fitWeak')}`} />
-            ) : typeof c.confidence === 'number' ? <KV k={t('modelConfidence')} v={`${Math.round(c.confidence * 100)}%`} /> : null}
+            {(() => {
+              // the fit word must describe the crop shown: in "current crop" mode that is the crop already growing, not the top-ranked one
+              const fit = c.details?.mode === 'keep_current' ? c.details.current_crop?.fit : c.details?.ranking?.[0]?.fit;
+              if (typeof c.confidence !== 'number') return null;
+              const word = fit ? ` · ${t(fit === 'good' ? 'fitGood' : fit === 'fair' ? 'fitFair' : 'fitWeak')}` : '';
+              return <KV k={t('modelConfidence')} v={`${Math.round(c.confidence * 100)}%${word}`} />;
+            })()}
             {c.alternatives && c.alternatives.length ? (
               <KV k={t('alternatives')} v={c.alternatives.map((a) => cropLabel(lang, a)).join(', ')} />
             ) : null}
