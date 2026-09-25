@@ -1,5 +1,6 @@
 import React, { createContext, useCallback, useContext, useRef, useState } from 'react';
 import { Animated, Text, View } from 'react-native';
+import { feedback } from './feedback';
 import { C, S } from './theme';
 
 type Toast = { id: number; text: string; kind: 'info' | 'ok' | 'error' };
@@ -19,6 +20,8 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
 
   const show = useCallback((text: string, kind: Toast['kind'] = 'info') => {
     if (timer.current) clearTimeout(timer.current);
+    if (kind === 'ok') feedback.success();
+    else if (kind === 'error') feedback.error();
     setToast({ id: nextId++, text, kind });
     anim.setValue(0);
     Animated.timing(anim, { toValue: 1, duration: 200, useNativeDriver: true }).start();

@@ -3,6 +3,7 @@ import { RefreshControl, ScrollView, Text, TouchableOpacity, View } from 'react-
 import { getDiseaseRiskFull, getIrrigation, getRecommendation, Irrigation, DiseaseAlert, DiseaseDetails } from '../api';
 import { cropLabel, diseaseAction, fmtDate, levelLabel, useApp } from '../ctx';
 import { errorText, Load, useLoad, useTranslated } from '../hooks';
+import { feedback } from '../feedback';
 import { useNotifications } from '../notifications';
 import { SkeletonCard } from '../skeleton';
 import { C, levelColor, S } from '../theme';
@@ -132,7 +133,7 @@ export function HomeTab() {
             ) : null}
             <Why text={c.rationale_plain || c.rationale} />
             {field?.current_crop ? (
-              <TouchableOpacity onPress={() => setKeep(!keep)} style={{ marginTop: S.sm, paddingVertical: S.sm }}>
+              <TouchableOpacity onPress={() => { feedback.select(); setKeep(!keep); }} style={{ marginTop: S.sm, paddingVertical: S.sm }}>
                 <Text style={{ color: C.accent, fontWeight: '600' }}>{`${keep ? '☑' : '☐'} ${t('keepCurrent')}`}</Text>
               </TouchableOpacity>
             ) : null}

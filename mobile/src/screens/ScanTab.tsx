@@ -8,6 +8,7 @@ import { CameraView, useCameraPermissions } from 'expo-camera';
 import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
 import { File as ExpoFile, Paths } from 'expo-file-system';
 import { Icon } from '../../icons';
+import { feedback } from '../feedback';
 import { ApiError, DiseaseAlert, getDiseaseRisk, scanLeaf } from '../api';
 import { diseaseAction, fmtDate, levelLabel, useApp } from '../ctx';
 import { useTranslated } from '../hooks';
@@ -72,6 +73,7 @@ function CameraCapture({ onCaptured, onClose, onGallery }: { onCaptured: (uri: s
   const shoot = async () => {
     if (!cam.current || !ready || busy) return;
     setBusy(true);
+    feedback.shutter();
     try {
       const pic = await cam.current.takePictureAsync({ quality: 0.9, shutterSound: false });
       if (pic?.uri) onCaptured(pic.uri);
@@ -387,6 +389,8 @@ export function ScanTab() {
       }
       setResult(r);
       setPhase('result');
+      if (/^Not sure/i.test(r.disease)) feedback.warning();
+      else feedback.success();
       const localUri = await savePhotoLocally(r.id, imageUri);
       if (localUri) {
         const nextPhotos = { ...photos, [r.id]: localUri };
@@ -404,6 +408,7 @@ export function ScanTab() {
     } catch (e) {
       if (id !== runId.current) return;
       const ae = e as ApiError;
+      feedback.error();
       if (ae.code === 'NOT_A_LEAF') { setPhase('notLeaf'); return; }
       setErrKind(ae.status === -1 ? 'file' : ae.isNetwork ? 'network' : 'server');
       setErrMsg(ae.message || '');

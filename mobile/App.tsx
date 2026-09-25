@@ -37,6 +37,7 @@ import { Banner, Btn } from './src/ui';
 import { Icon, IconName } from './icons';
 import { ToastProvider } from './src/toast';
 import { AnimatedSplashScreen } from './src/components/AnimatedSplashScreen';
+import { feedback } from './src/feedback';
 
 /** One consistent top bar for every main tab: no logo, no branding -- just
  *  the active field's name, and a chip switcher when there's more than one
@@ -366,7 +367,7 @@ function RootInner({ lang, setLang }: { lang: Lang; setLang: (l: Lang) => void }
                 const on = tab === k;
                 return (
                   <View key={k} ref={(r) => { tabRefs.current[k] = r; }} collapsable={false} style={{ flex: 1 }}>
-                  <TouchableOpacity onPress={() => setTab(k)} style={{ paddingTop: 8, paddingBottom: 10, alignItems: 'center' }}>
+                  <TouchableOpacity onPress={() => { if (k !== tab) feedback.tap(); setTab(k); }} style={{ paddingTop: 8, paddingBottom: 10, alignItems: 'center' }}>
                     <View style={{ height: 3, width: 28, borderRadius: 2, marginBottom: 6, backgroundColor: on ? C.accent : 'transparent' }} />
                     <Icon name={icon} size={24} color={on ? C.accent : C.muted} />
                     <Text style={{ fontSize: 11, marginTop: 3, fontWeight: on ? '700' : '400', color: on ? C.accent : C.muted }} numberOfLines={1}>

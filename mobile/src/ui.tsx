@@ -1,4 +1,5 @@
 import React from 'react';
+import { feedback } from './feedback';
 import { ActivityIndicator, StyleSheet, Text, TextInput, TextInputProps, TouchableOpacity, View, ViewStyle } from 'react-native';
 import { C, S } from './theme';
 
@@ -9,7 +10,7 @@ export function Btn({ label, onPress, kind = 'primary', disabled, busy, style }:
   const fg = kind === 'primary' ? C.accentText : kind === 'danger' ? C.danger : C.accent;
   return (
     <TouchableOpacity
-      onPress={onPress}
+      onPress={() => { feedback.tap(); onPress(); }}
       disabled={disabled || busy}
       style={[st.btn, { backgroundColor: bg, borderColor: kind === 'primary' ? C.accent : C.border, opacity: disabled ? 0.5 : 1 }, style]}
     >
@@ -64,7 +65,7 @@ export function Banner({ text, kind = 'info' }: { text: string; kind?: 'info' | 
 
 export function Chip({ label, selected, onPress }: { label: string; selected?: boolean; onPress: () => void }) {
   return (
-    <TouchableOpacity onPress={onPress} style={[st.chip, selected && { backgroundColor: C.accent, borderColor: C.accent }]}>
+    <TouchableOpacity onPress={() => { feedback.select(); onPress(); }} style={[st.chip, selected && { backgroundColor: C.accent, borderColor: C.accent }]}>
       <Text style={{ color: selected ? C.accentText : C.text, fontSize: 13 }}>{label}</Text>
     </TouchableOpacity>
   );

@@ -4,6 +4,7 @@ import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
 import { requestRecordingPermissionsAsync } from 'expo-audio';
 import { ApiError, Farmer, requestOtp, verifyOtp } from '../api';
+import { feedback } from '../feedback';
 import { playOnboardingClip, stopAudio } from '../audio';
 import { makeT } from '../ctx';
 import { requestNotificationPermission } from '../notifications';
@@ -313,11 +314,13 @@ export function AuthScreen({ lang, onLoggedIn, notice }: { lang: Lang; onLoggedI
     setBusy(true);
     try {
       const farmer = await verifyOtp(normalizePhone(phone), otp.trim());
+      feedback.success();
       onLoggedIn(farmer, isNew);
     } catch (e) {
       const ae = e as ApiError;
       setErr(ae.isNetwork ? t('cantReachServer') : ae.status >= 500 ? t('serverBusy') : t('invalidOtp'));
       setOtp('');
+      feedback.error();
     } finally {
       setBusy(false);
     }

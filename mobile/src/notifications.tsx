@@ -2,6 +2,7 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useR
 import { Animated, AppState, Image, Modal, Platform, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import Constants from 'expo-constants';
 import { cacheGet, cacheSet } from './storage';
+import { feedback } from './feedback';
 import { C, S, levelColor } from './theme';
 
 /** Notification system: one `notify()` entry point.
@@ -113,6 +114,7 @@ export function NotificationsProvider({ children, t }: { children: React.ReactNo
       }).catch(() => {});
     } else if (AppState.currentState === 'active') {
       showBanner(item); // Expo Go: no OS layer, use the in-app banner
+      feedback.notify(); // the OS plays its own sound and vibration for a real notification
     }
   }, [showBanner]);
 
@@ -144,6 +146,7 @@ export function NotificationsProvider({ children, t }: { children: React.ReactNo
   }, [notify]);
 
   const openInbox = useCallback(() => {
+    feedback.tap();
     setInbox(true);
     setItems((cur) => persist(cur.map((n) => ({ ...n, read: true }))));
   }, []);
@@ -186,7 +189,15 @@ export function NotificationsProvider({ children, t }: { children: React.ReactNo
             <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: S.md }}>
               <Text style={{ flex: 1, fontSize: 20, fontWeight: '700', color: C.text }}>{t('notifTitle')}</Text>
               {items.length ? (
-                <TouchableOpacity onPress={() => setItems(persist([]))} style={{ marginRight: S.lg }}>
+                <TouchableOpacity
+                  onPress={() => {
+                    feedback.clear();
+                    setItems(persist([]));
+                    // also empty what is still sitting in the Android notification shade
+                    Notifications?.dismissAllNotificationsAsync().catch(() => {});
+                  }}
+                  style={{ marginRight: S.lg }}
+                >
                   <Text style={{ color: C.muted }}>{t('notifClear')}</Text>
                 </TouchableOpacity>
               ) : null}
