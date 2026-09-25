@@ -175,3 +175,13 @@ def test_keep_current_ignores_the_sowing_month_penalty(model):
     jul = model.predict(_full_vector(crop_type="cotton", as_of=date(2026, 7, 10), temp_c_mean_14d=27.0), keep_current=True)
     assert feb.recommended_crop == jul.recommended_crop == "cotton"
     assert feb.confidence == jul.confidence
+
+
+def test_keep_current_score_matches_the_details_tile(model):
+    # farmer grows a crop that is not on the regional list: the shown confidence must equal
+    # the crop's own agronomic score in details (no regional penalty in one and not the other)
+    v = _full_vector(crop_type="grapes", latitude=15.1, longitude=76.9, temp_c_mean_14d=25.0, soil_ph=7.0)
+    rec = model.predict(v, keep_current=True)
+    d = model.details_for(v, keep_current=True)
+    assert rec.recommended_crop == "grapes"
+    assert abs(rec.confidence - d["current_crop"]["score"]) < 1e-9
