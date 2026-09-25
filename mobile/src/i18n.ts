@@ -355,6 +355,7 @@ const en = {
   resNotLeafTitle: 'That does not look like a leaf',
   resNotLeafBody: 'Fill the square with one leaf, close up, in daylight.',
   resErrTitle: 'Could not check this photo',
+  notifDailyTitle: 'Today on your farm',
 };
 
 export type Key = keyof typeof en;
@@ -689,6 +690,7 @@ const kn: Dict = {
   resNotLeafTitle: 'ಇದು ಎಲೆಯಂತೆ ಕಾಣುತ್ತಿಲ್ಲ',
   resNotLeafBody: 'ಹಗಲು ಬೆಳಕಿನಲ್ಲಿ ಹತ್ತಿರದಿಂದ ಒಂದು ಎಲೆಯಿಂದ ಚೌಕ ತುಂಬಿಸಿ.',
   resErrTitle: 'ಈ ಫೋಟೋ ಪರಿಶೀಲಿಸಲಾಗಲಿಲ್ಲ',
+  notifDailyTitle: 'ಇಂದು ನಿಮ್ಮ ಹೊಲದಲ್ಲಿ',
 };
 
 const te: Dict = {
@@ -1020,6 +1022,7 @@ const te: Dict = {
   resNotLeafTitle: 'ఇది ఆకులా కనిపించడం లేదు',
   resNotLeafBody: 'పగటి వెలుతురులో దగ్గరగా ఒక ఆకుతో చతురస్రం నింపండి.',
   resErrTitle: 'ఈ ఫోటోను తనిఖీ చేయలేకపోయాము',
+  notifDailyTitle: 'ఈ రోజు మీ పొలంలో',
 };
 
 const hi: Dict = {
@@ -1351,6 +1354,7 @@ const hi: Dict = {
   resNotLeafTitle: 'यह पत्ती जैसी नहीं दिखती',
   resNotLeafBody: 'दिन की रोशनी में पास से एक पत्ती से चौकोर भरें।',
   resErrTitle: 'यह फोटो जांच नहीं सके',
+  notifDailyTitle: 'आज आपके खेत में',
 };
 
 export const STRINGS: Record<Lang, Dict> = { en, kn, te, hi };
