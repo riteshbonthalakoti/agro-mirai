@@ -143,3 +143,35 @@ def test_missing_or_bad_calibration_file_means_temperature_one(tmp_path, monkeyp
     good.write_text('{"temperature": 1.8}')
     monkeypatch.setattr(svc, "CALIBRATION_PATH", good)
     assert svc._load_temperature() == 1.8
+
+
+NAMES3 = ["Corn_(maize)___Common_rust_", "Corn_(maize)___healthy", "Tomato___Late_blight"]
+
+
+def _img():
+    return Image.new("RGB", (64, 64), "green")
+
+
+def test_crop_hint_limits_the_answer_to_that_crops_classes(monkeypatch):
+    monkeypatch.setattr(svc, "_TEMPERATURE", 1.0)
+    # the model's raw favourite is tomato, but the field grows maize
+    session = _Session((1.0, 2.0, 4.0))
+    free = svc.classify_top(session, NAMES3, _img(), 3)
+    hinted = svc.classify_top(session, NAMES3, _img(), 3, crop="maize")
+    assert free[0][0] == "Tomato___Late_blight"
+    assert {n for n, _ in hinted} == {"Corn_(maize)___Common_rust_", "Corn_(maize)___healthy"}
+    assert hinted[0][0] == "Corn_(maize)___healthy"
+
+
+def test_photo_that_does_not_look_like_the_crop_gets_low_confidence(monkeypatch):
+    monkeypatch.setattr(svc, "_TEMPERATURE", 1.0)
+    away = svc.classify_top(_Session((0.0, 0.0, 9.0)), NAMES3, _img(), 3, crop="maize")
+    home = svc.classify_top(_Session((9.0, 0.0, 0.0)), NAMES3, _img(), 3, crop="maize")
+    assert away[0][1] < 0.1      # tomato photo on a maize field -> "not sure" territory
+    assert home[0][1] > 0.9
+
+
+def test_uncovered_crop_hint_changes_nothing(monkeypatch):
+    monkeypatch.setattr(svc, "_TEMPERATURE", 1.0)
+    session = _Session((1.0, 2.0, 4.0))
+    assert svc.classify_top(session, NAMES3, _img(), 3) == svc.classify_top(session, NAMES3, _img(), 3, crop="cotton")

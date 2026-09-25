@@ -99,3 +99,12 @@ def test_photo_coverage_notes():
     assert "tomato leaf" in photo_coverage_note("maize", "Tomato: Early blight")
     assert photo_coverage_note("maize", "Corn (maize): Common rust") == ""
     assert photo_coverage_note(None, "Tomato: Early blight") == ""
+
+
+def test_class_indices_for_crop():
+    from agro_mirai.models.disease_cnn_labels import class_indices_for_crop
+
+    names = ["Apple___healthy", "Corn_(maize)___Common_rust_", "Tomato___Late_blight", "Corn_(maize)___healthy"]
+    assert class_indices_for_crop(names, "maize") == [1, 3]
+    assert class_indices_for_crop(names, "cotton") == []
+    assert class_indices_for_crop(names, None) == []

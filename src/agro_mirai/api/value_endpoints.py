@@ -277,7 +277,9 @@ def compute_disease_risk_image(
         raise ApiError(422, "NO_WEATHER_DATA", str(exc)) from None
 
     disease_model = ext["disease_model"]
-    alert = resolve_disease_alert(disease_model, features, field_id, image_bytes=image_bytes)
+    alert = resolve_disease_alert(
+        disease_model, features, field_id, image_bytes=image_bytes, crop_type=field.current_crop
+    )
     if alert.source == "cnn":
         from agro_mirai.models.disease_cnn_labels import photo_coverage_note
 

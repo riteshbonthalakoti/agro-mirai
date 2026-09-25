@@ -38,7 +38,9 @@ def _auth_headers() -> dict[str, str]:
     return {"X-Service-Token": token} if token else {}
 
 
-def call_cnn_service(image_bytes: bytes, field_id: str, filename: str = "image.jpg") -> dict | None:
+def call_cnn_service(
+    image_bytes: bytes, field_id: str, filename: str = "image.jpg", crop_type: str | None = None
+) -> dict | None:
     """POSTs the image to ``CNN_SERVICE_URL``'s ``/predict``.
 
     Returns the parsed JSON body (a ``DiseaseRiskAlert``-shaped dict) on a
@@ -62,7 +64,7 @@ def call_cnn_service(image_bytes: bytes, field_id: str, filename: str = "image.j
             resp = requests.post(
                 f"{base_url.rstrip('/')}/predict",
                 files={"image": (filename, image_bytes)},
-                data={"field_id": field_id},
+                data={"field_id": field_id, **({"crop": crop_type} if crop_type else {})},
                 headers=_auth_headers(),
                 timeout=cnn_service_timeout(),
             )
