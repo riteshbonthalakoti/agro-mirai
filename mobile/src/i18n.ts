@@ -356,6 +356,8 @@ const en = {
   resNotLeafBody: 'Fill the square with one leaf, close up, in daylight.',
   resErrTitle: 'Could not check this photo',
   notifDailyTitle: 'Today on your farm',
+  soundsTitle: 'Sounds & vibration',
+  soundsSub: 'Soft taps and sounds when you press, scan or clear something.',
 };
 
 export type Key = keyof typeof en;
@@ -691,6 +693,8 @@ const kn: Dict = {
   resNotLeafBody: 'ಹಗಲು ಬೆಳಕಿನಲ್ಲಿ ಹತ್ತಿರದಿಂದ ಒಂದು ಎಲೆಯಿಂದ ಚೌಕ ತುಂಬಿಸಿ.',
   resErrTitle: 'ಈ ಫೋಟೋ ಪರಿಶೀಲಿಸಲಾಗಲಿಲ್ಲ',
   notifDailyTitle: 'ಇಂದು ನಿಮ್ಮ ಹೊಲದಲ್ಲಿ',
+  soundsTitle: 'ಶಬ್ದ ಮತ್ತು ಕಂಪನ',
+  soundsSub: 'ಒತ್ತಿದಾಗ, ಸ್ಕ್ಯಾನ್ ಮಾಡಿದಾಗ ಅಥವಾ ತೆರವುಗೊಳಿಸಿದಾಗ ಮೃದು ಸ್ಪರ್ಶ ಮತ್ತು ಶಬ್ದಗಳು.',
 };
 
 const te: Dict = {
@@ -1023,6 +1027,8 @@ const te: Dict = {
   resNotLeafBody: 'పగటి వెలుతురులో దగ్గరగా ఒక ఆకుతో చతురస్రం నింపండి.',
   resErrTitle: 'ఈ ఫోటోను తనిఖీ చేయలేకపోయాము',
   notifDailyTitle: 'ఈ రోజు మీ పొలంలో',
+  soundsTitle: 'శబ్దాలు & కంపనం',
+  soundsSub: 'నొక్కినప్పుడు, స్కాన్ చేసినప్పుడు లేదా క్లియర్ చేసినప్పుడు మృదువైన స్పర్శ మరియు శబ్దాలు.',
 };
 
 const hi: Dict = {
@@ -1355,6 +1361,8 @@ const hi: Dict = {
   resNotLeafBody: 'दिन की रोशनी में पास से एक पत्ती से चौकोर भरें।',
   resErrTitle: 'यह फोटो जांच नहीं सके',
   notifDailyTitle: 'आज आपके खेत में',
+  soundsTitle: 'आवाज़ और कंपन',
+  soundsSub: 'दबाने, स्कैन करने या साफ़ करने पर हल्के स्पर्श और आवाज़ें।',
 };
 
 export const STRINGS: Record<Lang, Dict> = { en, kn, te, hi };

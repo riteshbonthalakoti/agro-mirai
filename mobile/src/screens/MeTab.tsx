@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { Alert, Image, Platform, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, Image, Platform, ScrollView, Switch, Text, TouchableOpacity, View } from 'react-native';
 import Constants from 'expo-constants';
 import * as ImagePicker from 'expo-image-picker';
 import { API_BASE_URL, ApiError, deleteField, patchMe, sendBugReport } from '../api';
 import { cropLabel, useApp } from '../ctx';
 import { errorText } from '../hooks';
+import { feedback, setFeedbackEnabled, useFeedbackEnabled } from '../feedback';
 import { Icon } from '../../icons';
 import { LANGS } from '../i18n';
 import { C, S } from '../theme';
@@ -77,7 +78,9 @@ export function MeTab() {
     try { setFarmer(await patchMe({ preferred_language: l })); } catch {}
   };
 
-  const confirmDelete = (id: string) =>
+  const feedbackOn = useFeedbackEnabled();
+  const confirmDelete = (id: string) => {
+    feedback.warning();
     Alert.alert(t('deleteField'), t('deleteConfirm'), [
       { text: t('cancel'), style: 'cancel' },
       {
@@ -87,6 +90,7 @@ export function MeTab() {
         },
       },
     ]);
+  };
 
   const sendBug = async () => {
     setBugNote('');
@@ -144,6 +148,19 @@ export function MeTab() {
         )}
         <Muted style={{ marginTop: 2 }}>{farmer.phone}</Muted>
       </View>
+
+      <Card title={t('soundsTitle')}>
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          <View style={{ flex: 1, paddingRight: S.md }}>
+            <Muted>{t('soundsSub')}</Muted>
+          </View>
+          <Switch
+            value={feedbackOn}
+            onValueChange={(v) => { setFeedbackEnabled(v); if (v) feedback.success(); }}
+            trackColor={{ true: C.accent }}
+          />
+        </View>
+      </Card>
 
       <Card title={t('language')}>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
