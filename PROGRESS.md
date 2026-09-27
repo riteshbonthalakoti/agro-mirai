@@ -82,6 +82,9 @@ is now Module 19 and the CNN disease model is now Module 20.)*
 <!-- STATE:START -->
 
 ### Recent commits
+- `9cb1d9a voice tests: send audio that looks like a wav so ffmpeg is not needed`
+- `ebf4034 ci: run the onnx service tests only in their own step`
+- `f6e0ae9 remove the old random forest models, the tabular service and shap; version 1.4.0`
 - `fcd83f7 docs: notifications, haptics/sounds, OTP autofill plan`
 - `f37799c ask notification (and other) permissions once at start for already-signed-in users too; test notification button in Me`
 - `4921ac9 haptics and sounds: tap ticks, success/warning/error, shutter, smooth clear (sound+vibration, also empties the tray), sounds on/off switch`
@@ -89,9 +92,6 @@ is now Module 19 and the CNN disease model is now Module 20.)*
 - `cb9d0e2 leaf scan redesign: in-app camera with square guide, auto-crop+shrink, progress screen, clear result/not-sure/error screens; show server disease advice (translated)`
 - `3bd017a login, me, add field (acres/guntas), advice auto-load, scan tips, empty state; one forecast row per day (replace stale forecasts on refresh)`
 - `90a9cf9 keep-current crop score: no regional penalty, matches details`
-- `d7272a5 mobile: field chips in one scrolling row, fit label matches shown crop; retry dropped supabase connections hidden inside ConflictError`
-- `da7d8ad mobile home: Today line, irrigation/crop/disease details, keep-current toggle, friendlier server errors`
-- `ad9731e adr 0028: crop hint results`
 
 ### Module status
 - **01-foundation**: done

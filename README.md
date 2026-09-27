@@ -44,7 +44,6 @@ explanation are in **[`BACKEND.md`](BACKEND.md)**. Short version:
 
 ```bash
 pip install -r requirements.txt
-python tools/train_crop_model.py && python tools/train_irrigation_model.py   # models/ is git-ignored
 cp .env.example .env                   # then set API_KEY to any string
 python tools/seed_fixture.py --backend sqlite --db-path agro_mirai.db
 PYTHONPATH=src python -m flask --app agro_mirai.api.app:create_app run
