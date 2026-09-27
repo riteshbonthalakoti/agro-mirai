@@ -8,7 +8,6 @@ import { API_BASE_URL, ApiError, deleteField, patchMe, sendBugReport } from '../
 import { cropLabel, useApp } from '../ctx';
 import { errorText } from '../hooks';
 import { feedback, setFeedbackEnabled, useFeedbackEnabled } from '../feedback';
-import { useNotifications } from '../notifications';
 import { Icon } from '../../icons';
 import { LANGS } from '../i18n';
 import { C, S } from '../theme';
@@ -96,7 +95,6 @@ export function MeTab() {
   };
 
   const feedbackOn = useFeedbackEnabled();
-  const { notify } = useNotifications();
   const confirmDelete = (id: string) => {
     feedback.warning();
     Alert.alert(t('deleteField'), t('deleteConfirm'), [
@@ -193,12 +191,6 @@ export function MeTab() {
             <Text style={{ flex: 1, fontSize: 15, lineHeight: 21, color: C.muted, paddingRight: S.md }}>{t('soundsSub')}</Text>
             <Switch value={feedbackOn} onValueChange={(v) => { setFeedbackEnabled(v); if (v) feedback.success(); }} trackColor={{ true: C.accent }} />
           </View>
-          <TouchableOpacity
-            onPress={() => notify({ title: t('testNotifTitle'), body: t('testNotifBody') })}
-            style={{ minHeight: 50, borderRadius: 16, borderWidth: 1.5, borderColor: C.accent, alignItems: 'center', justifyContent: 'center', marginTop: S.md }}
-          >
-            <Text style={{ fontSize: 15, fontWeight: '700', color: C.accent }}>{t('testNotifButton')}</Text>
-          </TouchableOpacity>
         </Section>
 
         {/* ---- my fields */}

@@ -112,6 +112,9 @@ const en = {
   permLocation: 'Location permission is required.',
   locFailed: 'Could not get your location.',
   fetchingFieldData: 'Field saved. Fetching weather, soil and satellite data…',
+  fieldReadyTitle: 'Your field is ready',
+  fieldReadySub: 'We’ve pulled the weather, soil and satellite data. Your advice is waiting.',
+  dailyAdviceTitle: "Today's advice",
   ha: 'ha',
 
   // home
@@ -346,6 +349,9 @@ const en = {
   voiceCouldntHear: "Sorry, that didn't work",
   askHeroLine: 'Ask your farm question by voice',
   adviceForToday: "Today's advice",
+  adviceTabRecs: 'Recommendations',
+  adviceTabQuestions: 'My questions',
+  noQuestionsYet: "No questions yet. Tap the mic below and ask something — it'll show up here.",
   greetMorning: 'Good morning',
   greetAfternoon: 'Good afternoon',
   greetEvening: 'Good evening',
@@ -436,9 +442,6 @@ const en = {
   notifDailyTitle: 'Today on your farm',
   soundsTitle: 'Sounds & vibration',
   soundsSub: 'Soft taps and sounds when you press, scan or clear something.',
-  testNotifButton: 'Send a test notification',
-  testNotifTitle: 'Agro Mirai',
-  testNotifBody: 'Notifications are working. Farm alerts will appear here.',
 };
 
 export type Key = keyof typeof en;
@@ -535,6 +538,9 @@ const kn: Dict = {
   permLocation: 'ಸ್ಥಳದ ಅನುಮತಿ ಬೇಕು.',
   locFailed: 'ನಿಮ್ಮ ಸ್ಥಳ ಪಡೆಯಲಾಗಲಿಲ್ಲ.',
   fetchingFieldData: 'ಹೊಲ ಉಳಿಸಲಾಗಿದೆ. ಹವಾಮಾನ, ಮಣ್ಣು ಮತ್ತು ಉಪಗ್ರಹ ಮಾಹಿತಿ ತರಲಾಗುತ್ತಿದೆ…',
+  fieldReadyTitle: 'ನಿಮ್ಮ ಹೊಲ ಸಿದ್ಧವಾಗಿದೆ',
+  fieldReadySub: 'ಹವಾಮಾನ, ಮಣ್ಣು ಮತ್ತು ಉಪಗ್ರಹ ಮಾಹಿತಿ ತರಲಾಗಿದೆ. ನಿಮ್ಮ ಸಲಹೆ ಸಿದ್ಧವಿದೆ.',
+  dailyAdviceTitle: 'ಇಂದಿನ ಸಲಹೆ',
   ha: 'ಹೆ.',
 
   cropRec: 'ಬೆಳೆ ಶಿಫಾರಸು',
@@ -764,6 +770,9 @@ const kn: Dict = {
   voiceCouldntHear: 'ಕ್ಷಮಿಸಿ, ಆಗಲಿಲ್ಲ',
   askHeroLine: 'ನಿಮ್ಮ ಪ್ರಶ್ನೆಯನ್ನು ಧ್ವನಿಯಲ್ಲಿ ಕೇಳಿ',
   adviceForToday: 'ಇಂದಿನ ಸಲಹೆ',
+  adviceTabRecs: 'ಶಿಫಾರಸುಗಳು',
+  adviceTabQuestions: 'ನನ್ನ ಪ್ರಶ್ನೆಗಳು',
+  noQuestionsYet: 'ಇನ್ನೂ ಪ್ರಶ್ನೆಗಳಿಲ್ಲ. ಕೆಳಗಿನ ಮೈಕ್ ಒತ್ತಿ ಏನಾದರೂ ಕೇಳಿ — ಅದು ಇಲ್ಲಿ ಕಾಣಿಸುತ್ತದೆ.',
   greetMorning: 'ಶುಭೋದಯ',
   greetAfternoon: 'ಶುಭ ಮಧ್ಯಾಹ್ನ',
   greetEvening: 'ಶುಭ ಸಂಜೆ',
@@ -854,9 +863,6 @@ const kn: Dict = {
   notifDailyTitle: 'ಇಂದು ನಿಮ್ಮ ಹೊಲದಲ್ಲಿ',
   soundsTitle: 'ಶಬ್ದ ಮತ್ತು ಕಂಪನ',
   soundsSub: 'ಒತ್ತಿದಾಗ, ಸ್ಕ್ಯಾನ್ ಮಾಡಿದಾಗ ಅಥವಾ ತೆರವುಗೊಳಿಸಿದಾಗ ಮೃದು ಸ್ಪರ್ಶ ಮತ್ತು ಶಬ್ದಗಳು.',
-  testNotifButton: 'ಪರೀಕ್ಷಾ ಅಧಿಸೂಚನೆ ಕಳುಹಿಸಿ',
-  testNotifTitle: 'ಅಗ್ರೋ ಮಿರಾಯ್',
-  testNotifBody: 'ಅಧಿಸೂಚನೆಗಳು ಕೆಲಸ ಮಾಡುತ್ತಿವೆ. ಹೊಲದ ಎಚ್ಚರಿಕೆಗಳು ಇಲ್ಲಿ ಬರುತ್ತವೆ.',
 };
 
 const te: Dict = {
@@ -950,6 +956,9 @@ const te: Dict = {
   permLocation: 'స్థాన అనుమతి అవసరం.',
   locFailed: 'మీ స్థానం పొందలేకపోయాము.',
   fetchingFieldData: 'పొలం సేవ్ అయింది. వాతావరణం, నేల మరియు ఉపగ్రహ సమాచారం తెస్తున్నాం…',
+  fieldReadyTitle: 'మీ పొలం సిద్ధంగా ఉంది',
+  fieldReadySub: 'వాతావరణం, నేల మరియు ఉపగ్రహ సమాచారం తీసుకున్నాం. మీ సలహా సిద్ధంగా ఉంది.',
+  dailyAdviceTitle: 'నేటి సలహా',
   ha: 'హె.',
 
   cropRec: 'పంట సిఫార్సు',
@@ -1179,6 +1188,9 @@ const te: Dict = {
   voiceCouldntHear: 'క్షమించండి, కుదరలేదు',
   askHeroLine: 'మీ ప్రశ్నను గొంతుతో అడగండి',
   adviceForToday: 'నేటి సలహా',
+  adviceTabRecs: 'సిఫార్సులు',
+  adviceTabQuestions: 'నా ప్రశ్నలు',
+  noQuestionsYet: 'ఇంకా ప్రశ్నలు లేవు. కింద ఉన్న మైక్ నొక్కి ఏదైనా అడగండి — అది ఇక్కడ కనిపిస్తుంది.',
   greetMorning: 'శుభోదయం',
   greetAfternoon: 'శుభ మధ్యాహ్నం',
   greetEvening: 'శుభ సాయంత్రం',
@@ -1269,9 +1281,6 @@ const te: Dict = {
   notifDailyTitle: 'ఈ రోజు మీ పొలంలో',
   soundsTitle: 'శబ్దాలు & కంపనం',
   soundsSub: 'నొక్కినప్పుడు, స్కాన్ చేసినప్పుడు లేదా క్లియర్ చేసినప్పుడు మృదువైన స్పర్శ మరియు శబ్దాలు.',
-  testNotifButton: 'పరీక్ష నోటిఫికేషన్ పంపండి',
-  testNotifTitle: 'అగ్రో మిరాయ్',
-  testNotifBody: 'నోటిఫికేషన్లు పనిచేస్తున్నాయి. పొలం హెచ్చరికలు ఇక్కడ వస్తాయి.',
 };
 
 const hi: Dict = {
@@ -1365,6 +1374,9 @@ const hi: Dict = {
   permLocation: 'स्थान की अनुमति ज़रूरी है।',
   locFailed: 'आपका स्थान नहीं मिल सका।',
   fetchingFieldData: 'खेत सहेज लिया गया। मौसम, मिट्टी और उपग्रह डेटा लाया जा रहा है…',
+  fieldReadyTitle: 'आपका खेत तैयार है',
+  fieldReadySub: 'मौसम, मिट्टी और उपग्रह डेटा ला लिया गया है। आपकी सलाह तैयार है।',
+  dailyAdviceTitle: 'आज की सलाह',
   ha: 'हे.',
 
   cropRec: 'फसल सुझाव',
@@ -1594,6 +1606,9 @@ const hi: Dict = {
   voiceCouldntHear: 'माफ़ कीजिए, नहीं हो पाया',
   askHeroLine: 'अपना सवाल आवाज़ से पूछिए',
   adviceForToday: 'आज की सलाह',
+  adviceTabRecs: 'सिफारिशें',
+  adviceTabQuestions: 'मेरे सवाल',
+  noQuestionsYet: 'अभी कोई सवाल नहीं। नीचे माइक दबाकर कुछ पूछें — वह यहां दिखेगा।',
   greetMorning: 'सुप्रभात',
   greetAfternoon: 'नमस्कार',
   greetEvening: 'शुभ संध्या',
@@ -1684,9 +1699,6 @@ const hi: Dict = {
   notifDailyTitle: 'आज आपके खेत में',
   soundsTitle: 'आवाज़ और कंपन',
   soundsSub: 'दबाने, स्कैन करने या साफ़ करने पर हल्के स्पर्श और आवाज़ें।',
-  testNotifButton: 'टेस्ट नोटिफिकेशन भेजें',
-  testNotifTitle: 'एग्रो मिराई',
-  testNotifBody: 'नोटिफिकेशन काम कर रहे हैं। खेत की चेतावनियां यहां मिलेंगी।',
 };
 
 export const STRINGS: Record<Lang, Dict> = { en, kn, te, hi };
