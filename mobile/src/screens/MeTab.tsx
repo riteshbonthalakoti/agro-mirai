@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { Alert, Image, Platform, ScrollView, Switch, Text, TouchableOpacity, View } from 'react-native';
+import { AuthBackdrop } from '../components/AuthBackdrop';
+import { IconName } from '../../icons';
 import Constants from 'expo-constants';
 import * as ImagePicker from 'expo-image-picker';
 import { API_BASE_URL, ApiError, deleteField, patchMe, sendBugReport } from '../api';
@@ -10,7 +12,7 @@ import { useNotifications } from '../notifications';
 import { Icon } from '../../icons';
 import { LANGS } from '../i18n';
 import { C, S } from '../theme';
-import { Banner, Btn, Card, Chip, Input, KV, Label, Muted, st } from '../ui';
+import { Banner, Btn, Chip, Input, KV, Muted } from '../ui';
 
 const BUG_CATS: [string, 'bugCategoryCrash' | 'bugCategoryWrongAdvice' | 'bugCategoryScanFailed' | 'bugCategoryLoginFailed' | 'bugCategoryOther'][] = [
   ['crash', 'bugCategoryCrash'],
@@ -30,6 +32,20 @@ function initials(name: string) {
   const parts = name.trim().split(/\s+/).filter(Boolean);
   if (!parts.length) return '?';
   return (parts[0][0] + (parts[1]?.[0] ?? '')).toUpperCase();
+}
+
+function Section({ icon, tint, title, children }: { icon: IconName; tint: string; title: string; children: React.ReactNode }) {
+  return (
+    <View style={{ backgroundColor: 'rgba(255,255,255,0.95)', borderRadius: 22, padding: S.lg, marginBottom: S.md, borderWidth: 1, borderColor: '#E3E8DC' }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: S.md }}>
+        <View style={{ width: 38, height: 38, borderRadius: 19, backgroundColor: tint, alignItems: 'center', justifyContent: 'center', marginRight: S.md }}>
+          <Icon name={icon} size={20} color={C.accent} />
+        </View>
+        <Text style={{ flex: 1, fontSize: 17, fontWeight: '800', color: C.text }}>{title}</Text>
+      </View>
+      {children}
+    </View>
+  );
 }
 
 export function MeTab() {
@@ -115,111 +131,140 @@ export function MeTab() {
   const avColor = avatarColor(farmer.id);
 
   return (
-    <ScrollView contentContainerStyle={{ padding: S.lg, paddingTop: S.md }} keyboardShouldPersistTaps="handled">
-      {err ? <Banner text={err} kind="error" /> : null}
-      {msg ? <Banner text={msg} kind="ok" /> : null}
+    <View style={{ flex: 1 }}>
+      <AuthBackdrop />
+      <ScrollView contentContainerStyle={{ padding: S.lg, paddingTop: S.md, paddingBottom: S.xl * 2 }} keyboardShouldPersistTaps="handled">
+        {err ? <Banner text={err} kind="error" /> : null}
+        {msg ? <Banner text={msg} kind="ok" /> : null}
 
-      {/* Hero identity block */}
-      <View style={{ alignItems: 'center', paddingVertical: S.lg }}>
-        <TouchableOpacity onPress={changePhoto} activeOpacity={0.8}>
-          {farmer.photo_url ? (
-            <Image source={{ uri: farmer.photo_url }} style={{ width: 88, height: 88, borderRadius: 44 }} />
-          ) : (
-            <View style={{ width: 88, height: 88, borderRadius: 44, backgroundColor: avColor, alignItems: 'center', justifyContent: 'center' }}>
-              <Text style={{ fontSize: 32, fontWeight: '700', color: '#fff' }}>{initials(farmer.name)}</Text>
+        {/* ---- identity hero */}
+        <View style={{ backgroundColor: 'rgba(255,255,255,0.95)', borderRadius: 26, padding: S.lg, alignItems: 'center', marginBottom: S.md, borderWidth: 1, borderColor: '#E3E8DC' }}>
+          <TouchableOpacity onPress={changePhoto} activeOpacity={0.8}>
+            {farmer.photo_url ? (
+              <Image source={{ uri: farmer.photo_url }} style={{ width: 92, height: 92, borderRadius: 46 }} />
+            ) : (
+              <View style={{ width: 92, height: 92, borderRadius: 46, backgroundColor: avColor, alignItems: 'center', justifyContent: 'center' }}>
+                <Text style={{ fontSize: 34, fontWeight: '800', color: '#fff' }}>{initials(farmer.name)}</Text>
+              </View>
+            )}
+            <View style={{ position: 'absolute', bottom: -2, right: -2, width: 30, height: 30, borderRadius: 15, backgroundColor: C.accent, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: '#fff' }}>
+              <Icon name="camera" size={15} color="#fff" />
             </View>
-          )}
-          <View style={{ position: 'absolute', bottom: -2, right: -2, width: 28, height: 28, borderRadius: 14, backgroundColor: C.accent, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: C.bg }}>
-            <Icon name="camera" size={14} color="#fff" />
-          </View>
-        </TouchableOpacity>
-
-        {editingName ? (
-          <View style={{ marginTop: S.md, width: '100%', maxWidth: 320 }}>
-            <Input value={name} onChangeText={setName} autoFocus textAlign="center" style={{ fontSize: 18, fontWeight: '700' }} />
-            <View style={{ flexDirection: 'row', gap: S.sm, marginTop: S.sm }}>
-              <Btn label={t('cancel')} kind="secondary" onPress={() => { setName(farmer.name); setEditingName(false); }} style={{ flex: 1 }} />
-              <Btn label={t('save')} onPress={saveName} busy={busy} style={{ flex: 1 }} />
-            </View>
-          </View>
-        ) : (
-          <TouchableOpacity onPress={() => setEditingName(true)} style={{ flexDirection: 'row', alignItems: 'center', marginTop: S.md }}>
-            <Text style={{ fontSize: 20, fontWeight: '700', color: C.text }}>{farmer.name}</Text>
-            <View style={{ marginLeft: S.xs }}><Icon name="chevron-down" size={14} color={C.muted} /></View>
           </TouchableOpacity>
-        )}
-        <Muted style={{ marginTop: 2 }}>{farmer.phone}</Muted>
-      </View>
 
-      <Card title={t('soundsTitle')}>
-        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-          <View style={{ flex: 1, paddingRight: S.md }}>
-            <Muted>{t('soundsSub')}</Muted>
+          {editingName ? (
+            <View style={{ marginTop: S.md, width: '100%', maxWidth: 320 }}>
+              <Input value={name} onChangeText={setName} autoFocus textAlign="center" style={{ fontSize: 18, fontWeight: '700' }} />
+              <View style={{ flexDirection: 'row', gap: S.sm, marginTop: S.sm }}>
+                <Btn label={t('cancel')} kind="secondary" onPress={() => { setName(farmer.name); setEditingName(false); }} style={{ flex: 1 }} />
+                <Btn label={t('save')} onPress={saveName} busy={busy} style={{ flex: 1 }} />
+              </View>
+            </View>
+          ) : (
+            <TouchableOpacity onPress={() => setEditingName(true)} style={{ flexDirection: 'row', alignItems: 'center', marginTop: S.md }}>
+              <Text style={{ fontSize: 21, fontWeight: '800', color: C.text }}>{farmer.name}</Text>
+              <View style={{ marginLeft: S.xs }}><Icon name="chevron-down" size={14} color={C.muted} /></View>
+            </TouchableOpacity>
+          )}
+          <Muted style={{ marginTop: 2 }}>{farmer.phone}</Muted>
+        </View>
+
+        {/* ---- language: big pill row, matches the sign-in language switcher */}
+        <Section icon="globe" tint="#E3F1FA" title={t('language')}>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: S.sm }}>
+            {LANGS.map((l) => {
+              const on = lang === l.code;
+              return (
+                <TouchableOpacity
+                  key={l.code}
+                  onPress={() => chooseLang(l.code)}
+                  style={{ minHeight: 46, paddingHorizontal: 18, borderRadius: 23, borderWidth: on ? 2 : 1.5, borderColor: on ? C.accent : '#B9C9B4', backgroundColor: on ? '#E8F3E8' : '#fff', alignItems: 'center', justifyContent: 'center' }}
+                >
+                  <Text style={{ fontSize: 16, fontWeight: on ? '800' : '600', color: on ? C.accent : C.text }}>{l.native}</Text>
+                </TouchableOpacity>
+              );
+            })}
           </View>
-          <Switch
-            value={feedbackOn}
-            onValueChange={(v) => { setFeedbackEnabled(v); if (v) feedback.success(); }}
-            trackColor={{ true: C.accent }}
-          />
-        </View>
-        <Btn
-          label={t('testNotifButton')}
-          kind="secondary"
-          onPress={() => notify({ title: t('testNotifTitle'), body: t('testNotifBody') })}
-          style={{ marginTop: S.md }}
-        />
-      </Card>
+        </Section>
 
-      <Card title={t('language')}>
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
-          {LANGS.map((l) => (
-            <Chip key={l.code} label={l.native} selected={lang === l.code} onPress={() => chooseLang(l.code)} />
-          ))}
-        </View>
-      </Card>
+        {/* ---- sounds + notifications */}
+        <Section icon="bell" tint="#F6ECD6" title={t('soundsTitle')}>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <Text style={{ flex: 1, fontSize: 15, lineHeight: 21, color: C.muted, paddingRight: S.md }}>{t('soundsSub')}</Text>
+            <Switch value={feedbackOn} onValueChange={(v) => { setFeedbackEnabled(v); if (v) feedback.success(); }} trackColor={{ true: C.accent }} />
+          </View>
+          <TouchableOpacity
+            onPress={() => notify({ title: t('testNotifTitle'), body: t('testNotifBody') })}
+            style={{ minHeight: 50, borderRadius: 16, borderWidth: 1.5, borderColor: C.accent, alignItems: 'center', justifyContent: 'center', marginTop: S.md }}
+          >
+            <Text style={{ fontSize: 15, fontWeight: '700', color: C.accent }}>{t('testNotifButton')}</Text>
+          </TouchableOpacity>
+        </Section>
 
-      <Card title={t('myFields')}>
-        {fields.map((f) => (
-          <View key={f.id} style={{ paddingVertical: S.sm, borderBottomWidth: 1, borderBottomColor: C.border }}>
+        {/* ---- my fields */}
+        <Section icon="field" tint="#E8F3E8" title={t('myFields')}>
+          {fields.map((f) => {
+            const active = field?.id === f.id;
+            return (
+              <View key={f.id} style={{ borderRadius: 16, borderWidth: 1.5, borderColor: active ? C.accent : '#E3E8DC', backgroundColor: active ? '#F3F9F1' : '#fff', padding: S.md, marginBottom: S.sm }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <Text style={{ fontSize: 16, fontWeight: '800', flex: 1, color: C.text }}>{f.name}</Text>
+                  {active ? (
+                    <View style={{ backgroundColor: C.accent, borderRadius: 10, paddingHorizontal: 8, paddingVertical: 2 }}>
+                      <Text style={{ color: '#fff', fontSize: 11, fontWeight: '700' }}>{t('activeField')}</Text>
+                    </View>
+                  ) : null}
+                </View>
+                <Text style={{ fontSize: 13.5, color: C.muted, marginTop: 2 }}>{`${f.area_ha} ${t('ha')} · ${cropLabel(lang, f.current_crop)}`}</Text>
+                <View style={{ flexDirection: 'row', gap: S.sm, marginTop: S.sm }}>
+                  {!active ? <Btn label={t('useThisField')} kind="secondary" onPress={() => selectField(f.id)} style={{ flex: 1 }} /> : null}
+                  <Btn label={t('edit')} kind="secondary" onPress={() => openFieldForm(f)} style={{ flex: 1 }} />
+                  <Btn label={t('delete')} kind="danger" onPress={() => confirmDelete(f.id)} style={{ flex: 1 }} />
+                </View>
+              </View>
+            );
+          })}
+          <Btn label={t('addField')} onPress={() => openFieldForm()} style={{ marginTop: S.xs }} />
+        </Section>
+
+        {/* ---- report a problem */}
+        <View style={{ backgroundColor: 'rgba(255,255,255,0.95)', borderRadius: 22, marginBottom: S.md, borderWidth: 1, borderColor: '#E3E8DC', overflow: 'hidden' }}>
+          <TouchableOpacity onPress={() => setBugOpen(!bugOpen)} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: S.lg, minHeight: 56 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-              <Icon name="field" size={16} color={field?.id === f.id ? C.accent : C.muted} />
-              <Text style={{ fontSize: 15, fontWeight: '600', marginLeft: S.sm, flex: 1 }}>{f.name}</Text>
-              {field?.id === f.id ? <View style={{ backgroundColor: C.accent, borderRadius: 10, paddingHorizontal: 8, paddingVertical: 2 }}><Text style={{ color: '#fff', fontSize: 11, fontWeight: '700' }}>{t('activeField')}</Text></View> : null}
+              <View style={{ width: 38, height: 38, borderRadius: 19, backgroundColor: '#FDECEA', alignItems: 'center', justifyContent: 'center', marginRight: S.md }}>
+                <Icon name="bug" size={19} color={C.danger} />
+              </View>
+              <Text style={{ fontSize: 17, fontWeight: '800', color: C.text }}>{t('reportProblem')}</Text>
             </View>
-            <Muted style={{ marginLeft: 24 }}>{`${f.area_ha} ${t('ha')} · ${cropLabel(lang, f.current_crop)} · ${f.latitude.toFixed(3)}, ${f.longitude.toFixed(3)}`}</Muted>
-            <View style={{ flexDirection: 'row', gap: S.sm, marginTop: S.sm, marginLeft: 24 }}>
-              {field?.id !== f.id ? <Btn label={t('useThisField')} kind="secondary" onPress={() => selectField(f.id)} style={{ flex: 1 }} /> : null}
-              <Btn label={t('edit')} kind="secondary" onPress={() => openFieldForm(f)} style={{ flex: 1 }} />
-              <Btn label={t('delete')} kind="danger" onPress={() => confirmDelete(f.id)} style={{ flex: 1 }} />
+            <Icon name={bugOpen ? 'chevron-up' : 'chevron-down'} size={18} color={C.muted} />
+          </TouchableOpacity>
+          {bugOpen ? (
+            <View style={{ paddingHorizontal: S.lg, paddingBottom: S.lg }}>
+              <Muted>{t('bugReportSub')}</Muted>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginTop: S.sm }}>
+                {BUG_CATS.map(([code, key]) => (
+                  <Chip key={code} label={t(key)} selected={bugCat === code} onPress={() => setBugCat(bugCat === code ? null : code)} />
+                ))}
+              </View>
+              <Input value={bugMsg} onChangeText={setBugMsg} placeholder={t('bugReportMessagePlaceholder')} multiline />
+              {bugNote ? <Muted style={{ marginTop: S.sm }}>{bugNote}</Muted> : null}
+              <Btn label={t('bugReportSubmit')} onPress={sendBug} busy={bugBusy} style={{ marginTop: S.sm }} />
             </View>
-          </View>
-        ))}
-        <Btn label={t('addField')} onPress={() => openFieldForm()} style={{ marginTop: S.md }} />
-      </Card>
+          ) : null}
+        </View>
 
-      <TouchableOpacity onPress={() => setBugOpen(!bugOpen)} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: S.md }}>
-        <Text style={{ fontSize: 16, fontWeight: '700', color: C.text }}>{t('reportProblem')}</Text>
-        <Icon name={bugOpen ? 'chevron-up' : 'chevron-down'} size={18} color={C.muted} />
-      </TouchableOpacity>
-      {bugOpen ? (
-        <Card>
-          <Muted>{t('bugReportSub')}</Muted>
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginTop: S.sm }}>
-            {BUG_CATS.map(([code, key]) => (
-              <Chip key={code} label={t(key)} selected={bugCat === code} onPress={() => setBugCat(bugCat === code ? null : code)} />
-            ))}
-          </View>
-          <Input value={bugMsg} onChangeText={setBugMsg} placeholder={t('bugReportMessagePlaceholder')} multiline />
-          {bugNote ? <Muted style={{ marginTop: S.sm }}>{bugNote}</Muted> : null}
-          <Btn label={t('bugReportSubmit')} onPress={sendBug} busy={bugBusy} style={{ marginTop: S.sm }} />
-        </Card>
-      ) : null}
-
-      <View style={{ marginTop: S.md, paddingTop: S.md, borderTopWidth: 1, borderTopColor: C.border }}>
-        <KV k={t('version')} v={Constants.expoConfig?.version} />
-        <Muted style={{ fontSize: 11 }}>{API_BASE_URL}</Muted>
-      </View>
-      <Btn label={t('signOut')} kind="danger" onPress={() => Alert.alert(t('signOut'), t('signOutAsk'), [{ text: t('cancel'), style: 'cancel' }, { text: t('signOut'), style: 'destructive', onPress: signOut }])} style={{ marginTop: S.lg, marginBottom: S.xl }} />
-    </ScrollView>
+        {/* ---- footer + sign out */}
+        <View style={{ alignItems: 'center', marginTop: S.sm, marginBottom: S.md }}>
+          <Text style={{ fontSize: 12.5, color: C.muted }}>{`${t('version')} ${Constants.expoConfig?.version}`}</Text>
+          <Text style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>{API_BASE_URL}</Text>
+        </View>
+        <TouchableOpacity
+          onPress={() => Alert.alert(t('signOut'), t('signOutAsk'), [{ text: t('cancel'), style: 'cancel' }, { text: t('signOut'), style: 'destructive', onPress: signOut }])}
+          style={{ minHeight: 56, borderRadius: 16, borderWidth: 2, borderColor: C.danger, alignItems: 'center', justifyContent: 'center' }}
+        >
+          <Text style={{ fontSize: 17, fontWeight: '800', color: C.danger }}>{t('signOut')}</Text>
+        </TouchableOpacity>
+      </ScrollView>
+    </View>
   );
 }

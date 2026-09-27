@@ -7,7 +7,8 @@ import * as ImagePicker from 'expo-image-picker';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
 import { File as ExpoFile, Paths } from 'expo-file-system';
-import { Icon } from '../../icons';
+import { Icon, IconName } from '../../icons';
+import { AuthBackdrop } from '../components/AuthBackdrop';
 import { feedback } from '../feedback';
 import { ApiError, DiseaseAlert, getDiseaseRisk, scanLeaf } from '../api';
 import { diseaseAction, fmtDate, levelLabel, useApp } from '../ctx';
@@ -15,7 +16,7 @@ import { useTranslated } from '../hooks';
 import { SkeletonCard } from '../skeleton';
 import { cacheGet, cacheSet } from '../storage';
 import { levelColor, S, C } from '../theme';
-import { Badge, Banner, Btn, Card, Muted } from '../ui';
+import { Badge, Banner, Btn, Muted } from '../ui';
 import { ZoomModal } from '../zoom';
 
 type HistoryItem = { id: string; date: string; disease: string; risk: string; source: string | null; confidence: number; action?: string | null };
@@ -441,7 +442,9 @@ export function ScanTab() {
   const backHome = () => { setPhase('home'); setResult(null); };
 
   return (
-    <ScrollView contentContainerStyle={{ padding: S.lg, paddingTop: S.md }} keyboardShouldPersistTaps="handled">
+    <View style={{ flex: 1 }}>
+      <AuthBackdrop />
+      <ScrollView contentContainerStyle={{ padding: S.lg, paddingTop: S.md, paddingBottom: S.xl * 2 }} keyboardShouldPersistTaps="handled">
       {phase === 'analyzing' && photoUri ? <AnalyzingView uri={photoUri} onCancel={cancelScan} /> : null}
 
       {phase === 'result' && result && photoUri ? (
@@ -461,51 +464,69 @@ export function ScanTab() {
 
       {phase === 'home' ? (
         <>
-          <Card>
-            <View style={{ alignItems: 'center', paddingVertical: S.sm }}>
-              <View style={{ width: 72, height: 72, borderRadius: 36, backgroundColor: '#E8F3E8', alignItems: 'center', justifyContent: 'center' }}>
-                <Icon name="leaf" size={36} color={C.accent} />
+          {/* hero: big camera card, the one clear action */}
+          <View style={{ borderRadius: 28, overflow: 'hidden', backgroundColor: '#14532D', marginBottom: S.md }}>
+            <View style={{ position: 'absolute', right: -34, top: -34, width: 160, height: 160, borderRadius: 80, backgroundColor: 'rgba(255,255,255,0.08)' }} />
+            <View style={{ position: 'absolute', right: 30, bottom: -46, width: 100, height: 100, borderRadius: 50, backgroundColor: 'rgba(255,255,255,0.06)' }} />
+            <View style={{ padding: S.lg, alignItems: 'center' }}>
+              <View style={{ width: 76, height: 76, borderRadius: 38, backgroundColor: 'rgba(255,255,255,0.16)', alignItems: 'center', justifyContent: 'center' }}>
+                <Icon name="leaf" size={38} color="#fff" />
               </View>
-              <Text style={{ fontSize: 22, fontWeight: '700', color: C.text, marginTop: S.md }}>{t('scanHero')}</Text>
-              <Text style={{ fontSize: 14, color: C.muted, textAlign: 'center', marginTop: 4 }}>{t('scanHeroSub')}</Text>
+              <Text style={{ fontSize: 21, fontWeight: '800', color: '#fff', marginTop: S.md, textAlign: 'center' }}>{t('scanHero')}</Text>
+              <Text style={{ fontSize: 14.5, lineHeight: 20, color: 'rgba(255,255,255,0.82)', textAlign: 'center', marginTop: 4 }}>{t('scanHeroSub')}</Text>
+              <TouchableOpacity onPress={openCamera} activeOpacity={0.85} style={{ minHeight: 58, borderRadius: 29, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center', flexDirection: 'row', alignSelf: 'stretch', marginTop: S.lg }}>
+                <Icon name="camera" size={22} color="#14532D" />
+                <Text style={{ fontSize: 18, fontWeight: '800', color: '#14532D', marginLeft: S.sm }}>{t('takePhoto')}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={pickGallery} style={{ minHeight: 48, alignItems: 'center', justifyContent: 'center', marginTop: S.xs }}>
+                <Text style={{ fontSize: 15, fontWeight: '700', color: 'rgba(255,255,255,0.85)', textDecorationLine: 'underline' }}>{t('pickGallery')}</Text>
+              </TouchableOpacity>
             </View>
-            <Btn label={t('takePhoto')} onPress={openCamera} style={{ marginTop: S.md }} />
-            <Btn label={t('pickGallery')} kind="secondary" onPress={pickGallery} style={{ marginTop: S.sm }} />
-          </Card>
+          </View>
 
-          <Card title={t('scanHowTitle')}>
-            {[t('scanHow1'), t('scanHow2'), t('scanHow3')].map((s, i) => (
-              <View key={i} style={{ flexDirection: 'row', alignItems: 'center', marginTop: i ? S.sm : 0 }}>
-                <View style={{ width: 24, height: 24, borderRadius: 12, backgroundColor: C.accent, alignItems: 'center', justifyContent: 'center', marginRight: S.md }}>
-                  <Text style={{ color: '#fff', fontWeight: '700', fontSize: 13 }}>{i + 1}</Text>
+          {/* how it works */}
+          <View style={{ backgroundColor: 'rgba(255,255,255,0.95)', borderRadius: 22, padding: S.lg, marginBottom: S.md, borderWidth: 1, borderColor: '#E3E8DC' }}>
+            <Text style={{ fontSize: 17, fontWeight: '800', color: C.text, marginBottom: S.md }}>{t('scanHowTitle')}</Text>
+            {[t('scanHow1'), t('scanHow2'), t('scanHow3')].map((line, i) => (
+              <View key={i} style={{ flexDirection: 'row', alignItems: 'center', marginTop: i ? S.md : 0 }}>
+                <View style={{ width: 30, height: 30, borderRadius: 15, backgroundColor: '#E8F3E8', alignItems: 'center', justifyContent: 'center', marginRight: S.md }}>
+                  <Text style={{ color: C.accent, fontWeight: '800', fontSize: 14 }}>{i + 1}</Text>
                 </View>
-                <Text style={{ flex: 1, fontSize: 15, color: C.text }}>{s}</Text>
+                <Text style={{ flex: 1, fontSize: 15.5, lineHeight: 21, color: C.text }}>{line}</Text>
               </View>
             ))}
-            <Muted style={{ marginTop: S.md }}>{t('scanCoverage')}</Muted>
-          </Card>
+            <View style={{ flexDirection: 'row', backgroundColor: '#F6ECD6', borderRadius: 12, padding: S.md, marginTop: S.md }}>
+              <Icon name="info" size={16} color={C.muted} />
+              <Text style={{ flex: 1, marginLeft: S.sm, fontSize: 13, lineHeight: 18, color: C.muted }}>{t('scanCoverage')}</Text>
+            </View>
+          </View>
 
           {notice ? <Banner text={notice} kind="error" /> : null}
 
-          <Text style={{ fontSize: 16, fontWeight: '700', marginTop: S.sm, marginBottom: S.sm, color: C.text }}>{t('scanHistory')}</Text>
+          {/* history */}
+          <Text style={{ fontSize: 13, fontWeight: '800', letterSpacing: 1, color: C.muted, marginBottom: S.sm }}>{t('scanHistory').toUpperCase()}</Text>
           {history === null ? <SkeletonCard /> : null}
-          {history !== null && history.length === 0 ? <Muted>{t('noScans')}</Muted> : null}
+          {history !== null && history.length === 0 ? (
+            <View style={{ backgroundColor: 'rgba(255,255,255,0.95)', borderRadius: 18, padding: S.lg, alignItems: 'center', borderWidth: 1, borderColor: '#E3E8DC' }}>
+              <Muted>{t('noScans')}</Muted>
+            </View>
+          ) : null}
           {history?.map((h) => (
             <TouchableOpacity
               key={h.id}
               onPress={() => setOpenItem(h)}
-              activeOpacity={0.7}
-              style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: S.sm, borderBottomWidth: 1, borderBottomColor: C.border }}
+              activeOpacity={0.85}
+              style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.95)', borderRadius: 16, padding: S.sm, marginBottom: S.sm, borderWidth: 1, borderColor: '#E3E8DC' }}
             >
               {photos[h.id] ? (
-                <Image source={{ uri: photos[h.id] }} style={{ width: 52, height: 52, borderRadius: 10, marginRight: S.md }} />
+                <Image source={{ uri: photos[h.id] }} style={{ width: 56, height: 56, borderRadius: 12, marginRight: S.md }} />
               ) : (
-                <View style={{ width: 52, height: 52, borderRadius: 10, marginRight: S.md, backgroundColor: C.surface, alignItems: 'center', justifyContent: 'center' }}>
-                  <Icon name="leaf" size={22} color={C.muted} />
+                <View style={{ width: 56, height: 56, borderRadius: 12, marginRight: S.md, backgroundColor: '#EEF4E8', alignItems: 'center', justifyContent: 'center' }}>
+                  <Icon name="leaf" size={22} color={C.accent} />
                 </View>
               )}
               <View style={{ flex: 1 }}>
-                <Text style={{ fontSize: 15, fontWeight: '600', color: C.text }} numberOfLines={2}>{h.disease}</Text>
+                <Text style={{ fontSize: 15, fontWeight: '700', color: C.text }} numberOfLines={2}>{h.disease}</Text>
                 <Muted>{fmtDate(h.date, true)}</Muted>
               </View>
               <Badge label={levelLabel(t, h.risk)} color={levelColor(h.risk)} />
@@ -535,15 +556,20 @@ export function ScanTab() {
           onZoom={(u) => setZoomUri(u)}
         />
       ) : null}
-    </ScrollView>
+      </ScrollView>
+    </View>
   );
 }
 
 function ScanDetailModal({ item, photoUri, onClose, onZoom }: { item: HistoryItem; photoUri: string | null; onClose: () => void; onZoom: (uri: string) => void }) {
   const { t } = useApp();
+  // a real Modal: opens over the whole screen at once (an absolutely-positioned View inside the
+  // ScrollView landed at the bottom of the list and needed scrolling to find)
   return (
-    <View style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' }}>
-      <View style={{ backgroundColor: C.bg, borderTopLeftRadius: 18, borderTopRightRadius: 18, padding: S.lg, paddingBottom: S.xl }}>
+    <Modal visible transparent animationType="fade" statusBarTranslucent onRequestClose={onClose}>
+    <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: S.lg }}>
+      <View style={{ backgroundColor: C.bg, borderRadius: 18, padding: S.lg, maxHeight: '85%' }}>
+        <ScrollView>
         {photoUri ? (
           <TouchableOpacity onPress={() => onZoom(photoUri)} activeOpacity={0.9}>
             <Image source={{ uri: photoUri }} style={{ width: '100%', height: 200, borderRadius: 10, marginBottom: S.sm }} resizeMode="cover" />
@@ -561,7 +587,9 @@ function ScanDetailModal({ item, photoUri, onClose, onZoom }: { item: HistoryIte
         <Muted style={{ marginTop: 4 }}>{fmtDate(item.date, true)}</Muted>
         {item.action ? <Text style={{ marginTop: S.md, fontSize: 14, lineHeight: 20 }}>{item.action}</Text> : null}
         <Btn label={t('close')} kind="secondary" onPress={onClose} style={{ marginTop: S.lg }} />
+        </ScrollView>
       </View>
     </View>
+    </Modal>
   );
 }

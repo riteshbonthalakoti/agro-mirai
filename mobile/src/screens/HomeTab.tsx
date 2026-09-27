@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { RefreshControl, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { AuthBackdrop } from '../components/AuthBackdrop';
+import { Icon, IconName } from '../../icons';
 import { getDiseaseRiskFull, getIrrigation, getRecommendation, Irrigation, DiseaseAlert, DiseaseDetails } from '../api';
 import { cropLabel, diseaseAction, fmtDate, levelLabel, useApp } from '../ctx';
 import { errorText, Load, useLoad, useTranslated } from '../hooks';
@@ -7,7 +9,7 @@ import { feedback } from '../feedback';
 import { useNotifications } from '../notifications';
 import { SkeletonCard } from '../skeleton';
 import { C, levelColor, S } from '../theme';
-import { Badge, Banner, Btn, Card, KV, Muted, st } from '../ui';
+import { Badge, Banner, Btn, KV, Muted, st } from '../ui';
 
 function ErrorBox({ load }: { load: Load<unknown> }) {
   const { t } = useApp();
@@ -66,8 +68,41 @@ function Why({ text }: { text?: string | null }) {
   );
 }
 
+/** White rounded section with a coloured icon badge, replacing the plain Card on Home. */
+function Section({ icon, tint, title, right, children }: { icon: IconName; tint: string; title: string; right?: React.ReactNode; children: React.ReactNode }) {
+  return (
+    <View style={{ backgroundColor: 'rgba(255,255,255,0.94)', borderRadius: 22, padding: S.lg, marginBottom: S.md, borderWidth: 1, borderColor: '#E3E8DC' }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: S.md }}>
+        <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: tint, alignItems: 'center', justifyContent: 'center', marginRight: S.md }}>
+          <Icon name={icon} size={22} color={C.accent} />
+        </View>
+        <Text style={{ flex: 1, fontSize: 18, fontWeight: '800', color: C.text }}>{title}</Text>
+        {right}
+      </View>
+      {children}
+    </View>
+  );
+}
+
+function Tile({ icon, tint, value, label }: { icon: IconName; tint: string; value: string; label: string }) {
+  return (
+    <View style={{ flex: 1, backgroundColor: 'rgba(255,255,255,0.94)', borderRadius: 18, padding: S.md, borderWidth: 1, borderColor: '#E3E8DC' }}>
+      <View style={{ width: 34, height: 34, borderRadius: 17, backgroundColor: tint, alignItems: 'center', justifyContent: 'center' }}>
+        <Icon name={icon} size={18} color={C.accent} />
+      </View>
+      <Text style={{ fontSize: 22, fontWeight: '800', color: C.text, marginTop: S.sm }} numberOfLines={1} adjustsFontSizeToFit>{value}</Text>
+      <Text style={{ fontSize: 12.5, lineHeight: 16, color: C.muted, marginTop: 2 }} numberOfLines={2}>{label}</Text>
+    </View>
+  );
+}
+
+const greetKey = () => {
+  const h = new Date().getHours();
+  return h >= 5 && h < 12 ? 'greetMorning' : h >= 12 && h < 17 ? 'greetAfternoon' : 'greetEvening';
+};
+
 export function HomeTab() {
-  const { field, t, lang } = useApp();
+  const { field, t, lang, farmer } = useApp();
   const id = field?.id;
   // "advise on my current crop" instead of proposing a switch (backend: ?keep_current=true)
   const [keep, setKeep] = useState(false);
@@ -101,78 +136,111 @@ export function HomeTab() {
     );
   }
 
+  const first = (farmer?.name || '').split(' ')[0];
+  const heroIcon: IconName = !today ? 'leaf' : today.color === C.accent ? 'check' : i && i.urgency !== 'low' && today.text === t('todayWaterNow').replace('{mm}', String(Math.round(i.recommended_depth_mm))) ? 'drop' : 'alert';
+  const rain = i?.details && typeof i.details.rain_forecast_7d_mm === 'number' ? `${Math.round(i.details.rain_forecast_7d_mm)} ${t('mm')}` : '–';
+  const used = i?.details && typeof i.details.soil_water_used_pct === 'number' ? `${Math.min(i.details.soil_water_used_pct, 100)}%` : '–';
+
   return (
-    <ScrollView
-      contentContainerStyle={{ padding: S.lg, paddingTop: S.md }}
-      refreshControl={<RefreshControl refreshing={busy} onRefresh={reloadAll} />}
-    >
-      {today ? (
-        <Card title={t('todayTitle')}>
-          <Text style={{ fontSize: 18, fontWeight: '700', color: today.color }}>{today.text}</Text>
-        </Card>
-      ) : null}
+    <View style={{ flex: 1, backgroundColor: '#F3F0E3' }}>
+      <AuthBackdrop />
+      <ScrollView
+        contentContainerStyle={{ padding: S.lg, paddingTop: S.md, paddingBottom: S.xl * 2 }}
+        refreshControl={<RefreshControl refreshing={busy} onRefresh={reloadAll} />}
+      >
+        {/* greeting + today's one clear thing to do */}
+        <Text style={{ fontSize: 15, color: C.muted, fontWeight: '600' }}>{`${t(greetKey())}${first ? `, ${first}` : ''}`}</Text>
+        <Text style={{ fontSize: 26, fontWeight: '800', color: C.text, marginTop: 2 }} numberOfLines={1}>
+          {field?.name}{field?.current_crop ? ` · ${cropLabel(lang, field.current_crop)}` : ''}
+        </Text>
 
-      <Card title={t('cropRec')}>
-        {c ? (
-          <>
-            <Text style={{ fontSize: 24, fontWeight: '700', color: C.text }}>{cropLabel(lang, c.recommended_crop)}</Text>
-            {(() => {
-              // the fit word must describe the crop shown: in "current crop" mode that is the crop already growing, not the top-ranked one
-              const fit = c.details?.mode === 'keep_current' ? c.details.current_crop?.fit : c.details?.ranking?.[0]?.fit;
-              if (typeof c.confidence !== 'number') return null;
-              const word = fit ? ` · ${t(fit === 'good' ? 'fitGood' : fit === 'fair' ? 'fitFair' : 'fitWeak')}` : '';
-              return <KV k={t('modelConfidence')} v={`${Math.round(c.confidence * 100)}%${word}`} />;
-            })()}
-            {c.alternatives && c.alternatives.length ? (
-              <KV k={t('alternatives')} v={c.alternatives.map((a) => cropLabel(lang, a)).join(', ')} />
-            ) : null}
-            {c.out_of_region ? (
-              <Banner
-                text={`${t('notInRegion')}${c.regional_alternative ? ` ${t('commonInRegion')}: ${cropLabel(lang, c.regional_alternative)}` : ''}`}
-              />
-            ) : null}
-            <Why text={c.rationale_plain || c.rationale} />
-            {field?.current_crop ? (
-              <TouchableOpacity onPress={() => { feedback.select(); setKeep(!keep); }} style={{ marginTop: S.sm, paddingVertical: S.sm }}>
-                <Text style={{ color: C.accent, fontWeight: '600' }}>{`${keep ? '☑' : '☐'} ${t('keepCurrent')}`}</Text>
-              </TouchableOpacity>
-            ) : null}
-          </>
-        ) : crop.loading ? <Muted>{t('loading')}</Muted> : !crop.error ? <Muted>{t('notComputed')}</Muted> : null}
-        <ErrorBox load={crop} />
-      </Card>
+        {today ? (
+          <View style={{ marginTop: S.md, borderRadius: 26, padding: S.lg, backgroundColor: today.color, overflow: 'hidden' }}>
+            <View style={{ position: 'absolute', right: -30, top: -30, width: 150, height: 150, borderRadius: 75, backgroundColor: 'rgba(255,255,255,0.14)' }} />
+            <View style={{ position: 'absolute', right: 40, bottom: -50, width: 110, height: 110, borderRadius: 55, backgroundColor: 'rgba(255,255,255,0.10)' }} />
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(255,255,255,0.25)', alignItems: 'center', justifyContent: 'center' }}>
+                <Icon name={heroIcon} size={24} color="#fff" />
+              </View>
+              <Text style={{ marginLeft: S.md, fontSize: 14, fontWeight: '800', letterSpacing: 1, color: 'rgba(255,255,255,0.9)' }}>{t('todayTitle').toUpperCase()}</Text>
+            </View>
+            <Text style={{ fontSize: 24, lineHeight: 31, fontWeight: '800', color: '#fff', marginTop: S.md }}>{today.text}</Text>
+          </View>
+        ) : null}
 
-      <Card title={t('irrigation')} right={i ? <Badge label={levelLabel(t, i.urgency)} color={levelColor(i.urgency)} /> : undefined}>
+        {/* three numbers at a glance */}
         {i ? (
-          <>
-            <Text style={{ fontSize: 24, fontWeight: '700', color: C.text }}>{`${Math.round(i.recommended_depth_mm * 10) / 10} ${t('mm')}`}</Text>
-            <KV k={t('window')} v={`${fmtDate(i.window_start_at)} – ${fmtDate(i.window_end_at)}`} />
-            {i.details?.method === 'soil_water_balance' && typeof i.details.soil_water_used_pct === 'number' ? (
-              <>
-                <KV k={t('soilWaterUsed')} v={`${Math.min(i.details.soil_water_used_pct, 100)}%`} />
-                {typeof i.details.rain_forecast_7d_mm === 'number' ? (
-                  <KV k={t('rainNext7')} v={`${Math.round(i.details.rain_forecast_7d_mm)} ${t('mm')}`} />
-                ) : null}
-              </>
-            ) : null}
-            <Why text={i.rationale_plain || i.rationale} />
-          </>
-        ) : irr.loading ? <Muted>{t('loading')}</Muted> : !irr.error ? <Muted>{t('notComputed')}</Muted> : null}
-        <ErrorBox load={irr} />
-      </Card>
+          <View style={{ flexDirection: 'row', gap: S.sm, marginTop: S.md }}>
+            <Tile icon="drop" tint="#E3F1FA" value={`${Math.round(i.recommended_depth_mm * 10) / 10} ${t('mm')}`} label={t('tileWater')} />
+            <Tile icon="thermo" tint="#E8F3E8" value={rain} label={t('tileRain')} />
+            <Tile icon="field" tint="#F6ECD6" value={used} label={t('tileSoil')} />
+          </View>
+        ) : null}
 
-      <Card title={t('diseaseRisk')} right={d ? <Badge label={levelLabel(t, d.risk_level)} color={levelColor(d.risk_level)} /> : undefined}>
-        {d ? (
-          <>
-            <Text style={{ fontSize: 16, fontWeight: '600', color: C.text }}>{d.disease_translated || d.disease}</Text>
-            {dd?.trend === 'rising' ? <Badge label={t('riskRising')} color={levelColor('high')} /> : null}
-            <Text style={[st.body, { marginTop: S.sm }]}>{diseaseAdvice.out[0] || diseaseAction(t, d.risk_level, d.recommended_action)}</Text>
-          </>
-        ) : dis.loading ? <Muted>{t('loading')}</Muted> : !dis.error ? <Muted>{t('notComputed')}</Muted> : null}
-        <ErrorBox load={dis} />
-      </Card>
+        <View style={{ height: S.md }} />
 
-      <Muted>{t('pullToRefresh')}</Muted>
-    </ScrollView>
+        <Section icon="sprout" tint="#E8F3E8" title={t('cropRec')}>
+          {c ? (
+            <>
+              <Text style={{ fontSize: 26, fontWeight: '800', color: C.text }}>{cropLabel(lang, c.recommended_crop)}</Text>
+              {(() => {
+                // the fit word must describe the crop shown: in "current crop" mode that is the crop already growing, not the top-ranked one
+                const fit = c.details?.mode === 'keep_current' ? c.details.current_crop?.fit : c.details?.ranking?.[0]?.fit;
+                if (typeof c.confidence !== 'number') return null;
+                const word = fit ? ` · ${t(fit === 'good' ? 'fitGood' : fit === 'fair' ? 'fitFair' : 'fitWeak')}` : '';
+                return <KV k={t('modelConfidence')} v={`${Math.round(c.confidence * 100)}%${word}`} />;
+              })()}
+              {c.alternatives && c.alternatives.length ? (
+                <KV k={t('alternatives')} v={c.alternatives.map((a) => cropLabel(lang, a)).join(', ')} />
+              ) : null}
+              {c.out_of_region ? (
+                <Banner
+                  text={`${t('notInRegion')}${c.regional_alternative ? ` ${t('commonInRegion')}: ${cropLabel(lang, c.regional_alternative)}` : ''}`}
+                />
+              ) : null}
+              <Why text={c.rationale_plain || c.rationale} />
+              {field?.current_crop ? (
+                <TouchableOpacity onPress={() => { feedback.select(); setKeep(!keep); }} style={{ marginTop: S.sm, paddingVertical: S.sm }}>
+                  <Text style={{ color: C.accent, fontWeight: '600' }}>{`${keep ? '☑' : '☐'} ${t('keepCurrent')}`}</Text>
+                </TouchableOpacity>
+              ) : null}
+            </>
+          ) : crop.loading ? <Muted>{t('loading')}</Muted> : !crop.error ? <Muted>{t('notComputed')}</Muted> : null}
+          <ErrorBox load={crop} />
+        </Section>
+
+        <Section icon="drop" tint="#E3F1FA" title={t('irrigation')} right={i ? <Badge label={levelLabel(t, i.urgency)} color={levelColor(i.urgency)} /> : undefined}>
+          {i ? (
+            <>
+              <Text style={{ fontSize: 26, fontWeight: '800', color: C.text }}>{`${Math.round(i.recommended_depth_mm * 10) / 10} ${t('mm')}`}</Text>
+              <KV k={t('window')} v={`${fmtDate(i.window_start_at)} – ${fmtDate(i.window_end_at)}`} />
+              {i.details?.method === 'soil_water_balance' && typeof i.details.soil_water_used_pct === 'number' ? (
+                <>
+                  <KV k={t('soilWaterUsed')} v={`${Math.min(i.details.soil_water_used_pct, 100)}%`} />
+                  {typeof i.details.rain_forecast_7d_mm === 'number' ? (
+                    <KV k={t('rainNext7')} v={`${Math.round(i.details.rain_forecast_7d_mm)} ${t('mm')}`} />
+                  ) : null}
+                </>
+              ) : null}
+              <Why text={i.rationale_plain || i.rationale} />
+            </>
+          ) : irr.loading ? <Muted>{t('loading')}</Muted> : !irr.error ? <Muted>{t('notComputed')}</Muted> : null}
+          <ErrorBox load={irr} />
+        </Section>
+
+        <Section icon="blight" tint="#FDF0DC" title={t('diseaseRisk')} right={d ? <Badge label={levelLabel(t, d.risk_level)} color={levelColor(d.risk_level)} /> : undefined}>
+          {d ? (
+            <>
+              <Text style={{ fontSize: 18, fontWeight: '700', color: C.text }}>{d.disease_translated || d.disease}</Text>
+              {dd?.trend === 'rising' ? <Badge label={t('riskRising')} color={levelColor('high')} /> : null}
+              <Text style={[st.body, { marginTop: S.sm }]}>{diseaseAdvice.out[0] || diseaseAction(t, d.risk_level, d.recommended_action)}</Text>
+            </>
+          ) : dis.loading ? <Muted>{t('loading')}</Muted> : !dis.error ? <Muted>{t('notComputed')}</Muted> : null}
+          <ErrorBox load={dis} />
+        </Section>
+
+        <Muted style={{ textAlign: 'center' }}>{t('pullToRefresh')}</Muted>
+      </ScrollView>
+    </View>
   );
 }

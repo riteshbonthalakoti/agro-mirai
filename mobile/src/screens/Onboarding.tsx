@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Image, ImageBackground, KeyboardAvoidingView, Modal, Platform, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Image, ImageBackground, KeyboardAvoidingView, Modal, Platform, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
 import { requestRecordingPermissionsAsync } from 'expo-audio';
@@ -12,6 +12,7 @@ import { Icon, IconName } from '../../icons';
 import { LANGS, Lang } from '../i18n';
 import { C, S } from '../theme';
 import { Banner, Btn, Chip, Input, Label, Muted, st } from '../ui';
+import { AuthBackdrop } from '../components/AuthBackdrop';
 
 /** Requested once, right after picking a language -- so the app never
  *  interrupts the farmer with a permission dialog mid-task later. Declining
@@ -91,9 +92,9 @@ export function LanguageScreen({ onPick }: { onPick: (l: Lang) => void }) {
     playOnboardingClip('welcome', l).catch(() => {});
   };
 
-  const continueTo = async () => {
+  const continueTo = () => {
     if (!sel) return;
-    await stopAudio(); // don't let the greeting bleed into the next screen
+    stopAudio().catch(() => {}); // greeting stops at once; never wait on it
     onPick(sel);
   };
 
@@ -124,9 +125,9 @@ export function LanguageScreen({ onPick }: { onPick: (l: Lang) => void }) {
   return (
     <ScrollView contentContainerStyle={{ padding: S.xl, paddingTop: 80, flexGrow: 1 }}>
       <View style={{ alignItems: 'center', marginBottom: S.lg }}>
-        <Image source={require('../../assets/Agro_Mirai_Logo.png')} style={{ width: 84, height: 84, borderRadius: 20 }} resizeMode="contain" />
-        <Text style={[st.h1, { marginTop: S.md, marginBottom: 0 }]}>Agro Mirai</Text>
-        <Text style={[st.body, { marginTop: S.xs }]}>{t('chooseLanguage')}</Text>
+        <Image source={require('../../assets/Agro_Mirai_Logo.png')} style={{ width: 200, height: 120 }} resizeMode="contain" />
+        <Text style={[st.h1, { marginTop: S.md, marginBottom: 0, textAlign: 'center' }]}>{t('chooseLanguage')}</Text>
+        <Text style={[st.body, { marginTop: S.xs, color: C.muted, textAlign: 'center' }]}>{t('chooseLanguageHint')}</Text>
       </View>
 
       <Block code="en" big />
@@ -251,7 +252,7 @@ function Notice({ text, onClose, lang }: { text: string; onClose: () => void; la
   );
 }
 
-export function AuthScreen({ lang, onLoggedIn, notice }: { lang: Lang; onLoggedIn: (f: Farmer, isNew: boolean) => void; notice?: string }) {
+export function AuthScreen({ lang, onLoggedIn, notice, onChangeLanguage }: { lang: Lang; onLoggedIn: (f: Farmer, isNew: boolean) => void; notice?: string; onChangeLanguage?: () => void }) {
   const t = makeT(lang);
   // Phone first, always -- name is only asked for when the backend actually
   // needs it (a phone number it has never seen before). A returning farmer
@@ -332,23 +333,61 @@ export function AuthScreen({ lang, onLoggedIn, notice }: { lang: Lang; onLoggedI
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [otp]);
 
+  // Large, high-contrast layout for older farmers: one job per screen, 20-34px text,
+  // 64px-tall inputs and buttons, generous spacing.
+  const BigBtn = ({ label, onPress, busy: b, disabled, kind = 'primary' }: { label: string; onPress: () => void; busy?: boolean; disabled?: boolean; kind?: 'primary' | 'secondary' }) => (
+    <TouchableOpacity
+      onPress={() => { feedback.tap(); onPress(); }}
+      disabled={disabled || b}
+      activeOpacity={0.8}
+      style={{
+        minHeight: 56, borderRadius: 14, alignItems: 'center', justifyContent: 'center', paddingHorizontal: S.lg,
+        backgroundColor: kind === 'primary' ? C.accent : '#fff', borderWidth: 2, borderColor: C.accent,
+        opacity: disabled ? 0.45 : 1, marginTop: S.lg,
+      }}
+    >
+      {b ? <ActivityIndicator color={kind === 'primary' ? '#fff' : C.accent} size="large" />
+        : <Text style={{ fontSize: 19, fontWeight: '700', color: kind === 'primary' ? '#fff' : C.accent }}>{label}</Text>}
+    </TouchableOpacity>
+  );
+  const bigInput = { fontSize: 22, fontWeight: '600' as const, minHeight: 56, borderWidth: 1.5, borderColor: '#B9C9B4', borderRadius: 14, backgroundColor: '#fff', paddingHorizontal: S.lg, color: C.text };
+  const big = { fontSize: 17, lineHeight: 25, color: C.text } as const;
+  const label = { fontSize: 16, fontWeight: '700' as const, color: C.text, marginTop: S.xl, marginBottom: S.sm };
+
   return (
-    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1, backgroundColor: '#F1EEE1' }}>
-      <ScrollView contentContainerStyle={{ padding: S.xl, paddingTop: 56 }} keyboardShouldPersistTaps="handled">
-        <View style={{ alignItems: 'center', marginBottom: S.xl }}>
-          <Image source={require('../../assets/logo-mark.png')} style={{ width: 112, height: 112 }} resizeMode="contain" />
+    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1, backgroundColor: '#F3F0E3' }}>
+      <AuthBackdrop />
+      <ScrollView contentContainerStyle={{ padding: S.xl, paddingTop: 48, paddingBottom: 48 }} keyboardShouldPersistTaps="handled">
+        {onChangeLanguage ? (
+          <TouchableOpacity
+            onPress={() => { feedback.tap(); onChangeLanguage(); }}
+            accessibilityLabel={t('changeLanguage')}
+            style={{ alignSelf: 'flex-end', flexDirection: 'row', alignItems: 'center', minHeight: 44, borderWidth: 1.5, borderColor: '#B9C9B4', borderRadius: 22, paddingHorizontal: 16, backgroundColor: '#fff' }}
+          >
+            <Text style={{ fontSize: 17, marginRight: 8 }}>🌐</Text>
+            <Text style={{ color: C.text, fontWeight: '700', fontSize: 16 }}>{LANGS.find((l) => l.code === lang)?.native}</Text>
+            <Text style={{ color: C.muted, fontSize: 16 }}>  ▾</Text>
+          </TouchableOpacity>
+        ) : null}
+
+        <View style={{ alignItems: 'center', marginTop: S.lg, marginBottom: S.lg }}>
+          <Image source={require('../../assets/logo-mark.png')} style={{ width: 96, height: 96 }} resizeMode="contain" />
         </View>
-        <Text style={st.h1}>{t('signIn')}</Text>
-        {step === 'phone' ? <Muted style={{ marginBottom: S.sm }}>{t('signInWelcome')}</Muted> : null}
-        {notice && noticeOpen ? <Notice text={notice} onClose={closeNotice} lang={lang} /> : null}
-        {err ? <Banner text={err} kind="error" /> : null}
+
+        <Text style={{ fontSize: 26, fontWeight: '800', color: C.text, textAlign: 'center' }}>{step === 'phone' ? t('authTitle') : step === 'otp' ? t('authTitleOtp') : t('authTitleName')}</Text>
+        {step === 'phone' ? <Text style={[big, { textAlign: 'center', marginTop: S.sm, color: C.muted }]}>{t('authSub')}</Text> : null}
+        {notice && noticeOpen ? <View style={{ marginTop: S.lg }}><Notice text={notice} onClose={closeNotice} lang={lang} /></View> : null}
+        {err ? <View style={{ marginTop: S.lg, backgroundColor: '#FDECEA', borderWidth: 1.5, borderColor: C.danger, borderRadius: 12, padding: S.md }}><Text style={{ fontSize: 16, lineHeight: 23, color: C.danger, fontWeight: '600' }}>{err}</Text></View> : null}
+
         {step === 'phone' ? (
           <>
-            <Label>{t('phoneLabel')}</Label>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: S.sm }}>
-              <Text style={st.body}>+91</Text>
+            <Text style={label}>{t('phoneLabel')}</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <View style={{ minHeight: 56, borderRadius: 14, backgroundColor: '#E4EFD9', paddingHorizontal: S.md, justifyContent: 'center', marginRight: S.sm }}>
+                <Text style={{ fontSize: 20, fontWeight: '700', color: C.text }}>+91</Text>
+              </View>
               <Input
-                style={{ flex: 1 }}
+                style={[bigInput, { flex: 1, letterSpacing: 1 }]}
                 value={phone}
                 onChangeText={(v) => setPhone(v.replace(/[^0-9]/g, '').slice(0, 10))}
                 keyboardType="number-pad"
@@ -357,23 +396,23 @@ export function AuthScreen({ lang, onLoggedIn, notice }: { lang: Lang; onLoggedI
                 autoFocus
               />
             </View>
-            <Muted style={{ marginTop: S.sm }}>{t('signInNoPassword')}</Muted>
-            <Btn label={t('sendOtp')} onPress={submitPhone} busy={busy} disabled={cooldown > 0} style={{ marginTop: S.xl }} />
+            <BigBtn label={t('sendOtp')} onPress={submitPhone} busy={busy} disabled={cooldown > 0} />
+            <Text style={{ fontSize: 15, lineHeight: 22, color: C.muted, textAlign: 'center', marginTop: S.md }}>🔒  {t('authTrust')}</Text>
           </>
         ) : step === 'name' ? (
           <>
-            <Muted>+91 {phone}</Muted>
-            <Muted style={{ marginTop: 4 }}>{t('newHereNamePrompt')}</Muted>
-            <Label>{t('nameLabel')}</Label>
-            <Input value={name} onChangeText={setName} autoCapitalize="words" autoFocus />
-            <Btn label={t('continue')} onPress={submitName} busy={busy} style={{ marginTop: S.xl }} />
-            <Btn label={t('changeNumber')} kind="secondary" onPress={() => { setStep('phone'); setErr(''); }} style={{ marginTop: S.md }} />
+            <Text style={[big, { marginTop: S.lg, fontWeight: '800' }]}>+91 {phone}</Text>
+            <Text style={[big, { marginTop: S.sm }]}>{t('newHereNamePrompt')}</Text>
+            <Text style={label}>{t('nameLabel')}</Text>
+            <Input value={name} onChangeText={setName} autoCapitalize="words" autoFocus style={bigInput} />
+            <BigBtn label={t('continue')} onPress={submitName} busy={busy} />
+            <BigBtn label={t('changeNumber')} kind="secondary" onPress={() => { setStep('phone'); setErr(''); }} />
           </>
         ) : (
           <>
-            <Muted>{t('otpSentTo')}</Muted>
-            <Text style={{ fontSize: 18, fontWeight: '700', color: C.text, marginTop: 2 }}>{`+91 ${phone}`}</Text>
-            <Label>{t('otpLabel')}</Label>
+            <Text style={[big, { marginTop: S.lg }]}>{t('otpSentTo')}</Text>
+            <Text style={{ fontSize: 22, fontWeight: '700', color: C.text, marginTop: 2 }}>{`+91 ${phone}`}</Text>
+            <Text style={label}>{t('otpLabel')}</Text>
             <Input
               value={otp}
               onChangeText={(v) => setOtp(v.replace(/[^0-9]/g, '').slice(0, 6))}
@@ -382,27 +421,27 @@ export function AuthScreen({ lang, onLoggedIn, notice }: { lang: Lang; onLoggedI
               autoFocus
               textContentType="oneTimeCode"
               autoComplete="sms-otp"
-              style={{ fontSize: 28, fontWeight: '700', letterSpacing: 10, textAlign: 'center', paddingVertical: 14 }}
+              style={[bigInput, { fontSize: 28, letterSpacing: 10, textAlign: 'center', minHeight: 64 }]}
             />
-            <Btn label={t('verify')} onPress={verify} busy={busy} disabled={otp.length < 6} style={{ marginTop: S.lg }} />
+            <BigBtn label={t('verify')} onPress={verify} busy={busy} disabled={otp.length < 6} />
             {/* resend sits right under the code box so the keyboard never hides it */}
             <TouchableOpacity
               onPress={() => requestWithName(isNew ? name.trim() : '')}
               disabled={cooldown > 0 || busy}
-              style={{ alignItems: 'center', paddingVertical: S.md }}
+              style={{ alignItems: 'center', justifyContent: 'center', minHeight: 48, marginTop: S.sm }}
             >
-              <Text style={{ color: cooldown > 0 ? C.muted : C.accent, fontWeight: '700', fontSize: 15 }}>
+              <Text style={{ color: cooldown > 0 ? C.muted : C.accent, fontWeight: '700', fontSize: 17 }}>
                 {cooldown > 0 ? t('resendIn').replace('{s}', String(cooldown)) : t('resendCode')}
               </Text>
             </TouchableOpacity>
-            <Btn label={t('changeNumber')} kind="secondary" onPress={() => { setStep('phone'); setErr(''); }} />
+            <BigBtn label={t('changeNumber')} kind="secondary" onPress={() => { setStep('phone'); setErr(''); }} />
           </>
         )}
-        <Text style={{ textAlign: 'center', color: C.muted, fontSize: 12, lineHeight: 18, marginTop: S.xl }}>
+        <Text style={{ textAlign: 'center', color: C.muted, fontSize: 14, lineHeight: 21, marginTop: S.xl }}>
           {t('legalAgree')}{' '}
-          <Text style={{ color: C.accent, fontWeight: '700' }} onPress={() => setLegal('terms')}>{t('termsLabel')}</Text>
+          <Text style={{ color: C.accent, fontWeight: '700', textDecorationLine: 'underline' }} onPress={() => setLegal('terms')}>{t('termsLabel')}</Text>
           {' '}{t('legalAnd')}{' '}
-          <Text style={{ color: C.accent, fontWeight: '700' }} onPress={() => setLegal('privacy')}>{t('privacyLabel')}</Text>
+          <Text style={{ color: C.accent, fontWeight: '700', textDecorationLine: 'underline' }} onPress={() => setLegal('privacy')}>{t('privacyLabel')}</Text>
         </Text>
       </ScrollView>
       <LegalModal kind={legal} onClose={() => setLegal(null)} lang={lang} />
