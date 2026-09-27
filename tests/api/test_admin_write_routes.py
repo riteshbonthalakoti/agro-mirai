@@ -143,3 +143,57 @@ def test_patch_field_404_when_not_found():
     _admin_session(client, store)
     resp = client.patch("/v2/admin/fields/nope", json={"current_crop": "x"})
     assert resp.status_code == 404
+
+
+_VALID_STATUSES = {"open", "triaged", "in_progress", "resolved"}
+
+
+def test_list_bug_reports():
+    app, client = _app_and_client()
+    store = app.extensions["data_store"]
+    admin = _admin_session(client, store)
+
+    from datetime import datetime, timezone
+    from agro_mirai.persistence.models import BugReport
+    store.save_bug_report(admin.id, BugReport(id="b1", farmer_id=admin.id,
+                                               created_at=datetime.now(timezone.utc)))
+
+    resp = client.get("/v2/admin/bug-reports")
+    assert resp.status_code == 200
+    items = resp.get_json()["items"]
+    assert any(i["id"] == "b1" and i["status"] == "open" for i in items)
+
+
+def test_patch_bug_report_status_valid_and_invalid():
+    app, client = _app_and_client()
+    store = app.extensions["data_store"]
+    admin = _admin_session(client, store)
+    from datetime import datetime, timezone
+    from agro_mirai.persistence.models import BugReport
+    store.save_bug_report(admin.id, BugReport(id="b2", farmer_id=admin.id,
+                                               created_at=datetime.now(timezone.utc)))
+
+    resp = client.patch("/v2/admin/bug-reports/b2", json={"status": "resolved"})
+    assert resp.status_code == 200
+    assert resp.get_json()["status"] == "resolved"
+
+    resp = client.patch("/v2/admin/bug-reports/b2", json={"status": "not-a-real-status"})
+    assert resp.status_code == 400
+
+    resp = client.patch("/v2/admin/bug-reports/does-not-exist", json={"status": "resolved"})
+    assert resp.status_code == 404
+
+
+def test_delete_bug_report():
+    app, client = _app_and_client()
+    store = app.extensions["data_store"]
+    admin = _admin_session(client, store)
+    from datetime import datetime, timezone
+    from agro_mirai.persistence.models import BugReport
+    store.save_bug_report(admin.id, BugReport(id="b3", farmer_id=admin.id,
+                                               created_at=datetime.now(timezone.utc)))
+
+    assert client.delete("/v2/admin/bug-reports/b3").status_code == 200
+    assert client.delete("/v2/admin/bug-reports/b3").status_code == 404
+    audit = [a for a in store.list_audit_log() if a.action == "bug_report.delete"]
+    assert len(audit) == 1

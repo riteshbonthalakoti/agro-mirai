@@ -206,3 +206,53 @@ def build_overview(store) -> dict:
 def overview():
     store = current_app.extensions["data_store"]
     return jsonify(build_overview(store)), 200
+
+
+_VALID_BUG_REPORT_STATUSES = {"open", "triaged", "in_progress", "resolved"}
+
+
+@admin_bp.get("/bug-reports")
+@require_admin
+def list_bug_reports_admin():
+    store = current_app.extensions["data_store"]
+    reports = store.list_all_bug_reports()
+    return jsonify({"items": [to_json(r) for r in reports]}), 200
+
+
+@admin_bp.patch("/bug-reports/<bug_report_id>")
+@require_admin
+def patch_bug_report(bug_report_id):
+    store = current_app.extensions["data_store"]
+    before = store.get_bug_report_by_id(bug_report_id)
+    if before is None:
+        raise ApiError(404, "NOT_FOUND", "Bug report not found")
+    body = request.get_json(silent=True) or {}
+    status = body.get("status")
+    if status not in _VALID_BUG_REPORT_STATUSES:
+        raise ApiError(400, "INVALID_STATUS",
+                        f"status must be one of {sorted(_VALID_BUG_REPORT_STATUSES)}")
+    updated = store.update_bug_report_status(bug_report_id, status)
+    write_audit_log(store, g.farmer_id, "bug_report.status", "bug_report",
+                     bug_report_id, before, updated)
+    return jsonify(to_json(updated)), 200
+
+
+@admin_bp.delete("/bug-reports/<bug_report_id>")
+@require_admin
+def delete_bug_report_admin(bug_report_id):
+    store = current_app.extensions["data_store"]
+    before = store.get_bug_report_by_id(bug_report_id)
+    if before is None:
+        raise ApiError(404, "NOT_FOUND", "Bug report not found")
+    store.delete_bug_report_by_id(bug_report_id)
+    write_audit_log(store, g.farmer_id, "bug_report.delete", "bug_report",
+                     bug_report_id, before, None)
+    return jsonify({"deleted": True}), 200
+
+
+@admin_bp.get("/audit-log")
+@require_admin
+def get_audit_log():
+    store = current_app.extensions["data_store"]
+    entries = store.list_audit_log()
+    return jsonify({"items": [to_json(e) for e in entries]}), 200
