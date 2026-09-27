@@ -14,10 +14,11 @@ let current = 0;
 
 export async function stopAudio() {
   current += 1;
-  try { await Speech.stop(); } catch {}
+  // stop the audio player first, synchronously; never let a slow TTS engine hold up the caller
   try { player?.pause(); } catch {}
   try { player?.remove(); } catch {}
   player = null;
+  try { Promise.resolve(Speech.stop()).catch(() => {}); } catch {}
 }
 
 async function playUri(uri: string, ticket: number, onDone: () => void) {
@@ -101,17 +102,44 @@ export async function playBase64(b64: string, mime: string | null | undefined, o
   await playUri(f.uri, ticket, onDone);
 }
 
+const DEVICE_LOCALE: Record<string, string> = { en: 'en-IN', kn: 'kn-IN', te: 'te-IN', hi: 'hi-IN' };
+
+/** The phone's own TTS locale for `lang`, or null when the phone has no voice for it
+ *  (Android's built-in engine coverage of kn/te/hi varies by device). English always
+ *  resolves, falling back to the engine default. */
+export async function deviceVoiceLocale(lang: string): Promise<string | null> {
+  const want = DEVICE_LOCALE[lang];
+  if (!want) return null;
+  try {
+    const voices = await Speech.getAvailableVoicesAsync();
+    const norm = (l: string) => l.replace('_', '-').toLowerCase();
+    const hit = voices.find((v) => norm(v.language) === norm(want))
+      ?? voices.find((v) => norm(v.language).startsWith(lang));
+    if (hit) return hit.language;
+  } catch {}
+  return lang === 'en' ? want : null;
+}
+
+/** Dev-only switch to exercise the fallback without touching the real voice
+ *  service / Sarvam quota: set EXPO_PUBLIC_FORCE_VOICE_503=1 and restart Metro. */
+const FORCE_VOICE_503 = __DEV__ && process.env.EXPO_PUBLIC_FORCE_VOICE_503 === '1';
+
+export type AdvisoryPlayback = 'server' | 'device' | 'text-only' | 'cancelled';
+
 /** Server audio for an advisory (plain-language text, translated to `lang`,
  *  spoken by the voice service), downloaded with fetch() so it carries the
  *  session cookie, then played from a local file. If the server voice is
- *  unavailable it falls back to the phone's own TTS -- in English, because the
- *  phone has no translation -- and returns which one ran. */
+ *  unavailable it falls back to the phone's own TTS reading `displayText` (the
+ *  text already on screen, in `lang`). If the phone has no voice for `lang`, or
+ *  the text never got translated, nothing is spoken ('text-only') rather than
+ *  reading it in the wrong language. */
 export async function playAdvisory(
-  id: string, lang: string, englishText: string, onDone: () => void,
-): Promise<'server' | 'device' | 'cancelled'> {
+  id: string, lang: string, displayText: string, translated: boolean, onDone: () => void,
+): Promise<AdvisoryPlayback> {
   await stopAudio();
   const ticket = current;
   try {
+    if (FORCE_VOICE_503) throw new Error('HTTP 503 (forced)');
     const res = await fetch(advisoryAudioUrl(id, lang));
     if (ticket !== current) return 'cancelled';
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -126,7 +154,19 @@ export async function playAdvisory(
     return ticket === current ? 'server' : 'cancelled';
   } catch {
     if (ticket !== current) return 'cancelled';
-    Speech.speak(englishText.replace(/\(.*?\)/g, ''), { language: 'en-IN', onDone, onError: onDone, onStopped: onDone });
+    const locale = (lang === 'en' || translated) ? await deviceVoiceLocale(lang) : null;
+    if (ticket !== current) return 'cancelled';
+    if (!locale) { onDone(); return 'text-only'; }
+    Speech.speak(displayText.replace(/\(.*?\)/g, ''), { language: locale, onDone, onError: onDone, onStopped: onDone });
     return 'device';
   }
+}
+
+/** Reads `text` with the phone's own voice in `lang` (used when the server voice is down).
+ *  Returns false, speaking nothing, when the phone has no voice for that language. */
+export async function speakOnDevice(text: string, lang: string, onDone: () => void): Promise<boolean> {
+  const locale = await deviceVoiceLocale(lang);
+  if (!locale) return false;
+  Speech.speak(text.replace(/\(.*?\)/g, ''), { language: locale, onDone, onError: onDone, onStopped: onDone });
+  return true;
 }

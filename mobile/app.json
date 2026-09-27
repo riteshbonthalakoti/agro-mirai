@@ -32,7 +32,13 @@
     "plugins": [
       "expo-av",
       "expo-audio",
-      ["expo-notifications", { "icon": "./assets/notification-icon.png", "color": "#2E7D32" }],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/notification-icon.png",
+          "color": "#2E7D32"
+        }
+      ],
       [
         "expo-camera",
         {
@@ -42,7 +48,8 @@
       "expo-asset",
       "./plugins/withCleartextTraffic",
       "expo-font",
-      "@react-native-community/datetimepicker"
+      "@react-native-community/datetimepicker",
+      "expo-background-task"
     ],
     "owner": "ritesh.bonthalakoti",
     "extra": {

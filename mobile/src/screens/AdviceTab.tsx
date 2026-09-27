@@ -9,6 +9,7 @@ import {
   Text,
   TouchableOpacity,
   View,
+  useWindowDimensions,
 } from 'react-native';
 import { RecordingPresets, requestRecordingPermissionsAsync, setAudioModeAsync, useAudioRecorder } from 'expo-audio';
 import { Advisory, ApiError, AskResult, askByVoice, getAdvisories, sendFeedback } from '../api';
@@ -16,13 +17,18 @@ import { playAdvisory, playBase64, stopAudio } from '../audio';
 import { fmtDate, levelLabel, useApp } from '../ctx';
 import { errorText, useLoad, useTranslated } from '../hooks';
 import { C, levelColor, S } from '../theme';
-import { Badge, Banner, Btn, Card, Chip, Input, Muted, st } from '../ui';
+import { useToast } from '../toast';
+import { Badge, Banner, Btn, Chip, Input, Muted, st } from '../ui';
+import Svg, { Circle, Defs, LinearGradient, Path, Rect, Stop } from 'react-native-svg';
+import { Icon, IconName } from '../../icons';
+import { VoiceMode } from '../components/VoiceMode';
 
 // ---------------------------------------------------------------------------
 // Advisory card
 // ---------------------------------------------------------------------------
 function AdvisoryCard({ a }: { a: Advisory }) {
   const { t, lang } = useApp();
+  const toast = useToast();
   const plain = a.body_plain || a.body;
   const { out, state } = useTranslated([a.title, plain], lang);
   const [playing, setPlaying] = useState(false);
@@ -40,9 +46,10 @@ function AdvisoryCard({ a }: { a: Advisory }) {
 
   const start = async () => {
     setNote(''); setPlay(true);
-    const how = await playAdvisory(a.id, lang, plain, () => setPlay(false));
-    if (how === 'device') setNote(t('voiceFallback'));
-    if (how === 'cancelled') return;
+    const shown = out[1] || plain;
+    const how = await playAdvisory(a.id, lang, shown, lang === 'en' || state === 'done', () => setPlay(false));
+    if (how === 'device') { setNote(t('voiceFallback')); toast.show(t('voiceFallbackToast')); }
+    if (how === 'text-only') { setPlay(false); setNote(t('voiceTextOnly')); toast.show(t('voiceTextOnly'), 'error'); }
   };
   const stop = async () => { setPlay(false); await stopAudio(); };
   const listen = () => (playing ? stop() : start());
@@ -66,314 +73,160 @@ function AdvisoryCard({ a }: { a: Advisory }) {
     finally { setFbBusy(false); }
   };
 
+  const sevColor = levelColor(a.severity);
+  const paras = (out[1] || plain).split(/\n\s*\n/).map((x) => x.trim()).filter(Boolean);
+  const ROW: { icon: IconName; tint: string; cap: string }[] = [
+    { icon: 'sprout', tint: '#E8F3E8', cap: t('cropRec') },
+    { icon: 'drop', tint: '#E3F1FA', cap: t('irrigation') },
+    { icon: 'blight', tint: '#FDF0DC', cap: t('diseaseRisk') },
+  ];
+
   return (
-    <Card title={out[0] || a.title} right={<Badge label={levelLabel(t, a.severity)} color={levelColor(a.severity)} />}>
-      <Muted>{fmtDate(a.created_at, true)}</Muted>
-      <Text style={[st.body, { marginTop: S.sm }]}>{out[1] || plain}</Text>
-      {state === 'loading' ? <Muted style={{ marginTop: 4 }}>{t('translating')}</Muted> : null}
-      {state === 'failed' ? <Muted style={{ marginTop: 4 }}>{t('translateFailed')}</Muted> : null}
-      <View style={{ flexDirection: 'row', gap: S.sm, marginTop: S.md }}>
-        <Btn label={playing ? t('stop') : t('listen')} kind="secondary" onPress={listen} style={{ flex: 1 }} />
-        <Btn label={t('feedbackTitle')} kind="secondary" onPress={() => setFbOpen(!fbOpen)} style={{ flex: 1 }} />
-      </View>
-      {note ? <Muted style={{ marginTop: S.sm }}>{note}</Muted> : null}
-      {fbMsg ? <Banner text={fbMsg} kind="ok" /> : null}
-      {fbOpen ? (
-        <View style={{ marginTop: S.md }}>
-          <View style={{ flexDirection: 'row' }}>
-            {[1, 2, 3, 4, 5].map((n) => (
-              <TouchableOpacity key={n} onPress={() => setRating(n)} style={{ padding: 4 }}>
-                <Text style={{ fontSize: 28, color: n <= rating ? C.moderate : C.border }}>★</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-          <View style={{ flexDirection: 'row', marginTop: S.sm }}>
-            <Chip label={t('helpful')} selected={helpful === true} onPress={() => setHelpful(true)} />
-            <Chip label={t('notHelpful')} selected={helpful === false} onPress={() => setHelpful(false)} />
-          </View>
-          <Input value={comment} onChangeText={setComment} placeholder={t('commentPlaceholder')} multiline />
-          {fbErr ? <Banner text={fbErr} kind="error" /> : null}
-          <Btn label={t('sendFeedback')} onPress={submitFb} busy={fbBusy} style={{ marginTop: S.sm }} />
+    <View style={{ backgroundColor: '#fff', borderRadius: 26, marginBottom: S.lg, overflow: 'hidden', borderWidth: 1, borderColor: '#E3E8DC', shadowColor: '#000', shadowOpacity: 0.07, shadowRadius: 12, shadowOffset: { width: 0, height: 4 }, elevation: 3 }}>
+      {/* severity ribbon */}
+      <View style={{ backgroundColor: sevColor, paddingHorizontal: S.lg, paddingVertical: 10, flexDirection: 'row', alignItems: 'center' }}>
+        <Text style={{ flex: 1, fontSize: 13, fontWeight: '700', color: 'rgba(255,255,255,0.92)' }}>{fmtDate(a.created_at, true)}</Text>
+        <View style={{ backgroundColor: 'rgba(255,255,255,0.25)', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 4 }}>
+          <Text style={{ fontSize: 12.5, fontWeight: '800', color: '#fff' }}>{levelLabel(t, a.severity)}</Text>
         </View>
-      ) : null}
-    </Card>
-  );
-}
+      </View>
 
-// ---------------------------------------------------------------------------
-// ChatGPT-style voice orb
-// ---------------------------------------------------------------------------
-type VoiceState = 'idle' | 'recording' | 'processing' | 'speaking';
+      <View style={{ padding: S.lg }}>
+        <Text style={{ fontSize: 21, lineHeight: 28, fontWeight: '800', color: C.text }}>{out[0] || a.title}</Text>
+        {state === 'loading' ? <Muted style={{ marginTop: 4 }}>{t('translating')}</Muted> : null}
+        {state === 'failed' ? <Muted style={{ marginTop: 4 }}>{t('translateFailed')}</Muted> : null}
 
-const ORB_SIZE = 160;
-const ORB_GLOW = 240;
+        {paras.length >= 2 ? (
+          <View style={{ marginTop: S.md }}>
+            {paras.map((p, k) => {
+              const r = ROW[k] ?? { icon: 'info' as IconName, tint: '#EEF1E8', cap: '' };
+              return (
+                <View key={k} style={{ flexDirection: 'row', marginBottom: S.md }}>
+                  <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: r.tint, alignItems: 'center', justifyContent: 'center', marginRight: S.md }}>
+                    <Icon name={r.icon} size={22} color={C.accent} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    {paras.length === 3 && r.cap ? <Text style={{ fontSize: 12.5, fontWeight: '800', letterSpacing: 0.6, color: C.muted, marginBottom: 2 }}>{r.cap.toUpperCase()}</Text> : null}
+                    <Text style={{ fontSize: 16.5, lineHeight: 24, color: C.text }}>{p}</Text>
+                  </View>
+                </View>
+              );
+            })}
+          </View>
+        ) : (
+          <Text style={{ fontSize: 16.5, lineHeight: 25, color: C.text, marginTop: S.md }}>{out[1] || plain}</Text>
+        )}
 
-function VoiceOrb({ state, onPress }: { state: VoiceState; onPress: () => void }) {
-  const pulse = useRef(new Animated.Value(1)).current;
-  const spin = useRef(new Animated.Value(0)).current;
-  const glow = useRef(new Animated.Value(0.15)).current;
+        {/* listen */}
+        <TouchableOpacity
+          onPress={listen}
+          activeOpacity={0.85}
+          style={{ minHeight: 60, borderRadius: 30, backgroundColor: playing ? '#fff' : C.accent, borderWidth: 2, borderColor: C.accent, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: S.xs }}
+        >
+          {playing ? <Bars color={C.accent} /> : <Icon name="speaker" size={24} color="#fff" />}
+          <Text style={{ fontSize: 18, fontWeight: '800', color: playing ? C.accent : '#fff', marginLeft: S.md }}>{playing ? t('stop') : t('listen')}</Text>
+        </TouchableOpacity>
+        {note ? <View style={{ marginTop: S.sm, backgroundColor: '#FFF6E0', borderRadius: 12, padding: S.md }}><Text style={{ fontSize: 14, lineHeight: 20, color: '#5C4300' }}>{note}</Text></View> : null}
 
-  useEffect(() => {
-    pulse.stopAnimation(); spin.stopAnimation(); glow.stopAnimation();
-    if (state === 'recording') {
-      Animated.loop(
-        Animated.sequence([
-          Animated.timing(pulse, { toValue: 1.18, duration: 600, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
-          Animated.timing(pulse, { toValue: 0.88, duration: 600, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
-        ])
-      ).start();
-      Animated.loop(
-        Animated.sequence([
-          Animated.timing(glow, { toValue: 0.5, duration: 600, useNativeDriver: true }),
-          Animated.timing(glow, { toValue: 0.15, duration: 600, useNativeDriver: true }),
-        ])
-      ).start();
-    } else if (state === 'processing') {
-      Animated.loop(
-        Animated.timing(spin, { toValue: 1, duration: 1400, easing: Easing.linear, useNativeDriver: true })
-      ).start();
-      Animated.loop(
-        Animated.sequence([
-          Animated.timing(glow, { toValue: 0.4, duration: 700, useNativeDriver: true }),
-          Animated.timing(glow, { toValue: 0.1, duration: 700, useNativeDriver: true }),
-        ])
-      ).start();
-    } else if (state === 'speaking') {
-      Animated.loop(
-        Animated.sequence([
-          Animated.timing(pulse, { toValue: 1.12, duration: 500, useNativeDriver: true }),
-          Animated.timing(pulse, { toValue: 0.92, duration: 500, useNativeDriver: true }),
-        ])
-      ).start();
-      Animated.loop(
-        Animated.sequence([
-          Animated.timing(glow, { toValue: 0.45, duration: 500, useNativeDriver: true }),
-          Animated.timing(glow, { toValue: 0.15, duration: 500, useNativeDriver: true }),
-        ])
-      ).start();
-    } else {
-      pulse.setValue(1); spin.setValue(0); glow.setValue(0.15);
-    }
-    return () => { pulse.stopAnimation(); spin.stopAnimation(); glow.stopAnimation(); };
-  }, [state]);
-
-  const rotate = spin.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] });
-
-  const orbColor =
-    state === 'idle' ? '#22c55e' :
-    state === 'recording' ? '#ef4444' :
-    state === 'processing' ? '#f97316' :
-    '#3b82f6';
-
-  const icon =
-    state === 'idle' ? '🎙' :
-    state === 'recording' ? '⏹' :
-    state === 'processing' ? '···' : '🔊';
-
-  return (
-    <TouchableOpacity
-      onPress={onPress}
-      activeOpacity={state === 'processing' ? 1 : 0.85}
-      style={{ width: ORB_GLOW, height: ORB_GLOW, alignItems: 'center', justifyContent: 'center' }}
-    >
-      {/* Outer glow halo */}
-      <Animated.View style={{
-        position: 'absolute',
-        width: ORB_GLOW,
-        height: ORB_GLOW,
-        borderRadius: ORB_GLOW / 2,
-        backgroundColor: orbColor,
-        opacity: glow,
-        transform: state === 'processing' ? [{ rotate }] : [{ scale: pulse }],
-      }} />
-      {/* Mid ring */}
-      <Animated.View style={{
-        position: 'absolute',
-        width: ORB_SIZE + 40,
-        height: ORB_SIZE + 40,
-        borderRadius: (ORB_SIZE + 40) / 2,
-        borderWidth: 1.5,
-        borderColor: orbColor,
-        opacity: state === 'idle' ? 0.25 : 0.5,
-        transform: [{ scale: state === 'processing' ? 1 : pulse }],
-      }} />
-      {/* Core orb */}
-      <Animated.View style={{
-        width: ORB_SIZE,
-        height: ORB_SIZE,
-        borderRadius: ORB_SIZE / 2,
-        backgroundColor: orbColor,
-        alignItems: 'center',
-        justifyContent: 'center',
-        transform: state === 'processing' ? [{ scale: 1 }] : [{ scale: pulse }],
-        shadowColor: orbColor,
-        shadowOffset: { width: 0, height: 0 },
-        shadowOpacity: 0.9,
-        shadowRadius: 28,
-        elevation: 20,
-      }}>
-        <Text style={{ fontSize: state === 'processing' ? 26 : 42, color: '#fff' }}>{icon}</Text>
-      </Animated.View>
-    </TouchableOpacity>
-  );
-}
-
-function AskCard() {
-  const { t, lang } = useApp();
-  const recorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
-  const [voiceState, setVoiceState] = useState<VoiceState>('idle');
-  const [modalOpen, setModalOpen] = useState(false);
-  const [res, setRes] = useState<AskResult | null>(null);
-  const [err, setErr] = useState('');
-  const voiceStateRef = useRef<VoiceState>('idle');
-
-  const setVS = (s: VoiceState) => { voiceStateRef.current = s; setVoiceState(s); };
-
-  useEffect(() => () => { stopAudio(); }, []);
-
-  const startRecording = async () => {
-    setErr('');
-    const perm = await requestRecordingPermissionsAsync();
-    if (!perm.granted) { setErr(t('micPerm')); return; }
-    await stopAudio();
-    await setAudioModeAsync({ allowsRecording: true, playsInSilentMode: true });
-    await recorder.prepareToRecordAsync();
-    recorder.record();
-    setVS('recording');
-  };
-
-  const stopAndSend = async () => {
-    if (voiceStateRef.current !== 'recording') return;
-    setVS('processing');
-    try {
-      await recorder.stop();
-      await setAudioModeAsync({ allowsRecording: false, playsInSilentMode: true });
-      const uri = recorder.uri;
-      if (!uri) throw new ApiError(0, 'no recording');
-      const r = await askByVoice(uri, 'audio/mp4', lang);
-      setRes(r);
-      if (r.answer_audio_base64) {
-        setVS('speaking');
-        await playBase64(r.answer_audio_base64, r.answer_audio_mimetype, () => setVS('idle'));
-      } else {
-        setVS('idle');
-      }
-    } catch (e) {
-      const ae = e as ApiError;
-      setErr(ae.status === 503 ? t('askUnavailable') : ae.status === -1 ? t('captureFailed') : errorText(t, ae));
-      setVS('idle');
-    }
-  };
-
-  const orbPress = () => {
-    if (voiceState === 'idle') startRecording();
-    else if (voiceState === 'recording') stopAndSend();
-    else if (voiceState === 'speaking') { stopAudio(); setVS('idle'); }
-    // processing: ignore taps
-  };
-
-  const close = () => {
-    stopAudio();
-    if (voiceStateRef.current === 'recording') {
-      recorder.stop().catch(() => {});
-    }
-    setVS('idle'); setRes(null); setErr(''); setModalOpen(false);
-  };
-
-  const hintText =
-    voiceState === 'idle' ? t('askIdle') :
-    voiceState === 'recording' ? t('askRecording') :
-    voiceState === 'processing' ? t('askProcessing') :
-    t('askSpeaking');
-
-  return (
-    <>
-      {/* Entry button */}
-      <TouchableOpacity
-        onPress={() => { setErr(''); setRes(null); setVS('idle'); setModalOpen(true); }}
-        style={{
-          flexDirection: 'row',
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: S.sm,
-          backgroundColor: '#2E7D32',
-          borderRadius: 16,
-          paddingVertical: 16,
-          paddingHorizontal: S.lg,
-          marginBottom: S.md,
-          shadowColor: '#16a34a',
-          shadowOffset: { width: 0, height: 4 },
-          shadowOpacity: 0.35,
-          shadowRadius: 10,
-          elevation: 6,
-        }}
-        activeOpacity={0.85}
-      >
-        <Text style={{ fontSize: 22 }}>🎙</Text>
-        <Text style={{ color: '#fff', fontSize: 17, fontWeight: '700', letterSpacing: 0.3 }}>{t('askTitle')}</Text>
-      </TouchableOpacity>
-
-      {/* Full-screen voice modal */}
-      <Modal visible={modalOpen} animationType="fade" statusBarTranslucent transparent onRequestClose={close}>
-        <StatusBar barStyle="light-content" backgroundColor="#000" />
-        <View style={{
-          flex: 1,
-          backgroundColor: '#050505',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          paddingTop: 64,
-          paddingBottom: 48,
-          paddingHorizontal: 24,
-        }}>
-
-          {/* Header row */}
-          <View style={{ width: '100%', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-            <Text style={{ color: '#fff', fontSize: 20, fontWeight: '700' }}>{t('askTitle')}</Text>
-            <TouchableOpacity onPress={close} hitSlop={{ top: 16, bottom: 16, left: 16, right: 16 }}>
-              <Text style={{ color: '#888', fontSize: 26, fontWeight: '300' }}>✕</Text>
+        {/* feedback */}
+        {fbMsg ? <Banner text={fbMsg} kind="ok" /> : null}
+        {!fbOpen && !fbMsg ? (
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: S.lg }}>
+            <Text style={{ flex: 1, fontSize: 15, color: C.muted }}>{t('feedbackTitle')}</Text>
+            <TouchableOpacity onPress={() => { setHelpful(true); setFbOpen(true); }} style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: '#E8F3E8', alignItems: 'center', justifyContent: 'center', marginRight: S.sm }}>
+              <Text style={{ fontSize: 22 }}>👍</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => { setHelpful(false); setFbOpen(true); }} style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: '#FBEAE7', alignItems: 'center', justifyContent: 'center' }}>
+              <Text style={{ fontSize: 22 }}>👎</Text>
             </TouchableOpacity>
           </View>
-
-          {/* Spacer */}
-          <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-            {/* Orb */}
-            <VoiceOrb state={voiceState} onPress={orbPress} />
-
-            {/* Hint beneath orb */}
-            <Text style={{
-              color: voiceState === 'recording' ? '#fca5a5' : '#888',
-              fontSize: 15,
-              marginTop: 32,
-              textAlign: 'center',
-              letterSpacing: 0.2,
-              fontWeight: voiceState === 'recording' ? '600' : '400',
-            }}>
-              {hintText}
-            </Text>
-
-            {/* Error */}
-            {err ? (
-              <View style={{ marginTop: 20, backgroundColor: '#1f0000', borderRadius: 10, padding: 12, width: '100%' }}>
-                <Text style={{ color: '#fca5a5', fontSize: 13, textAlign: 'center' }}>{err}</Text>
-              </View>
-            ) : null}
-
-            {/* Q&A result */}
-            {res ? (
-              <View style={{ marginTop: 24, width: '100%' }}>
-                <View style={{ backgroundColor: '#111', borderRadius: 12, padding: 14, marginBottom: 10 }}>
-                  <Text style={{ color: '#6b7280', fontSize: 11, marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.8 }}>{t('youAsked')}</Text>
-                  <Text style={{ color: '#e5e7eb', fontSize: 15, lineHeight: 22 }}>{res.question_text}</Text>
-                </View>
-                <View style={{ backgroundColor: '#0f1a10', borderRadius: 12, padding: 14, borderLeftWidth: 3, borderLeftColor: '#22c55e' }}>
-                  <Text style={{ color: '#6b7280', fontSize: 11, marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.8 }}>{t('answer')}</Text>
-                  <Text style={{ color: '#e5e7eb', fontSize: 15, lineHeight: 22 }}>{res.answer_text}</Text>
-                </View>
-              </View>
-            ) : null}
+        ) : null}
+        {fbOpen ? (
+          <View style={{ marginTop: S.lg, backgroundColor: '#F6F8F2', borderRadius: 16, padding: S.md }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'center' }}>
+              {[1, 2, 3, 4, 5].map((n) => (
+                <TouchableOpacity key={n} onPress={() => setRating(n)} style={{ padding: 4 }}>
+                  <Text style={{ fontSize: 34, color: n <= rating ? C.moderate : C.border }}>★</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            <View style={{ flexDirection: 'row', marginTop: S.sm }}>
+              <Chip label={t('helpful')} selected={helpful === true} onPress={() => setHelpful(true)} />
+              <Chip label={t('notHelpful')} selected={helpful === false} onPress={() => setHelpful(false)} />
+            </View>
+            <Input value={comment} onChangeText={setComment} placeholder={t('commentPlaceholder')} multiline />
+            {fbErr ? <Banner text={fbErr} kind="error" /> : null}
+            <Btn label={t('sendFeedback')} onPress={submitFb} busy={fbBusy} style={{ marginTop: S.sm }} />
           </View>
-        </View>
-      </Modal>
+        ) : null}
+      </View>
+    </View>
+  );
+}
+
+/** Little equalizer bars shown while advice is being read aloud. */
+function Bars({ color }: { color: string }) {
+  const vals = useRef([0, 1, 2, 3].map(() => new Animated.Value(0.3))).current;
+  useEffect(() => {
+    const loops = vals.map((v, k) => Animated.loop(Animated.sequence([
+      Animated.timing(v, { toValue: 1, duration: 320 + k * 90, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+      Animated.timing(v, { toValue: 0.25, duration: 320 + k * 90, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+    ])));
+    loops.forEach((l) => l.start());
+    return () => loops.forEach((l) => l.stop());
+  }, [vals]);
+  return (
+    <View style={{ flexDirection: 'row', alignItems: 'center', height: 24 }}>
+      {vals.map((v, k) => <Animated.View key={k} style={{ width: 4, height: 22, borderRadius: 2, marginHorizontal: 2, backgroundColor: color, transform: [{ scaleY: v }] }} />)}
+    </View>
+  );
+}
+
+/** Cream page with soft sound-wave arcs radiating from the top-right corner. */
+function WaveBackdrop() {
+  const { width: w, height: h } = useWindowDimensions();
+  return (
+    <View pointerEvents="none" style={{ position: 'absolute', left: 0, top: 0, width: w, height: h }}>
+      <Svg width={w} height={h}>
+        <Defs>
+          <LinearGradient id="wb" x1="0" y1="0" x2="0" y2="1">
+            <Stop offset="0" stopColor="#F6F2E2" />
+            <Stop offset="1" stopColor="#E9F0DC" />
+          </LinearGradient>
+        </Defs>
+        <Rect x="0" y="0" width={w} height={h} fill="url(#wb)" />
+        {[120, 190, 260, 330, 400].map((r, k) => (
+          <Circle key={r} cx={w + 10} cy={70} r={r} stroke="#6FAE5F" strokeOpacity={0.14 - k * 0.02} strokeWidth={2} fill="none" />
+        ))}
+      </Svg>
+    </View>
+  );
+}
+
+/** Round floating mic (bottom-right): one tap opens full-screen voice mode and starts listening. */
+function AskFab() {
+  const { t } = useApp();
+  const [open, setOpen] = useState(false);
+  const ring = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    const l = Animated.loop(Animated.timing(ring, { toValue: 1, duration: 2200, easing: Easing.out(Easing.quad), useNativeDriver: true }));
+    l.start();
+    return () => l.stop();
+  }, [ring]);
+  return (
+    <>
+      <View pointerEvents="box-none" style={{ position: 'absolute', right: S.lg, bottom: S.lg, width: 76, height: 76, alignItems: 'center', justifyContent: 'center' }}>
+        <Animated.View pointerEvents="none" style={{ position: 'absolute', width: 68, height: 68, borderRadius: 34, backgroundColor: C.accent, opacity: ring.interpolate({ inputRange: [0, 1], outputRange: [0.35, 0] }), transform: [{ scale: ring.interpolate({ inputRange: [0, 1], outputRange: [1, 1.5] }) }] }} />
+        <TouchableOpacity
+          onPress={() => setOpen(true)}
+          activeOpacity={0.85}
+          accessibilityLabel={t('askTitle')}
+          style={{ width: 68, height: 68, borderRadius: 34, backgroundColor: C.accent, alignItems: 'center', justifyContent: 'center', shadowColor: '#0B3D24', shadowOpacity: 0.4, shadowRadius: 14, shadowOffset: { width: 0, height: 8 }, elevation: 10 }}
+        >
+          <Icon name="mic" size={32} color="#fff" />
+        </TouchableOpacity>
+      </View>
+      <VoiceMode visible={open} onClose={() => setOpen(false)} />
     </>
   );
 }
@@ -409,6 +262,7 @@ export function AdviceTab() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
+  const [showOlder, setShowOlder] = useState(false);
   const load = async (generate: boolean) => {
     if (!id) return;
     setCreateErr('');
@@ -426,31 +280,44 @@ export function AdviceTab() {
     }
   };
 
+  const sorted = [...(advisories || [])].sort((x, y) => (x.created_at < y.created_at ? 1 : -1));
+  const older = sorted.slice(1, 6);
+
   return (
-    <ScrollView
-      contentContainerStyle={{ padding: S.lg, paddingTop: S.md }}
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => loaded && load(false)} />}
-      keyboardShouldPersistTaps="handled"
-    >
-      <AskCard />
-      <Text style={[st.h1, { marginTop: S.sm, marginBottom: S.md }]}>{t('advisories')}</Text>
-      <Btn
-        label={creating ? t('loading') : t('getAdvice')}
-        onPress={() => load(true)}
-        busy={creating}
-        style={{ marginBottom: S.md }}
-      />
-      {createErr ? <Banner text={createErr} kind="error" /> : null}
-      {loaded && advisories && advisories.length === 0 && !creating ? (
-        <Muted>{t('noAdvisories')}</Muted>
-      ) : null}
-      {!loaded ? (
-        <Muted style={{ textAlign: 'center', marginTop: S.xl }}>
-          {t('loading')}
-        </Muted>
-      ) : null}
-      {(advisories || []).map((a) => <AdvisoryCard key={a.id} a={a} />)}
-      <View style={{ height: S.xl }} />
-    </ScrollView>
+    <View style={{ flex: 1 }}>
+      <WaveBackdrop />
+      <ScrollView
+        contentContainerStyle={{ padding: S.lg, paddingTop: S.md, paddingBottom: 120 }}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => loaded && load(false)} />}
+        keyboardShouldPersistTaps="handled"
+      >
+        <Text style={{ fontSize: 13, fontWeight: '800', letterSpacing: 1, color: C.muted, marginBottom: S.sm }}>{t('adviceForToday').toUpperCase()}</Text>
+        {createErr ? <Banner text={createErr} kind="error" /> : null}
+        {!loaded ? <Muted style={{ textAlign: 'center', marginTop: S.xl }}>{t('loading')}</Muted> : null}
+        {loaded && sorted.length === 0 && !creating ? <Muted>{t('noAdvisories')}</Muted> : null}
+        {sorted[0] ? <AdvisoryCard key={sorted[0].id} a={sorted[0]} /> : null}
+
+        {/* fresh advice */}
+        <TouchableOpacity
+          onPress={() => load(true)}
+          disabled={creating}
+          activeOpacity={0.85}
+          style={{ minHeight: 56, borderRadius: 28, borderWidth: 2, borderColor: C.accent, backgroundColor: 'rgba(255,255,255,0.9)', alignItems: 'center', justifyContent: 'center', marginBottom: S.lg, flexDirection: 'row' }}
+        >
+          <Text style={{ fontSize: 20, color: C.accent, marginRight: S.sm }}>{creating ? '…' : '↻'}</Text>
+          <Text style={{ fontSize: 17, fontWeight: '800', color: C.accent }}>{creating ? t('loading') : t('getAdvice')}</Text>
+        </TouchableOpacity>
+
+        {older.length ? (
+          <>
+            <TouchableOpacity onPress={() => setShowOlder(!showOlder)} style={{ minHeight: 48, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}>
+              <Text style={{ color: C.muted, fontWeight: '700', fontSize: 15 }}>{`${showOlder ? t('hideEarlier') : t('showEarlier')} (${older.length})`}</Text>
+            </TouchableOpacity>
+            {showOlder ? older.map((a) => <AdvisoryCard key={a.id} a={a} />) : null}
+          </>
+        ) : null}
+      </ScrollView>
+      <AskFab />
+    </View>
   );
 }
