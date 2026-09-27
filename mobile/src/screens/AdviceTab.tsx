@@ -14,8 +14,10 @@ import {
 import { RecordingPresets, requestRecordingPermissionsAsync, setAudioModeAsync, useAudioRecorder } from 'expo-audio';
 import { Advisory, ApiError, AskResult, askByVoice, getAdvisories, sendFeedback } from '../api';
 import { playAdvisory, playBase64, stopAudio } from '../audio';
+import { Conversation, getConversations } from '../conversations';
 import { fmtDate, levelLabel, useApp } from '../ctx';
 import { errorText, useLoad, useTranslated } from '../hooks';
+import { formatTime } from '../storage';
 import { C, levelColor, S } from '../theme';
 import { useToast } from '../toast';
 import { Badge, Banner, Btn, Chip, Input, Muted, st } from '../ui';
@@ -204,7 +206,7 @@ function WaveBackdrop() {
 }
 
 /** Round floating mic (bottom-right): one tap opens full-screen voice mode and starts listening. */
-function AskFab() {
+function AskFab({ onClosed }: { onClosed?: () => void }) {
   const { t } = useApp();
   const [open, setOpen] = useState(false);
   const ring = useRef(new Animated.Value(0)).current;
@@ -226,9 +228,42 @@ function AskFab() {
           <Icon name="mic" size={32} color="#fff" />
         </TouchableOpacity>
       </View>
-      <VoiceMode visible={open} onClose={() => setOpen(false)} />
+      <VoiceMode visible={open} onClose={() => { setOpen(false); onClosed?.(); }} />
     </>
   );
+}
+
+// ---------------------------------------------------------------------------
+// "My questions" -- saved Ask-AI conversations
+// ---------------------------------------------------------------------------
+function QuestionCard({ c }: { c: Conversation }) {
+  const { t } = useApp();
+  return (
+    <View style={{ backgroundColor: '#fff', borderRadius: 22, marginBottom: S.md, padding: S.lg, borderWidth: 1, borderColor: '#E3E8DC' }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: S.sm }}>
+        <View style={{ width: 34, height: 34, borderRadius: 17, backgroundColor: '#E8F3E8', alignItems: 'center', justifyContent: 'center', marginRight: S.sm }}>
+          <Icon name="mic" size={17} color={C.accent} />
+        </View>
+        <Text style={{ flex: 1, fontSize: 12.5, fontWeight: '800', letterSpacing: 0.6, color: C.muted }}>{formatTime(c.ts)}</Text>
+      </View>
+      <Text style={{ fontSize: 16, lineHeight: 22, fontWeight: '700', color: C.text, fontStyle: 'italic' }}>{`“${c.question}”`}</Text>
+      <Text style={{ fontSize: 12.5, fontWeight: '800', letterSpacing: 0.6, color: C.accent, marginTop: S.md, marginBottom: 4 }}>{t('answer').toUpperCase()}</Text>
+      <Text style={{ fontSize: 15.5, lineHeight: 22, color: C.text }}>{c.answer}</Text>
+    </View>
+  );
+}
+
+function QuestionsList({ fieldId, reloadKey }: { fieldId: string; reloadKey: number }) {
+  const { t } = useApp();
+  const [items, setItems] = useState<Conversation[] | null>(null);
+  useEffect(() => {
+    let stop = false;
+    getConversations(fieldId).then((c) => !stop && setItems(c));
+    return () => { stop = true; };
+  }, [fieldId, reloadKey]);
+  if (items === null) return <Muted style={{ textAlign: 'center', marginTop: S.xl }}>{t('loading')}</Muted>;
+  if (items.length === 0) return <Muted style={{ marginTop: S.md }}>{t('noQuestionsYet')}</Muted>;
+  return <>{items.map((c) => <QuestionCard key={c.id} c={c} />)}</>;
 }
 
 // ---------------------------------------------------------------------------
@@ -237,6 +272,8 @@ function AskFab() {
 export function AdviceTab() {
   const { field, t } = useApp();
   const id = field?.id;
+  const [subTab, setSubTab] = useState<'recs' | 'questions'>('recs');
+  const [questionsReload, setQuestionsReload] = useState(0);
   const [advisories, setAdvisories] = useState<Advisory[] | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [creating, setCreating] = useState(false);
@@ -283,41 +320,63 @@ export function AdviceTab() {
   const sorted = [...(advisories || [])].sort((x, y) => (x.created_at < y.created_at ? 1 : -1));
   const older = sorted.slice(1, 6);
 
+  const segTab = (key: 'recs' | 'questions', label: string) => (
+    <TouchableOpacity
+      key={key}
+      onPress={() => setSubTab(key)}
+      style={{ flex: 1, minHeight: 44, borderRadius: 19, alignItems: 'center', justifyContent: 'center', backgroundColor: subTab === key ? C.accent : 'transparent' }}
+    >
+      <Text style={{ fontSize: 14.5, fontWeight: '800', color: subTab === key ? '#fff' : C.text }}>{label}</Text>
+    </TouchableOpacity>
+  );
+
   return (
     <View style={{ flex: 1 }}>
       <WaveBackdrop />
-      <ScrollView
-        contentContainerStyle={{ padding: S.lg, paddingTop: S.md, paddingBottom: 120 }}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => loaded && load(false)} />}
-        keyboardShouldPersistTaps="handled"
-      >
-        <Text style={{ fontSize: 13, fontWeight: '800', letterSpacing: 1, color: C.muted, marginBottom: S.sm }}>{t('adviceForToday').toUpperCase()}</Text>
-        {createErr ? <Banner text={createErr} kind="error" /> : null}
-        {!loaded ? <Muted style={{ textAlign: 'center', marginTop: S.xl }}>{t('loading')}</Muted> : null}
-        {loaded && sorted.length === 0 && !creating ? <Muted>{t('noAdvisories')}</Muted> : null}
-        {sorted[0] ? <AdvisoryCard key={sorted[0].id} a={sorted[0]} /> : null}
-
-        {/* fresh advice */}
-        <TouchableOpacity
-          onPress={() => load(true)}
-          disabled={creating}
-          activeOpacity={0.85}
-          style={{ minHeight: 56, borderRadius: 28, borderWidth: 2, borderColor: C.accent, backgroundColor: 'rgba(255,255,255,0.9)', alignItems: 'center', justifyContent: 'center', marginBottom: S.lg, flexDirection: 'row' }}
+      <View style={{ paddingHorizontal: S.lg, paddingTop: S.md }}>
+        <View style={{ flexDirection: 'row', backgroundColor: '#E4EFD9', borderRadius: 22, padding: 3 }}>
+          {segTab('recs', t('adviceTabRecs'))}
+          {segTab('questions', t('adviceTabQuestions'))}
+        </View>
+      </View>
+      {subTab === 'recs' ? (
+        <ScrollView
+          contentContainerStyle={{ padding: S.lg, paddingTop: S.md, paddingBottom: 120 }}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => loaded && load(false)} />}
+          keyboardShouldPersistTaps="handled"
         >
-          <Text style={{ fontSize: 20, color: C.accent, marginRight: S.sm }}>{creating ? '…' : '↻'}</Text>
-          <Text style={{ fontSize: 17, fontWeight: '800', color: C.accent }}>{creating ? t('loading') : t('getAdvice')}</Text>
-        </TouchableOpacity>
+          <Text style={{ fontSize: 13, fontWeight: '800', letterSpacing: 1, color: C.muted, marginBottom: S.sm }}>{t('adviceForToday').toUpperCase()}</Text>
+          {createErr ? <Banner text={createErr} kind="error" /> : null}
+          {!loaded ? <Muted style={{ textAlign: 'center', marginTop: S.xl }}>{t('loading')}</Muted> : null}
+          {loaded && sorted.length === 0 && !creating ? <Muted>{t('noAdvisories')}</Muted> : null}
+          {sorted[0] ? <AdvisoryCard key={sorted[0].id} a={sorted[0]} /> : null}
 
-        {older.length ? (
-          <>
-            <TouchableOpacity onPress={() => setShowOlder(!showOlder)} style={{ minHeight: 48, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}>
-              <Text style={{ color: C.muted, fontWeight: '700', fontSize: 15 }}>{`${showOlder ? t('hideEarlier') : t('showEarlier')} (${older.length})`}</Text>
-            </TouchableOpacity>
-            {showOlder ? older.map((a) => <AdvisoryCard key={a.id} a={a} />) : null}
-          </>
-        ) : null}
-      </ScrollView>
-      <AskFab />
+          {/* fresh advice */}
+          <TouchableOpacity
+            onPress={() => load(true)}
+            disabled={creating}
+            activeOpacity={0.85}
+            style={{ minHeight: 56, borderRadius: 28, borderWidth: 2, borderColor: C.accent, backgroundColor: 'rgba(255,255,255,0.9)', alignItems: 'center', justifyContent: 'center', marginBottom: S.lg, flexDirection: 'row' }}
+          >
+            <Text style={{ fontSize: 20, color: C.accent, marginRight: S.sm }}>{creating ? '…' : '↻'}</Text>
+            <Text style={{ fontSize: 17, fontWeight: '800', color: C.accent }}>{creating ? t('loading') : t('getAdvice')}</Text>
+          </TouchableOpacity>
+
+          {older.length ? (
+            <>
+              <TouchableOpacity onPress={() => setShowOlder(!showOlder)} style={{ minHeight: 48, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}>
+                <Text style={{ color: C.muted, fontWeight: '700', fontSize: 15 }}>{`${showOlder ? t('hideEarlier') : t('showEarlier')} (${older.length})`}</Text>
+              </TouchableOpacity>
+              {showOlder ? older.map((a) => <AdvisoryCard key={a.id} a={a} />) : null}
+            </>
+          ) : null}
+        </ScrollView>
+      ) : (
+        <ScrollView contentContainerStyle={{ padding: S.lg, paddingTop: S.md, paddingBottom: 120 }} keyboardShouldPersistTaps="handled">
+          {id ? <QuestionsList fieldId={id} reloadKey={questionsReload} /> : null}
+        </ScrollView>
+      )}
+      <AskFab onClosed={() => setQuestionsReload((n) => n + 1)} />
     </View>
   );
 }

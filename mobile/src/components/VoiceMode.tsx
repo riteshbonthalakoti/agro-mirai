@@ -4,6 +4,7 @@ import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 import { RecordingPresets, requestRecordingPermissionsAsync, setAudioModeAsync, useAudioRecorder, useAudioRecorderState } from 'expo-audio';
 import { ApiError, AskResult, askByVoice } from '../api';
 import { playBase64, speakOnDevice, stopAudio } from '../audio';
+import { saveConversation } from '../conversations';
 import { useApp } from '../ctx';
 import { errorText } from '../hooks';
 import { feedback } from '../feedback';
@@ -75,7 +76,7 @@ function Orb({ state, level }: { state: VState; level: Animated.Value }) {
 /** Full-screen voice mode: a big living orb, live captions, one control. Tapping while it is
  *  talking interrupts it and starts listening again. */
 export function VoiceMode({ visible, onClose }: { visible: boolean; onClose: () => void }) {
-  const { t, lang } = useApp();
+  const { t, lang, field } = useApp();
   const tt = (k: string) => (t as any)(k) as string;
   const { height: h } = useWindowDimensions();
   const recorder = useAudioRecorder({ ...RecordingPresets.HIGH_QUALITY, isMeteringEnabled: true });
@@ -141,6 +142,7 @@ export function VoiceMode({ visible, onClose }: { visible: boolean; onClose: () 
       const r = await askByVoice(uri, 'audio/mp4', lang);
       setRes(r);
       feedback.success();
+      if (field?.id) saveConversation(field.id, { question: r.question_text, answer: r.answer_text, lang: r.language }).catch(() => {});
       setVS('speaking');
       if (r.answer_audio_base64) {
         await playBase64(r.answer_audio_base64, r.answer_audio_mimetype, () => setVS('idle'));
