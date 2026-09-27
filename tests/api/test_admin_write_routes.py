@@ -197,3 +197,38 @@ def test_delete_bug_report():
     assert client.delete("/v2/admin/bug-reports/b3").status_code == 404
     audit = [a for a in store.list_audit_log() if a.action == "bug_report.delete"]
     assert len(audit) == 1
+
+
+def test_audit_log_read_route_returns_entries():
+    app, client = _app_and_client()
+    store = app.extensions["data_store"]
+    admin = _admin_session(client, store)
+
+    from datetime import datetime, timezone
+    from agro_mirai.persistence.models import BugReport
+    store.save_bug_report(admin.id, BugReport(id="b4", farmer_id=admin.id,
+                                               created_at=datetime.now(timezone.utc)))
+
+    # Perform a write action that creates an audit log entry
+    resp = client.patch("/v2/admin/bug-reports/b4", json={"status": "triaged"})
+    assert resp.status_code == 200
+
+    # Fetch audit log and verify the entry is there
+    resp = client.get("/v2/admin/audit-log")
+    assert resp.status_code == 200
+    items = resp.get_json()["items"]
+    assert len(items) > 0
+    status_entry = next(
+        (e for e in items if e["action"] == "bug_report.status" and e["target_id"] == "b4"),
+        None
+    )
+    assert status_entry is not None
+    assert status_entry["target_type"] == "bug_report"
+
+
+def test_audit_log_requires_admin():
+    app, client = _app_and_client()
+    from _otp_helpers import register_and_login
+    register_and_login(client, "+919000000099", name="Plain")
+    resp = client.get("/v2/admin/audit-log")
+    assert resp.status_code == 403
