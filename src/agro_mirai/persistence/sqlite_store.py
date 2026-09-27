@@ -399,6 +399,10 @@ class SQLiteDataStore:
         return cur.rowcount > 0
 
     def delete_farmer(self, farmer_id: str) -> bool:
+        # Cascades to fields/bug_reports/etc. via each table's ON DELETE
+        # CASCADE FK -- this only fires because PRAGMA foreign_keys = ON
+        # is set on every connection in _new_connection. If that pragma
+        # is ever dropped, this delete silently stops cascading.
         cur = self._conn.execute("DELETE FROM farmers WHERE id = ?", (farmer_id,))
         self._conn.commit()
         return cur.rowcount > 0
