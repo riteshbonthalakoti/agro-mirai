@@ -1,5 +1,5 @@
 import React, { Component, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, ScrollView, StatusBar, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Image, ScrollView, StatusBar, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 
 class ErrorBoundary extends Component<{ children: React.ReactNode }, { error: string }> {
@@ -19,7 +19,7 @@ class ErrorBoundary extends Component<{ children: React.ReactNode }, { error: st
   }
 }
 import { ApiError, Farmer, Field, getMe, listFields, logout, patchMe, setUnauthorizedHandler, subscribeNet, isOnline, wakeServer, getAdvisories } from './src/api';
-import { AppCtx, Ctx, makeT } from './src/ctx';
+import { AppCtx, Ctx, cropLabel, makeT } from './src/ctx';
 import { Lang, LANGS } from './src/i18n';
 import { AdviceTab } from './src/screens/AdviceTab';
 import { DataTab } from './src/screens/DataTab';
@@ -29,8 +29,10 @@ import { MeTab } from './src/screens/MeTab';
 import { AuthScreen, LanguageScreen, PermissionsScreen } from './src/screens/Onboarding';
 import { CoachTour, TourStep } from './src/components/CoachTour';
 import { NotificationsProvider, useNotifications } from './src/notifications';
+import { registerBackgroundAlerts, setBackgroundField } from './src/backgroundAlerts';
 import { playOnboardingClip, stopAudio } from './src/audio';
 import { ScanTab } from './src/screens/ScanTab';
+import { FirstField } from './src/screens/FirstField';
 import { cacheGet, cacheSet, clearFarmerCache } from './src/storage';
 import { C, S } from './src/theme';
 import { Banner, Btn } from './src/ui';
@@ -46,20 +48,28 @@ import { feedback } from './src/feedback';
 function Header() {
   const ctx = React.useContext(AppCtx);
   if (!ctx || !ctx.field) return null;
-  const { field, fields, selectField } = ctx;
+  const { field, fields, selectField, lang } = ctx;
   const { unread, openInbox } = useNotifications();
   return (
-    <View style={{ paddingHorizontal: S.lg, paddingTop: S.md, paddingBottom: S.sm, backgroundColor: C.bg, borderBottomWidth: 1, borderBottomColor: C.border }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-        <Text style={{ flex: 1, fontSize: 22, fontWeight: '700', color: C.text }} numberOfLines={1}>{field.name}</Text>
-        <TouchableOpacity onPress={openInbox} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} style={{ padding: 4 }}>
-          <Icon name="bell" size={24} color={C.text} />
-          {unread > 0 ? (
-            <View style={{ position: 'absolute', top: 0, right: 0, minWidth: 16, height: 16, borderRadius: 8, backgroundColor: C.danger, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 3 }}>
-              <Text style={{ color: '#fff', fontSize: 10, fontWeight: '700' }}>{unread > 9 ? '9+' : unread}</Text>
-            </View>
-          ) : null}
-        </TouchableOpacity>
+    <View style={{ paddingHorizontal: S.lg, paddingTop: S.sm, paddingBottom: S.sm, backgroundColor: C.bg, borderBottomWidth: 1, borderBottomColor: C.border }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', minHeight: 48 }}>
+        <View style={{ width: 48, alignItems: 'flex-start' }}>
+          <Image source={require('./assets/logo-mark.png')} style={{ width: 40, height: 40 }} resizeMode="contain" />
+        </View>
+        <View style={{ flex: 1, alignItems: 'center' }}>
+          <Text style={{ fontSize: 19, fontWeight: '800', color: C.text }} numberOfLines={1}>{field.name}</Text>
+          {field.current_crop ? <Text style={{ fontSize: 13, color: C.muted, marginTop: 1 }} numberOfLines={1}>{cropLabel(lang, field.current_crop)}</Text> : null}
+        </View>
+        <View style={{ width: 48, alignItems: 'flex-end' }}>
+          <TouchableOpacity onPress={openInbox} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} style={{ padding: 4 }}>
+            <Icon name="bell" size={26} color={C.text} />
+            {unread > 0 ? (
+              <View style={{ position: 'absolute', top: 0, right: 0, minWidth: 16, height: 16, borderRadius: 8, backgroundColor: C.danger, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 3 }}>
+                <Text style={{ color: '#fff', fontSize: 10, fontWeight: '700' }}>{unread > 9 ? '9+' : unread}</Text>
+              </View>
+            ) : null}
+          </TouchableOpacity>
+        </View>
       </View>
       {fields.length > 1 ? (
         // one scrollable row: with several fields the chips used to wrap into many rows and push the content off screen
@@ -246,6 +256,8 @@ function RootInner({ lang, setLang }: { lang: Lang; setLang: (l: Lang) => void }
   const fieldNameForAlerts = field?.name;
   useEffect(() => {
     if (phase !== 'main' || !fieldIdForAlerts) return;
+    setBackgroundField(fieldIdForAlerts, fieldNameForAlerts); // so alerts still arrive when the app is closed
+    registerBackgroundAlerts();
     let stop = false;
     const check = async () => {
       try {
@@ -309,6 +321,7 @@ function RootInner({ lang, setLang }: { lang: Lang; setLang: (l: Lang) => void }
     return (
       <AuthScreen
         lang={lang}
+        onChangeLanguage={() => setPhase('lang')}
         notice={authNotice || bootError}
         onLoggedIn={async (f, isNew) => {
           setFarmer(f);
@@ -321,7 +334,7 @@ function RootInner({ lang, setLang }: { lang: Lang; setLang: (l: Lang) => void }
           // new server-side: a fresh install or "clear data" resets tourSeen
           // and should show the tour again even for a returning phone number.
           const tourSeen = await cacheGet<boolean>('tourSeen');
-          if (!tourSeen) setTourPending(true);
+          if (isNew || !tourSeen) setTourPending(true); // a brand-new farmer always gets the tour
           setPhase('main');
         }}
       />
@@ -342,15 +355,7 @@ function RootInner({ lang, setLang }: { lang: Lang; setLang: (l: Lang) => void }
         {form ? (
           <FieldForm initial={form.edit} onDone={finishForm} onCancel={fields.length ? () => setForm(null) : undefined} />
         ) : fields.length === 0 ? (
-          <View style={{ flex: 1 }}>
-            <View style={{ padding: S.lg, paddingTop: 64 }}>
-              <Text style={{ fontSize: 24, fontWeight: '700', color: C.text }}>{t('welcomeName').replace('{name}', (farmer?.name || '').split(' ')[0])}</Text>
-              <Text style={{ fontSize: 18, fontWeight: '600', color: C.text, marginTop: S.md }}>{t('noFieldTitle')}</Text>
-              <Text style={{ color: C.muted, marginTop: S.sm }}>{t('emptyFieldsHelp')}</Text>
-              <Btn label={t('addField')} onPress={() => setForm({})} style={{ marginTop: S.lg }} />
-              <Btn label={t('signOut')} kind="secondary" onPress={signOut} style={{ marginTop: S.md }} />
-            </View>
-          </View>
+          <FirstField name={farmer?.name || ''} t={t} onAdd={() => setForm({})} onSignOut={signOut} />
         ) : (
           <>
             <Header />
