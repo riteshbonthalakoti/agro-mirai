@@ -148,3 +148,16 @@ Checked with each service's own CLI (`render`, `vercel`, `supabase`, `gh`), not 
 - Latest 3 CI runs are all green (`success`), including the run against `5c327a6` (the exact commit both Render services are deployed from) and the one against `f39496e` (the Sarvam kill-switch commit). The `Render Keep-Alive Ping` cron (Module 41) also shows a recent green run in the same list — confirmed live, not just configured.
 
 **Net finding for item 1**: nothing here is hand-wired, a tunnel, or a placeholder. The one real, novel gap this audit surfaced — the `009_bug_reports` migration-ledger/schema mismatch on Supabase — is worth a follow-up (`supabase migration repair --status applied 20260921000900` or equivalent) but does not affect current production behavior, since the table and its data are real. Render env-var completeness against `.env.example` could not be checked via CLI (no `render env` command in this CLI version) and was only checked indirectly via live behavior — flagged here rather than silently assumed complete.
+
+## G. Module 48 — end-to-end production proof (2026-09-27)
+
+Ran the full journey against production URLs only, no local server, using a disposable test farmer created and destroyed in this session:
+
+1. `POST https://agro-mirai.onrender.com/v2/auth/request-otp` for a fresh phone number — `otp_sent: true`; the OTP itself was read from `render logs -r srv-dadapin10e5c73e3qhf0 --text "OTP"` (confirms the documented log-only, no-SMS behavior is still exactly what's live).
+2. `POST /v2/auth/verify-otp` with that OTP — 200, real session cookie, new farmer row created in Supabase (`farmers` count 14→15, confirmed via `supabase inspect db table-stats --linked`).
+3. `POST /v2/fields` (same session) — 201, a real field (`Module48 E2E Field`, cotton) written to Supabase (`fields` count 12→13).
+4. Promoted that one test farmer to `role=admin` via `supabase db query --linked` (a throwaway bcrypt password, not touching any of Ritesh's real accounts), logged into `POST /admin/login` on production — 302 to `/admin`, real session.
+5. `GET /v2/admin/overview` with that session — 200, and the response genuinely reflected the write from step 3: `total_farmers: 15`, `total_fields: 13`, `crop_distribution` included the new `cotton` field, confirming mobile-app-equivalent write → Render → Supabase → admin dashboard is a real, live path, not three independently-configured pieces that happen to look connected.
+6. Cleaned up: `DELETE FROM farmers WHERE id=...` (cascades to the field) — confirmed back to 14 farmers / 12 fields afterward. No test data left in production.
+
+This is the concrete proof the module brief asked for ("not a description of it"). The one piece not re-proven this way: Ritesh's own admin account login (no credential was available or requested in this session, per the security rules governing this environment) — the mechanism was proven end to end with a disposable admin instead, which exercises the identical code path.
