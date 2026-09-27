@@ -161,3 +161,20 @@ Ran the full journey against production URLs only, no local server, using a disp
 6. Cleaned up: `DELETE FROM farmers WHERE id=...` (cascades to the field) — confirmed back to 14 farmers / 12 fields afterward. No test data left in production.
 
 This is the concrete proof the module brief asked for ("not a description of it"). The one piece not re-proven this way: Ritesh's own admin account login (no credential was available or requested in this session, per the security rules governing this environment) — the mechanism was proven end to end with a disposable admin instead, which exercises the identical code path.
+
+## H. Module 49 — migration ledger fix + real admin credentials (2026-09-27)
+
+**Migration ledger.** Re-checked section F's finding first, live, rather than trusting it: `supabase migration list --linked` still showed `20260921000900` (`009_bug_reports.sql`) as `"remote":""` — unapplied in the ledger — while `bug_reports` genuinely holds 3 rows in production (confirmed via the Supabase client, not just `table-stats`). Ran `supabase migration repair --status applied 20260921000900 --linked` (current CLI syntax, confirmed via `supabase migration repair --help` before running). Before/after:
+
+- Before: 7/8 migrations matched; `20260921000900` had `remote: ""`.
+- Command: `supabase migration repair --status applied 20260921000900 --linked`.
+- After: `supabase migration list --linked` shows all 8 migrations with matching `local`/`remote` timestamps — a fully clean ledger. `bug_reports` re-queried afterward: still 3 rows, same ids/farmer_ids/timestamps as before the repair — a ledger-only fix, no schema or data touched.
+
+**Real admin credentials.** Before provisioning anything new, checked what already existed: an admin-role farmer account already existed in production — `admin@agromirai.com`, name "Ritesh", created 2026-09-19 (predates Module 48's disposable-admin proof in section G, which was a separate account, created and deleted within that session). Asked Ritesh directly rather than assuming; he confirmed this is his account and asked for its password to be reset rather than a second admin account being created.
+
+- Account: `admin@agromirai.com` (role `admin`, existing row, not newly created).
+- Password: generated with `secrets.choice` (20 chars, mixed case/digits/symbols), hashed with bcrypt (cost 12, matching `src/agro_mirai/auth/password.py`'s scheme), written directly via the Supabase client to that farmer row's `password_hash`.
+- Delivery: written to `admin_credentials.local.txt` in the project root (gitignored — `*.local.txt` added to `.gitignore` alongside the existing `.env`/`*credentials*.json` exclusions) rather than printed in this session's output. Ritesh reads it directly from his own checkout.
+- Live login confirmed: `POST https://agro-mirai.onrender.com/admin/login` with the new password → 302 to `/admin` with a real session cookie. Followed through to `GET /admin` in the browser pane (not just curl) — real data rendered: 14 farmers, 12 fields, 22 scans, the crop/language breakdown, and the Module 48 recent-activity feed (scans/advisories with real timestamps and farmers, most recent from 2026-09-27T17:02). Screenshot taken confirming this — closes the one gap Module 48 explicitly left open ("no real admin-account screenshot was taken").
+
+Known limitation carried forward: no second admin account was provisioned for any other team member — noted as an open item per the module brief, not actioned.
