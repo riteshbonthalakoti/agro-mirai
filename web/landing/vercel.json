@@ -1,0 +1,8 @@
+{
+  "redirects": [
+    { "source": "/admin", "destination": "/admin/", "permanent": false }
+  ],
+  "rewrites": [
+    { "source": "/admin/:path*", "destination": "https://agromirai-admin.vercel.app/:path*" }
+  ]
+}
