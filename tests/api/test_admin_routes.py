@@ -23,12 +23,28 @@ def _register_and_login(client, phone, name="Someone"):
     assert register_and_login(client, phone, name=name).status_code == 200
 
 
-def test_admin_routes_are_read_only_no_write_methods_registered():
+def test_admin_routes_expose_exactly_the_documented_write_methods():
+    # Flask's @bp.patch/@bp.delete shortcuts each register their own Rule
+    # (one method per rule, same path) rather than merging into a single
+    # multi-method rule, so methods are aggregated per path before
+    # comparing against what's expected.
     app, _ = _app_and_client()
+    expected_writes = {
+        "/v2/admin/farmers/<farmer_id>": {"PATCH", "DELETE"},
+        "/v2/admin/fields/<field_id>": {"PATCH", "DELETE"},
+        "/v2/admin/bug-reports/<bug_report_id>": {"PATCH", "DELETE"},
+    }
+    methods_by_path: dict[str, set[str]] = {}
     for rule in app.url_map.iter_rules():
-        if rule.rule.startswith("/v2/admin"):
-            methods = rule.methods - {"HEAD", "OPTIONS"}
-            assert methods <= {"GET"}, f"{rule.rule} exposes non-GET methods: {methods}"
+        if not rule.rule.startswith("/v2/admin"):
+            continue
+        methods_by_path.setdefault(rule.rule, set()).update(rule.methods - {"HEAD", "OPTIONS"})
+
+    for path, methods in methods_by_path.items():
+        if path in expected_writes:
+            assert methods == expected_writes[path], path
+        else:
+            assert methods <= {"GET"}, f"{path} exposes unexpected methods: {methods}"
 
 
 def test_non_admin_gets_403():

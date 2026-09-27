@@ -1,19 +1,19 @@
-"""``/v2/admin`` — read-only Admin dashboard API (Module 19).
+"""``/v2/admin`` — Admin dashboard API (Module 19, writes added Module 50).
 
-Every route here is a GET. There are deliberately no POST/PUT/PATCH/
-DELETE routes in this blueprint at all — per the decided scope
-(read-only: list farmers/fields, system-wide feedback aggregates, no
-threshold/model-control routes) — see decisions/0017-multi-tenant-v2.md.
-``tests/api/test_admin_routes.py`` asserts this by inspecting
-``app.url_map`` rather than trusting this docstring.
+Every write route here (PATCH/DELETE) is behind @require_admin and logs
+an audit_log row via api/audit.write_audit_log -- see
+decisions/0030-admin-write-actions.md for why the original read-only
+scope (decisions/0017) was superseded.
 """
 from __future__ import annotations
 
 import dataclasses
 from collections import Counter
 
-from flask import Blueprint, current_app, jsonify
+from flask import Blueprint, current_app, g, jsonify, request
 
+from agro_mirai.api.audit import write_audit_log
+from agro_mirai.api.errors import ApiError
 from agro_mirai.api.serializers import farmer_to_public_json, to_json
 from agro_mirai.api.session_auth import require_admin
 from agro_mirai.feedback.aggregator import FeedbackAggregator
@@ -39,6 +39,69 @@ def list_fields():
     store = current_app.extensions["data_store"]
     fields = store.list_all_fields()
     return jsonify({"items": [to_json(f) for f in fields]}), 200
+
+
+_FARMER_PATCHABLE = {"name", "preferred_language", "phone", "district", "state"}
+
+
+@admin_bp.patch("/farmers/<farmer_id>")
+@require_admin
+def patch_farmer(farmer_id):
+    store = current_app.extensions["data_store"]
+    farmer = store.get_farmer(farmer_id)
+    if farmer is None:
+        raise ApiError(404, "NOT_FOUND", "Farmer not found")
+    before = farmer
+    body = request.get_json(silent=True) or {}
+    updates = {k: v for k, v in body.items() if k in _FARMER_PATCHABLE}
+    updated = dataclasses.replace(farmer, **updates)
+    saved = store.save_farmer(updated)
+    write_audit_log(store, g.farmer_id, "farmer.update", "farmer", farmer_id, before, saved)
+    return jsonify(farmer_to_public_json(saved)), 200
+
+
+@admin_bp.delete("/farmers/<farmer_id>")
+@require_admin
+def delete_farmer(farmer_id):
+    store = current_app.extensions["data_store"]
+    farmer = store.get_farmer(farmer_id)
+    if farmer is None:
+        raise ApiError(404, "NOT_FOUND", "Farmer not found")
+    store.delete_farmer(farmer_id)
+    write_audit_log(store, g.farmer_id, "farmer.delete", "farmer", farmer_id, farmer, None)
+    return jsonify({"deleted": True}), 200
+
+
+_FIELD_PATCHABLE = {"name", "latitude", "longitude", "area_ha", "elevation_m",
+                     "soil_type", "current_crop", "sown_on"}
+
+
+@admin_bp.patch("/fields/<field_id>")
+@require_admin
+def patch_field(field_id):
+    store = current_app.extensions["data_store"]
+    field = store.get_field_by_id(field_id)
+    if field is None:
+        raise ApiError(404, "NOT_FOUND", "Field not found")
+    before = field
+    body = request.get_json(silent=True) or {}
+    updates = {k: v for k, v in body.items() if k in _FIELD_PATCHABLE}
+    updated = dataclasses.replace(field, **updates)
+    saved = store.save_field(field.farmer_id, updated)
+    write_audit_log(store, g.farmer_id, "field.update", "field", field_id, before, saved)
+    return jsonify(to_json(saved)), 200
+
+
+@admin_bp.delete("/fields/<field_id>")
+@require_admin
+def delete_field_admin(field_id):
+    store = current_app.extensions["data_store"]
+    field = store.get_field_by_id(field_id)
+    if field is None:
+        raise ApiError(404, "NOT_FOUND", "Field not found")
+    store.delete_field(field.farmer_id, field_id)
+    write_audit_log(store, g.farmer_id, "field.delete", "field", field_id, field, None)
+    return jsonify({"deleted": True}), 200
 
 
 @admin_bp.get("/feedback")
