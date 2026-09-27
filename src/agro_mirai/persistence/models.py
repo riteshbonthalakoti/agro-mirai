@@ -166,3 +166,20 @@ class BugReport:
     photo_url: str | None = None
     app_version: str | None = None
     platform: str | None = None
+    status: str = "open"
+
+
+@dataclass
+class AuditLogEntry:
+    """One row per admin write action (Module 50). before_json/after_json
+    are JSON-encoded snapshots of the target record, or None (before is
+    None on create, after is None on delete)."""
+
+    id: str
+    admin_farmer_id: str
+    action: str
+    target_type: str
+    target_id: str
+    created_at: datetime
+    before_json: str | None = None
+    after_json: str | None = None

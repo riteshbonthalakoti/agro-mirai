@@ -18,6 +18,7 @@ from pathlib import Path
 
 from agro_mirai.persistence.models import (
     Advisory,
+    AuditLogEntry,
     BugReport,
     CropRecommendation,
     DiseaseRiskAlert,
@@ -38,6 +39,7 @@ DISEASE_SOURCE_MIGRATION_PATH = ROOT / "migrations" / "sqlite" / "003_disease_al
 PHONE_UNIQUE_MIGRATION_PATH = ROOT / "migrations" / "sqlite" / "005_phone_unique.sql"
 FARMER_PHOTO_MIGRATION_PATH = ROOT / "migrations" / "sqlite" / "006_farmer_photo.sql"
 BUG_REPORTS_MIGRATION_PATH = ROOT / "migrations" / "sqlite" / "009_bug_reports.sql"
+ADMIN_WRITE_MIGRATION_PATH = ROOT / "migrations" / "sqlite" / "010_admin_write_actions.sql"
 
 
 # --------------------------------------------------------------------------
@@ -97,6 +99,7 @@ class SQLiteDataStore:
         self._apply_phone_unique_migration()
         self._apply_farmer_photo_migration()
         self._apply_bug_reports_migration()
+        self._apply_admin_write_migration()
 
     def _apply_bug_reports_migration(self) -> None:
         """Mobile bug-report flow: brand new table, CREATE TABLE/INDEX IF
@@ -104,6 +107,25 @@ class SQLiteDataStore:
         sql = BUG_REPORTS_MIGRATION_PATH.read_text(encoding="utf-8")
         conn = self._conn
         conn.executescript(sql)
+        conn.commit()
+
+    def _apply_admin_write_migration(self) -> None:
+        """Module 50: ALTER TABLE ADD COLUMN (bug_reports.status) has no
+        IF NOT EXISTS in SQLite, applied statement-by-statement with the
+        "duplicate column name" failure tolerated -- same pattern as
+        _apply_auth_migration. audit_log is CREATE TABLE IF NOT EXISTS,
+        safe to re-run via executescript."""
+        sql = ADMIN_WRITE_MIGRATION_PATH.read_text(encoding="utf-8")
+        conn = self._conn
+        for statement in sql.split(";"):
+            statement = statement.strip()
+            if not statement:
+                continue
+            try:
+                conn.execute(statement)
+            except sqlite3.OperationalError as e:
+                if "duplicate column name" not in str(e):
+                    raise
         conn.commit()
 
     def _apply_farmer_photo_migration(self) -> None:
