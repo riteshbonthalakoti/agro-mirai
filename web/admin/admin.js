@@ -107,6 +107,22 @@
 
   function fmt(x, d) { return x == null ? "n/a" : Number(x).toFixed(d == null ? 2 : d); }
 
+  function recentActivity() {
+    var rows = state.scans.map(function (s) {
+      return { type: "Scan", created_at: s.created_at, field_name: s.field_name, detail: s.disease };
+    }).concat(state.advisories.map(function (a) {
+      return { type: "Advisory", created_at: a.created_at, field_name: a.field_name, detail: a.severity };
+    }));
+    rows.sort(function (a, b) { return (b.created_at || "").localeCompare(a.created_at || ""); });
+    rows = rows.slice(0, 20);
+    if (!rows.length) return '<p class="muted">No activity yet.</p>';
+    return '<div class="tablewrap"><table><thead><tr><th>When</th><th>Type</th><th>Field</th><th>Detail</th></tr></thead><tbody>' +
+      rows.map(function (r) {
+        return "<tr><td>" + esc((r.created_at || "").replace("T", " ").slice(0, 16)) + "</td><td>" +
+          esc(r.type) + "</td><td>" + esc(r.field_name) + "</td><td>" + esc(r.detail) + "</td></tr>";
+      }).join("") + "</tbody></table></div>";
+  }
+
   function overview() {
     var fb = state.feedback;
     var rd = fb.rating_distribution || {};
@@ -131,7 +147,8 @@
         bars(counts(state.farmers, function (f) { return f.district; })) + "</div>" +
       '<div class="card"><h3>Feedback ratings</h3>' + bars(ratingRows) + "</div>" +
       '<div class="card"><h3>Feedback by advisory severity</h3>' + bars(sevRows) + "</div>" +
-      "</div>";
+      "</div>" +
+      '<div class="card" style="margin-top:1.25rem"><h3>Recent activity</h3>' + recentActivity() + "</div>";
   }
 
   function farmerList() {
