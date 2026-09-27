@@ -1,6 +1,7 @@
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 import { getAdvisories } from './api';
+import { STRINGS, type Lang } from './i18n';
 import { cacheGet, cacheSet } from './storage';
 
 /** Farm alerts while the app is closed: the OS wakes this task about every 15+ minutes
@@ -11,6 +12,8 @@ import { cacheGet, cacheSet } from './storage';
 export const ALERT_TASK = 'agro-alerts';
 const BG_FIELD_KEY = 'bgField';
 const CHANNEL = 'alerts';
+const DAILY_DIGEST_KEY = 'dailyDigestSentOn'; // 'YYYY-MM-DD', device-local date
+const todayLocal = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
 
 const IN_EXPO_GO = Constants.executionEnvironment === 'storeClient';
 const enabled = !IN_EXPO_GO && Platform.OS === 'android';
@@ -44,6 +47,29 @@ TaskManager?.defineTask(ALERT_TASK, async () => {
       inbox.unshift({ id: `adv-${a.id}`, title, body, severity: a.severity, ts: Date.now(), read: false });
     }
     if (fresh.length) await cacheSet('inbox', inbox.slice(0, 50));
+
+    // Once-a-day digest, independent of the high/severe check above: the
+    // top advisory regardless of severity, so a quiet field still gets a
+    // daily touchpoint. Skipped once today's already sent (idempotent
+    // across the many times WorkManager may run this task per day).
+    const sentOn = await cacheGet<string>(DAILY_DIGEST_KEY);
+    const today = todayLocal();
+    if (sentOn !== today && list.length) {
+      const lang: Lang = (await cacheGet<Lang>('lang')) || 'en';
+      const top = list[0];
+      const title = `${target.name}: ${STRINGS[lang].dailyAdviceTitle}`;
+      const body = (top.body_plain || top.body).slice(0, 140);
+      const id = `daily-${today}-${target.id}`;
+      if (!seen.has(id)) {
+        await Notifications.scheduleNotificationAsync({
+          content: { title, body, color: '#2E7D32', data: { id, severity: top.severity } },
+          trigger: { channelId: CHANNEL } as any,
+        });
+        inbox.unshift({ id, title, body, severity: top.severity, ts: Date.now(), read: false });
+        await cacheSet('inbox', inbox.slice(0, 50));
+      }
+      await cacheSet(DAILY_DIGEST_KEY, today);
+    }
     return BackgroundTask!.BackgroundTaskResult.Success;
   } catch {
     return BackgroundTask!.BackgroundTaskResult.Failed;
