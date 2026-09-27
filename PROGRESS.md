@@ -82,16 +82,16 @@ is now Module 19 and the CNN disease model is now Module 20.)*
 <!-- STATE:START -->
 
 ### Recent commits
+- `6eb961b implement admin write methods in SupabaseDataStore (Module 50)`
+- `40625f6 document PRAGMA foreign_keys dependency in delete_farmer (review fix)`
+- `3454231 add admin write methods to DataStore + SQLiteDataStore (Module 50)`
+- `0b611ca add audit_log table and bug_reports.status column (Module 50) Co-Authored-By: Claude Haiku 4.5 <noreply@anthropic.com>`
+- `bda171d add Admin Dashboard v2 Phase 1 implementation plan`
+- `8e9efd9 add Admin Dashboard v2 Phase 1 design spec`
+- `62fbd35 document Module 48's end-to-end production proof`
+- `8880141 admin dashboard: add recent-activity feed to the overview page`
+- `4b4e61a add admin bird's-eye overview; fix landing page's stale RF/SHAP claims`
 - `5c327a6 save Ask AI conversations and show them on the Advice tab`
-- `300a2be add a once-a-day advice notification`
-- `b6caf69 add a dedicated screen after saving a new field`
-- `6934c1f remove test notification button`
-- `f39496e disable Sarvam API calls by default (demo budget almost gone)`
-- `d534e97 remove unused expo-av dependency`
-- `db7ee6f add module handoff docs and update progress notes`
-- `905967c re-record Telugu tour and welcome audio`
-- `07f922c redesign onboarding, home, data, and scan screens`
-- `c7e8f76 add background notifications for high-severity advisories`
 
 ### Module status
 - **01-foundation**: done

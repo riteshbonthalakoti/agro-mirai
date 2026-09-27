@@ -8,9 +8,11 @@ scope (decisions/0017) was superseded.
 from __future__ import annotations
 
 import dataclasses
+import json
+import time
 from collections import Counter
 
-from flask import Blueprint, current_app, g, jsonify, request
+from flask import Blueprint, Response, current_app, g, jsonify, request
 
 from agro_mirai.api.audit import write_audit_log
 from agro_mirai.api.errors import ApiError
@@ -19,6 +21,51 @@ from agro_mirai.api.session_auth import require_admin
 from agro_mirai.feedback.aggregator import FeedbackAggregator
 
 admin_bp = Blueprint("admin", __name__, url_prefix="/v2/admin")
+
+
+def _bug_report_events(store, poll_interval: float = 2.0, max_iterations: int | None = None,
+                        seen_ids: set | None = None):
+    """Yields SSE-formatted strings, one per newly-seen bug report, by
+    polling list_all_bug_reports and diffing against ids already seen.
+    Kept separate from the Flask route so it can be unit-tested directly
+    without a real streaming HTTP connection or a real sleep."""
+    seen = set(seen_ids) if seen_ids else set()
+    iterations = 0
+    while max_iterations is None or iterations < max_iterations:
+        for report in store.list_all_bug_reports():
+            if report.id not in seen:
+                seen.add(report.id)
+                yield f"data: {json.dumps(to_json(report))}\n\n"
+        iterations += 1
+        if max_iterations is None or iterations < max_iterations:
+            time.sleep(poll_interval)
+
+
+@admin_bp.get("/stream/bug-reports")
+@require_admin
+def stream_bug_reports():
+    store = current_app.extensions["data_store"]
+    # Seed "seen" with every bug report that already exists, so a client
+    # opening the stream doesn't get flooded with history -- only truly
+    # new reports are pushed from here on.
+    seen = {r.id for r in store.list_all_bug_reports()}
+
+    def _stream():
+        # Emit an immediate comment so the response actually starts
+        # streaming (and the WSGI layer's start_response fires) right
+        # away, rather than blocking on the first poll cycle -- which,
+        # with no bug reports yet and no max_iterations cap, could block
+        # indefinitely with nothing ever yielded. Kept in this thin
+        # wrapper (not in _bug_report_events) so the generator's own
+        # unit-tested yield-per-new-report contract is unaffected.
+        yield ": connected\n\n"
+        yield from _bug_report_events(store, poll_interval=3.0, seen_ids=seen)
+
+    return Response(
+        _stream(),
+        mimetype="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
 
 
 @admin_bp.get("/farmers")
