@@ -42,6 +42,30 @@ def test_patch_farmer_updates_fields_and_writes_audit_log():
     assert audit[0].target_id == admin.id
 
 
+def test_patch_farmer_ignores_non_whitelisted_fields():
+    app, client = _app_and_client()
+    store = app.extensions["data_store"]
+    admin = _admin_session(client, store)
+
+    from _otp_helpers import register_and_login
+    register_and_login(client, "+919000000095", name="Target")
+    target = store.get_farmer_by_phone("+919000000095")
+    register_and_login(client, "+919000000090", name="Admin")
+
+    resp = client.patch(
+        f"/v2/admin/farmers/{target.id}",
+        json={"district": "Bellary", "role": "admin", "id": "something-else"},
+    )
+    assert resp.status_code == 200
+    body = resp.get_json()
+    assert body["district"] == "Bellary"
+
+    reloaded = store.get_farmer(target.id)
+    assert reloaded is not None
+    assert reloaded.role != "admin"
+    assert reloaded.id == target.id
+
+
 def test_patch_farmer_404_when_not_found():
     app, client = _app_and_client()
     store = app.extensions["data_store"]
