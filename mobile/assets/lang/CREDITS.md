@@ -4,3 +4,8 @@
 - te: "Tirumala Venkateswara Temple, Tirupati (24338261275).jpg" by Dinesh Kumar (DK) from Bangalore, Karnataka, India -- CC BY-SA 2.0, via Wikimedia Commons (https://commons.wikimedia.org/wiki/File:Tirumala_Venkateswara_Temple,_Tirupati_(24338261275).jpg). Chosen over Charminar per Ritesh's feedback (2026-09-22): Charminar alone under-represents Telugu-speaking people across both Telangana and Andhra Pradesh -- Tirumala is significant to Telugu culture across both states.
 - kn: "Mysore Palace Morning.jpg" by Muhammad Mahdi Karim -- GFDL 1.2, via Wikimedia Commons
 - hi: "Hawa Mahal 2011.jpg" by Marcin Bialek -- CC BY-SA 4.0, via Wikimedia Commons
+
+
+# First-field welcome screen
+
+- field-hero.jpg: "Green Paddy Field in Andhra Pradesh.jpg" by Saishna96 -- CC BY-SA 4.0, via Wikimedia Commons (https://commons.wikimedia.org/wiki/File:Green_Paddy_Field_in_Andhra_Pradesh.jpg). Downscaled to 960px wide.
