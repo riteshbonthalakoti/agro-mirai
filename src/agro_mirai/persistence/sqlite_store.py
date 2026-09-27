@@ -1029,7 +1029,7 @@ class SQLiteDataStore:
         )
 
     # --- BugReport ---
-    def save_bug_report(self, farmer_id: str, report: "BugReport") -> "BugReport":
+    def save_bug_report(self, farmer_id: str, report: BugReport) -> BugReport:
         try:
             self._conn.execute(
                 """
@@ -1059,7 +1059,7 @@ class SQLiteDataStore:
 
     def list_bug_reports_for_farmer(
         self, farmer_id: str, limit: int = 200
-    ) -> list["BugReport"]:
+    ) -> list[BugReport]:
         rows = self._conn.execute(
             "SELECT * FROM bug_reports WHERE farmer_id = ? "
             "ORDER BY created_at DESC LIMIT ?",
@@ -1067,19 +1067,19 @@ class SQLiteDataStore:
         ).fetchall()
         return [self._row_to_bug_report(r) for r in rows]
 
-    def list_all_bug_reports(self, limit: int = 500) -> list["BugReport"]:
+    def list_all_bug_reports(self, limit: int = 500) -> list[BugReport]:
         rows = self._conn.execute(
             "SELECT * FROM bug_reports ORDER BY created_at DESC LIMIT ?", (limit,)
         ).fetchall()
         return [self._row_to_bug_report(r) for r in rows]
 
-    def get_bug_report_by_id(self, bug_report_id: str) -> "BugReport | None":
+    def get_bug_report_by_id(self, bug_report_id: str) -> BugReport | None:
         row = self._conn.execute(
             "SELECT * FROM bug_reports WHERE id = ?", (bug_report_id,)
         ).fetchone()
         return self._row_to_bug_report(row) if row else None
 
-    def update_bug_report_status(self, bug_report_id: str, status: str) -> "BugReport | None":
+    def update_bug_report_status(self, bug_report_id: str, status: str) -> BugReport | None:
         cur = self._conn.execute(
             "UPDATE bug_reports SET status = ? WHERE id = ?", (status, bug_report_id)
         )
@@ -1094,7 +1094,7 @@ class SQLiteDataStore:
         return cur.rowcount > 0
 
     @staticmethod
-    def _row_to_bug_report(row: sqlite3.Row) -> "BugReport":
+    def _row_to_bug_report(row: sqlite3.Row) -> BugReport:
         keys = row.keys()
         return BugReport(
             id=row["id"],
