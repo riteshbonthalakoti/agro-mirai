@@ -808,6 +808,49 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
 
+  /v2/admin/farmers/{farmerId}:
+    patch:
+      summary: 'Admin only: edit a Farmer''s name/preferred_language/phone/district/state. Audited (Module 50).'
+      security: [ { sessionCookie: [] } ]
+      parameters:
+        - name: farmerId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        content:
+          application/json:
+            schema: { type: object, additionalProperties: true }
+      responses:
+        '200':
+          description: The updated Farmer (password_hash stripped).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Farmer' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    delete:
+      summary: 'Admin only: hard-delete a Farmer, cascading their fields/scans/advisories/feedback/bug_reports. Audited (Module 50).'
+      security: [ { sessionCookie: [] } ]
+      parameters:
+        - name: farmerId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Deletion confirmed.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: { deleted: { type: boolean } }
+                required: [deleted]
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
   /v2/admin/fields:
     get:
       summary: 'Admin only: list every Field across every Farmer. Read-only.'
@@ -824,6 +867,142 @@ paths:
                     type: array
                     items: { $ref: '#/components/schemas/Field' }
                 required: [items]
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /v2/admin/fields/{fieldId}:
+    patch:
+      summary: 'Admin only: edit a Field''s attributes. Audited (Module 50).'
+      security: [ { sessionCookie: [] } ]
+      parameters:
+        - { $ref: '#/components/parameters/FieldId' }
+      requestBody:
+        content:
+          application/json:
+            schema: { type: object, additionalProperties: true }
+      responses:
+        '200':
+          description: The updated Field.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Field' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    delete:
+      summary: 'Admin only: hard-delete a Field. Audited (Module 50).'
+      security: [ { sessionCookie: [] } ]
+      parameters:
+        - { $ref: '#/components/parameters/FieldId' }
+      responses:
+        '200':
+          description: Deletion confirmed.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: { deleted: { type: boolean } }
+                required: [deleted]
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /v2/admin/bug-reports:
+    get:
+      summary: 'Admin only: list every BugReport across every Farmer. (Module 50)'
+      security: [ { sessionCookie: [] } ]
+      responses:
+        '200':
+          description: A list of BugReports.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items: { type: object, additionalProperties: true }
+                required: [items]
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /v2/admin/bug-reports/{bugReportId}:
+    patch:
+      summary: 'Admin only: transition a BugReport''s status (open/triaged/in_progress/resolved). Audited (Module 50).'
+      security: [ { sessionCookie: [] } ]
+      parameters:
+        - name: bugReportId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                status: { type: string, enum: [open, triaged, in_progress, resolved] }
+              required: [status]
+      responses:
+        '200':
+          description: The updated BugReport.
+          content:
+            application/json:
+              schema: { type: object, additionalProperties: true }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    delete:
+      summary: 'Admin only: hard-delete a BugReport. Audited (Module 50).'
+      security: [ { sessionCookie: [] } ]
+      parameters:
+        - name: bugReportId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Deletion confirmed.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: { deleted: { type: boolean } }
+                required: [deleted]
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /v2/admin/audit-log:
+    get:
+      summary: 'Admin only: every write action taken through the admin dashboard, newest first. Read-only. (Module 50)'
+      security: [ { sessionCookie: [] } ]
+      responses:
+        '200':
+          description: A list of AuditLogEntry records.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items: { type: object, additionalProperties: true }
+                required: [items]
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /v2/admin/stream/bug-reports:
+    get:
+      summary: 'Admin only: Server-Sent Events stream of newly-created BugReports. (Module 50)'
+      security: [ { sessionCookie: [] } ]
+      responses:
+        '200':
+          description: text/event-stream of newly-created BugReport JSON payloads, one per SSE "data:" frame.
+          content:
+            text/event-stream:
+              schema: { type: string }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
 

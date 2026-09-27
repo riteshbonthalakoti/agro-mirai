@@ -21,6 +21,7 @@ from datetime import datetime, timezone
 
 from agro_mirai.persistence.models import (
     Advisory,
+    AuditLogEntry,
     BugReport,
     CropRecommendation,
     DiseaseRiskAlert,
@@ -172,6 +173,16 @@ class SupabaseDataStore:
                 pairs.append((e, adv))
         return pairs
 
+    def delete_farmer(self, farmer_id: str) -> bool:
+        """Module 50, admin-only. Hard delete; cascades to fields/scans/
+        advisories/feedback/bug_reports via each table's own FK (defined in
+        migrations/postgres, applied out-of-band via the supabase CLI --
+        this store never runs DDL itself)."""
+        if not _is_uuid(farmer_id):
+            return False
+        res = self._client.table("farmers").delete().eq("id", farmer_id).execute()
+        return len(res.data) > 0
+
     @staticmethod
     def _row_to_farmer(row: dict) -> Farmer:
         return Farmer(
@@ -202,6 +213,14 @@ class SupabaseDataStore:
         )
         rows = res.data
         return self._row_to_field(rows[0]) if rows else None
+
+    def get_field_by_id(self, field_id: str) -> Field_ | None:
+        """Module 50, admin-only, unscoped -- the admin dashboard knows a
+        field's id but not always its owning farmer_id up front."""
+        if not _is_uuid(field_id):
+            return None
+        res = self._client.table("fields").select("*").eq("id", field_id).execute()
+        return self._row_to_field(res.data[0]) if res.data else None
 
     def list_fields(self, farmer_id: str, limit: int = 50) -> list[Field_]:
         res = (
@@ -744,6 +763,46 @@ class SupabaseDataStore:
         )
         return [self._row_to_bug_report(r) for r in res.data]
 
+    def list_all_bug_reports(self, limit: int = 500) -> list[BugReport]:
+        """Module 50, admin-only, unscoped across every farmer."""
+        res = (
+            self._client.table("bug_reports")
+            .select("*")
+            .order("created_at", desc=True)
+            .limit(limit)
+            .execute()
+        )
+        return [self._row_to_bug_report(r) for r in res.data]
+
+    def get_bug_report_by_id(self, bug_report_id: str) -> BugReport | None:
+        """Module 50, admin-only, unscoped."""
+        if not _is_uuid(bug_report_id):
+            return None
+        res = self._client.table("bug_reports").select("*").eq("id", bug_report_id).execute()
+        return self._row_to_bug_report(res.data[0]) if res.data else None
+
+    def update_bug_report_status(self, bug_report_id: str, status: str) -> BugReport | None:
+        """Module 50, admin-only. Returns the updated BugReport, or None if
+        bug_report_id does not exist."""
+        if not _is_uuid(bug_report_id):
+            return None
+        res = (
+            self._client.table("bug_reports")
+            .update({"status": status})
+            .eq("id", bug_report_id)
+            .execute()
+        )
+        if not res.data:
+            return None
+        return self._row_to_bug_report(res.data[0])
+
+    def delete_bug_report_by_id(self, bug_report_id: str) -> bool:
+        """Module 50, admin-only. Returns False if it did not exist."""
+        if not _is_uuid(bug_report_id):
+            return False
+        res = self._client.table("bug_reports").delete().eq("id", bug_report_id).execute()
+        return len(res.data) > 0
+
     @staticmethod
     def _row_to_bug_report(row: dict) -> BugReport:
         return BugReport(
@@ -755,7 +814,51 @@ class SupabaseDataStore:
             photo_url=row.get("photo_url"),
             app_version=row.get("app_version"),
             platform=row.get("platform"),
+            status=row.get("status") or "open",
         )
+
+    # --- Audit log ---
+    def save_audit_log_entry(self, entry: AuditLogEntry) -> AuditLogEntry:
+        """Module 50, admin-only. Insert-only -- audit rows are never
+        updated or deleted through this interface."""
+        payload = {
+            "id": entry.id,
+            "admin_farmer_id": entry.admin_farmer_id,
+            "action": entry.action,
+            "target_type": entry.target_type,
+            "target_id": entry.target_id,
+            "before_json": entry.before_json,
+            "after_json": entry.after_json,
+            "created_at": _dt(entry.created_at),
+        }
+        try:
+            self._client.table("audit_log").insert(payload).execute()
+        except Exception as e:  # pragma: no cover - network/PostgREST errors
+            raise ConflictError(str(e)) from e
+        return entry
+
+    def list_audit_log(self, limit: int = 200) -> list[AuditLogEntry]:
+        """Module 50, admin-only. Newest first."""
+        res = (
+            self._client.table("audit_log")
+            .select("*")
+            .order("created_at", desc=True)
+            .limit(limit)
+            .execute()
+        )
+        return [
+            AuditLogEntry(
+                id=r["id"],
+                admin_farmer_id=r["admin_farmer_id"],
+                action=r["action"],
+                target_type=r["target_type"],
+                target_id=r["target_id"],
+                before_json=r.get("before_json"),
+                after_json=r.get("after_json"),
+                created_at=_parse_dt(r["created_at"]),
+            )
+            for r in res.data
+        ]
 
     # --- Health ---
     def ping(self) -> bool:

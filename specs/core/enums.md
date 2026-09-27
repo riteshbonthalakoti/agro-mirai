@@ -155,3 +155,14 @@ message (no category), but not neither.
 - `photo_scan_failed` — AI Scan-specific: the leaf photo scan failed or gave a nonsensical result
 - `login_failed` — OTP/login couldn't be completed
 - `other` — anything else, typically paired with a typed `message`
+
+## `bug_report_status`
+
+Module 50 (admin dashboard v2, Phase 1). Admin-set triage lifecycle on
+`BugReport`, defaulted to `open` for every existing/new report; set via
+`PATCH /v2/admin/bug-reports/{bugReportId}`.
+
+- `open` — not yet looked at
+- `triaged` — an admin has reviewed it and assessed its severity/validity
+- `in_progress` — someone is actively working on it
+- `resolved` — closed out

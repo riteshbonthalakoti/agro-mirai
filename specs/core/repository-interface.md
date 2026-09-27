@@ -186,6 +186,45 @@ def list_feedback_for_farmer(
     Added in Module 13 to support FeedbackAggregator."""
 ```
 
+### Admin write methods (Module 50)
+
+Eight more admin-only, unscoped methods, the same convention design rule
+3 above already established for `list_all_farmers`/`list_all_fields`/
+`list_all_feedback_with_advisories`: none of them filter by `farmer_id`,
+and it is the caller's job (`require_admin`) to gate access, not the
+store's.
+
+```python
+def delete_farmer(farmer_id: str) -> bool:
+    """Module 50, admin-only. Hard delete; cascades to fields/scans/
+    advisories/feedback/bug_reports via each table's own FK. Returns
+    False if the farmer did not exist."""
+
+def get_field_by_id(field_id: str) -> Field | None:
+    """Module 50, admin-only, unscoped -- the admin dashboard knows a
+    field's id but not always its owning farmer_id up front."""
+
+def list_all_bug_reports(limit: int = 500) -> list[BugReport]:
+    """Module 50, admin-only, unscoped across every farmer."""
+
+def get_bug_report_by_id(bug_report_id: str) -> BugReport | None:
+    """Module 50, admin-only, unscoped."""
+
+def update_bug_report_status(bug_report_id: str, status: str) -> BugReport | None:
+    """Module 50, admin-only. Returns the updated BugReport, or None
+    if bug_report_id does not exist."""
+
+def delete_bug_report_by_id(bug_report_id: str) -> bool:
+    """Module 50, admin-only. Returns False if it did not exist."""
+
+def save_audit_log_entry(entry: AuditLogEntry) -> AuditLogEntry:
+    """Module 50, admin-only. Insert-only -- audit rows are never updated
+    or deleted through this interface."""
+
+def list_audit_log(limit: int = 200) -> list[AuditLogEntry]:
+    """Module 50, admin-only. Newest first."""
+```
+
 ### Health
 
 ```python

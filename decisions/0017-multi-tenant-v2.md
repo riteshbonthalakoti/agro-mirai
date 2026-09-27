@@ -124,6 +124,11 @@ method — see `specs/core/repository-interface.md`'s design-rule-3
 addendum for why this is the one documented exception to "every method
 takes a `farmer_id`."
 
+**Superseded in part by `decisions/0030-admin-write-actions.md` (Module
+50)** — the admin dashboard gained real write actions (farmer/field/
+bug-report CRUD, audited). The multi-tenant data model and session-auth
+design in the rest of this ADR are otherwise unchanged.
+
 ## Consequences
 
 - Two live, parallel auth systems (`/v1` shared-key, `/v2` session) —

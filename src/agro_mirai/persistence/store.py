@@ -14,6 +14,7 @@ from typing import Protocol, runtime_checkable
 
 from agro_mirai.persistence.models import (
     Advisory,
+    AuditLogEntry,
     BugReport,
     CropRecommendation,
     DiseaseRiskAlert,
@@ -73,6 +74,45 @@ class DataStore(Protocol):
         """Module 19. Admin-only. Every (FeedbackEntry, Advisory) pair
         system-wide, for FeedbackAggregator.aggregate scoped to
         "all farmers" instead of one."""
+        ...
+
+    def delete_farmer(self, farmer_id: str) -> bool:
+        """Module 50, admin-only. Hard delete; cascades to fields/scans/
+        advisories/feedback/bug_reports via each table's own FK. Returns
+        False if the farmer did not exist."""
+        ...
+
+    def get_field_by_id(self, field_id: str) -> Field_ | None:
+        """Module 50, admin-only, unscoped -- the admin dashboard knows a
+        field's id but not always its owning farmer_id up front."""
+        ...
+
+    def list_all_bug_reports(self, limit: int = 500) -> list[BugReport]:
+        """Module 50, admin-only, unscoped across every farmer."""
+        ...
+
+    def get_bug_report_by_id(self, bug_report_id: str) -> BugReport | None:
+        """Module 50, admin-only, unscoped."""
+        ...
+
+    def update_bug_report_status(
+        self, bug_report_id: str, status: str
+    ) -> BugReport | None:
+        """Module 50, admin-only. Returns the updated BugReport, or None
+        if bug_report_id does not exist."""
+        ...
+
+    def delete_bug_report_by_id(self, bug_report_id: str) -> bool:
+        """Module 50, admin-only. Returns False if it did not exist."""
+        ...
+
+    def save_audit_log_entry(self, entry: AuditLogEntry) -> AuditLogEntry:
+        """Module 50, admin-only. Insert-only -- audit rows are never
+        updated or deleted through this interface."""
+        ...
+
+    def list_audit_log(self, limit: int = 200) -> list[AuditLogEntry]:
+        """Module 50, admin-only. Newest first."""
         ...
 
     # --- Field ---

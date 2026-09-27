@@ -18,6 +18,7 @@ from pathlib import Path
 
 from agro_mirai.persistence.models import (
     Advisory,
+    AuditLogEntry,
     BugReport,
     CropRecommendation,
     DiseaseRiskAlert,
@@ -38,6 +39,7 @@ DISEASE_SOURCE_MIGRATION_PATH = ROOT / "migrations" / "sqlite" / "003_disease_al
 PHONE_UNIQUE_MIGRATION_PATH = ROOT / "migrations" / "sqlite" / "005_phone_unique.sql"
 FARMER_PHOTO_MIGRATION_PATH = ROOT / "migrations" / "sqlite" / "006_farmer_photo.sql"
 BUG_REPORTS_MIGRATION_PATH = ROOT / "migrations" / "sqlite" / "009_bug_reports.sql"
+ADMIN_WRITE_MIGRATION_PATH = ROOT / "migrations" / "sqlite" / "010_admin_write_actions.sql"
 
 
 # --------------------------------------------------------------------------
@@ -97,6 +99,7 @@ class SQLiteDataStore:
         self._apply_phone_unique_migration()
         self._apply_farmer_photo_migration()
         self._apply_bug_reports_migration()
+        self._apply_admin_write_migration()
 
     def _apply_bug_reports_migration(self) -> None:
         """Mobile bug-report flow: brand new table, CREATE TABLE/INDEX IF
@@ -104,6 +107,25 @@ class SQLiteDataStore:
         sql = BUG_REPORTS_MIGRATION_PATH.read_text(encoding="utf-8")
         conn = self._conn
         conn.executescript(sql)
+        conn.commit()
+
+    def _apply_admin_write_migration(self) -> None:
+        """Module 50: ALTER TABLE ADD COLUMN (bug_reports.status) has no
+        IF NOT EXISTS in SQLite, applied statement-by-statement with the
+        "duplicate column name" failure tolerated -- same pattern as
+        _apply_auth_migration. audit_log is CREATE TABLE IF NOT EXISTS,
+        safe to re-run via executescript."""
+        sql = ADMIN_WRITE_MIGRATION_PATH.read_text(encoding="utf-8")
+        conn = self._conn
+        for statement in sql.split(";"):
+            statement = statement.strip()
+            if not statement:
+                continue
+            try:
+                conn.execute(statement)
+            except sqlite3.OperationalError as e:
+                if "duplicate column name" not in str(e):
+                    raise
         conn.commit()
 
     def _apply_farmer_photo_migration(self) -> None:
@@ -375,6 +397,21 @@ class SQLiteDataStore:
         )
         self._conn.commit()
         return cur.rowcount > 0
+
+    def delete_farmer(self, farmer_id: str) -> bool:
+        # Cascades to fields/bug_reports/etc. via each table's ON DELETE
+        # CASCADE FK -- this only fires because PRAGMA foreign_keys = ON
+        # is set on every connection in _new_connection. If that pragma
+        # is ever dropped, this delete silently stops cascading.
+        cur = self._conn.execute("DELETE FROM farmers WHERE id = ?", (farmer_id,))
+        self._conn.commit()
+        return cur.rowcount > 0
+
+    def get_field_by_id(self, field_id: str) -> Field_ | None:
+        row = self._conn.execute(
+            "SELECT * FROM fields WHERE id = ?", (field_id,)
+        ).fetchone()
+        return self._row_to_field(row) if row else None
 
     @staticmethod
     def _row_to_field(row: sqlite3.Row) -> Field_:
@@ -992,7 +1029,7 @@ class SQLiteDataStore:
         )
 
     # --- BugReport ---
-    def save_bug_report(self, farmer_id: str, report: "BugReport") -> "BugReport":
+    def save_bug_report(self, farmer_id: str, report: BugReport) -> BugReport:
         try:
             self._conn.execute(
                 """
@@ -1022,7 +1059,7 @@ class SQLiteDataStore:
 
     def list_bug_reports_for_farmer(
         self, farmer_id: str, limit: int = 200
-    ) -> list["BugReport"]:
+    ) -> list[BugReport]:
         rows = self._conn.execute(
             "SELECT * FROM bug_reports WHERE farmer_id = ? "
             "ORDER BY created_at DESC LIMIT ?",
@@ -1030,8 +1067,35 @@ class SQLiteDataStore:
         ).fetchall()
         return [self._row_to_bug_report(r) for r in rows]
 
+    def list_all_bug_reports(self, limit: int = 500) -> list[BugReport]:
+        rows = self._conn.execute(
+            "SELECT * FROM bug_reports ORDER BY created_at DESC LIMIT ?", (limit,)
+        ).fetchall()
+        return [self._row_to_bug_report(r) for r in rows]
+
+    def get_bug_report_by_id(self, bug_report_id: str) -> BugReport | None:
+        row = self._conn.execute(
+            "SELECT * FROM bug_reports WHERE id = ?", (bug_report_id,)
+        ).fetchone()
+        return self._row_to_bug_report(row) if row else None
+
+    def update_bug_report_status(self, bug_report_id: str, status: str) -> BugReport | None:
+        cur = self._conn.execute(
+            "UPDATE bug_reports SET status = ? WHERE id = ?", (status, bug_report_id)
+        )
+        self._conn.commit()
+        if cur.rowcount == 0:
+            return None
+        return self.get_bug_report_by_id(bug_report_id)
+
+    def delete_bug_report_by_id(self, bug_report_id: str) -> bool:
+        cur = self._conn.execute("DELETE FROM bug_reports WHERE id = ?", (bug_report_id,))
+        self._conn.commit()
+        return cur.rowcount > 0
+
     @staticmethod
-    def _row_to_bug_report(row: sqlite3.Row) -> "BugReport":
+    def _row_to_bug_report(row: sqlite3.Row) -> BugReport:
+        keys = row.keys()
         return BugReport(
             id=row["id"],
             farmer_id=row["farmer_id"],
@@ -1041,7 +1105,40 @@ class SQLiteDataStore:
             photo_url=row["photo_url"],
             app_version=row["app_version"],
             platform=row["platform"],
+            status=(row["status"] if "status" in keys and row["status"] else "open"),
         )
+
+    # --- Audit log ---
+    def save_audit_log_entry(self, entry: AuditLogEntry) -> AuditLogEntry:
+        self._conn.execute(
+            """
+            INSERT INTO audit_log
+                (id, admin_farmer_id, action, target_type, target_id,
+                 before_json, after_json, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                entry.id, entry.admin_farmer_id, entry.action, entry.target_type,
+                entry.target_id, entry.before_json, entry.after_json,
+                _dt_to_text(entry.created_at),
+            ),
+        )
+        self._conn.commit()
+        return entry
+
+    def list_audit_log(self, limit: int = 200) -> list[AuditLogEntry]:
+        rows = self._conn.execute(
+            "SELECT * FROM audit_log ORDER BY created_at DESC LIMIT ?", (limit,)
+        ).fetchall()
+        return [
+            AuditLogEntry(
+                id=r["id"], admin_farmer_id=r["admin_farmer_id"], action=r["action"],
+                target_type=r["target_type"], target_id=r["target_id"],
+                before_json=r["before_json"], after_json=r["after_json"],
+                created_at=_text_to_dt(r["created_at"]),
+            )
+            for r in rows
+        ]
 
     # --- Health ---
     def ping(self) -> bool:
