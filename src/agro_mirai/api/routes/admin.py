@@ -10,6 +10,7 @@ threshold/model-control routes) — see decisions/0017-multi-tenant-v2.md.
 from __future__ import annotations
 
 import dataclasses
+from collections import Counter
 
 from flask import Blueprint, current_app, jsonify
 
@@ -86,3 +87,59 @@ def list_advisories():
             items.append({**to_json(a), "farmer_id": field.farmer_id, "field_name": field.name})
     items.sort(key=lambda i: i["created_at"], reverse=True)
     return jsonify({"items": items}), 200
+
+
+def build_overview(store) -> dict:
+    """Bird's-eye system summary: totals, language/crop distribution, and
+    the most recent activity across every farmer. Shared by the JSON route
+    below and ``admin_ui.dashboard`` so both render the same numbers from
+    one implementation."""
+    farmers = store.list_all_farmers()
+    fields = store.list_all_fields()
+
+    language_counts = Counter(f.preferred_language for f in farmers)
+    crop_counts = Counter(f.current_crop for f in fields if f.current_crop)
+
+    scan_total = 0
+    recent = []
+    for field, alerts in _per_field(store, store.list_disease_risk_alerts, 200):
+        for a in alerts:
+            if a.source in _SCAN_SOURCES:
+                scan_total += 1
+                recent.append(
+                    {
+                        "type": "scan",
+                        "created_at": a.created_at.isoformat(),
+                        "farmer_id": field.farmer_id,
+                        "field_name": field.name,
+                        "detail": a.disease,
+                    }
+                )
+    for field, advisories in _per_field(store, store.list_advisories_for_field, 50):
+        for adv in advisories:
+            recent.append(
+                {
+                    "type": "advisory",
+                    "created_at": adv.created_at.isoformat(),
+                    "farmer_id": field.farmer_id,
+                    "field_name": field.name,
+                    "detail": adv.severity,
+                }
+            )
+    recent.sort(key=lambda i: i["created_at"], reverse=True)
+
+    return {
+        "total_farmers": len(farmers),
+        "total_fields": len(fields),
+        "total_scans": scan_total,
+        "language_distribution": dict(language_counts),
+        "crop_distribution": dict(crop_counts),
+        "recent_activity": recent[:20],
+    }
+
+
+@admin_bp.get("/overview")
+@require_admin
+def overview():
+    store = current_app.extensions["data_store"]
+    return jsonify(build_overview(store)), 200

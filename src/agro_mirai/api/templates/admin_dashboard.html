@@ -5,6 +5,32 @@
 <p><em>Functional, not yet polished — read-only: no write actions exist on this surface (Module 19).</em></p>
 <form method="post" action="{{ url_for('admin_ui.logout') }}"><button type="submit">Log out</button></form>
 
+<h2>Overview</h2>
+<p>
+  Farmers: {{ overview.total_farmers }} &middot;
+  Fields: {{ overview.total_fields }} &middot;
+  Scans: {{ overview.total_scans }}
+</p>
+<table border="1" cellpadding="6">
+  <tr><th>Languages</th><th>Crops</th></tr>
+  <tr>
+    <td>
+      {% for lang, count in overview.language_distribution.items() %}{{ lang }}: {{ count }}<br>{% endfor %}
+    </td>
+    <td>
+      {% for crop, count in overview.crop_distribution.items() %}{{ crop }}: {{ count }}<br>{% endfor %}
+    </td>
+  </tr>
+</table>
+
+<h3>Recent activity</h3>
+<table border="1" cellpadding="6">
+  <tr><th>When</th><th>Type</th><th>Field</th><th>Detail</th></tr>
+  {% for r in overview.recent_activity %}
+  <tr><td>{{ r.created_at }}</td><td>{{ r.type }}</td><td>{{ r.field_name }}</td><td>{{ r.detail }}</td></tr>
+  {% endfor %}
+</table>
+
 <h2>Farmers ({{ farmers|length }})</h2>
 <table border="1" cellpadding="6">
   <tr><th>Name</th><th>Email</th><th>Role</th><th>Fields</th></tr>

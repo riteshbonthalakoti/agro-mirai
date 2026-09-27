@@ -82,16 +82,16 @@ is now Module 19 and the CNN disease model is now Module 20.)*
 <!-- STATE:START -->
 
 ### Recent commits
-- `9cb1d9a voice tests: send audio that looks like a wav so ffmpeg is not needed`
-- `ebf4034 ci: run the onnx service tests only in their own step`
-- `f6e0ae9 remove the old random forest models, the tabular service and shap; version 1.4.0`
-- `fcd83f7 docs: notifications, haptics/sounds, OTP autofill plan`
-- `f37799c ask notification (and other) permissions once at start for already-signed-in users too; test notification button in Me`
-- `4921ac9 haptics and sounds: tap ticks, success/warning/error, shutter, smooth clear (sound+vibration, also empties the tray), sounds on/off switch`
-- `7101643 notifications: real Android notification always (even when app is open), daily 7am reminder with today's advice`
-- `cb9d0e2 leaf scan redesign: in-app camera with square guide, auto-crop+shrink, progress screen, clear result/not-sure/error screens; show server disease advice (translated)`
-- `3bd017a login, me, add field (acres/guntas), advice auto-load, scan tips, empty state; one forecast row per day (replace stale forecasts on refresh)`
-- `90a9cf9 keep-current crop score: no regional penalty, matches details`
+- `5c327a6 save Ask AI conversations and show them on the Advice tab`
+- `300a2be add a once-a-day advice notification`
+- `b6caf69 add a dedicated screen after saving a new field`
+- `6934c1f remove test notification button`
+- `f39496e disable Sarvam API calls by default (demo budget almost gone)`
+- `d534e97 remove unused expo-av dependency`
+- `db7ee6f add module handoff docs and update progress notes`
+- `905967c re-record Telugu tour and welcome audio`
+- `07f922c redesign onboarding, home, data, and scan screens`
+- `c7e8f76 add background notifications for high-severity advisories`
 
 ### Module status
 - **01-foundation**: done

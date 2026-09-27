@@ -15,6 +15,7 @@ import dataclasses
 from flask import Blueprint, current_app, flash, redirect, render_template, request, url_for
 
 from agro_mirai.api.errors import ApiError
+from agro_mirai.api.routes.admin import build_overview
 from agro_mirai.api.serializers import farmer_to_public_json, to_json
 from agro_mirai.api.session_auth import clear_session, issue_session, require_admin
 from agro_mirai.auth.password import verify_password
@@ -69,6 +70,11 @@ def dashboard():
     fields = [to_json(f) for f in store.list_all_fields()]
     pairs = store.list_all_feedback_with_advisories()
     feedback = dataclasses.asdict(FeedbackAggregator.aggregate(pairs))
+    overview = build_overview(store)
     return render_template(
-        "admin_dashboard.html", farmers=farmer_rows, fields=fields, feedback=feedback
+        "admin_dashboard.html",
+        farmers=farmer_rows,
+        fields=fields,
+        feedback=feedback,
+        overview=overview,
     )

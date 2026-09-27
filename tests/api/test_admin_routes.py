@@ -141,3 +141,66 @@ def test_admin_scans_and_advisories_require_admin():
     _register_and_login(client, "+919000000032")
     assert client.get("/v2/admin/scans").status_code == 403
     assert client.get("/v2/admin/advisories").status_code == 403
+
+
+def test_admin_overview_requires_admin():
+    app, client = _app_and_client()
+    assert client.get("/v2/admin/overview").status_code == 401
+    _register_and_login(client, "+919000000040")
+    assert client.get("/v2/admin/overview").status_code == 403
+
+
+def test_admin_overview_aggregates_totals_and_distributions():
+    from datetime import datetime, timezone
+
+    from agro_mirai.persistence.models import Advisory, DiseaseRiskAlert
+
+    app, client = _app_and_client()
+    store = app.extensions["data_store"]
+
+    _register_and_login(client, "+919000000041", name="Farmer A")
+    field_id = client.post(
+        "/v2/fields",
+        json={
+            "name": "Plot O",
+            "latitude": 1.0,
+            "longitude": 1.0,
+            "area_ha": 1.0,
+            "current_crop": "cotton",
+        },
+    ).get_json()["id"]
+    farmer = store.get_farmer_by_phone("+919000000041")
+    now = datetime.now(timezone.utc)
+
+    store.save_disease_risk_alert(
+        farmer.id,
+        DiseaseRiskAlert(
+            id="ov1", field_id=field_id, created_at=now, disease="blight", risk_level="high",
+            confidence=0.9, source="cnn",
+        ),
+    )
+    store.save_advisory(
+        farmer.id,
+        Advisory(
+            id="ov-adv1", field_id=field_id, created_at=now, title="t", body="b",
+            severity="high", language="en",
+        ),
+    )
+    client.post("/v2/auth/logout")
+
+    farmer.role = "admin"
+    store.save_farmer(farmer)
+    _register_and_login(client, "+919000000041", name="Farmer A")
+
+    resp = client.get("/v2/admin/overview")
+    assert resp.status_code == 200
+    body = resp.get_json()
+
+    assert body["total_farmers"] == 1
+    assert body["total_fields"] == 1
+    assert body["total_scans"] == 1
+    assert body["language_distribution"] == {"en": 1}
+    assert body["crop_distribution"] == {"cotton": 1}
+    recent_ids = {(r["type"], r["detail"]) for r in body["recent_activity"]}
+    assert ("scan", "blight") in recent_ids
+    assert ("advisory", "high") in recent_ids

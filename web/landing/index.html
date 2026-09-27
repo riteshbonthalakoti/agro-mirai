@@ -721,14 +721,14 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3c3 3 3 7 0 10-3-3-3-7 0-10Z"/><path d="M12 13v8"/><path d="M8 21h8"/></svg>
         </div>
         <h3>Crop recommendation</h3>
-        <p>A Random Forest model trained on soil N/P/K, pH, and 14/30-day weather aggregates, ranking the best of 22 crop types for the field — with a regional-suitability check that flags picks agronomically unusual for the farmer's district instead of silently trusting the model.</p>
+        <p>Ranks all 22 supported crop types against FAO EcoCrop's own temperature, soil-pH, and soil-texture ranges for the field, plus the field's real 12-month rainfall and a sowing-month calendar — with a regional-suitability check that flags a pick agronomically unusual for the farmer's district instead of silently trusting the model.</p>
       </div>
       <div class="feature-card reveal-card">
         <div class="feature-mark">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.5s6 6.5 6 11a6 6 0 1 1-12 0c0-4.5 6-11 6-11Z"/></svg>
         </div>
         <h3>Irrigation advisory</h3>
-        <p>A real water balance — reference evapotranspiration (Hargreaves-Samani, FAO-56) times a crop coefficient by growth stage, minus recent rainfall — sets the recommended depth in mm. A trained classifier separately sets urgency and the advisory window.</p>
+        <p>A daily FAO-56 root-zone water balance — Penman-Monteith reference evapotranspiration, crop coefficient by growth stage, root depth and soil water-holding capacity — sets both the recommended depth in mm and the urgency from the same numbers, not two models that can disagree.</p>
       </div>
       <div class="feature-card reveal-card">
         <div class="feature-mark">
@@ -781,8 +781,8 @@
         <div class="tl-card">
           <ul>
             <li>Feature vector assembled per field, per request</li>
-            <li>Crop RF &middot; irrigation water balance &middot; disease CNN or rule score</li>
-            <li>SHAP-based explanation attached to each result</li>
+            <li>EcoCrop suitability ranking &middot; FAO-56 water balance &middot; disease CNN or rule score</li>
+            <li>Plain-language rationale attached to every result — the numbers the rule used, not a black box</li>
           </ul>
         </div>
       </div>
@@ -862,27 +862,25 @@
   <div class="container">
     <div class="section-head reveal">
       <div class="kicker">Measured, not claimed</div>
-      <h2>Model results from held-out evaluation</h2>
-      <p>Every figure below comes from a committed evaluation report, run against a genuine held-out split.</p>
+      <h2>Real numbers, not marketing claims</h2>
+      <p>Where a figure comes from a trained model's held-out evaluation, we say so. Where it comes from a rule or a real dataset instead, we say that too — crop and irrigation are transparent methods now, not black-box accuracy scores.</p>
     </div>
     <div class="stat-grid" data-stagger>
-      <div class="stat-card reveal-card">
-        <div class="stat-figure" data-target="99.55" data-suffix="%">0%</div>
-        <div class="stat-bar-track"><span class="stat-bar-fill" data-target="99.55"></span></div>
-        <div class="stat-label">Crop recommendation accuracy</div>
-        <div class="stat-note">RandomForest, held-out split, macro-F1 0.9955</div>
-      </div>
       <div class="stat-card reveal-card">
         <div class="stat-figure" data-target="99.24" data-suffix="%">0%</div>
         <div class="stat-bar-track"><span class="stat-bar-fill" data-target="99.24"></span></div>
         <div class="stat-label">Disease CNN validation accuracy</div>
-        <div class="stat-note">MobileNetV2 on PlantVillage, 38 classes</div>
+        <div class="stat-note">MobileNetV2 on PlantVillage, 38 classes — the only trained model in the pipeline</div>
       </div>
       <div class="stat-card reveal-card">
-        <div class="stat-figure" data-target="72.4" data-suffix="%">0%</div>
-        <div class="stat-bar-track"><span class="stat-bar-fill" data-target="72.4"></span></div>
-        <div class="stat-label">Irrigation urgency accuracy</div>
-        <div class="stat-note">3-class RandomForest, macro-F1 0.58</div>
+        <div class="stat-figure" data-target="22" data-suffix="">0</div>
+        <div class="stat-label">Crop types ranked</div>
+        <div class="stat-note">FAO EcoCrop suitability data, not a trained-model percentage</div>
+      </div>
+      <div class="stat-card reveal-card">
+        <div class="stat-figure" data-target="5" data-suffix="">0</div>
+        <div class="stat-label">Crops verified regionally correct for Bellary</div>
+        <div class="stat-note">Cross-checked against ICAR-CRIDA &amp; state agriculture data, not the model's own opinion</div>
       </div>
       <div class="stat-card reveal-card">
         <div class="stat-langs" id="stat-langs">
