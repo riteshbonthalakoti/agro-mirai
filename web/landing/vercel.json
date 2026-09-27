@@ -4,7 +4,8 @@
   ],
   "rewrites": [
     { "source": "/admin/", "destination": "https://agromirai-admin.vercel.app/index.html" },
-    { "source": "/admin/assets/:path*", "destination": "https://agromirai-admin.vercel.app/assets/:path*" },
+    { "source": "/admin/style.css", "destination": "https://agromirai-admin.vercel.app/style.css" },
+    { "source": "/admin/admin.js", "destination": "https://agromirai-admin.vercel.app/admin.js" },
     { "source": "/admin/favicon.ico", "destination": "https://agromirai-admin.vercel.app/favicon.ico" },
     { "source": "/admin/:path*", "destination": "https://agro-mirai.onrender.com/admin/:path*" },
     { "source": "/v2/:path*", "destination": "https://agro-mirai.onrender.com/v2/:path*" }

@@ -198,3 +198,54 @@ pytest --json-report --json-report-file=.report.json
 `tools/update_state.py` reads `.report.json` for the latest pass/fail
 summary. `.report.json` is gitignored (regenerated per run, not
 version-controlled).
+
+## CI/CD (Module 50)
+
+Two GitHub Actions workflows plus Render's own git integration cover
+the full pipeline — nothing here is manual anymore except a live
+Supabase migration push (deliberately kept manual, see below):
+
+- **`.github/workflows/ci.yml`** ("CI") — runs the full backend test
+  suite, `check_specs.py`, and the CNN/voice service suites on every
+  push/PR to `main`. Unchanged by Module 50.
+- **`.github/workflows/deploy.yml`** ("Deploy (Vercel)", new) — triggers
+  via `workflow_run` on CI's completion, `main` branch only, so a
+  broken build can never reach production. Two jobs, `deploy-admin` and
+  `deploy-landing`, each run `vercel pull` / `vercel build --prod` /
+  `vercel deploy --prebuilt --prod` against `web/admin` and
+  `web/landing` respectively.
+- **Render** (`agro-mirai`, `agro-mirai-cnn`) — already had its own git
+  integration (`autoDeploy: yes`, trigger `commit`) from earlier
+  modules; nothing new needed there, confirmed via
+  `render deploys list <service-id>`.
+- **Supabase migrations** — deliberately **not** automated. `supabase
+  db push` stays a manual CLI step before/alongside a deploy that needs
+  a new migration, per this project's own safety norms around
+  production schema changes. `supabase/migrations/` (CLI-tracked) must
+  stay in sync with `migrations/postgres/*.sql` (this project's own
+  documented-contract convention) — Module 50 found a real gap here
+  (see `decisions/0030-admin-write-actions.md`) where a migration only
+  existed in the latter, so `supabase db push` had nothing to push.
+  Check both whenever adding a schema change.
+
+**Required GitHub repo secrets** (`gh secret list`):
+
+| Secret | Value | Source |
+|---|---|---|
+| `VERCEL_TOKEN` | a Vercel access token | **Currently a short-lived OAuth session token pulled from the local CLI's own auth store on 2026-09-28, expires 2026-09-28 ~06:58 UTC — replace with a real personal access token from https://vercel.com/account/tokens before then**, or every deploy after expiry will fail with a 403. |
+| `VERCEL_ORG_ID` | `team_qa5DQgHjCoaK4byyXuslEOov` | `web/admin/.vercel/project.json` / `web/landing/.vercel/project.json` (same team for both) |
+| `VERCEL_ADMIN_PROJECT_ID` | `prj_gfZvgbYyLwLvWWItQZqQHgg0SjTt` | `web/admin/.vercel/project.json` |
+| `VERCEL_LANDING_PROJECT_ID` | `prj_3NJk8iRVRFFrMJ9mHt7X4QubVQrK` | `web/landing/.vercel/project.json` |
+
+To rotate `VERCEL_TOKEN`: generate a new token at the URL above, then
+`gh secret set VERCEL_TOKEN` (reads from stdin or a local file — never
+paste a token directly into a chat/session transcript).
+
+Not yet automated (documented as a real gap, not an oversight): a
+Supabase-migration-drift CI check (fail the build if
+`supabase migration list --linked` shows any unapplied local
+migration) was scoped for this module but not built — extracting a
+durable Supabase access token from this machine's CLI auth store hit
+the same dead end as Vercel's did (session-scoped, not a real PAT), and
+a fresh PAT generation step wasn't completed in this session. Add it
+the same way `VERCEL_TOKEN` was added, once a token exists.

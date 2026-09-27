@@ -125,9 +125,24 @@ addendum for why this is the one documented exception to "every method
 takes a `farmer_id`."
 
 **Superseded in part by `decisions/0030-admin-write-actions.md` (Module
-50)** — the admin dashboard gained real write actions (farmer/field/
-bug-report CRUD, audited). The multi-tenant data model and session-auth
-design in the rest of this ADR are otherwise unchanged.
+50, deployed to production 2026-09-28)** — the admin dashboard gained
+real write actions at Ritesh's explicit request: `PATCH`/`DELETE` on
+`/v2/admin/farmers/{id}` and `/v2/admin/fields/{id}`, `PATCH`/`DELETE`
+on `/v2/admin/bug-reports/{id}`, and a new `GET /v2/admin/audit-log`.
+The `tests/api/test_admin_routes.py` invariant test this section
+describes ("no write route of any kind") was replaced, not deleted
+silently — it now asserts the exact set of write routes that exist
+(farmers/fields/bug-reports only) and still fails if any *other*
+`/v2/admin` path exposes a non-`GET` method. Every write is logged to a
+new `audit_log` table (`src/agro_mirai/api/audit.py`'s
+`write_audit_log` helper, called explicitly from each route). The
+multi-tenant data model, session-cookie auth mechanism
+(`session_auth.require_admin`), and the single-shared-admin-account
+model in the rest of this ADR are otherwise unchanged — Module 50 did
+not add per-admin accounts, roles, or a different auth scheme, only
+write actions on top of the existing gate. See ADR 0030 for the full
+design and known limitations (unvalidated `phone` field on the farmer
+PATCH whitelist, single shared admin account, SSE-via-polling).
 
 ## Consequences
 

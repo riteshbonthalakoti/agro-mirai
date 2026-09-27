@@ -1,6 +1,6 @@
 # 0030 - Admin dashboard v2: real write actions, audit log
 
-Status: accepted, 2026-09-28. Supersedes the read-only-scope part of 0017 (section 4).
+Status: accepted and deployed, 2026-09-28. Supersedes the read-only-scope part of 0017 (section 4).
 
 ## Why
 
@@ -62,3 +62,19 @@ being deliberately reversed here at Ritesh's explicit request (Module 50).
 - The SSE bug-report stream (`GET /v2/admin/stream/bug-reports`) polls the database
   every few seconds rather than using real pub/sub — fine at this project's scale,
   would need revisiting if bug-report volume or admin count grows significantly.
+
+## Deployment proof (2026-09-28)
+
+Deployed the same day as design: `supabase db push` applied the
+migration live (a real gap was found here — see `PROGRESS.md`'s Module
+50 entry — the CLI-tracked `supabase/migrations` file didn't exist
+yet, only this project's own `migrations/postgres/*.sql` convention
+did); Render auto-deployed the backend on push; a new CD pipeline
+(`docs/TOOLING.md`'s "CI/CD (Module 50)" section) auto-deployed both
+Vercel frontends. Verified live, not just in a test suite: logged into
+`agromirai-admin.vercel.app` with the real admin account, changed a
+real bug report's status through the dashboard, and confirmed via the
+Supabase client that the `bug_reports` row and a matching `audit_log`
+row (correct before/after JSON, correct `admin_farmer_id`) both landed
+in production — the write-path proof the Module 48 audit flagged as
+missing.

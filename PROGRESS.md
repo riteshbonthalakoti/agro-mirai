@@ -65,18 +65,28 @@ the polling generator is a separate, directly-unit-testable function
 streaming connection. `specs/core/openapi.yaml` documents all the new
 paths; `check_specs.py` passes.
 
-**Frontend**: `web/admin` rebuilt from a single vanilla-JS file into a
-React + Vite app (6 tabs: Overview/Farmers/Fields/Bug
-Reports/Feedback/Audit Log), glassmorphism-over-existing-palette theme
-(`#3f6b3a` green pulled from the real landing page, not invented), a
-type-to-confirm delete modal shared by farmers/fields/bug-reports, and
-live SSE updates on the Bug Reports tab. Vite builds with `base: "./"`
-(relative asset paths) specifically so the same bundle works both
-unprefixed at `agromirai-admin.vercel.app/` and prefixed at
-`agromirai.vercel.app/admin/*` — `web/landing/vercel.json` (new)
-reverse-proxies `/admin/*` to the admin deployment, so both public URLs
-serve the identical build with no second deploy and no drift. Verified
-live in a real browser against the actual production backend: login,
+**Frontend — first attempt, reverted same day**: `web/admin` was
+initially rebuilt as a React + Vite app (glassmorphism theme, 6 tabs).
+Ritesh reviewed it live and explicitly disliked it — the original
+plain-HTML/CSS/JS dashboard's stat cards and bar-chart visualizations
+(language/crop/district distributions, feedback ratings) were better
+than the new flat glass-panel look, and he wanted write actions added
+*to that design*, not a replacement UI. Reverted: deleted the React/Vite
+scaffold entirely (`package.json`, `vite.config.js`, `src/`) and
+restored the original `index.html`/`style.css`/`admin.js`/`dev-server.mjs`
+from before this module (`git show <pre-module-50-sha>:web/admin/...`,
+recovered via `refs/original/` after the later history rewrite — see
+below), then added the write actions (farmer/field edit+delete with a
+type-to-confirm overlay, a new Bug Reports tab with live SSE status
+updates, a new Audit Log tab) directly into `admin.js`/`style.css` in
+the same vanilla style and cream/leaf palette as the original, rather
+than as a second framework. No `base: "./"` trick needed since there's
+no hashed build output — `web/landing/vercel.json`'s dual-URL proxy
+instead forwards `style.css`/`admin.js`/`favicon.ico` by their stable
+filenames.
+
+Verified live in a real browser against the actual production backend
+both times (React version, then the reverted vanilla version): login,
 real farmer/field/feedback data render correctly, the delete-confirm
 modal correctly gates on an exact name match, and the not-yet-deployed
 bug-report/SSE/audit-log routes 404 cleanly (expected — production is
@@ -112,14 +122,51 @@ invariant test replaced with one asserting the exact new write surface).
 Full main regression: 570 passed, 0 failed, 39 skipped (up from the
 542/0/33 baseline — no regressions). `check_specs.py`: OK.
 
-**Next recommended step**: deploy this branch — apply the missing
-`supabase/migrations` file + `supabase db push` for the production
-Supabase schema, deploy the Render backend, `vercel deploy --prod` for
-both `agromirai-admin` and `agromirai` (landing, for the new dual-URL
-rewrite) — then re-verify the Bug Reports/Audit Log tabs and the SSE
-stream live against production (they were only verified against the
-not-yet-deployed 404 case in this session). After that, Phase 2 (service
-health/deploy status/feature flags) can start.
+**Deployed, 2026-09-28** (same day, follow-up to the above): the missing
+`supabase/migrations/20260928010000_admin_write_actions.sql` file was
+added and pushed live via `supabase db push` — `bug_reports` (4 real
+rows, untouched) and `audit_log` confirmed via the Supabase client
+after the push. Merged `worktree-admin-dashboard-v2` into `main`,
+pushed; Render auto-deployed the backend (`/health` confirmed ok at the
+new commit). Built a real CD pipeline in the same pass rather than
+deploying by hand again:
+`.github/workflows/deploy.yml` (new) auto-deploys `web/admin` and
+`web/landing` to Vercel via `workflow_run` on CI's green completion,
+`main` only — see `docs/TOOLING.md`'s new "CI/CD (Module 50)" section
+for the full pipeline, the required repo secrets, and one real
+known gap: `VERCEL_TOKEN` is currently a short-lived OAuth session
+token (expires 2026-09-28 ~06:58 UTC), not a real PAT — needs rotating
+before then or deploys start failing.
+
+Verified live end-to-end in production after deploy: logged into
+`agromirai-admin.vercel.app` with Ritesh's real admin account, changed
+a real bug report's status (`open` → `triaged`) through the dashboard,
+and confirmed via the Supabase client that both the `bug_reports` row
+and a new `audit_log` row (correct before/after snapshot, correct
+`admin_farmer_id`) were written — the exact write-path proof Module 48
+flagged as missing, now closed for real, not just tested locally. The
+dual-URL proxy (`agromirai.vercel.app/admin/*`) also verified live —
+needed a second fix beyond the original design: the SPA's
+absolute-path API calls (`/v2/admin/*`, `/admin/login`) resolve against
+whatever origin loads the page, so `web/landing/vercel.json` needed its
+own direct proxy to the Render backend, not just a passthrough to the
+admin Vercel project (which only serves its own root-relative static
+assets) — documented in the commit that fixed it.
+
+**Also this session**: `Co-Authored-By: Claude` trailers were stripped
+from every commit in this repo's history (Ritesh's explicit request,
+confirmed after being warned it rewrites ~50+ commit SHAs) via
+`git filter-branch --msg-filter`, verified byte-identical tree diff
+before force-pushing `main`. `CLAUDE.md` now has a locked rule against
+adding this trailer going forward. Anyone with an existing local clone
+needs to re-clone or hard-reset to the new history.
+
+**Next recommended step**: rotate `VERCEL_TOKEN` to a real PAT before
+2026-09-28 ~06:58 UTC (see `docs/TOOLING.md`). Then Phase 2 (service
+health/deploy status/feature flags) can start. A Supabase
+migration-drift CI check was scoped but not built this session (needs
+a Supabase PAT, same dead end as Vercel's session token) — worth
+adding once a token exists.
 
 ## Open questions
 
