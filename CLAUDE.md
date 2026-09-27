@@ -2,6 +2,14 @@
 
 AI-driven smart agriculture advisory system — VTU Sem 7 capstone, BITM Dept. of AIML.
 
+## Commit style [LOCKED]
+
+Never add a `Co-Authored-By: Claude...` (or similar AI-attribution)
+trailer to any commit message or PR description in this repo. Write
+commit messages the way Ritesh would write them himself: plain,
+first-person-implicit, describing what changed and why — no AI
+attribution lines, no generated-by footers.
+
 ## Hard rules [LOCKED]
 
 1. **CLI-first, always.** Before touching any external service (GitHub,
