@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { ImageBackground, ScrollView, Text, TouchableOpacity, View, useWindowDimensions } from 'react-native';
+import { ActivityIndicator, ImageBackground, ScrollView, Text, TouchableOpacity, View, useWindowDimensions } from 'react-native';
 import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 import * as Location from 'expo-location';
 import { ApiError, Field, createField, patchField } from '../api';
@@ -81,6 +81,7 @@ export function FieldForm({ initial, onDone, onCancel }: { initial?: Field; onDo
   const [cropQ, setCropQ] = useState('');
   const [mode, setMode] = useState<'page' | 'steps'>('page');
   const [step, setStep] = useState(0);
+  const [savedField, setSavedField] = useState<Field | null>(null);
 
   useEffect(() => { cacheGet<'page' | 'steps'>('fieldFormMode').then((m) => m && setMode(m)); }, []);
   const chooseMode = (m: 'page' | 'steps') => { feedback.select(); setMode(m); setStep(0); setErr(''); cacheSet('fieldFormMode', m); };
@@ -169,7 +170,12 @@ export function FieldForm({ initial, onDone, onCancel }: { initial?: Field; onDo
     try {
       const saved = initial ? await patchField(initial.id, payload) : await createField(payload);
       toast.show(initial ? t('fieldUpdated') : t('fieldAdded'), 'ok');
-      onDone(saved);
+      if (initial) {
+        onDone(saved); // editing an existing field: no need for the new-field ready screen
+      } else {
+        feedback.success();
+        setSavedField(saved);
+      }
     } catch (e) {
       const ae = e as ApiError;
       setErr(ae.isNetwork ? t('cantReachServer') : ae.message);
@@ -334,7 +340,6 @@ export function FieldForm({ initial, onDone, onCancel }: { initial?: Field; onDo
   );
 
   const errBox = err ? <View style={{ marginTop: S.md }}><Banner text={err} kind="error" /></View> : null;
-  const fetching = busy && !initial ? <View style={{ marginTop: S.md }}><Banner text={t('fetchingFieldData')} /></View> : null;
 
   const primary = (label: string, onPress: () => void, kind: 'primary' | 'secondary' = 'primary', flex?: number) => (
     <TouchableOpacity
@@ -346,6 +351,35 @@ export function FieldForm({ initial, onDone, onCancel }: { initial?: Field; onDo
       <Text style={{ fontSize: 19, fontWeight: '800', color: kind === 'primary' ? '#fff' : C.accent }}>{label}</Text>
     </TouchableOpacity>
   );
+
+  // New-field save/fetch: a dedicated screen, not the form, so nothing here can
+  // be edited mid-fetch and the user has a deliberate confirmation step before
+  // landing on the new field's advice (module-47 UX feedback -- editable
+  // form + auto-jump felt jarring).
+  if (!initial && (busy || savedField)) {
+    const ready = !!savedField;
+    return (
+      <View style={{ flex: 1, backgroundColor: C.bg }}>
+        {hero}
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: S.xl }}>
+          <View style={{ width: 88, height: 88, borderRadius: 44, backgroundColor: ready ? C.accent : '#E4EFD9', alignItems: 'center', justifyContent: 'center', marginBottom: S.lg }}>
+            {ready ? <Icon name="check" size={44} color="#fff" /> : <ActivityIndicator size="large" color={C.accent} />}
+          </View>
+          <Text style={{ fontSize: 22, fontWeight: '800', color: C.text, textAlign: 'center' }}>
+            {ready ? t('fieldReadyTitle') : t('fieldAdded')}
+          </Text>
+          <Text style={{ fontSize: 16, lineHeight: 23, color: C.muted, textAlign: 'center', marginTop: S.sm }}>
+            {ready ? t('fieldReadySub') : t('fetchingFieldData')}
+          </Text>
+        </View>
+        {ready ? (
+          <View style={{ padding: S.lg, paddingBottom: S.xl }}>
+            {primary(t('continue'), () => onDone(savedField!))}
+          </View>
+        ) : null}
+      </View>
+    );
+  }
 
   if (mode === 'steps') {
     const cur = [placeQ, sizeQ, cropQn, plantedQ, soilQ][step];
@@ -362,7 +396,6 @@ export function FieldForm({ initial, onDone, onCancel }: { initial?: Field; onDo
         <ScrollView contentContainerStyle={{ paddingHorizontal: S.lg, paddingBottom: S.xl }} keyboardShouldPersistTaps="handled">
           {cur}
           {errBox}
-          {fetching}
           <View style={{ marginTop: S.lg }}>{modeSwitch}</View>
         </ScrollView>
         <View style={{ flexDirection: 'row', gap: S.md, padding: S.lg, paddingBottom: S.xl, borderTopWidth: 1, borderTopColor: C.border, backgroundColor: C.bg }}>
@@ -385,7 +418,6 @@ export function FieldForm({ initial, onDone, onCancel }: { initial?: Field; onDo
           {plantedQ}
           {soilQ}
           {errBox}
-          {fetching}
           <View style={{ marginTop: S.xl }}>{primary(t('saveField'), submit)}</View>
           {onCancel ? <View style={{ marginTop: S.md }}>{primary(t('cancel'), onCancel, 'secondary')}</View> : null}
         </View>
