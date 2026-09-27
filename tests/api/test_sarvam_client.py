@@ -22,6 +22,7 @@ def _resp(status=200, body=None):
 
 @pytest.fixture
 def keys(monkeypatch):
+    monkeypatch.setenv("SARVAM_DISABLED", "0")
     monkeypatch.setenv("SARVAM_API_KEY_1", "k1")
     monkeypatch.setenv("SARVAM_API_KEY_2", "k2")
 

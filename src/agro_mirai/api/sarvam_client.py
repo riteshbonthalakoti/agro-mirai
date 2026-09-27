@@ -38,6 +38,10 @@ _TTS_MAX_CHARS = 450
 
 
 def sarvam_keys() -> list[str]:
+    # hard kill switch: Ritesh is protecting a nearly-exhausted demo budget
+    # (2026-09-27). Set SARVAM_DISABLED=0 to re-enable once he says so.
+    if os.environ.get("SARVAM_DISABLED", "1").strip().lower() not in ("0", "false", ""):
+        return []
     keys = [os.environ.get(f"SARVAM_API_KEY_{i}", "").strip() for i in (1, 2, 3)]
     single = os.environ.get("SARVAM_API_KEY", "").strip()
     return [k for k in [*keys, single] if k]
