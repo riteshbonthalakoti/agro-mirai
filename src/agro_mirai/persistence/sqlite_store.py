@@ -398,6 +398,17 @@ class SQLiteDataStore:
         self._conn.commit()
         return cur.rowcount > 0
 
+    def delete_farmer(self, farmer_id: str) -> bool:
+        cur = self._conn.execute("DELETE FROM farmers WHERE id = ?", (farmer_id,))
+        self._conn.commit()
+        return cur.rowcount > 0
+
+    def get_field_by_id(self, field_id: str) -> Field_ | None:
+        row = self._conn.execute(
+            "SELECT * FROM fields WHERE id = ?", (field_id,)
+        ).fetchone()
+        return self._row_to_field(row) if row else None
+
     @staticmethod
     def _row_to_field(row: sqlite3.Row) -> Field_:
         return Field_(
@@ -1052,8 +1063,35 @@ class SQLiteDataStore:
         ).fetchall()
         return [self._row_to_bug_report(r) for r in rows]
 
+    def list_all_bug_reports(self, limit: int = 500) -> list["BugReport"]:
+        rows = self._conn.execute(
+            "SELECT * FROM bug_reports ORDER BY created_at DESC LIMIT ?", (limit,)
+        ).fetchall()
+        return [self._row_to_bug_report(r) for r in rows]
+
+    def get_bug_report_by_id(self, bug_report_id: str) -> "BugReport | None":
+        row = self._conn.execute(
+            "SELECT * FROM bug_reports WHERE id = ?", (bug_report_id,)
+        ).fetchone()
+        return self._row_to_bug_report(row) if row else None
+
+    def update_bug_report_status(self, bug_report_id: str, status: str) -> "BugReport | None":
+        cur = self._conn.execute(
+            "UPDATE bug_reports SET status = ? WHERE id = ?", (status, bug_report_id)
+        )
+        self._conn.commit()
+        if cur.rowcount == 0:
+            return None
+        return self.get_bug_report_by_id(bug_report_id)
+
+    def delete_bug_report_by_id(self, bug_report_id: str) -> bool:
+        cur = self._conn.execute("DELETE FROM bug_reports WHERE id = ?", (bug_report_id,))
+        self._conn.commit()
+        return cur.rowcount > 0
+
     @staticmethod
     def _row_to_bug_report(row: sqlite3.Row) -> "BugReport":
+        keys = row.keys()
         return BugReport(
             id=row["id"],
             farmer_id=row["farmer_id"],
@@ -1063,7 +1101,40 @@ class SQLiteDataStore:
             photo_url=row["photo_url"],
             app_version=row["app_version"],
             platform=row["platform"],
+            status=(row["status"] if "status" in keys and row["status"] else "open"),
         )
+
+    # --- Audit log ---
+    def save_audit_log_entry(self, entry: AuditLogEntry) -> AuditLogEntry:
+        self._conn.execute(
+            """
+            INSERT INTO audit_log
+                (id, admin_farmer_id, action, target_type, target_id,
+                 before_json, after_json, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                entry.id, entry.admin_farmer_id, entry.action, entry.target_type,
+                entry.target_id, entry.before_json, entry.after_json,
+                _dt_to_text(entry.created_at),
+            ),
+        )
+        self._conn.commit()
+        return entry
+
+    def list_audit_log(self, limit: int = 200) -> list[AuditLogEntry]:
+        rows = self._conn.execute(
+            "SELECT * FROM audit_log ORDER BY created_at DESC LIMIT ?", (limit,)
+        ).fetchall()
+        return [
+            AuditLogEntry(
+                id=r["id"], admin_farmer_id=r["admin_farmer_id"], action=r["action"],
+                target_type=r["target_type"], target_id=r["target_id"],
+                before_json=r["before_json"], after_json=r["after_json"],
+                created_at=_text_to_dt(r["created_at"]),
+            )
+            for r in rows
+        ]
 
     # --- Health ---
     def ping(self) -> bool:
