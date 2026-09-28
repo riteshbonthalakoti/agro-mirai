@@ -1037,7 +1037,10 @@ if (!prefersReducedMotion && typeof Lenis !== 'undefined') {
 })();
 
 /* nav goes solid after scrolling past the hero; a thin progress bar up top
-   fills as the visitor scrolls down the page */
+   fills as the visitor scrolls down the page. Uses Lenis's own 'scroll'
+   event when active, same reasoning as the hero parallax below --
+   staying on native window 'scroll' here would make the progress bar
+   visibly lag the actual (Lenis-smoothed) scroll position. */
 (function(){
   var nav = document.getElementById('site-nav');
   var bar = document.getElementById('scroll-progress');
@@ -1050,7 +1053,11 @@ if (!prefersReducedMotion && typeof Lenis !== 'undefined') {
       bar.style.width = pct + '%';
     }
   }
-  window.addEventListener('scroll', onScroll, { passive:true });
+  if (typeof lenis !== 'undefined' && lenis) {
+    lenis.on('scroll', onScroll);
+  } else {
+    window.addEventListener('scroll', onScroll, { passive:true });
+  }
   onScroll();
 })();
 
@@ -1171,17 +1178,19 @@ if (!prefersReducedMotion && typeof Lenis !== 'undefined') {
 /* Hero parallax: the background photo and the floating stat chips move at
    a fraction of real scroll speed, so the image visibly scrolls (just
    slower than the text) instead of the old fixed-background trick that
-   read as frozen. rAF-throttled scroll listener, not Lenis-dependent --
-   works identically with or without Lenis active. */
+   read as frozen. Driven by Lenis's own 'scroll' event when Lenis is
+   active -- NOT the native window 'scroll' event, which fires on the
+   browser's own throttled schedule and visibly lags a frame or more
+   behind Lenis's actual smoothed position, producing exactly the
+   stutter/lag-behind-the-text feel this was reported as. Falls back to
+   a plain rAF-throttled native listener only when Lenis isn't running. */
 (function(){
   if (prefersReducedMotion) return;
   var heroBg = document.getElementById('hero-bg');
   var hero = document.getElementById('hero');
   var chips = document.querySelectorAll('.float-chip');
   if (!heroBg || !hero) return;
-  var ticking = false;
   function update(){
-    ticking = false;
     var rect = hero.getBoundingClientRect();
     if (rect.bottom < 0 || rect.top > window.innerHeight) return; // hero off-screen, skip work
     var scrolled = -rect.top; // how far we've scrolled into the hero
@@ -1191,10 +1200,14 @@ if (!prefersReducedMotion && typeof Lenis !== 'undefined') {
       chip.style.transform = 'translateY(' + (scrolled * speed) + 'px)';
     });
   }
-  function onScroll(){
-    if (!ticking) { requestAnimationFrame(update); ticking = true; }
+  if (lenis) {
+    lenis.on('scroll', update);
+  } else {
+    var ticking = false;
+    window.addEventListener('scroll', function(){
+      if (!ticking) { requestAnimationFrame(function(){ ticking = false; update(); }); ticking = true; }
+    }, { passive: true });
   }
-  window.addEventListener('scroll', onScroll, { passive: true });
   update();
 })();
 
