@@ -158,7 +158,7 @@
     border-color:var(--line);
     box-shadow:0 10px 26px rgba(43,35,24,0.10);
   }
-  .brand{display:flex; align-items:center; gap:10px;}
+  .brand{display:flex; align-items:center; gap:10px; text-decoration:none; cursor:pointer;}
   .brand img{width:32px; height:32px; object-fit:contain; filter:drop-shadow(0 1px 4px rgba(0,0,0,0.45));}
   .brand-word{font-size:1.08rem; font-weight:600; color:#fff; letter-spacing:0.01em; transition:color .35s ease;}
   .brand-word span{color:#bfe0b6;}
@@ -646,10 +646,10 @@
 <div class="scroll-progress" id="scroll-progress"></div>
 
 <nav id="site-nav">
-  <div class="brand">
+  <a class="brand" href="#hero" aria-label="AGRO MIRAI — back to top">
     <img src="./assets/logo-mark.png" alt="AGRO MIRAI logo">
     <div class="brand-word">AGRO <span>MIRAI</span></div>
-  </div>
+  </a>
   <ul class="nav-links">
     <li><a href="#features">What it does</a></li>
     <li><a href="#how">How it works</a></li>
