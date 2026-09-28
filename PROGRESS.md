@@ -332,16 +332,16 @@ is now Module 19 and the CNN disease model is now Module 20. See the
 <!-- STATE:START -->
 
 ### Recent commits
-- `92e126d fix quoted type-hint lint nit on new admin write methods (Module 50)`
-- `031359b rebuild web/admin as a React + Vite app; add dual-URL Vercel proxy (Module 50)`
-- `f8b1fc8 document admin write actions in openapi.yaml and a new ADR (Module 50)`
-- `9eb8073 add SSE live bug-report stream (Module 50)`
-- `8569e09 add smoke tests for GET /v2/admin/audit-log (reviewer finding)`
-- `ebc6778 add bug-report write routes and audit-log read route (Module 50)`
-- `a2370aa add test for farmer PATCH whitelist safety (role/id not escalatable)`
-- `724ddf8 add farmer/field write routes with audit logging (Module 50)`
-- `6eb961b implement admin write methods in SupabaseDataStore (Module 50)`
-- `40625f6 document PRAGMA foreign_keys dependency in delete_farmer (review fix)`
+- `8842dd1 document Module 49/50/51/52 numbering discrepancy and Module 51 completion state`
+- `fb12ded mobile: fix final-review findings -- stale timestamps, AdviceTab field-switch bug, reconnect refresh, bug-form scroll, misc offline-write coverage`
+- `25a6d4a mobile: complete bug-report flow with screen context, recent errors, and photo attachment`
+- `5338484 mobile: fix offline scan message never reaching the screen for kind=network`
+- `1dbe506 mobile: show scan history's last-updated time and fail scan submission honestly offline`
+- `2d25cf9 mobile: guard offline advisory replay against wrong-language TTS, clarify it's on-device resynthesis not cached audio`
+- `59e11ce mobile: cache advisory history and last-played voice audio for offline use`
+- `65ea3bd mobile: route write-action errors through classifyError/errorText consistently`
+- `d50078a mobile: local rolling error log and top-level crash boundary`
+- `5e267ab mobile: add classifyError and a distinct offline-write error message`
 
 ### Module status
 - **01-foundation**: done
