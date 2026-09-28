@@ -196,9 +196,13 @@
      viewport and read as "frozen" rather than smooth */
   .hero-bg{
     position:absolute; z-index:0; top:-15%; left:0; right:0; height:130%;
+    /* a warm soil-brown/leaf-green duotone (brand colors, not flat gray)
+       plus a soft glow behind the headline -- replaces a desaturated
+       dark-gray wash that read as generic/flat */
     background-image:
-      linear-gradient(100deg, rgba(12,16,10,0.72) 0%, rgba(12,16,10,0.5) 32%, rgba(12,16,10,0.18) 58%, rgba(12,16,10,0.32) 100%),
-      linear-gradient(180deg, rgba(10,12,8,0.35) 0%, rgba(10,12,8,0) 30%, rgba(10,12,8,0) 70%, rgba(10,12,8,0.4) 100%),
+      radial-gradient(120% 90% at 15% 30%, rgba(93,143,86,0.22) 0%, transparent 55%),
+      linear-gradient(100deg, rgba(36,29,19,0.82) 0%, rgba(36,29,19,0.58) 32%, rgba(36,29,19,0.15) 58%, rgba(36,29,19,0.38) 100%),
+      linear-gradient(180deg, rgba(24,19,12,0.4) 0%, rgba(24,19,12,0) 30%, rgba(24,19,12,0) 68%, rgba(24,19,12,0.48) 100%),
       url('./assets/hero-farmer.jpg');
     background-size:cover;
     background-position:center 30%;
@@ -207,12 +211,12 @@
   @media (max-width:900px){
     .hero-bg{
       background-image:
-        linear-gradient(180deg, rgba(10,12,8,0.6) 0%, rgba(10,12,8,0.15) 34%, rgba(10,12,8,0.1) 55%, rgba(10,12,8,0.72) 100%),
+        radial-gradient(140% 100% at 50% 15%, rgba(93,143,86,0.18) 0%, transparent 50%),
+        linear-gradient(180deg, rgba(24,19,12,0.62) 0%, rgba(24,19,12,0.18) 34%, rgba(24,19,12,0.12) 55%, rgba(24,19,12,0.75) 100%),
         url('./assets/hero-farmer.jpg');
       background-position:78% 18%;
     }
     .hero{padding-top:130px;}
-    .float-chip{display:none;}
   }
   .hero-panel{
     max-width:600px;
@@ -240,6 +244,10 @@
     margin:0 0 18px;
     text-shadow:0 2px 30px rgba(0,0,0,0.35);
     letter-spacing:-0.01em;
+    /* lets the browser choose even line breaks instead of leaving a
+       lone word like "your" stranded on its own line; degrades to
+       normal wrapping in browsers that don't support it yet */
+    text-wrap:balance;
   }
   .hero h1 em{
     font-style:normal;
@@ -301,31 +309,6 @@
   .lw-dots{display:flex; gap:6px;}
   .lw-dots span{width:5px; height:5px; border-radius:50%; background:rgba(255,255,255,0.3); transition:background .3s;}
   .lw-dots span.is-active{background:#fff;}
-
-  /* floating glass data chips over the hero photo — depth, not decoration */
-  .float-chip{
-    position:absolute; z-index:2;
-    background:rgba(255,255,255,0.14);
-    border:1px solid rgba(255,255,255,0.32);
-    backdrop-filter:blur(14px) saturate(160%);
-    -webkit-backdrop-filter:blur(14px) saturate(160%);
-    border-radius:14px;
-    padding:12px 16px;
-    box-shadow:0 16px 40px rgba(10,8,4,0.28);
-    color:#fff;
-    animation:chipfloat 6s ease-in-out infinite;
-  }
-  .float-chip .fc-k{font-size:0.68rem; text-transform:uppercase; letter-spacing:0.08em; color:rgba(255,255,255,0.7); margin-bottom:3px;}
-  .float-chip .fc-v{font-family:'Fraunces', serif; font-size:1.15rem; font-weight:600;}
-  .float-chip .fc-v small{font-size:0.62em; font-weight:500; color:rgba(255,255,255,0.75);}
-  .chip-1{right:8%; top:16%; animation-delay:0s;}
-  .chip-2{right:2%; top:46%; animation-delay:1.4s;}
-  .chip-3{right:14%; top:73%; animation-delay:2.8s;}
-  @keyframes chipfloat{
-    0%,100%{transform:translateY(0);}
-    50%{transform:translateY(-12px);}
-  }
-  @media (max-width:980px){ .float-chip{display:none;} }
 
   .scroll-cue{
     position:absolute; left:50%; bottom:26px; transform:translateX(-50%);
@@ -689,18 +672,6 @@
 
 <header class="hero" id="hero">
   <div class="hero-bg" id="hero-bg"></div>
-  <div class="float-chip chip-1">
-    <div class="fc-k">Soil pH</div>
-    <div class="fc-v">6.8 <small>lab report</small></div>
-  </div>
-  <div class="float-chip chip-2">
-    <div class="fc-k">Irrigation ET0</div>
-    <div class="fc-v">4.9 <small>mm / day</small></div>
-  </div>
-  <div class="float-chip chip-3">
-    <div class="fc-k">Disease risk</div>
-    <div class="fc-v">Moderate</div>
-  </div>
   <div class="container">
     <div class="hero-panel">
       <span class="eyebrow"><span class="dot"></span>Built for Indian farms</span>
@@ -1175,10 +1146,10 @@ if (!prefersReducedMotion && typeof Lenis !== 'undefined') {
   document.querySelectorAll('.stat-card').forEach(function(card){ statIo.observe(card); });
 })();
 
-/* Hero parallax: the background photo and the floating stat chips move at
-   a fraction of real scroll speed, so the image visibly scrolls (just
-   slower than the text) instead of the old fixed-background trick that
-   read as frozen. Driven by Lenis's own 'scroll' event when Lenis is
+/* Hero parallax: the background photo moves at a fraction of real scroll
+   speed, so it visibly scrolls (just slower than the text) instead of
+   the old fixed-background trick that read as frozen. Driven by Lenis's
+   own 'scroll' event when Lenis is
    active -- NOT the native window 'scroll' event, which fires on the
    browser's own throttled schedule and visibly lags a frame or more
    behind Lenis's actual smoothed position, producing exactly the
@@ -1188,17 +1159,12 @@ if (!prefersReducedMotion && typeof Lenis !== 'undefined') {
   if (prefersReducedMotion) return;
   var heroBg = document.getElementById('hero-bg');
   var hero = document.getElementById('hero');
-  var chips = document.querySelectorAll('.float-chip');
   if (!heroBg || !hero) return;
   function update(){
     var rect = hero.getBoundingClientRect();
     if (rect.bottom < 0 || rect.top > window.innerHeight) return; // hero off-screen, skip work
     var scrolled = -rect.top; // how far we've scrolled into the hero
     heroBg.style.transform = 'translateY(' + (scrolled * 0.3) + 'px)';
-    chips.forEach(function(chip, i){
-      var speed = 0.12 + i * 0.05; // each chip drifts at a slightly different rate for depth
-      chip.style.transform = 'translateY(' + (scrolled * speed) + 'px)';
-    });
   }
   if (lenis) {
     lenis.on('scroll', update);
