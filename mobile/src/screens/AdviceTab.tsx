@@ -12,17 +12,17 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import { RecordingPresets, requestRecordingPermissionsAsync, setAudioModeAsync, useAudioRecorder } from 'expo-audio';
-import { Advisory, ApiError, AskResult, askByVoice, getAdvisories, sendFeedback } from '../api';
-import { playAdvisory, playBase64, stopAudio } from '../audio';
+import { Advisory, ApiError, AskResult, askByVoice, getAdvisories, isOnline, sendFeedback } from '../api';
+import { playAdvisory, playBase64, speakOnDevice, stopAudio } from '../audio';
 import { Conversation, getConversations } from '../conversations';
 import { fmtDate, levelLabel, useApp } from '../ctx';
 import { classifyError } from '../errors';
 import { logError } from '../errorLog';
 import { errorText, useLoad, useTranslated } from '../hooks';
-import { formatTime } from '../storage';
+import { cacheGet, cacheSet, formatTime } from '../storage';
 import { C, levelColor, S } from '../theme';
 import { useToast } from '../toast';
-import { Badge, Banner, Btn, Chip, Input, Muted, st } from '../ui';
+import { Badge, Banner, Btn, Chip, Input, LastUpdated, Muted, st } from '../ui';
 import Svg, { Circle, Defs, LinearGradient, Path, Rect, Stop } from 'react-native-svg';
 import { Icon, IconName } from '../../icons';
 import { VoiceMode } from '../components/VoiceMode';
@@ -49,9 +49,22 @@ function AdvisoryCard({ a }: { a: Advisory }) {
   const setPlay = (v: boolean) => { playingRef.current = v; setPlaying(v); };
 
   const start = async () => {
-    setNote(''); setPlay(true);
+    setNote('');
     const shown = out[1] || plain;
+    if (!isOnline()) {
+      const cached = await cacheGet<boolean>(`voice:${a.id}`);
+      if (!cached) {
+        toast.show(errorText(t, new ApiError(0, 'offline'), { write: true }), 'error');
+        return;
+      }
+      setPlay(true);
+      const ok = await speakOnDevice(shown, lang, () => setPlay(false));
+      if (!ok) { setPlay(false); setNote(t('voiceTextOnly')); toast.show(t('voiceTextOnly'), 'error'); }
+      return;
+    }
+    setPlay(true);
     const how = await playAdvisory(a.id, lang, shown, lang === 'en' || state === 'done', () => setPlay(false));
+    if (how === 'server' || how === 'device') cacheSet(`voice:${a.id}`, true);
     if (how === 'device') { setNote(t('voiceFallback')); toast.show(t('voiceFallbackToast')); }
     if (how === 'text-only') { setPlay(false); setNote(t('voiceTextOnly')); toast.show(t('voiceTextOnly'), 'error'); }
   };
@@ -280,50 +293,36 @@ export function AdviceTab() {
   const id = field?.id;
   const [subTab, setSubTab] = useState<'recs' | 'questions'>('recs');
   const [questionsReload, setQuestionsReload] = useState(0);
-  const [advisories, setAdvisories] = useState<Advisory[] | null>(null);
-  const [loaded, setLoaded] = useState(false);
+  const advList = useLoad(id ? `adv:${id}` : null, () => getAdvisories(id!, false), [id]);
   const [creating, setCreating] = useState(false);
   const [createErr, setCreateErr] = useState('');
-  const [refreshing, setRefreshing] = useState(false);
 
   // open with real content: show saved advice, and if there is none yet make today's once
   // (before, the tab was blank until the farmer found and pressed the button)
   const autoFor = useRef<string | null>(null);
   useEffect(() => {
-    if (!id || autoFor.current === id) return;
+    if (!id || autoFor.current === id || advList.loading || !advList.data) return;
     autoFor.current = id;
-    (async () => {
-      try {
-        const data = await getAdvisories(id, false);
-        setAdvisories(data);
-        setLoaded(true);
-        if (data.length === 0) load(true);
-      } catch {
-        // the button below still works
-      }
-    })();
+    if (advList.data.length === 0) generate();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id]);
+  }, [id, advList.loading, advList.data]);
 
   const [showOlder, setShowOlder] = useState(false);
-  const load = async (generate: boolean) => {
+  const generate = async () => {
     if (!id) return;
     setCreateErr('');
-    if (generate) setCreating(true);
-    else setRefreshing(true);
+    setCreating(true);
     try {
-      const data = await getAdvisories(id, generate);
-      setAdvisories(data);
-      setLoaded(true);
+      await getAdvisories(id, true);
+      advList.reload();
     } catch (e) {
       setCreateErr(errorText(t, e as ApiError));
     } finally {
       setCreating(false);
-      setRefreshing(false);
     }
   };
 
-  const sorted = [...(advisories || [])].sort((x, y) => (x.created_at < y.created_at ? 1 : -1));
+  const sorted = [...(advList.data || [])].sort((x, y) => (x.created_at < y.created_at ? 1 : -1));
   const older = sorted.slice(1, 6);
 
   const segTab = (key: 'recs' | 'questions', label: string) => (
@@ -348,18 +347,19 @@ export function AdviceTab() {
       {subTab === 'recs' ? (
         <ScrollView
           contentContainerStyle={{ padding: S.lg, paddingTop: S.md, paddingBottom: 120 }}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => loaded && load(false)} />}
+          refreshControl={<RefreshControl refreshing={advList.loading} onRefresh={() => advList.reload()} />}
           keyboardShouldPersistTaps="handled"
         >
           <Text style={{ fontSize: 13, fontWeight: '800', letterSpacing: 1, color: C.muted, marginBottom: S.sm }}>{t('adviceForToday').toUpperCase()}</Text>
+          <LastUpdated at={advList.lastUpdatedAt} stale={!!advList.error} t={t} />
           {createErr ? <Banner text={createErr} kind="error" /> : null}
-          {!loaded ? <Muted style={{ textAlign: 'center', marginTop: S.xl }}>{t('loading')}</Muted> : null}
-          {loaded && sorted.length === 0 && !creating ? <Muted>{t('noAdvisories')}</Muted> : null}
+          {advList.loading && !advList.data ? <Muted style={{ textAlign: 'center', marginTop: S.xl }}>{t('loading')}</Muted> : null}
+          {advList.data && sorted.length === 0 && !creating ? <Muted>{t('noAdvisories')}</Muted> : null}
           {sorted[0] ? <AdvisoryCard key={sorted[0].id} a={sorted[0]} /> : null}
 
           {/* fresh advice */}
           <TouchableOpacity
-            onPress={() => load(true)}
+            onPress={() => generate()}
             disabled={creating}
             activeOpacity={0.85}
             style={{ minHeight: 56, borderRadius: 28, borderWidth: 2, borderColor: C.accent, backgroundColor: 'rgba(255,255,255,0.9)', alignItems: 'center', justifyContent: 'center', marginBottom: S.lg, flexDirection: 'row' }}
