@@ -52,9 +52,22 @@ function AdvisoryCard({ a }: { a: Advisory }) {
     setNote('');
     const shown = out[1] || plain;
     if (!isOnline()) {
-      const cached = await cacheGet<boolean>(`voice:${a.id}`);
-      if (!cached) {
+      // The server audio itself is never cached (playAdvisory in ../audio downloads it but
+      // doesn't expose the file URI, and audio.ts is out of this file's scope) -- this only
+      // marks that the advisory was successfully voiced before, so offline "replay" is really
+      // on-device TTS resynthesizing `shown`, not a replay of the original server audio.
+      const spokenBefore = await cacheGet<boolean>(`voice:${a.id}`);
+      if (!spokenBefore) {
         toast.show(errorText(t, new ApiError(0, 'offline'), { write: true }), 'error');
+        return;
+      }
+      // Same guard playAdvisory's own device-TTS fallback uses (../audio:157): never read
+      // untranslated English text through a non-English device voice. Offline, useTranslated
+      // can't fetch a translation, so if it isn't already translated, refuse to speak rather
+      // than silently reading the wrong text in the wrong-language voice.
+      const translated = lang === 'en' || state === 'done';
+      if (!translated) {
+        toast.show(t('voiceTextOnly'), 'error');
         return;
       }
       setPlay(true);
@@ -64,6 +77,8 @@ function AdvisoryCard({ a }: { a: Advisory }) {
     }
     setPlay(true);
     const how = await playAdvisory(a.id, lang, shown, lang === 'en' || state === 'done', () => setPlay(false));
+    // Marks "this advisory has been voiced successfully" for offline on-device-TTS resynthesis
+    // below -- not a cache of the actual server audio (see comment in the offline branch above).
     if (how === 'server' || how === 'device') cacheSet(`voice:${a.id}`, true);
     if (how === 'device') { setNote(t('voiceFallback')); toast.show(t('voiceFallbackToast')); }
     if (how === 'text-only') { setPlay(false); setNote(t('voiceTextOnly')); toast.show(t('voiceTextOnly'), 'error'); }
