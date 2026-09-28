@@ -5,7 +5,7 @@
 // status+delete) on top of the original read-only Overview/Farmers views.
 (function () {
   var state = { farmers: [], fields: [], feedback: null, scans: [], advisories: [],
-                bugReports: [], auditLog: [] };
+                bugReports: [], auditLog: [], otps: [] };
   var $ = function (id) { return document.getElementById(id); };
   var bugStream = null;
 
@@ -97,7 +97,8 @@
     fetch("/admin/logout", { method: "POST", credentials: "same-origin" })
       .finally(function () {
         state = { farmers: [], fields: [], feedback: null, scans: [], advisories: [],
-                  bugReports: [], auditLog: [] };
+                  bugReports: [], auditLog: [], otps: [] };
+        stopOtpPolling();
         location.hash = "#/";
         showLogin();
       });
@@ -416,12 +417,48 @@
       "</tbody></table></div>";
   }
 
+  // No SMS provider is wired up yet (decisions/0023) -- OTPs are only ever
+  // printed to server logs otherwise. This view exists so an admin can
+  // retrieve one for testing without reading Render's own logs. It is not
+  // public: same session-cookie admin auth as every other /v2/admin route.
+  var otpPollTimer = null;
+
+  function otpsView() {
+    return "<h2>Pending OTPs</h2>" +
+      '<p class="muted">No SMS provider is wired up yet, so OTPs are only ever printed to server logs or shown here. Refreshes automatically every 5s while this tab is open.</p>' +
+      '<div class="tablewrap"><table><thead><tr><th>Phone</th><th>Code</th><th>Issued</th><th>Expires</th></tr></thead><tbody id="otp-rows"></tbody></table></div>';
+  }
+
+  function fillOtpRows() {
+    var rows = $("otp-rows");
+    if (!rows) return;
+    rows.innerHTML = state.otps.length
+      ? state.otps.map(function (o) {
+          return "<tr><td>" + esc(o.phone) + "</td><td><code>" + esc(o.code) + "</code></td><td>" +
+            esc((o.issued_at || "").replace("T", " ").slice(0, 19)) + "</td><td>" +
+            esc((o.expires_at || "").replace("T", " ").slice(0, 19)) + "</td></tr>";
+        }).join("")
+      : '<tr><td colspan="4" class="muted">No pending OTPs right now.</td></tr>';
+  }
+
+  function loadOtps() {
+    return api("/v2/admin/otps").then(function (r) {
+      state.otps = r.items;
+      fillOtpRows();
+    });
+  }
+
+  function stopOtpPolling() {
+    if (otpPollTimer) { clearInterval(otpPollTimer); otpPollTimer = null; }
+  }
+
   function route() {
     if ($("app-view").hidden) return;
     if (bugStream && location.hash !== "#/bugs") { /* keep streaming in background */ }
     var h = location.hash || "#/";
     var main = $("main");
-    ["nav-overview", "nav-farmers", "nav-bugs", "nav-audit"].forEach(function (id) { $(id).className = ""; });
+    ["nav-overview", "nav-farmers", "nav-bugs", "nav-audit", "nav-otps"].forEach(function (id) { $(id).className = ""; });
+    if (h !== "#/otps") stopOtpPolling();
 
     var m = /^#\/farmers\/(.+)$/.exec(h);
     if (m) {
@@ -470,6 +507,14 @@
         state.auditLog = r.items;
         main.innerHTML = auditLogView();
       }).catch(function (e) { main.innerHTML = '<p class="error">' + esc(e.message) + "</p>"; });
+      return;
+    }
+    if (h === "#/otps") {
+      $("nav-otps").className = "active";
+      main.innerHTML = otpsView();
+      loadOtps().catch(function (e) { main.innerHTML = '<p class="error">' + esc(e.message) + "</p>"; });
+      stopOtpPolling();
+      otpPollTimer = setInterval(function () { loadOtps().catch(function () {}); }, 5000);
       return;
     }
     $("nav-overview").className = "active";
