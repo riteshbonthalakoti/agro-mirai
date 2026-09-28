@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Alert, Image, Platform, ScrollView, Switch, Text, TouchableOpacity, View } from 'react-native';
 import { AuthBackdrop } from '../components/AuthBackdrop';
 import { IconName } from '../../icons';
@@ -63,15 +63,19 @@ export function MeTab({ initialScreenContext, onConsumeScreenContext }: { initia
   const [bugBusy, setBugBusy] = useState(false);
   const [bugOpen, setBugOpen] = useState(false);
   const [bugScreenContext, setBugScreenContext] = useState<string | null>(null);
+  const scrollRef = useRef<ScrollView | null>(null);
 
   // Arriving here via a "Report a problem" tap on another tab: open the section
   // pre-expanded with that screen's name as context, then consume it once so it
   // doesn't stick around across further visits to Me that weren't triggered that way.
+  // The bug section sits near the bottom of the ScrollView, so also scroll it into
+  // view -- otherwise the farmer lands at the top and sees no visible change.
   useEffect(() => {
     if (!initialScreenContext) return;
     setBugScreenContext(initialScreenContext);
     setBugOpen(true);
     onConsumeScreenContext?.();
+    setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialScreenContext]);
 
@@ -145,7 +149,7 @@ export function MeTab({ initialScreenContext, onConsumeScreenContext }: { initia
 
   const sendBug = async () => {
     setBugNote('');
-    if (!bugCat && !bugMsg.trim()) return setBugNote(t('bugReportError'));
+    if (!bugCat && !bugMsg.trim()) return setBugNote(t('bugReportNeedInfo'));
     if (!isOnline()) return setBugNote(t('noInternetWrite'));
     setBugBusy(true);
     try {
@@ -181,7 +185,7 @@ export function MeTab({ initialScreenContext, onConsumeScreenContext }: { initia
   return (
     <View style={{ flex: 1 }}>
       <AuthBackdrop />
-      <ScrollView contentContainerStyle={{ padding: S.lg, paddingTop: S.md, paddingBottom: S.xl * 2 }} keyboardShouldPersistTaps="handled">
+      <ScrollView ref={scrollRef} contentContainerStyle={{ padding: S.lg, paddingTop: S.md, paddingBottom: S.xl * 2 }} keyboardShouldPersistTaps="handled">
         {err ? <Banner text={err} kind="error" /> : null}
         {msg ? <Banner text={msg} kind="ok" /> : null}
 

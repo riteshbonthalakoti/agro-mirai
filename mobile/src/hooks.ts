@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ApiError } from './api';
+import { ApiError, isOnline, subscribeNet } from './api';
 import { Key } from './i18n';
 import { cacheGet, cacheGetWithTime, cacheSet } from './storage';
 
@@ -22,6 +22,7 @@ export function useLoad<T>(cacheKey: string | null, fn: () => Promise<T>, deps: 
       setError(null);
       setData(null);
       setFromCache(false);
+      setLastUpdatedAt(null);
       if (cacheKey) {
         const cached = await cacheGetWithTime<T>(cacheKey);
         if (alive && cached) {
@@ -37,7 +38,7 @@ export function useLoad<T>(cacheKey: string | null, fn: () => Promise<T>, deps: 
         setFromCache(false);
         if (cacheKey) {
           await cacheSet(cacheKey, fresh);
-          setLastUpdatedAt(Date.now());
+          if (alive) setLastUpdatedAt(Date.now());
         }
       } catch (e) {
         if (alive) setError(e instanceof ApiError ? e : new ApiError(0, String(e)));
@@ -52,6 +53,18 @@ export function useLoad<T>(cacheKey: string | null, fn: () => Promise<T>, deps: 
   }, [...deps, tick]);
 
   const reload = useCallback(() => setTick((x) => x + 1), []);
+
+  // Reconnect: when the app comes back online after being offline, refresh
+  // a screen that's showing cached-but-stale data, without reacting to every
+  // online/offline flap -- only a genuine false->true edge.
+  useEffect(() => {
+    let wasOffline = !isOnline();
+    return subscribeNet((online) => {
+      if (online && wasOffline) setTick((x) => x + 1);
+      wasOffline = !online;
+    });
+  }, []);
+
   return { data, error, loading, fromCache, lastUpdatedAt, reload };
 }
 

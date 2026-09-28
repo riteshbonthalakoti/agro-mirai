@@ -395,7 +395,7 @@ function RootInner({ lang, setLang }: { lang: Lang; setLang: (l: Lang) => void }
             <View style={{ flex: 1 }}>
               {tab === 'home' && <HomeTab />}
               {tab === 'data' && <DataTab />}
-              {tab === 'advice' && <AdviceTab />}
+              {tab === 'advice' && <AdviceTab key={field?.id} />}
               {tab === 'scan' && <ScanTab />}
               {tab === 'me' && (
                 <MeTab

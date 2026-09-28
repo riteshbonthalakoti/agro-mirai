@@ -18,6 +18,7 @@ import { Conversation, getConversations } from '../conversations';
 import { fmtDate, levelLabel, useApp } from '../ctx';
 import { classifyError } from '../errors';
 import { logError } from '../errorLog';
+
 import { errorText, useLoad, useTranslated } from '../hooks';
 import { cacheGet, cacheSet, formatTime } from '../storage';
 import { C, levelColor, S } from '../theme';
@@ -331,7 +332,9 @@ export function AdviceTab() {
       await getAdvisories(id, true);
       advList.reload();
     } catch (e) {
-      setCreateErr(errorText(t, e as ApiError));
+      const { kind } = classifyError(e);
+      if (kind === 'unknown') logError('AdviceTab.generate', e);
+      setCreateErr(errorText(t, e as ApiError, { write: true }));
     } finally {
       setCreating(false);
     }
