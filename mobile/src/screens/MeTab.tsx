@@ -6,6 +6,8 @@ import Constants from 'expo-constants';
 import * as ImagePicker from 'expo-image-picker';
 import { API_BASE_URL, ApiError, deleteField, patchMe, sendBugReport } from '../api';
 import { cropLabel, useApp } from '../ctx';
+import { classifyError } from '../errors';
+import { logError } from '../errorLog';
 import { errorText } from '../hooks';
 import { feedback, setFeedbackEnabled, useFeedbackEnabled } from '../feedback';
 import { Icon } from '../../icons';
@@ -69,7 +71,9 @@ export function MeTab() {
       setMsg(t('save') + ' ✓');
       setEditingName(false);
     } catch (e) {
-      setErr(errorText(t, e as ApiError));
+      const { kind } = classifyError(e);
+      if (kind === 'unknown') logError('MeTab.saveName', e);
+      setErr(errorText(t, e as ApiError, { write: true }));
     } finally {
       setBusy(false);
     }
@@ -85,7 +89,9 @@ export function MeTab() {
     try {
       setFarmer(await patchMe({ photo_url: `data:${a.mimeType || 'image/jpeg'};base64,${a.base64}` }));
     } catch (e) {
-      setErr(errorText(t, e as ApiError));
+      const { kind } = classifyError(e);
+      if (kind === 'unknown') logError('MeTab.changePhoto', e);
+      setErr(errorText(t, e as ApiError, { write: true }));
     }
   };
 
@@ -102,7 +108,14 @@ export function MeTab() {
       {
         text: t('delete'), style: 'destructive',
         onPress: async () => {
-          try { await deleteField(id); await reloadFields(); } catch (e) { setErr(errorText(t, e as ApiError)); }
+          try {
+            await deleteField(id);
+            await reloadFields();
+          } catch (e) {
+            const { kind } = classifyError(e);
+            if (kind === 'unknown') logError('MeTab.deleteField', e);
+            setErr(errorText(t, e as ApiError, { write: true }));
+          }
         },
       },
     ]);

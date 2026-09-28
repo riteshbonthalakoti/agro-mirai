@@ -16,6 +16,8 @@ import { Advisory, ApiError, AskResult, askByVoice, getAdvisories, sendFeedback 
 import { playAdvisory, playBase64, stopAudio } from '../audio';
 import { Conversation, getConversations } from '../conversations';
 import { fmtDate, levelLabel, useApp } from '../ctx';
+import { classifyError } from '../errors';
+import { logError } from '../errorLog';
 import { errorText, useLoad, useTranslated } from '../hooks';
 import { formatTime } from '../storage';
 import { C, levelColor, S } from '../theme';
@@ -71,7 +73,11 @@ function AdvisoryCard({ a }: { a: Advisory }) {
     try {
       await sendFeedback({ advisory_id: a.id, rating, helpful, comment: comment.trim() || undefined });
       setFbMsg(t('feedbackThanks')); setFbOpen(false);
-    } catch (e) { setFbErr(errorText(t, e as ApiError)); }
+    } catch (e) {
+      const { kind } = classifyError(e);
+      if (kind === 'unknown') logError('AdviceTab.sendFeedback', e);
+      setFbErr(errorText(t, e as ApiError, { write: true }));
+    }
     finally { setFbBusy(false); }
   };
 
