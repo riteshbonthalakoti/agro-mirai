@@ -168,6 +168,29 @@ migration-drift CI check was scoped but not built this session (needs
 a Supabase PAT, same dead end as Vercel's session token) — worth
 adding once a token exists.
 
+## Module 51 (Offline-First Mode, Error Handling & Bug Reporting) — in progress
+
+Starting state per Module 48 audit (2026-09-25) and latest production re-check (2026-09-28):
+
+**Broken blockers (production 503s / unsafe auth)**:
+1. **Voice unavailable** — all four languages (`en/kn/te/hi`) return 503 on advisory audio and translation endpoints. Most likely cause: `SARVAM_API_KEY_*` or `VOICE_SERVICE_URL` missing/exhausted on Render. Env-var check needed.
+2. **OTP login unsafe** — farmer OTP is printed to server logs only (no SMS provider). Any person with log access can log in as any farmer. Blocks real-world deployment.
+3. **Supabase migration-ledger drift** — `009_bug_reports` migration marked unapplied in CLI history but table exists in prod (applied out-of-band). Future `supabase db push` could be confused; ledger needs repair (`supabase migration repair --status applied 20260921000900` or equivalent).
+
+**Stale docs** (noted, not blockers):
+- README, BACKEND.md, PROJECT_WALKTHROUGH.md, DEMO_SCRIPT.md still reference removed RF/SHAP/tabular architecture; quick-start removed from README but deeper sections need refresh.
+- PPT slides 16/18 (ML techniques list) no longer accurate; crop/irrigation are now EcoCrop/FAO-56 rules, not trained models.
+
+**Live test run summary (Module 48 audit)**:
+- 65 claims from PPT + repo docs audited.
+- 32 confirmed working (CW), 9 unverified-live (UNV, code done, needs device), 3 broken (voice/OTP/README), 5 NI (out-of-scope), 16 stale (docs drift).
+- Full test suite: 540 passed, 33 skipped, 0 failed.
+- Supabase Postgres confirmed live; voice/leaf-scan/offline-caching/4-lang-UI need device verification.
+
+**Next action sequence**:
+1. Clarify Module 51 scope (offline mode + error pipeline + bug reporting, per prompt).
+2. Decide: fix blockers (voice/OTP/migration) first, or start Module 51 in parallel?
+
 ## Open questions
 
 - Final hosting split between Render (API) and Supabase (DB/auth) — confirm in Module 04+.
@@ -206,6 +229,8 @@ adding once a token exists.
 | 23 | /v2 value endpoints + client-facing voice API (TTS + STT) | done |
 | 24 | Backend compatibility hardening (CORS, session cookies, profile update, DELETE /v2/fields/{id}) | done |
 | 25 | Language expansion: V1_LANGUAGES {en, kn} -> {en, kn, te, hi} | done |
+| 26–50 | (Modules listed in CLAUDE.md Module history; admin dashboard v2, CI/CD, production hardening) | done |
+| 51 | Offline-first mode, error handling & bug-reporting pipeline | in progress |
 
 *(Modules 03–20 are named as each is scoped; this table is hand-maintained.
 Modules 17 and 18 (both model-realism work) run ahead of the old 17/18 —
