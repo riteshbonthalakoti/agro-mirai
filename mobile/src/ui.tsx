@@ -2,6 +2,8 @@ import React from 'react';
 import { feedback } from './feedback';
 import { ActivityIndicator, StyleSheet, Text, TextInput, TextInputProps, TouchableOpacity, View, ViewStyle } from 'react-native';
 import { C, S } from './theme';
+import { formatTime } from './storage';
+import { Key } from './i18n';
 
 export function Btn({ label, onPress, kind = 'primary', disabled, busy, style }: {
   label: string; onPress: () => void; kind?: 'primary' | 'secondary' | 'danger'; disabled?: boolean; busy?: boolean; style?: ViewStyle;
@@ -60,6 +62,18 @@ export function Banner({ text, kind = 'info' }: { text: string; kind?: 'info' | 
     <View style={[st.banner, { borderColor: color }]}>
       <Text style={{ color, fontSize: 13 }}>{text}</Text>
     </View>
+  );
+}
+
+/** Small, muted "last updated <time>" label for a useLoad-backed screen.
+ *  `at === null` (never successfully cached) shows `neverSynced` instead
+ *  of a blank/garbage time. `stale` (the last fetch attempt errored, so
+ *  what's shown is not fresh) dims it further via the `warn` color. */
+export function LastUpdated({ at, stale, t }: { at: number | null; stale: boolean; t: (k: Key) => string }) {
+  return (
+    <Text style={[st.muted, { fontSize: 11 }, stale ? { color: C.warn } : null]}>
+      {at ? `${t('lastUpdated')} ${formatTime(at)}` : t('neverSynced')}
+    </Text>
   );
 }
 

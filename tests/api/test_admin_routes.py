@@ -220,3 +220,41 @@ def test_admin_overview_aggregates_totals_and_distributions():
     recent_ids = {(r["type"], r["detail"]) for r in body["recent_activity"]}
     assert ("scan", "blight") in recent_ids
     assert ("advisory", "high") in recent_ids
+
+
+def test_pending_otps_requires_admin():
+    app, client = _app_and_client()
+    assert client.get("/v2/admin/otps").status_code == 401
+    _register_and_login(client, "+919000000050")
+    assert client.get("/v2/admin/otps").status_code == 403
+
+
+def test_pending_otps_lists_unconsumed_codes_only():
+    from agro_mirai.auth.otp import otp_store
+
+    app, client = _app_and_client()
+    store = app.extensions["data_store"]
+
+    _register_and_login(client, "+919000000051", name="Admin")
+    farmer = store.get_farmer_by_phone("+919000000051")
+    client.post("/v2/auth/logout")
+    farmer.role = "admin"
+    store.save_farmer(farmer)
+    _register_and_login(client, "+919000000051", name="Admin")
+
+    code = otp_store.issue("+919000000099")
+
+    resp = client.get("/v2/admin/otps")
+    assert resp.status_code == 200
+    items = resp.get_json()["items"]
+    matching = [i for i in items if i["phone"] == "+919000000099"]
+    assert len(matching) == 1
+    assert matching[0]["code"] == code
+    assert matching[0]["issued_at"] is not None
+    assert matching[0]["expires_at"] is not None
+
+    # verifying consumes it -- no longer listed afterward
+    assert otp_store.verify("+919000000099", code) is True
+    resp = client.get("/v2/admin/otps")
+    items = resp.get_json()["items"]
+    assert not any(i["phone"] == "+919000000099" for i in items)

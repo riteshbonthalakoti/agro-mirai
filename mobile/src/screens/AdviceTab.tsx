@@ -12,15 +12,18 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import { RecordingPresets, requestRecordingPermissionsAsync, setAudioModeAsync, useAudioRecorder } from 'expo-audio';
-import { Advisory, ApiError, AskResult, askByVoice, getAdvisories, sendFeedback } from '../api';
-import { playAdvisory, playBase64, stopAudio } from '../audio';
+import { Advisory, ApiError, AskResult, askByVoice, getAdvisories, isOnline, sendFeedback } from '../api';
+import { playAdvisory, playBase64, speakOnDevice, stopAudio } from '../audio';
 import { Conversation, getConversations } from '../conversations';
 import { fmtDate, levelLabel, useApp } from '../ctx';
+import { classifyError } from '../errors';
+import { logError } from '../errorLog';
+
 import { errorText, useLoad, useTranslated } from '../hooks';
-import { formatTime } from '../storage';
+import { cacheGet, cacheSet, formatTime } from '../storage';
 import { C, levelColor, S } from '../theme';
 import { useToast } from '../toast';
-import { Badge, Banner, Btn, Chip, Input, Muted, st } from '../ui';
+import { Badge, Banner, Btn, Chip, Input, LastUpdated, Muted, st } from '../ui';
 import Svg, { Circle, Defs, LinearGradient, Path, Rect, Stop } from 'react-native-svg';
 import { Icon, IconName } from '../../icons';
 import { VoiceMode } from '../components/VoiceMode';
@@ -47,9 +50,37 @@ function AdvisoryCard({ a }: { a: Advisory }) {
   const setPlay = (v: boolean) => { playingRef.current = v; setPlaying(v); };
 
   const start = async () => {
-    setNote(''); setPlay(true);
+    setNote('');
     const shown = out[1] || plain;
+    if (!isOnline()) {
+      // The server audio itself is never cached (playAdvisory in ../audio downloads it but
+      // doesn't expose the file URI, and audio.ts is out of this file's scope) -- this only
+      // marks that the advisory was successfully voiced before, so offline "replay" is really
+      // on-device TTS resynthesizing `shown`, not a replay of the original server audio.
+      const spokenBefore = await cacheGet<boolean>(`voice:${a.id}`);
+      if (!spokenBefore) {
+        toast.show(errorText(t, new ApiError(0, 'offline'), { write: true }), 'error');
+        return;
+      }
+      // Same guard playAdvisory's own device-TTS fallback uses (../audio:157): never read
+      // untranslated English text through a non-English device voice. Offline, useTranslated
+      // can't fetch a translation, so if it isn't already translated, refuse to speak rather
+      // than silently reading the wrong text in the wrong-language voice.
+      const translated = lang === 'en' || state === 'done';
+      if (!translated) {
+        toast.show(t('voiceTextOnly'), 'error');
+        return;
+      }
+      setPlay(true);
+      const ok = await speakOnDevice(shown, lang, () => setPlay(false));
+      if (!ok) { setPlay(false); setNote(t('voiceTextOnly')); toast.show(t('voiceTextOnly'), 'error'); }
+      return;
+    }
+    setPlay(true);
     const how = await playAdvisory(a.id, lang, shown, lang === 'en' || state === 'done', () => setPlay(false));
+    // Marks "this advisory has been voiced successfully" for offline on-device-TTS resynthesis
+    // below -- not a cache of the actual server audio (see comment in the offline branch above).
+    if (how === 'server' || how === 'device') cacheSet(`voice:${a.id}`, true);
     if (how === 'device') { setNote(t('voiceFallback')); toast.show(t('voiceFallbackToast')); }
     if (how === 'text-only') { setPlay(false); setNote(t('voiceTextOnly')); toast.show(t('voiceTextOnly'), 'error'); }
   };
@@ -71,7 +102,11 @@ function AdvisoryCard({ a }: { a: Advisory }) {
     try {
       await sendFeedback({ advisory_id: a.id, rating, helpful, comment: comment.trim() || undefined });
       setFbMsg(t('feedbackThanks')); setFbOpen(false);
-    } catch (e) { setFbErr(errorText(t, e as ApiError)); }
+    } catch (e) {
+      const { kind } = classifyError(e);
+      if (kind === 'unknown') logError('AdviceTab.sendFeedback', e);
+      setFbErr(errorText(t, e as ApiError, { write: true }));
+    }
     finally { setFbBusy(false); }
   };
 
@@ -270,54 +305,42 @@ function QuestionsList({ fieldId, reloadKey }: { fieldId: string; reloadKey: num
 // Main tab — no auto-load, blank until button tapped
 // ---------------------------------------------------------------------------
 export function AdviceTab() {
-  const { field, t } = useApp();
+  const { field, t, openBugReport } = useApp();
   const id = field?.id;
   const [subTab, setSubTab] = useState<'recs' | 'questions'>('recs');
   const [questionsReload, setQuestionsReload] = useState(0);
-  const [advisories, setAdvisories] = useState<Advisory[] | null>(null);
-  const [loaded, setLoaded] = useState(false);
+  const advList = useLoad(id ? `adv:${id}` : null, () => getAdvisories(id!, false), [id]);
   const [creating, setCreating] = useState(false);
   const [createErr, setCreateErr] = useState('');
-  const [refreshing, setRefreshing] = useState(false);
 
   // open with real content: show saved advice, and if there is none yet make today's once
   // (before, the tab was blank until the farmer found and pressed the button)
   const autoFor = useRef<string | null>(null);
   useEffect(() => {
-    if (!id || autoFor.current === id) return;
+    if (!id || autoFor.current === id || advList.loading || !advList.data) return;
     autoFor.current = id;
-    (async () => {
-      try {
-        const data = await getAdvisories(id, false);
-        setAdvisories(data);
-        setLoaded(true);
-        if (data.length === 0) load(true);
-      } catch {
-        // the button below still works
-      }
-    })();
+    if (advList.data.length === 0) generate();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id]);
+  }, [id, advList.loading, advList.data]);
 
   const [showOlder, setShowOlder] = useState(false);
-  const load = async (generate: boolean) => {
+  const generate = async () => {
     if (!id) return;
     setCreateErr('');
-    if (generate) setCreating(true);
-    else setRefreshing(true);
+    setCreating(true);
     try {
-      const data = await getAdvisories(id, generate);
-      setAdvisories(data);
-      setLoaded(true);
+      await getAdvisories(id, true);
+      advList.reload();
     } catch (e) {
-      setCreateErr(errorText(t, e as ApiError));
+      const { kind } = classifyError(e);
+      if (kind === 'unknown') logError('AdviceTab.generate', e);
+      setCreateErr(errorText(t, e as ApiError, { write: true }));
     } finally {
       setCreating(false);
-      setRefreshing(false);
     }
   };
 
-  const sorted = [...(advisories || [])].sort((x, y) => (x.created_at < y.created_at ? 1 : -1));
+  const sorted = [...(advList.data || [])].sort((x, y) => (x.created_at < y.created_at ? 1 : -1));
   const older = sorted.slice(1, 6);
 
   const segTab = (key: 'recs' | 'questions', label: string) => (
@@ -333,27 +356,31 @@ export function AdviceTab() {
   return (
     <View style={{ flex: 1 }}>
       <WaveBackdrop />
-      <View style={{ paddingHorizontal: S.lg, paddingTop: S.md }}>
-        <View style={{ flexDirection: 'row', backgroundColor: '#E4EFD9', borderRadius: 22, padding: 3 }}>
+      <View style={{ paddingHorizontal: S.lg, paddingTop: S.md, flexDirection: 'row', alignItems: 'center' }}>
+        <View style={{ flex: 1, flexDirection: 'row', backgroundColor: '#E4EFD9', borderRadius: 22, padding: 3 }}>
           {segTab('recs', t('adviceTabRecs'))}
           {segTab('questions', t('adviceTabQuestions'))}
         </View>
+        <TouchableOpacity onPress={() => openBugReport('Advice')} accessibilityLabel={t('reportProblem')} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} style={{ padding: 6, marginLeft: S.sm }}>
+          <Icon name="bug" size={22} color={C.muted} />
+        </TouchableOpacity>
       </View>
       {subTab === 'recs' ? (
         <ScrollView
           contentContainerStyle={{ padding: S.lg, paddingTop: S.md, paddingBottom: 120 }}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => loaded && load(false)} />}
+          refreshControl={<RefreshControl refreshing={advList.loading} onRefresh={() => advList.reload()} />}
           keyboardShouldPersistTaps="handled"
         >
           <Text style={{ fontSize: 13, fontWeight: '800', letterSpacing: 1, color: C.muted, marginBottom: S.sm }}>{t('adviceForToday').toUpperCase()}</Text>
+          <LastUpdated at={advList.lastUpdatedAt} stale={!!advList.error} t={t} />
           {createErr ? <Banner text={createErr} kind="error" /> : null}
-          {!loaded ? <Muted style={{ textAlign: 'center', marginTop: S.xl }}>{t('loading')}</Muted> : null}
-          {loaded && sorted.length === 0 && !creating ? <Muted>{t('noAdvisories')}</Muted> : null}
+          {advList.loading && !advList.data ? <Muted style={{ textAlign: 'center', marginTop: S.xl }}>{t('loading')}</Muted> : null}
+          {advList.data && sorted.length === 0 && !creating ? <Muted>{t('noAdvisories')}</Muted> : null}
           {sorted[0] ? <AdvisoryCard key={sorted[0].id} a={sorted[0]} /> : null}
 
           {/* fresh advice */}
           <TouchableOpacity
-            onPress={() => load(true)}
+            onPress={() => generate()}
             disabled={creating}
             activeOpacity={0.85}
             style={{ minHeight: 56, borderRadius: 28, borderWidth: 2, borderColor: C.accent, backgroundColor: 'rgba(255,255,255,0.9)', alignItems: 'center', justifyContent: 'center', marginBottom: S.lg, flexDirection: 'row' }}

@@ -9,7 +9,7 @@ import { Icon, IconName } from '../../icons';
 import { SkeletonCard } from '../skeleton';
 import { cacheGet, cacheSet, formatTime } from '../storage';
 import { C, S } from '../theme';
-import { Banner, KV, Muted } from '../ui';
+import { Banner, KV, LastUpdated, Muted } from '../ui';
 
 const AUTO_REFRESH_MS = 30 * 60 * 1000;
 
@@ -167,6 +167,7 @@ export function DataTab() {
                 <Text style={{ fontSize: 13, fontWeight: '700', color: ink }}>{updating ? t('refreshing') : t('refreshData')}</Text>
               </TouchableOpacity>
             </View>
+            <LastUpdated at={sum.lastUpdatedAt} stale={!!sum.error} t={t} />
             {cur ? (
               <>
                 <Text style={{ fontSize: 64, lineHeight: 72, fontWeight: '800', color: ink, marginTop: 2 }}>{num(cur.temp_c, '°', 0)}</Text>

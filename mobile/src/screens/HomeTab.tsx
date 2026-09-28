@@ -9,7 +9,7 @@ import { feedback } from '../feedback';
 import { useNotifications } from '../notifications';
 import { SkeletonCard } from '../skeleton';
 import { C, levelColor, S } from '../theme';
-import { Badge, Banner, Btn, KV, Muted, st } from '../ui';
+import { Badge, Banner, Btn, KV, LastUpdated, Muted, st } from '../ui';
 
 function ErrorBox({ load }: { load: Load<unknown> }) {
   const { t } = useApp();
@@ -102,7 +102,7 @@ const greetKey = () => {
 };
 
 export function HomeTab() {
-  const { field, t, lang, farmer } = useApp();
+  const { field, t, lang, farmer, openBugReport } = useApp();
   const id = field?.id;
   // "advise on my current crop" instead of proposing a switch (backend: ?keep_current=true)
   const [keep, setKeep] = useState(false);
@@ -149,10 +149,17 @@ export function HomeTab() {
         refreshControl={<RefreshControl refreshing={busy} onRefresh={reloadAll} />}
       >
         {/* greeting + today's one clear thing to do */}
-        <Text style={{ fontSize: 15, color: C.muted, fontWeight: '600' }}>{`${t(greetKey())}${first ? `, ${first}` : ''}`}</Text>
-        <Text style={{ fontSize: 26, fontWeight: '800', color: C.text, marginTop: 2 }} numberOfLines={1}>
-          {field?.name}{field?.current_crop ? ` · ${cropLabel(lang, field.current_crop)}` : ''}
-        </Text>
+        <View style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
+          <View style={{ flex: 1 }}>
+            <Text style={{ fontSize: 15, color: C.muted, fontWeight: '600' }}>{`${t(greetKey())}${first ? `, ${first}` : ''}`}</Text>
+            <Text style={{ fontSize: 26, fontWeight: '800', color: C.text, marginTop: 2 }} numberOfLines={1}>
+              {field?.name}{field?.current_crop ? ` · ${cropLabel(lang, field.current_crop)}` : ''}
+            </Text>
+          </View>
+          <TouchableOpacity onPress={() => openBugReport('Home')} accessibilityLabel={t('reportProblem')} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} style={{ padding: 6, marginTop: 2 }}>
+            <Icon name="bug" size={22} color={C.muted} />
+          </TouchableOpacity>
+        </View>
 
         {today ? (
           <View style={{ marginTop: S.md, borderRadius: 26, padding: S.lg, backgroundColor: today.color, overflow: 'hidden' }}>
@@ -180,6 +187,7 @@ export function HomeTab() {
         <View style={{ height: S.md }} />
 
         <Section icon="sprout" tint="#E8F3E8" title={t('cropRec')}>
+          <LastUpdated at={crop.lastUpdatedAt} stale={!!crop.error} t={t} />
           {c ? (
             <>
               <Text style={{ fontSize: 26, fontWeight: '800', color: C.text }}>{cropLabel(lang, c.recommended_crop)}</Text>
@@ -210,6 +218,7 @@ export function HomeTab() {
         </Section>
 
         <Section icon="drop" tint="#E3F1FA" title={t('irrigation')} right={i ? <Badge label={levelLabel(t, i.urgency)} color={levelColor(i.urgency)} /> : undefined}>
+          <LastUpdated at={irr.lastUpdatedAt} stale={!!irr.error} t={t} />
           {i ? (
             <>
               <Text style={{ fontSize: 26, fontWeight: '800', color: C.text }}>{`${Math.round(i.recommended_depth_mm * 10) / 10} ${t('mm')}`}</Text>
@@ -229,6 +238,7 @@ export function HomeTab() {
         </Section>
 
         <Section icon="blight" tint="#FDF0DC" title={t('diseaseRisk')} right={d ? <Badge label={levelLabel(t, d.risk_level)} color={levelColor(d.risk_level)} /> : undefined}>
+          <LastUpdated at={dis.lastUpdatedAt} stale={!!dis.error} t={t} />
           {d ? (
             <>
               <Text style={{ fontSize: 18, fontWeight: '700', color: C.text }}>{d.disease_translated || d.disease}</Text>

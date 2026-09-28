@@ -1,13 +1,34 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-// Small JSON cache. Everything is wrapped so a corrupt/unavailable store
-// degrades to "no cache" instead of throwing into the render tree.
 const P = 'agro:v2:';
+
+type Envelope<T> = { v: T; t: number };
+
+function isEnvelope(x: unknown): x is Envelope<unknown> {
+  return !!x && typeof x === 'object' && 't' in (x as any) && 'v' in (x as any) && typeof (x as any).t === 'number';
+}
 
 export async function cacheGet<T>(key: string): Promise<T | null> {
   try {
     const raw = await AsyncStorage.getItem(P + key);
-    return raw ? (JSON.parse(raw) as T) : null;
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    return isEnvelope(parsed) ? (parsed.v as T) : (parsed as T); // pre-envelope entries: return as-is once, next cacheSet re-wraps them
+  } catch {
+    return null;
+  }
+}
+
+/** Same as cacheGet but also returns when it was written. Old (un-enveloped)
+ *  entries have no timestamp, so they read as a cache miss here -- the
+ *  screen refetches once and the entry is enveloped from then on. */
+export async function cacheGetWithTime<T>(key: string): Promise<{ value: T; cachedAt: number } | null> {
+  try {
+    const raw = await AsyncStorage.getItem(P + key);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!isEnvelope(parsed)) return null;
+    return { value: parsed.v as T, cachedAt: parsed.t };
   } catch {
     return null;
   }
@@ -15,7 +36,8 @@ export async function cacheGet<T>(key: string): Promise<T | null> {
 
 export async function cacheSet(key: string, value: unknown): Promise<void> {
   try {
-    await AsyncStorage.setItem(P + key, JSON.stringify(value));
+    const envelope: Envelope<unknown> = { v: value, t: Date.now() };
+    await AsyncStorage.setItem(P + key, JSON.stringify(envelope));
   } catch {
     // best effort
   }

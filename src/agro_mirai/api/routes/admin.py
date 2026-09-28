@@ -18,6 +18,7 @@ from agro_mirai.api.audit import write_audit_log
 from agro_mirai.api.errors import ApiError
 from agro_mirai.api.serializers import farmer_to_public_json, to_json
 from agro_mirai.api.session_auth import require_admin
+from agro_mirai.auth.otp import otp_store
 from agro_mirai.feedback.aggregator import FeedbackAggregator
 
 admin_bp = Blueprint("admin", __name__, url_prefix="/v2/admin")
@@ -184,6 +185,27 @@ def list_scans():
                     {**to_json(a), "farmer_id": field.farmer_id, "field_name": field.name}
                 )
     items.sort(key=lambda i: i["created_at"], reverse=True)
+    return jsonify({"items": items}), 200
+
+
+@admin_bp.get("/otps")
+@require_admin
+def list_pending_otps():
+    """Dev/demo-scale convenience while OTP_DELIVERY=log (no SMS provider
+    wired up, decisions/0023-name-phone-otp-auth.md): lets an admin
+    retrieve a currently-pending OTP without reading Render's own logs.
+    Admin-only (never public) -- see PROGRESS.md's OTP-visibility note for
+    why this isn't exposed any more broadly than that. Read-only: does not
+    consume/invalidate the OTPs it lists."""
+    items = [
+        {
+            "phone": i["phone"],
+            "code": i["code"],
+            "issued_at": i["issued_at"].isoformat() if i["issued_at"] else None,
+            "expires_at": i["expires_at"].isoformat() if i["expires_at"] else None,
+        }
+        for i in otp_store.peek_all()
+    ]
     return jsonify({"items": items}), 200
 
 

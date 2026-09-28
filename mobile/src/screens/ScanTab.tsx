@@ -10,13 +10,13 @@ import { File as ExpoFile, Paths } from 'expo-file-system';
 import { Icon, IconName } from '../../icons';
 import { AuthBackdrop } from '../components/AuthBackdrop';
 import { feedback } from '../feedback';
-import { ApiError, DiseaseAlert, getDiseaseRisk, scanLeaf } from '../api';
+import { ApiError, DiseaseAlert, getDiseaseRisk, isOnline, scanLeaf } from '../api';
 import { diseaseAction, fmtDate, levelLabel, useApp } from '../ctx';
-import { useTranslated } from '../hooks';
+import { errorText, useTranslated } from '../hooks';
 import { SkeletonCard } from '../skeleton';
-import { cacheGet, cacheSet } from '../storage';
+import { cacheGet, cacheGetWithTime, cacheSet } from '../storage';
 import { levelColor, S, C } from '../theme';
-import { Badge, Banner, Btn, Muted } from '../ui';
+import { Badge, Banner, Btn, LastUpdated, Muted } from '../ui';
 import { ZoomModal } from '../zoom';
 
 type HistoryItem = { id: string; date: string; disease: string; risk: string; source: string | null; confidence: number; action?: string | null };
@@ -292,7 +292,7 @@ function ProblemView({ kind, message, uri, onRetry, onRetake, onCancel }: { kind
   const title = notLeaf ? t('resNotLeafTitle') : t('resErrTitle');
   const body = notLeaf
     ? t('resNotLeafBody')
-    : kind === 'network' ? t('scanErrorNetwork')
+    : kind === 'network' ? (message || t('scanErrorNetwork'))
     : kind === 'unavailable' ? t('scanUnavailable')
     : kind === 'file' ? t('scanErrorFile')
     : kind === 'noField' ? t('scanNeedsField')
@@ -321,7 +321,7 @@ function ProblemView({ kind, message, uri, onRetry, onRetake, onCancel }: { kind
 
 // ------------------------------------------------------------------ screen
 export function ScanTab() {
-  const { field, t, lang } = useApp();
+  const { field, t, lang, openBugReport } = useApp();
   const [phase, setPhase] = useState<Phase>('home');
   const [cameraOpen, setCameraOpen] = useState(false);
   const [photoUri, setPhotoUri] = useState<string | null>(null);
@@ -329,6 +329,7 @@ export function ScanTab() {
   const [errKind, setErrKind] = useState<ErrKind>('server');
   const [errMsg, setErrMsg] = useState('');
   const [history, setHistory] = useState<HistoryItem[] | null>(null);
+  const [historyUpdatedAt, setHistoryUpdatedAt] = useState<number | null>(null);
   const [photos, setPhotos] = useState<Record<string, string>>({});
   const [zoomUri, setZoomUri] = useState<string | null>(null);
   const [openItem, setOpenItem] = useState<HistoryItem | null>(null);
@@ -345,7 +346,11 @@ export function ScanTab() {
   // (see savePhotoLocally) since the server never stores the image.
   useEffect(() => {
     let alive = true;
-    cacheGet<HistoryItem[]>('scans').then((h) => alive && h && setHistory(h));
+    cacheGetWithTime<HistoryItem[]>('scans').then((h) => {
+      if (!alive || !h) return;
+      setHistory(h.value);
+      setHistoryUpdatedAt(h.cachedAt);
+    });
     if (!field) return;
     getDiseaseRisk(field.id, lang)
       .then((items) => {
@@ -361,6 +366,7 @@ export function ScanTab() {
           }));
         setHistory(fromServer);
         cacheSet('scans', fromServer);
+        setHistoryUpdatedAt(Date.now());
       })
       .catch(() => alive && setHistory((h) => h ?? []));
     return () => { alive = false; };
@@ -373,6 +379,11 @@ export function ScanTab() {
     setResult(null);
     setPhase('analyzing');
     try {
+      if (!isOnline()) {
+        // Skip the request entirely -- uploading a photo offline would just
+        // hang until it times out. Fail honestly and immediately instead.
+        throw new ApiError(0, 'offline');
+      }
       // Read the local file through expo-file-system's File (a Blob) instead
       // of fetch(file://): on Android fetch() can "succeed" with a 14-byte
       // "File not found" body that then uploads as the image (Module 34).
@@ -406,13 +417,14 @@ export function ScanTab() {
       const next = [item, ...(history ?? [])].slice(0, 30);
       setHistory(next);
       cacheSet('scans', next);
+      setHistoryUpdatedAt(Date.now());
     } catch (e) {
       if (id !== runId.current) return;
       const ae = e as ApiError;
       feedback.error();
       if (ae.code === 'NOT_A_LEAF') { setPhase('notLeaf'); return; }
       setErrKind(ae.status === -1 ? 'file' : ae.isNetwork ? 'network' : 'server');
-      setErrMsg(ae.message || '');
+      setErrMsg(errorText(t, ae, { write: true }));
       setPhase('error');
     }
   };
@@ -445,6 +457,11 @@ export function ScanTab() {
     <View style={{ flex: 1 }}>
       <AuthBackdrop />
       <ScrollView contentContainerStyle={{ padding: S.lg, paddingTop: S.md, paddingBottom: S.xl * 2 }} keyboardShouldPersistTaps="handled">
+      {phase === 'home' ? (
+        <TouchableOpacity onPress={() => openBugReport('Scan')} accessibilityLabel={t('reportProblem')} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} style={{ alignSelf: 'flex-end', padding: 6, marginBottom: S.xs }}>
+          <Icon name="bug" size={22} color={C.muted} />
+        </TouchableOpacity>
+      ) : null}
       {phase === 'analyzing' && photoUri ? <AnalyzingView uri={photoUri} onCancel={cancelScan} /> : null}
 
       {phase === 'result' && result && photoUri ? (
@@ -504,6 +521,7 @@ export function ScanTab() {
           {notice ? <Banner text={notice} kind="error" /> : null}
 
           {/* history */}
+          <LastUpdated at={historyUpdatedAt} stale={false} t={t} />
           <Text style={{ fontSize: 13, fontWeight: '800', letterSpacing: 1, color: C.muted, marginBottom: S.sm }}>{t('scanHistory').toUpperCase()}</Text>
           {history === null ? <SkeletonCard /> : null}
           {history !== null && history.length === 0 ? (

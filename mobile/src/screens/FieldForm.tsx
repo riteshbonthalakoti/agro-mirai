@@ -5,8 +5,11 @@ import * as Location from 'expo-location';
 import { ApiError, Field, createField, patchField } from '../api';
 import { cropLabel, soilLabel, useApp } from '../ctx';
 import { DateField } from '../datepicker';
+import { classifyError } from '../errors';
+import { logError } from '../errorLog';
 import { feedback } from '../feedback';
 import { Icon, IconName } from '../../icons';
+import { errorText } from '../hooks';
 import { CROP_TYPES, SOIL_TYPES } from '../i18n';
 import { cacheGet, cacheSet } from '../storage';
 import { C, S } from '../theme';
@@ -177,8 +180,9 @@ export function FieldForm({ initial, onDone, onCancel }: { initial?: Field; onDo
         setSavedField(saved);
       }
     } catch (e) {
-      const ae = e as ApiError;
-      setErr(ae.isNetwork ? t('cantReachServer') : ae.message);
+      const { kind } = classifyError(e);
+      if (kind === 'unknown') logError('FieldForm.submit', e);
+      setErr(errorText(t, e as ApiError, { write: true }));
     } finally {
       setBusy(false);
     }

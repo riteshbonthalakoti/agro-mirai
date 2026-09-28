@@ -1006,6 +1006,37 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
 
+  /v2/admin/otps:
+    get:
+      summary: >-
+        Admin only: currently-pending (unexpired) OTPs, newest first. A
+        dev/demo-scale convenience while OTP_DELIVERY=log has no SMS
+        provider wired up (decisions/0023-name-phone-otp-auth.md) --
+        never public, admin-session-authenticated like every other
+        /v2/admin route. Read-only: does not consume/invalidate the OTPs
+        it lists.
+      security: [ { sessionCookie: [] } ]
+      responses:
+        '200':
+          description: A list of pending OTPs.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        phone: { type: string }
+                        code: { type: string }
+                        issued_at: { type: string, format: date-time, nullable: true }
+                        expires_at: { type: string, format: date-time, nullable: true }
+                required: [items]
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
   /v2/admin/feedback:
     get:
       summary: 'Admin only: system-wide feedback aggregates (all Farmers). Read-only.'

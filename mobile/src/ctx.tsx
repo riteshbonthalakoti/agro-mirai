@@ -14,6 +14,7 @@ export type Ctx = {
   changeLang: (l: Lang) => void;
   openFieldForm: (f?: Field) => void;
   signOut: () => void;
+  openBugReport: (screen: string) => void;
 };
 
 export const AppCtx = createContext<Ctx | null>(null);

@@ -115,6 +115,23 @@ class OtpStore:
             del self._pending[phone]
             return True, pending.signup
 
+    def peek_all(self, now: datetime | None = None) -> list[dict]:
+        """Read-only snapshot of currently-pending (not yet expired) OTPs,
+        newest first. Never consumes/deletes anything, unlike verify() —
+        this exists only for the admin-only debug viewer
+        (api/routes/admin.py's GET /v2/admin/otps) so a developer or a
+        classmate testing the app can retrieve an OTP without SMS being
+        wired up, without touching the actual login flow."""
+        now = now or datetime.now(timezone.utc)
+        with self._lock:
+            items = [
+                {"phone": phone, "code": p.code, "issued_at": p.issued_at, "expires_at": p.expires_at}
+                for phone, p in self._pending.items()
+                if now <= p.expires_at
+            ]
+        items.sort(key=lambda i: i["issued_at"] or now, reverse=True)
+        return items
+
 
 def send_otp(phone: str, code: str) -> None:
     """The one delivery seam. Today: server logs only (OTP_DELIVERY=log,

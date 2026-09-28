@@ -4,7 +4,10 @@ import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
 import { requestRecordingPermissionsAsync } from 'expo-audio';
 import { ApiError, Farmer, requestOtp, verifyOtp } from '../api';
+import { classifyError } from '../errors';
+import { logError } from '../errorLog';
 import { feedback } from '../feedback';
+import { errorText } from '../hooks';
 import { playOnboardingClip, stopAudio } from '../audio';
 import { makeT } from '../ctx';
 import { requestNotificationPermission } from '../notifications';
@@ -290,7 +293,9 @@ export function AuthScreen({ lang, onLoggedIn, notice, onChangeLanguage }: { lan
         // First time this phone has been seen -- now ask for a name.
         setStep('name');
       } else {
-        setErr(ae.isNetwork ? t('cantReachServer') : ae.status === 429 ? t('tooManyRequests') : ae.status >= 500 ? t('serverBusy') : ae.message);
+        const { kind } = classifyError(e);
+        if (kind === 'unknown') logError('Onboarding.requestOtp', e);
+        setErr(errorText(t, ae, { write: true }));
       }
     } finally {
       setBusy(false);
@@ -319,7 +324,9 @@ export function AuthScreen({ lang, onLoggedIn, notice, onChangeLanguage }: { lan
       onLoggedIn(farmer, isNew);
     } catch (e) {
       const ae = e as ApiError;
-      setErr(ae.isNetwork ? t('cantReachServer') : ae.status >= 500 ? t('serverBusy') : t('invalidOtp'));
+      const { kind } = classifyError(e);
+      if (kind === 'unknown') logError('Onboarding.verifyOtp', e);
+      setErr(ae.isNetwork ? errorText(t, ae, { write: true }) : ae.status >= 500 ? t('serverBusy') : t('invalidOtp'));
       setOtp('');
       feedback.error();
     } finally {

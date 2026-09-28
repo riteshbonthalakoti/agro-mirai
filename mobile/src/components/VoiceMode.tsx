@@ -7,6 +7,8 @@ import { playBase64, speakOnDevice, stopAudio } from '../audio';
 import { saveConversation } from '../conversations';
 import { useApp } from '../ctx';
 import { errorText } from '../hooks';
+import { classifyError } from '../errors';
+import { logError } from '../errorLog';
 import { feedback } from '../feedback';
 import { Icon } from '../../icons';
 import { C, S } from '../theme';
@@ -153,7 +155,11 @@ export function VoiceMode({ visible, onClose }: { visible: boolean; onClose: () 
       } else setVS('idle');
     } catch (e) {
       const ae = e as ApiError;
-      setErr(ae.status === 503 ? tt('askUnavailable') : ae.status === -1 ? tt('captureFailed') : errorText(t, ae));
+      if (ae.status !== 503 && ae.status !== -1) {
+        const { kind } = classifyError(ae);
+        if (kind === 'unknown') logError('VoiceMode.stopAndSend', ae);
+      }
+      setErr(ae.status === 503 ? tt('askUnavailable') : ae.status === -1 ? tt('captureFailed') : errorText(t, ae, { write: true }));
       setVS('idle');
     }
   };

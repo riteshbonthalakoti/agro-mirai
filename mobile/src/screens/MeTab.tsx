@@ -1,11 +1,13 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Alert, Image, Platform, ScrollView, Switch, Text, TouchableOpacity, View } from 'react-native';
 import { AuthBackdrop } from '../components/AuthBackdrop';
 import { IconName } from '../../icons';
 import Constants from 'expo-constants';
 import * as ImagePicker from 'expo-image-picker';
-import { API_BASE_URL, ApiError, deleteField, patchMe, sendBugReport } from '../api';
+import { API_BASE_URL, ApiError, deleteField, isOnline, patchMe, sendBugReport } from '../api';
 import { cropLabel, useApp } from '../ctx';
+import { classifyError } from '../errors';
+import { getRecentErrors, logError } from '../errorLog';
 import { errorText } from '../hooks';
 import { feedback, setFeedbackEnabled, useFeedbackEnabled } from '../feedback';
 import { Icon } from '../../icons';
@@ -47,7 +49,7 @@ function Section({ icon, tint, title, children }: { icon: IconName; tint: string
   );
 }
 
-export function MeTab() {
+export function MeTab({ initialScreenContext, onConsumeScreenContext }: { initialScreenContext?: string; onConsumeScreenContext?: () => void }) {
   const { farmer, setFarmer, fields, field, selectField, reloadFields, lang, changeLang, openFieldForm, signOut, t } = useApp();
   const [editingName, setEditingName] = useState(false);
   const [name, setName] = useState(farmer.name);
@@ -56,9 +58,26 @@ export function MeTab() {
   const [busy, setBusy] = useState(false);
   const [bugCat, setBugCat] = useState<string | null>(null);
   const [bugMsg, setBugMsg] = useState('');
+  const [bugPhoto, setBugPhoto] = useState<string | null>(null);
   const [bugNote, setBugNote] = useState('');
   const [bugBusy, setBugBusy] = useState(false);
   const [bugOpen, setBugOpen] = useState(false);
+  const [bugScreenContext, setBugScreenContext] = useState<string | null>(null);
+  const scrollRef = useRef<ScrollView | null>(null);
+
+  // Arriving here via a "Report a problem" tap on another tab: open the section
+  // pre-expanded with that screen's name as context, then consume it once so it
+  // doesn't stick around across further visits to Me that weren't triggered that way.
+  // The bug section sits near the bottom of the ScrollView, so also scroll it into
+  // view -- otherwise the farmer lands at the top and sees no visible change.
+  useEffect(() => {
+    if (!initialScreenContext) return;
+    setBugScreenContext(initialScreenContext);
+    setBugOpen(true);
+    onConsumeScreenContext?.();
+    setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialScreenContext]);
 
   const saveName = async () => {
     setErr(''); setMsg('');
@@ -69,7 +88,9 @@ export function MeTab() {
       setMsg(t('save') + ' ✓');
       setEditingName(false);
     } catch (e) {
-      setErr(errorText(t, e as ApiError));
+      const { kind } = classifyError(e);
+      if (kind === 'unknown') logError('MeTab.saveName', e);
+      setErr(errorText(t, e as ApiError, { write: true }));
     } finally {
       setBusy(false);
     }
@@ -85,7 +106,9 @@ export function MeTab() {
     try {
       setFarmer(await patchMe({ photo_url: `data:${a.mimeType || 'image/jpeg'};base64,${a.base64}` }));
     } catch (e) {
-      setErr(errorText(t, e as ApiError));
+      const { kind } = classifyError(e);
+      if (kind === 'unknown') logError('MeTab.changePhoto', e);
+      setErr(errorText(t, e as ApiError, { write: true }));
     }
   };
 
@@ -102,25 +125,56 @@ export function MeTab() {
       {
         text: t('delete'), style: 'destructive',
         onPress: async () => {
-          try { await deleteField(id); await reloadFields(); } catch (e) { setErr(errorText(t, e as ApiError)); }
+          try {
+            await deleteField(id);
+            await reloadFields();
+          } catch (e) {
+            const { kind } = classifyError(e);
+            if (kind === 'unknown') logError('MeTab.deleteField', e);
+            setErr(errorText(t, e as ApiError, { write: true }));
+          }
         },
       },
     ]);
   };
 
+  const attachBugPhoto = async () => {
+    const p = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!p.granted) return setBugNote(t('galleryPerm'));
+    const r = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], allowsEditing: false, quality: 0.4, base64: true });
+    const a = r.assets?.[0];
+    if (r.canceled || !a?.base64) return;
+    setBugPhoto(`data:${a.mimeType || 'image/jpeg'};base64,${a.base64}`);
+  };
+
   const sendBug = async () => {
     setBugNote('');
-    if (!bugCat && !bugMsg.trim()) return setBugNote(t('bugReportError'));
+    if (!bugCat && !bugMsg.trim()) return setBugNote(t('bugReportNeedInfo'));
+    if (!isOnline()) return setBugNote(t('noInternetWrite'));
     setBugBusy(true);
     try {
+      const recent = await getRecentErrors(5);
+      const parts: string[] = [];
+      if (bugScreenContext) parts.push(`[Screen: ${bugScreenContext}]`);
+      if (bugMsg.trim()) parts.push(bugMsg.trim());
+      if (recent.length) {
+        parts.push('[Recent errors]');
+        parts.push(...recent.map((r) => `${new Date(r.at).toISOString()} ${r.context}: ${r.message}`));
+      }
+      const message = parts.join('\n').slice(0, 2000); // matches backend _MAX_BUG_MESSAGE_LEN
       await sendBugReport({
-        category: bugCat || undefined, message: bugMsg.trim() || undefined,
-        app_version: Constants.expoConfig?.version, platform: Platform.OS,
+        category: bugCat || undefined,
+        message: message || undefined,
+        photo_url: bugPhoto || undefined,
+        app_version: Constants.expoConfig?.version,
+        platform: Platform.OS,
       });
       setBugNote(t('bugReportSuccess'));
-      setBugCat(null); setBugMsg('');
-    } catch {
-      setBugNote(t('bugReportError'));
+      setBugCat(null); setBugMsg(''); setBugPhoto(null);
+    } catch (e) {
+      const { kind } = classifyError(e);
+      setBugNote(kind === 'offline' ? t('noInternetWrite') : t('bugReportError'));
+      if (kind === 'unknown') logError('MeTab.sendBug', e);
     } finally {
       setBugBusy(false);
     }
@@ -131,7 +185,7 @@ export function MeTab() {
   return (
     <View style={{ flex: 1 }}>
       <AuthBackdrop />
-      <ScrollView contentContainerStyle={{ padding: S.lg, paddingTop: S.md, paddingBottom: S.xl * 2 }} keyboardShouldPersistTaps="handled">
+      <ScrollView ref={scrollRef} contentContainerStyle={{ padding: S.lg, paddingTop: S.md, paddingBottom: S.xl * 2 }} keyboardShouldPersistTaps="handled">
         {err ? <Banner text={err} kind="error" /> : null}
         {msg ? <Banner text={msg} kind="ok" /> : null}
 
@@ -239,6 +293,18 @@ export function MeTab() {
                 ))}
               </View>
               <Input value={bugMsg} onChangeText={setBugMsg} placeholder={t('bugReportMessagePlaceholder')} multiline />
+              {bugPhoto ? (
+                <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: S.sm }}>
+                  <Image source={{ uri: bugPhoto }} style={{ width: 72, height: 72, borderRadius: 12 }} />
+                  <TouchableOpacity onPress={() => setBugPhoto(null)} style={{ marginLeft: S.md, minHeight: 44, justifyContent: 'center' }}>
+                    <Text style={{ color: C.danger, fontWeight: '700' }}>{t('removePhoto')}</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                <TouchableOpacity onPress={attachBugPhoto} style={{ marginTop: S.sm, minHeight: 44, justifyContent: 'center' }}>
+                  <Text style={{ color: C.accent, fontWeight: '700' }}>{t('attachPhoto')}</Text>
+                </TouchableOpacity>
+              )}
               {bugNote ? <Muted style={{ marginTop: S.sm }}>{bugNote}</Muted> : null}
               <Btn label={t('bugReportSubmit')} onPress={sendBug} busy={bugBusy} style={{ marginTop: S.sm }} />
             </View>

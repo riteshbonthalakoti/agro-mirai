@@ -1,18 +1,16 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ApiError } from './api';
+import { ApiError, isOnline, subscribeNet } from './api';
 import { Key } from './i18n';
-import { cacheGet, cacheSet } from './storage';
+import { cacheGet, cacheGetWithTime, cacheSet } from './storage';
 
-export type Load<T> = { data: T | null; error: ApiError | null; loading: boolean; fromCache: boolean; reload: () => void };
+export type Load<T> = { data: T | null; error: ApiError | null; loading: boolean; fromCache: boolean; lastUpdatedAt: number | null; reload: () => void };
 
-/** Fetch with a cache-first paint: cached data (if any) shows immediately and
- *  is replaced by the fresh response; on failure the cached copy stays and
- *  `error` is set, so a screen can show both "saved data" and the real reason. */
 export function useLoad<T>(cacheKey: string | null, fn: () => Promise<T>, deps: unknown[]): Load<T> {
   const [data, setData] = useState<T | null>(null);
   const [error, setError] = useState<ApiError | null>(null);
   const [loading, setLoading] = useState(false);
   const [fromCache, setFromCache] = useState(false);
+  const [lastUpdatedAt, setLastUpdatedAt] = useState<number | null>(null);
   const [tick, setTick] = useState(0);
   const fnRef = useRef(fn);
   fnRef.current = fn;
@@ -24,11 +22,13 @@ export function useLoad<T>(cacheKey: string | null, fn: () => Promise<T>, deps: 
       setError(null);
       setData(null);
       setFromCache(false);
+      setLastUpdatedAt(null);
       if (cacheKey) {
-        const cached = await cacheGet<T>(cacheKey);
+        const cached = await cacheGetWithTime<T>(cacheKey);
         if (alive && cached) {
-          setData(cached);
+          setData(cached.value);
           setFromCache(true);
+          setLastUpdatedAt(cached.cachedAt);
         }
       }
       try {
@@ -36,7 +36,10 @@ export function useLoad<T>(cacheKey: string | null, fn: () => Promise<T>, deps: 
         if (!alive) return;
         setData(fresh);
         setFromCache(false);
-        if (cacheKey) cacheSet(cacheKey, fresh);
+        if (cacheKey) {
+          await cacheSet(cacheKey, fresh);
+          if (alive) setLastUpdatedAt(Date.now());
+        }
       } catch (e) {
         if (alive) setError(e instanceof ApiError ? e : new ApiError(0, String(e)));
       } finally {
@@ -50,18 +53,34 @@ export function useLoad<T>(cacheKey: string | null, fn: () => Promise<T>, deps: 
   }, [...deps, tick]);
 
   const reload = useCallback(() => setTick((x) => x + 1), []);
-  return { data, error, loading, fromCache, reload };
+
+  // Reconnect: when the app comes back online after being offline, refresh
+  // a screen that's showing cached-but-stale data, without reacting to every
+  // online/offline flap -- only a genuine false->true edge.
+  useEffect(() => {
+    let wasOffline = !isOnline();
+    return subscribeNet((online) => {
+      if (online && wasOffline) setTick((x) => x + 1);
+      wasOffline = !online;
+    });
+  }, []);
+
+  return { data, error, loading, fromCache, lastUpdatedAt, reload };
 }
 
-/** Human message for an ApiError, localized where the backend gives a stable code. */
-export function errorText(t: (k: Key) => string, e: ApiError | null): string {
+/** Human message for an ApiError, localized where the backend gives a stable code.
+ *  `opts.write: true` is for a write action (add field, submit scan, OTP, feedback,
+ *  bug report) failing on a network error -- those get the explicit
+ *  "you have no internet" instruction instead of the softer read-path copy,
+ *  per the offline contract: reads fall back to cached data silently, writes
+ *  must never fail silently. */
+export function errorText(t: (k: Key) => string, e: ApiError | null, opts?: { write?: boolean }): string {
   if (!e) return '';
-  if (e.isNetwork) return t('cantReachServer');
+  if (e.isNetwork) return opts?.write ? t('noInternetWrite') : t('cantReachServer');
   if (e.code === 'NO_WEATHER_DATA') return t('noWeatherData');
   if (e.code === 'INSUFFICIENT_DATA') return t('insufficientData');
   if (e.status === 401) return t('sessionExpired');
   if (e.status === 429) return t('tooManyRequests');
-  // raw 500s say "An unexpected error occurred"; on the free server that usually means it is busy or waking up
   if (e.status >= 500) return t('serverBusy');
   return e.message || t('genericError');
 }
