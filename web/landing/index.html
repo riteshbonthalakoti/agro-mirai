@@ -186,26 +186,32 @@
     min-height:96vh;
     display:flex;
     align-items:center;
+    padding:150px 0 90px;
+    overflow:hidden;
+  }
+  /* the photo lives in its own layer, taller than the hero itself, so JS
+     can translateY it a fraction of real scroll speed (true parallax --
+     the image visibly moves, just slower than the content) instead of the
+     old background-attachment:fixed trick, which pinned it to the
+     viewport and read as "frozen" rather than smooth */
+  .hero-bg{
+    position:absolute; z-index:0; top:-15%; left:0; right:0; height:130%;
     background-image:
       linear-gradient(100deg, rgba(12,16,10,0.72) 0%, rgba(12,16,10,0.5) 32%, rgba(12,16,10,0.18) 58%, rgba(12,16,10,0.32) 100%),
       linear-gradient(180deg, rgba(10,12,8,0.35) 0%, rgba(10,12,8,0) 30%, rgba(10,12,8,0) 70%, rgba(10,12,8,0.4) 100%),
       url('./assets/hero-farmer.jpg');
     background-size:cover;
     background-position:center 30%;
-    padding:150px 0 90px;
-    overflow:hidden;
-  }
-  @media (min-width:901px) and (prefers-reduced-motion:no-preference){
-    .hero{background-attachment:fixed;}
+    will-change:transform;
   }
   @media (max-width:900px){
-    .hero{
+    .hero-bg{
       background-image:
         linear-gradient(180deg, rgba(10,12,8,0.6) 0%, rgba(10,12,8,0.15) 34%, rgba(10,12,8,0.1) 55%, rgba(10,12,8,0.72) 100%),
         url('./assets/hero-farmer.jpg');
       background-position:78% 18%;
-      padding-top:130px;
     }
+    .hero{padding-top:130px;}
     .float-chip{display:none;}
   }
   .hero-panel{
@@ -240,6 +246,14 @@
     background:linear-gradient(180deg, #d8f0c8 0%, #a7d89a 100%);
     -webkit-background-clip:text; background-clip:text; color:transparent;
   }
+  /* kinetic word-by-word reveal, JS-driven (see the script at the bottom
+     of the page) -- .kinetic-word only exists once JS has wrapped the
+     headline, so there's no flash-of-invisible-text for no-JS/slow-JS */
+  .kinetic-word{
+    display:inline-block; opacity:0; transform:translateY(0.4em);
+    transition:opacity .6s cubic-bezier(.16,1,.3,1), transform .6s cubic-bezier(.16,1,.3,1);
+  }
+  .kinetic-in .kinetic-word{opacity:1; transform:translateY(0);}
   .hero p{
     font-size:clamp(1.02rem, 1.6vw, 1.2rem);
     color:rgba(255,255,255,0.9);
@@ -674,6 +688,7 @@
 </nav>
 
 <header class="hero" id="hero">
+  <div class="hero-bg" id="hero-bg"></div>
   <div class="float-chip chip-1">
     <div class="fc-k">Soil pH</div>
     <div class="fc-v">6.8 <small>lab report</small></div>
@@ -947,7 +962,28 @@
   </div>
 </footer>
 
+<!-- Lenis: smooths the scroll motion itself (momentum/easing), separate from
+     the reveal-on-scroll and parallax below, which animate based on scroll
+     position -- https://lenis.dev, ~3KB, no build step needed -->
+<script src="https://cdn.jsdelivr.net/npm/lenis@1.3.26/dist/lenis.min.js" integrity="sha384-jqpi9VmOdhyLoLURgjCn7EpnG9BbnHW57ibIZoeaIU+erWDH3k8fQQg0xH2ySjnw" crossorigin="anonymous"></script>
 <script>
+/* Smooth scroll (Lenis). Skipped entirely for prefers-reduced-motion --
+   native instant scroll is the correct, expected behavior there, not a
+   degraded experience. Lenis keeps real scroll events firing normally, so
+   IntersectionObserver-based reveals below need no changes to work with it. */
+var prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+var lenis = null;
+if (!prefersReducedMotion && typeof Lenis !== 'undefined') {
+  // native scroll-behavior:smooth (CSS, for no-JS graceful degradation)
+  // would otherwise fight Lenis's own rAF-driven easing on anchor clicks
+  document.documentElement.style.scrollBehavior = 'auto';
+  lenis = new Lenis({ duration: 1.1, smoothWheel: true });
+  function raf(time){ lenis.raf(time); requestAnimationFrame(raf); }
+  requestAnimationFrame(raf);
+} else if (prefersReducedMotion) {
+  document.documentElement.style.scrollBehavior = 'auto';
+}
+
 /* dynamic scroll-reveal: fades/slides/pops elements in as they enter the
    viewport, staggering siblings inside any [data-stagger] container so
    grids and timelines animate in sequence rather than all at once */
@@ -1130,6 +1166,54 @@
     });
   }, { threshold: 0.4 });
   document.querySelectorAll('.stat-card').forEach(function(card){ statIo.observe(card); });
+})();
+
+/* Hero parallax: the background photo and the floating stat chips move at
+   a fraction of real scroll speed, so the image visibly scrolls (just
+   slower than the text) instead of the old fixed-background trick that
+   read as frozen. rAF-throttled scroll listener, not Lenis-dependent --
+   works identically with or without Lenis active. */
+(function(){
+  if (prefersReducedMotion) return;
+  var heroBg = document.getElementById('hero-bg');
+  var hero = document.getElementById('hero');
+  var chips = document.querySelectorAll('.float-chip');
+  if (!heroBg || !hero) return;
+  var ticking = false;
+  function update(){
+    ticking = false;
+    var rect = hero.getBoundingClientRect();
+    if (rect.bottom < 0 || rect.top > window.innerHeight) return; // hero off-screen, skip work
+    var scrolled = -rect.top; // how far we've scrolled into the hero
+    heroBg.style.transform = 'translateY(' + (scrolled * 0.3) + 'px)';
+    chips.forEach(function(chip, i){
+      var speed = 0.12 + i * 0.05; // each chip drifts at a slightly different rate for depth
+      chip.style.transform = 'translateY(' + (scrolled * speed) + 'px)';
+    });
+  }
+  function onScroll(){
+    if (!ticking) { requestAnimationFrame(update); ticking = true; }
+  }
+  window.addEventListener('scroll', onScroll, { passive: true });
+  update();
+})();
+
+/* Kinetic hero headline: words fade/rise in one at a time on page load --
+   a single flagship motion moment, not applied anywhere else on the page. */
+(function(){
+  var h1 = document.querySelector('.hero-panel h1');
+  if (!h1 || prefersReducedMotion) return;
+  var html = h1.innerHTML;
+  // split on spaces while keeping the <em>data</em> tag intact as one unit
+  var parts = html.split(/(<em>.*?<\/em>|\s+)/).filter(function(p){ return p && p.trim().length; });
+  h1.innerHTML = parts.map(function(word, i){
+    return '<span class="kinetic-word" style="transition-delay:' + (i * 70) + 'ms">' + word + '</span>';
+  }).join(' ');
+  requestAnimationFrame(function(){
+    requestAnimationFrame(function(){
+      h1.classList.add('kinetic-in');
+    });
+  });
 })();
 </script>
 
