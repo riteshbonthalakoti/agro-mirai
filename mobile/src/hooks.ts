@@ -55,15 +55,19 @@ export function useLoad<T>(cacheKey: string | null, fn: () => Promise<T>, deps: 
   return { data, error, loading, fromCache, lastUpdatedAt, reload };
 }
 
-/** Human message for an ApiError, localized where the backend gives a stable code. */
-export function errorText(t: (k: Key) => string, e: ApiError | null): string {
+/** Human message for an ApiError, localized where the backend gives a stable code.
+ *  `opts.write: true` is for a write action (add field, submit scan, OTP, feedback,
+ *  bug report) failing on a network error -- those get the explicit
+ *  "you have no internet" instruction instead of the softer read-path copy,
+ *  per the offline contract: reads fall back to cached data silently, writes
+ *  must never fail silently. */
+export function errorText(t: (k: Key) => string, e: ApiError | null, opts?: { write?: boolean }): string {
   if (!e) return '';
-  if (e.isNetwork) return t('cantReachServer');
+  if (e.isNetwork) return opts?.write ? t('noInternetWrite') : t('cantReachServer');
   if (e.code === 'NO_WEATHER_DATA') return t('noWeatherData');
   if (e.code === 'INSUFFICIENT_DATA') return t('insufficientData');
   if (e.status === 401) return t('sessionExpired');
   if (e.status === 429) return t('tooManyRequests');
-  // raw 500s say "An unexpected error occurred"; on the free server that usually means it is busy or waking up
   if (e.status >= 500) return t('serverBusy');
   return e.message || t('genericError');
 }
