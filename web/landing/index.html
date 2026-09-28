@@ -23,7 +23,7 @@
 <!-- Open Graph (WhatsApp, Facebook, LinkedIn link previews) -->
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="AGRO MIRAI">
-<meta property="og:title" content="AGRO MIRAI — Farming decisions backed by data, not guesswork">
+<meta property="og:title" content="AGRO MIRAI — Know what to plant, when to water, and what's wrong with your crop">
 <meta property="og:description" content="Crop recommendation, ET0-based irrigation advisory, and disease risk detection for Indian farms — with real, measured model results and voice support in four Indian languages.">
 <meta property="og:url" content="https://agromirai.vercel.app/">
 <meta property="og:image" content="https://agromirai.vercel.app/assets/og-image.jpg">
@@ -34,7 +34,7 @@
 
 <!-- Twitter / X card -->
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="AGRO MIRAI — Farming decisions backed by data, not guesswork">
+<meta name="twitter:title" content="AGRO MIRAI — Know what to plant, when to water, and what's wrong with your crop">
 <meta name="twitter:description" content="Crop recommendation, irrigation advisory, and disease risk detection for Indian farms, with voice support in four Indian languages.">
 <meta name="twitter:image" content="https://agromirai.vercel.app/assets/og-image.jpg">
 
@@ -704,8 +704,8 @@
   <div class="container">
     <div class="hero-panel">
       <span class="eyebrow"><span class="dot"></span>Built for Indian farms</span>
-      <h1>Farming decisions backed by <em>data</em>, not guesswork.</h1>
-      <p>AGRO MIRAI reads a field's soil, weather, and satellite signals — then turns them into a crop pick, an irrigation schedule, and a disease alert, spoken back in the farmer's own language.</p>
+      <h1>Know what to plant, when to water, and what's wrong with your <em>crop</em>.</h1>
+      <p>AGRO MIRAI reads a field's soil, weather, and satellite signals to ground every recommendation in real data, not a guess — and speaks it back in the farmer's own language.</p>
       <div class="cta-row">
         <a class="btn btn-primary" href="https://github.com/riteshbonthalakoti/agro-mirai/releases/download/v1.5.0/agro-mirai-1.5.0.apk" style="display:inline-flex;align-items:center;gap:.5rem;">
           <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
@@ -1205,7 +1205,14 @@ if (!prefersReducedMotion && typeof Lenis !== 'undefined') {
   if (!h1 || prefersReducedMotion) return;
   var html = h1.innerHTML;
   // split on spaces while keeping the <em>data</em> tag intact as one unit
-  var parts = html.split(/(<em>.*?<\/em>|\s+)/).filter(function(p){ return p && p.trim().length; });
+  var rawParts = html.split(/(<em>.*?<\/em>|\s+)/).filter(function(p){ return p && p.trim().length; });
+  // merge stray trailing punctuation (e.g. the "." after a closing </em>)
+  // into the previous word instead of giving it its own animated span
+  var parts = [];
+  rawParts.forEach(function(p){
+    if (/^[.,!?;:]+$/.test(p) && parts.length) { parts[parts.length - 1] += p; }
+    else { parts.push(p); }
+  });
   h1.innerHTML = parts.map(function(word, i){
     return '<span class="kinetic-word" style="transition-delay:' + (i * 70) + 'ms">' + word + '</span>';
   }).join(' ');
