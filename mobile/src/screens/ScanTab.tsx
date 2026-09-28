@@ -292,7 +292,7 @@ function ProblemView({ kind, message, uri, onRetry, onRetake, onCancel }: { kind
   const title = notLeaf ? t('resNotLeafTitle') : t('resErrTitle');
   const body = notLeaf
     ? t('resNotLeafBody')
-    : kind === 'network' ? t('scanErrorNetwork')
+    : kind === 'network' ? (message || t('scanErrorNetwork'))
     : kind === 'unavailable' ? t('scanUnavailable')
     : kind === 'file' ? t('scanErrorFile')
     : kind === 'noField' ? t('scanNeedsField')
