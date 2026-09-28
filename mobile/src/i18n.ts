@@ -45,6 +45,8 @@ const en = {
   offlineActionBlocked: "You're offline. Connect to the internet to do this.",
   sessionExpired: 'Your session ended. Please sign in again.',
   genericError: 'Something went wrong. Please try again.',
+  crashedTitle: 'Something went wrong',
+  crashedBody: 'Please restart the app. If this keeps happening, use "Report a problem" in the Me tab.',
   noWeatherData: 'No weather data for this field yet. Open the Data tab and tap Refresh data.',
   insufficientData: 'Not enough data yet to compute this.',
 
@@ -476,6 +478,8 @@ const kn: Dict = {
   offlineActionBlocked: 'ನೀವು ಆಫ್‌ಲೈನ್‌ನಲ್ಲಿದ್ದೀರಿ. ಇದನ್ನು ಮಾಡಲು ಇಂಟರ್ನೆಟ್‌ಗೆ ಸಂಪರ್ಕಿಸಿ.',
   sessionExpired: 'ನಿಮ್ಮ ಸೆಷನ್ ಮುಗಿದಿದೆ. ದಯವಿಟ್ಟು ಮತ್ತೆ ಸೈನ್ ಇನ್ ಮಾಡಿ.',
   genericError: 'ಏನೋ ತಪ್ಪಾಗಿದೆ. ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.',
+  crashedTitle: 'ಏನೋ ತಪ್ಪಾಗಿದೆ',
+  crashedBody: 'ದಯವಿಟ್ಟು ಆ್ಯಪ್ ಅನ್ನು ಮರುಪ್ರಾರಂಭಿಸಿ. ಇದು ಮುಂದುವರಿದರೆ, Me ಟ್ಯಾಬ್‌ನಲ್ಲಿ "ಸಮಸ್ಯೆ ವರದಿ ಮಾಡಿ" ಬಳಸಿ.',
   noWeatherData: 'ಈ ಹೊಲಕ್ಕೆ ಇನ್ನೂ ಹವಾಮಾನ ಮಾಹಿತಿ ಇಲ್ಲ. ಮಾಹಿತಿ ಟ್ಯಾಬ್‌ನಲ್ಲಿ ರಿಫ್ರೆಶ್ ಒತ್ತಿ.',
   insufficientData: 'ಇದನ್ನು ಲೆಕ್ಕಹಾಕಲು ಇನ್ನೂ ಸಾಕಷ್ಟು ಮಾಹಿತಿ ಇಲ್ಲ.',
 
@@ -896,6 +900,8 @@ const te: Dict = {
   offlineActionBlocked: 'మీరు ఆఫ్‌లైన్‌లో ఉన్నారు. ఇది చేయడానికి ఇంటర్నెట్‌కు కనెక్ట్ అవ్వండి.',
   sessionExpired: 'మీ సెషన్ ముగిసింది. దయచేసి మళ్ళీ సైన్ ఇన్ చేయండి.',
   genericError: 'ఏదో తప్పు జరిగింది. మళ్ళీ ప్రయత్నించండి.',
+  crashedTitle: 'ఏదో తప్పు జరిగింది',
+  crashedBody: 'దయచేసి యాప్‌ను పునఃప్రారంభించండి. ఇది కొనసాగితే, Me ట్యాబ్‌లో "సమస్యను నివేదించండి" ఉపయోగించండి.',
   noWeatherData: 'ఈ పొలానికి ఇంకా వాతావరణ సమాచారం లేదు. డేటా ట్యాబ్‌లో రిఫ్రెష్ నొక్కండి.',
   insufficientData: 'దీన్ని లెక్కించడానికి ఇంకా తగినంత సమాచారం లేదు.',
 
@@ -1316,6 +1322,8 @@ const hi: Dict = {
   offlineActionBlocked: 'आप ऑफ़लाइन हैं। यह करने के लिए इंटरनेट से जुड़ें।',
   sessionExpired: 'आपका सत्र समाप्त हो गया। कृपया फिर से साइन इन करें।',
   genericError: 'कुछ गलत हो गया। फिर से प्रयास करें।',
+  crashedTitle: 'कुछ गलत हो गया',
+  crashedBody: 'कृपया ऐप को फिर से शुरू करें। अगर यह जारी रहे, तो Me टैब में "समस्या की रिपोर्ट करें" का उपयोग करें।',
   noWeatherData: 'इस खेत का मौसम डेटा अभी नहीं है। डेटा टैब में रिफ्रेश दबाएं।',
   insufficientData: 'इसकी गणना के लिए अभी पर्याप्त डेटा नहीं है।',
 

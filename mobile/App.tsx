@@ -2,6 +2,11 @@ import React, { Component, useCallback, useEffect, useMemo, useRef, useState } f
 import { ActivityIndicator, Image, ScrollView, StatusBar, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 
+// Top-level dev-facing boundary: catches anything anywhere in the tree
+// (including boot/lang/perms/auth, before a farmer/`t` even exists) and
+// shows the raw error for debugging. `MainErrorBoundary` below is the
+// farmer-facing one, scoped to the main screen stack, with a friendly
+// localized message and a call into the local error log.
 class ErrorBoundary extends Component<{ children: React.ReactNode }, { error: string }> {
   constructor(props: any) { super(props); this.state = { error: '' }; }
   static getDerivedStateFromError(e: any) { return { error: String(e?.message || e) }; }
@@ -18,9 +23,34 @@ class ErrorBoundary extends Component<{ children: React.ReactNode }, { error: st
     return this.props.children;
   }
 }
+
+class MainErrorBoundary extends React.Component<{ t: (k: Key) => string; children: React.ReactNode }, { crashed: boolean }> {
+  constructor(props: { t: (k: Key) => string; children: React.ReactNode }) {
+    super(props);
+    this.state = { crashed: false };
+  }
+  static getDerivedStateFromError() {
+    return { crashed: true };
+  }
+  componentDidCatch(error: Error) {
+    logError('boundary', error);
+  }
+  render() {
+    if (this.state.crashed) {
+      return (
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: S.lg, backgroundColor: C.bg }}>
+          <Text style={{ fontSize: 16, fontWeight: '700', color: C.text, textAlign: 'center' }}>{this.props.t('crashedTitle')}</Text>
+          <Text style={{ fontSize: 13, color: C.muted, textAlign: 'center', marginTop: S.sm }}>{this.props.t('crashedBody')}</Text>
+        </View>
+      );
+    }
+    return this.props.children;
+  }
+}
 import { ApiError, Farmer, Field, getMe, listFields, logout, patchMe, setUnauthorizedHandler, subscribeNet, isOnline, wakeServer, getAdvisories } from './src/api';
 import { AppCtx, Ctx, cropLabel, makeT } from './src/ctx';
-import { Lang, LANGS } from './src/i18n';
+import { Key, Lang, LANGS } from './src/i18n';
+import { logError } from './src/errorLog';
 import { AdviceTab } from './src/screens/AdviceTab';
 import { DataTab } from './src/screens/DataTab';
 import { FieldForm } from './src/screens/FieldForm';
@@ -350,6 +380,7 @@ function RootInner({ lang, setLang }: { lang: Lang; setLang: (l: Lang) => void }
 
   return (
     <AppCtx.Provider value={ctx}>
+      <MainErrorBoundary t={t}>
       <View style={{ flex: 1 }}>
         {!online ? <Banner text={t('offlineBanner')} /> : null}
         {form ? (
@@ -397,6 +428,7 @@ function RootInner({ lang, setLang }: { lang: Lang; setLang: (l: Lang) => void }
           />
         ) : null}
       </View>
+      </MainErrorBoundary>
     </AppCtx.Provider>
   );
 }
