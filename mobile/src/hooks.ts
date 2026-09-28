@@ -1,18 +1,16 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ApiError } from './api';
 import { Key } from './i18n';
-import { cacheGet, cacheSet } from './storage';
+import { cacheGet, cacheGetWithTime, cacheSet } from './storage';
 
-export type Load<T> = { data: T | null; error: ApiError | null; loading: boolean; fromCache: boolean; reload: () => void };
+export type Load<T> = { data: T | null; error: ApiError | null; loading: boolean; fromCache: boolean; lastUpdatedAt: number | null; reload: () => void };
 
-/** Fetch with a cache-first paint: cached data (if any) shows immediately and
- *  is replaced by the fresh response; on failure the cached copy stays and
- *  `error` is set, so a screen can show both "saved data" and the real reason. */
 export function useLoad<T>(cacheKey: string | null, fn: () => Promise<T>, deps: unknown[]): Load<T> {
   const [data, setData] = useState<T | null>(null);
   const [error, setError] = useState<ApiError | null>(null);
   const [loading, setLoading] = useState(false);
   const [fromCache, setFromCache] = useState(false);
+  const [lastUpdatedAt, setLastUpdatedAt] = useState<number | null>(null);
   const [tick, setTick] = useState(0);
   const fnRef = useRef(fn);
   fnRef.current = fn;
@@ -25,10 +23,11 @@ export function useLoad<T>(cacheKey: string | null, fn: () => Promise<T>, deps: 
       setData(null);
       setFromCache(false);
       if (cacheKey) {
-        const cached = await cacheGet<T>(cacheKey);
+        const cached = await cacheGetWithTime<T>(cacheKey);
         if (alive && cached) {
-          setData(cached);
+          setData(cached.value);
           setFromCache(true);
+          setLastUpdatedAt(cached.cachedAt);
         }
       }
       try {
@@ -36,7 +35,10 @@ export function useLoad<T>(cacheKey: string | null, fn: () => Promise<T>, deps: 
         if (!alive) return;
         setData(fresh);
         setFromCache(false);
-        if (cacheKey) cacheSet(cacheKey, fresh);
+        if (cacheKey) {
+          await cacheSet(cacheKey, fresh);
+          setLastUpdatedAt(Date.now());
+        }
       } catch (e) {
         if (alive) setError(e instanceof ApiError ? e : new ApiError(0, String(e)));
       } finally {
@@ -50,7 +52,7 @@ export function useLoad<T>(cacheKey: string | null, fn: () => Promise<T>, deps: 
   }, [...deps, tick]);
 
   const reload = useCallback(() => setTick((x) => x + 1), []);
-  return { data, error, loading, fromCache, reload };
+  return { data, error, loading, fromCache, lastUpdatedAt, reload };
 }
 
 /** Human message for an ApiError, localized where the backend gives a stable code. */
