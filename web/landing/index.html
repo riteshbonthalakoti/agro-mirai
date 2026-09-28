@@ -690,7 +690,7 @@
     <div class="hero-panel">
       <span class="eyebrow"><span class="dot"></span>Built for Indian farms</span>
       <h1>Farming decisions backed by <em>data</em>, not guesswork.</h1>
-      <p>AGRO MIRAI reads a field's soil, weather, and satellite signals, then hands the farmer a crop pick, an irrigation schedule, and a disease alert — spoken back in their own language.</p>
+      <p>AGRO MIRAI reads a field's soil, weather, and satellite signals — then turns them into a crop pick, an irrigation schedule, and a disease alert, spoken back in the farmer's own language.</p>
       <div class="cta-row">
         <a class="btn btn-primary" href="https://github.com/riteshbonthalakoti/agro-mirai/releases/download/v1.5.0/agro-mirai-1.5.0.apk" style="display:inline-flex;align-items:center;gap:.5rem;">
           <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
@@ -738,28 +738,28 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3c3 3 3 7 0 10-3-3-3-7 0-10Z"/><path d="M12 13v8"/><path d="M8 21h8"/></svg>
         </div>
         <h3>Crop recommendation</h3>
-        <p>Ranks all 22 supported crop types against FAO EcoCrop's own temperature, soil-pH, and soil-texture ranges for the field, plus the field's real 12-month rainfall and a sowing-month calendar — with a regional-suitability check that flags a pick agronomically unusual for the farmer's district instead of silently trusting the model.</p>
+        <p>Ranks all 22 supported crop types against FAO EcoCrop's own temperature, soil-pH, and soil-texture ranges — plus the field's real 12-month rainfall and a sowing-month calendar. A regional-suitability check flags any pick that's agronomically unusual for the farmer's district, instead of silently trusting the model.</p>
       </div>
       <div class="feature-card reveal-card">
         <div class="feature-mark">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.5s6 6.5 6 11a6 6 0 1 1-12 0c0-4.5 6-11 6-11Z"/></svg>
         </div>
         <h3>Irrigation advisory</h3>
-        <p>A daily FAO-56 root-zone water balance — Hargreaves-Samani reference evapotranspiration (chosen over Penman-Monteith since a real farm doesn't reliably report solar radiation or wind), crop coefficient by growth stage, root depth and soil water-holding capacity — sets both the recommended depth in mm and the urgency from the same numbers, not two models that can disagree.</p>
+        <p>A daily FAO-56 root-zone water balance — Hargreaves-Samani reference evapotranspiration (chosen over Penman-Monteith, since a real farm doesn't reliably report solar radiation or wind), crop coefficient by growth stage, root depth, and soil water-holding capacity. The same numbers set both the recommended depth in mm and the urgency — never two models that can disagree.</p>
       </div>
       <div class="feature-card reveal-card">
         <div class="feature-mark">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2s7 3.5 7 9a7 7 0 1 1-14 0c0-5.5 7-9 7-9Z"/><path d="M9.5 12.5c1 1.5 3.5 1.5 4.5 0"/></svg>
         </div>
         <h3>Disease risk detection</h3>
-        <p>A MobileNetV2 CNN trained on the PlantVillage dataset reads an uploaded leaf photo when one is available; when it isn't, a weighted rule-based score over humidity, rainfall, temperature, and NDVI trend fills in. A failed CNN call always falls back to the rule-based score — never a failure.</p>
+        <p>A MobileNetV2 CNN trained on the PlantVillage dataset reads an uploaded leaf photo, when one's available. When it isn't, a weighted rule-based score over humidity, rainfall, temperature, and NDVI trend fills in — and if the CNN call itself fails, that same rule-based score catches it. Never a dead end.</p>
       </div>
       <div class="feature-card reveal-card">
         <div class="feature-mark">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 1 3 3v6a3 3 0 0 1-6 0V5a3 3 0 0 1 3-3Z"/><path d="M19 11a7 7 0 0 1-14 0"/><path d="M12 18v4"/><path d="M9 22h6"/></svg>
         </div>
         <h3>Voice, in four languages</h3>
-        <p>Advisories translate and speak back in English, Kannada, Telugu, and Hindi (IndicTrans2 + AI4Bharat ASR/TTS, Piper for English/Hindi), with a name+phone+OTP login so a farmer never needs to remember a password.</p>
+        <p>Every advisory translates and speaks back in English, Kannada, Telugu, and Hindi (IndicTrans2 + AI4Bharat ASR/TTS, Piper for English and Hindi) — and login is just name, phone, and an OTP, so there's no password for a farmer to forget.</p>
       </div>
     </div>
   </div>
@@ -827,7 +827,7 @@
       <div class="app-copy reveal-left">
         <div class="kicker">In the farmer's pocket</div>
         <h2>One app. Every field, every advisory.</h2>
-        <p>A React Native / Expo mobile app puts all four advisories, voice playback, and photo-based disease scans in a single screen a farmer already knows how to use — no password, just name, phone, and an OTP.</p>
+        <p>A React Native / Expo mobile app puts all four advisories, voice playback, and photo-based disease scans on one screen a farmer already knows how to use — no password, just name, phone, and an OTP.</p>
         <ul>
           <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Name + phone + OTP login — nothing to remember</li>
           <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Live field readings, translated and read aloud</li>
@@ -880,7 +880,7 @@
     <div class="section-head reveal">
       <div class="kicker">Measured, not claimed</div>
       <h2>Real numbers, not marketing claims</h2>
-      <p>Where a figure comes from a trained model's held-out evaluation, we say so. Where it comes from a rule or a real dataset instead, we say that too — crop and irrigation are transparent methods now, not black-box accuracy scores.</p>
+      <p>Where a figure comes from a trained model's held-out evaluation, we say so. Where it comes from a rule or a real dataset instead, we say that too — crop and irrigation run on transparent methods, not a black-box accuracy score.</p>
     </div>
     <div class="stat-grid" data-stagger>
       <div class="stat-card reveal-card">
