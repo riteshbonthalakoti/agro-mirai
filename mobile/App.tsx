@@ -164,6 +164,7 @@ function RootInner({ lang, setLang }: { lang: Lang; setLang: (l: Lang) => void }
   const [fields, setFields] = useState<Field[]>([]);
   const [fieldId, setFieldId] = useState<string | null>(null);
   const [tab, setTab] = useState<Tab>('home');
+  const [bugReportContext, setBugReportContext] = useState<string | null>(null);
   const [form, setForm] = useState<{ edit?: Field } | null>(null);
   const [online, setOnline] = useState(isOnline());
   const [authNotice, setAuthNotice] = useState('');
@@ -278,6 +279,7 @@ function RootInner({ lang, setLang }: { lang: Lang; setLang: (l: Lang) => void }
         changeLang,
         openFieldForm: (f?: Field) => setForm({ edit: f }),
         signOut,
+        openBugReport: (screen: string) => { setBugReportContext(screen); setTab('me'); },
       }
     : null;
 
@@ -395,7 +397,12 @@ function RootInner({ lang, setLang }: { lang: Lang; setLang: (l: Lang) => void }
               {tab === 'data' && <DataTab />}
               {tab === 'advice' && <AdviceTab />}
               {tab === 'scan' && <ScanTab />}
-              {tab === 'me' && <MeTab />}
+              {tab === 'me' && (
+                <MeTab
+                  initialScreenContext={bugReportContext ?? undefined}
+                  onConsumeScreenContext={() => setBugReportContext(null)}
+                />
+              )}
             </View>
             <View style={{ flexDirection: 'row', borderTopWidth: 1, borderTopColor: C.border, backgroundColor: C.bg }}>
               {([

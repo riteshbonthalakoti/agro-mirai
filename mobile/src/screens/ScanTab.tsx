@@ -321,7 +321,7 @@ function ProblemView({ kind, message, uri, onRetry, onRetake, onCancel }: { kind
 
 // ------------------------------------------------------------------ screen
 export function ScanTab() {
-  const { field, t, lang } = useApp();
+  const { field, t, lang, openBugReport } = useApp();
   const [phase, setPhase] = useState<Phase>('home');
   const [cameraOpen, setCameraOpen] = useState(false);
   const [photoUri, setPhotoUri] = useState<string | null>(null);
@@ -457,6 +457,11 @@ export function ScanTab() {
     <View style={{ flex: 1 }}>
       <AuthBackdrop />
       <ScrollView contentContainerStyle={{ padding: S.lg, paddingTop: S.md, paddingBottom: S.xl * 2 }} keyboardShouldPersistTaps="handled">
+      {phase === 'home' ? (
+        <TouchableOpacity onPress={() => openBugReport('Scan')} accessibilityLabel={t('reportProblem')} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} style={{ alignSelf: 'flex-end', padding: 6, marginBottom: S.xs }}>
+          <Icon name="bug" size={22} color={C.muted} />
+        </TouchableOpacity>
+      ) : null}
       {phase === 'analyzing' && photoUri ? <AnalyzingView uri={photoUri} onCancel={cancelScan} /> : null}
 
       {phase === 'result' && result && photoUri ? (

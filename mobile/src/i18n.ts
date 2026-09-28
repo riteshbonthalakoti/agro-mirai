@@ -272,6 +272,8 @@ const en = {
   bugReportSubmit: 'Send report',
   bugReportSuccess: 'Thanks — your report was sent.',
   bugReportError: "Couldn't send your report. Check your connection and try again.",
+  attachPhoto: 'Attach a photo',
+  removePhoto: 'Remove photo',
   nameRequired: 'Enter your name.',
   // Module 39: farmer-friendly data explanations
   scanNotLeaf: 'This photo does not look like a plant leaf. Take a close, well-lit photo of one leaf.',
@@ -697,6 +699,8 @@ const kn: Dict = {
   bugReportSubmit: 'ವರದಿ ಕಳುಹಿಸಿ',
   bugReportSuccess: 'ಧನ್ಯವಾದಗಳು — ನಿಮ್ಮ ವರದಿ ಕಳುಹಿಸಲಾಗಿದೆ.',
   bugReportError: 'ವರದಿ ಕಳುಹಿಸಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ. ಸಂಪರ್ಕ ಪರಿಶೀಲಿಸಿ ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.',
+  attachPhoto: 'ಫೋಟೋ ಲಗತ್ತಿಸಿ',
+  removePhoto: 'ಫೋಟೋ ತೆಗೆದುಹಾಕಿ',
   nameRequired: 'ನಿಮ್ಮ ಹೆಸರು ನಮೂದಿಸಿ.',
   // Module 39: farmer-friendly data explanations
   scanNotLeaf: 'ಈ ಫೋಟೋ ಸಸ್ಯದ ಎಲೆಯಂತೆ ಕಾಣುತ್ತಿಲ್ಲ. ಒಂದು ಎಲೆಯ ಹತ್ತಿರದ, ಬೆಳಕಿರುವ ಫೋಟೋ ತೆಗೆಯಿರಿ.',
@@ -1119,6 +1123,8 @@ const te: Dict = {
   bugReportSubmit: 'నివేదిక పంపండి',
   bugReportSuccess: 'ధన్యవాదాలు — మీ నివేదిక పంపబడింది.',
   bugReportError: 'నివేదిక పంపలేకపోయాము. కనెక్షన్ చూసి మళ్ళీ ప్రయత్నించండి.',
+  attachPhoto: 'ఫోటో జోడించండి',
+  removePhoto: 'ఫోటో తీసివేయండి',
   nameRequired: 'మీ పేరు నమోదు చేయండి.',
   // Module 39: farmer-friendly data explanations
   scanNotLeaf: 'ఈ ఫోటో మొక్క ఆకులా కనిపించడం లేదు. ఒక ఆకు యొక్క దగ్గరి, వెలుతురు ఉన్న ఫోటో తీయండి.',
@@ -1541,6 +1547,8 @@ const hi: Dict = {
   bugReportSubmit: 'रिपोर्ट भेजें',
   bugReportSuccess: 'धन्यवाद — आपकी रिपोर्ट भेज दी गई है।',
   bugReportError: 'रिपोर्ट नहीं भेजी जा सकी। कनेक्शन जांचें और फिर से प्रयास करें।',
+  attachPhoto: 'फोटो जोड़ें',
+  removePhoto: 'फोटो हटाएं',
   nameRequired: 'अपना नाम दर्ज करें।',
   // Module 39: farmer-friendly data explanations
   scanNotLeaf: 'यह फोटो पौधे की पत्ती जैसी नहीं लग रही। एक पत्ती की पास से, अच्छी रोशनी में फोटो लें।',
