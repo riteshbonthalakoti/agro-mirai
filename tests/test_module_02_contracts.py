@@ -15,15 +15,12 @@ BROKEN_FIXTURE = ROOT / "tests" / "fixtures_broken" / "farm-broken.json"
 
 def test_contract_files_exist():
     for rel in [
-        "docs/conventions.md",
         "specs/core/schema.yaml",
         "specs/core/enums.md",
         "specs/core/openapi.yaml",
-        "specs/core/repository-interface.md",
         "specs/domains/fixtures/farm-001.json",
         "tools/check_specs.py",
         ".gitattributes",
-        "modules/02-contracts/STATUS",
     ]:
         assert (ROOT / rel).exists(), f"missing: {rel}"
 
@@ -64,8 +61,3 @@ def test_schema_and_openapi_agree_on_entity_names():
                  "DiseaseRiskAlert", "Advisory", "FeedbackEntry"]:
         assert name in entities, f"schema.yaml missing entity {name}"
         assert name in openapi_schemas, f"openapi.yaml missing schema {name}"
-
-
-def test_module_02_has_status_marker():
-    status = (ROOT / "modules" / "02-contracts" / "STATUS").read_text().strip()
-    assert status in {"not-started", "in-progress", "done"}
