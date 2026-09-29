@@ -253,31 +253,52 @@ the same way `VERCEL_TOKEN` was added, once a token exists.
 ## OTA updates (EAS Update) -- local build channel binding
 
 Release APKs are built locally, not via `eas build` cloud -- see the Module 51 APK-size work for
-why (Windows path-length limits made cloud builds worth avoiding in favor of a short-path local
-worktree). `eas.json`'s per-profile `"channel"` field only binds a channel for cloud builds. For
-a local build to receive updates from the right EAS Update channel, set `EXPO_UPDATES_CHANNEL`
-as an environment variable *before* running `expo prebuild` (it gets baked into the generated
-native Android manifest at prebuild time -- setting it after prebuild has no effect):
+why (Windows path-length limits under the deep worktree path this repo's harness creates made a
+short-path local build worth setting up instead of fighting cloud-build upload/queue times).
+`eas.json`'s per-profile `"channel"` field only binds a channel for cloud (`eas build`) builds.
+
+**app.json cannot read environment variables at all -- it's static JSON, not JS.** The channel is
+set via `mobile/app.config.js`, a thin dynamic config that extends `app.json` and reads
+`process.env.APP_CHANNEL` into `updates.requestHeaders['expo-channel-name']` -- the actual
+mechanism `expo-updates` uses to pick a channel (confirmed by reading the installed
+`expo-updates`/`@expo/config-plugins` source, not assumed). Set `APP_CHANNEL` *before* running
+`expo prebuild` (config resolution happens at that point; setting it after prebuild has no
+effect):
 
 ```bash
 # Personal test build (receives `staging` channel updates):
-EXPO_UPDATES_CHANNEL=staging npx expo prebuild --platform android --clean
+APP_CHANNEL=staging npx expo prebuild --platform android --clean
 
 # Real public release build (receives `production` channel updates):
-EXPO_UPDATES_CHANNEL=production npx expo prebuild --platform android --clean
+APP_CHANNEL=production npx expo prebuild --platform android --clean
 ```
 
-Publishing an update:
+`runtimeVersion` uses the `fingerprint` policy (computed from the actual native code), not
+`appVersion` -- this means an update can never be silently offered to a binary with a mismatched
+native module set just because `app.json`'s `version` field wasn't bumped for a native change.
+No manual version-bump discipline to remember or get wrong.
+
+The `staging` and `production` EAS Update channels/branches don't exist until created once:
+```bash
+eas channel:create staging
+eas channel:create production
+```
+
+Publishing an update to staging:
 ```bash
 eas update --branch staging --message "<what changed>"
 ```
 
 Promoting an already-tested staging update to production (this is the manual safety gate --
-never script this step):
+never script this step). **Promote the specific tested update, not the whole branch** --
+`eas channel:edit production --branch staging` would point `production` at the live `staging`
+branch permanently, so every future `eas update --branch staging` (including the one-click
+GitHub Action) would go straight to production from then on, silently removing this gate after
+its first use:
 ```bash
-# First, confirm what's actually on staging right now -- don't rely on memory:
+# Find the update group ID for what you just tested on staging:
 eas channel:view staging
 
-# Then, only if that's genuinely the update you just tested:
-eas channel:edit production --branch staging
+# Republish that exact update (same bits, not a rebuild) to the production branch:
+eas update:republish --group <update-group-id> --destination-branch production
 ```

@@ -24,9 +24,11 @@ jobs:
           eas-version: latest
           token: ${{ secrets.EXPO_TOKEN }}
       - name: Publish to staging channel
+        env:
+          UPDATE_MESSAGE: ${{ github.event.inputs.message }}
         run: |
-          if [ -n "${{ github.event.inputs.message }}" ]; then
-            eas update --branch staging --message "${{ github.event.inputs.message }}" --non-interactive
+          if [ -n "$UPDATE_MESSAGE" ]; then
+            eas update --branch staging --message "$UPDATE_MESSAGE" --non-interactive
           else
             eas update --branch staging --auto --non-interactive
           fi
