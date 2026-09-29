@@ -1,0 +1,32 @@
+name: Publish OTA Update (staging)
+
+on:
+  workflow_dispatch:
+    inputs:
+      message:
+        description: 'Update message (leave blank to auto-derive from the latest commit)'
+        required: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm ci
+      - uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+      - name: Publish to staging channel
+        run: |
+          if [ -n "${{ github.event.inputs.message }}" ]; then
+            eas update --branch staging --message "${{ github.event.inputs.message }}" --non-interactive
+          else
+            eas update --branch staging --auto --non-interactive
+          fi
