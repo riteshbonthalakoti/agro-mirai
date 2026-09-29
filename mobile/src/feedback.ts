@@ -31,7 +31,6 @@ cacheGet<boolean>(KEY).then((v) => {
   }
 });
 
-export const feedbackEnabled = () => enabled;
 export function setFeedbackEnabled(on: boolean) {
   enabled = on;
   cacheSet(KEY, on);

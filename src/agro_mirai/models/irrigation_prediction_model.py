@@ -28,7 +28,7 @@ from datetime import datetime, timedelta, timezone
 
 from agro_mirai.models.crop_coefficients import growth_stage_for, kc_for
 from agro_mirai.models.evapotranspiration import hargreaves_samani_et0
-from agro_mirai.models.soil_water_balance import BalanceResult, effective_rain, run_balance
+from agro_mirai.models.soil_water_balance import BalanceResult, run_balance
 from agro_mirai.persistence.models import IrrigationAdvice
 from agro_mirai.processing.feature_builder import FeatureVector
 

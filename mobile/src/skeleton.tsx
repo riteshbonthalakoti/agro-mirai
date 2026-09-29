@@ -32,11 +32,3 @@ export function SkeletonCard() {
     </View>
   );
 }
-
-export function SkeletonList({ count = 3 }: { count?: number }) {
-  return (
-    <>
-      {Array.from({ length: count }).map((_, i) => <SkeletonCard key={i} />)}
-    </>
-  );
-}

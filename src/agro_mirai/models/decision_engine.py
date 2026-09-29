@@ -16,10 +16,8 @@ from __future__ import annotations
 import uuid
 from datetime import datetime, timezone
 
-from agro_mirai.models.crop_recommendation_model import CropRecommendationModel
 from agro_mirai.models.disease_risk_model import DiseaseRiskModel
 from agro_mirai.models.explanation_service import ExplanationService
-from agro_mirai.models.irrigation_prediction_model import IrrigationPredictionModel
 from agro_mirai.persistence.models import Advisory
 from agro_mirai.processing.feature_builder import FeatureVector
 

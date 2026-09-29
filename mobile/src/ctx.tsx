@@ -48,13 +48,6 @@ export function diseaseAction(t: (k: Key) => string, level?: string | null, fall
   }
 }
 
-export function sourceLabel(t: (k: Key) => string, src?: string | null): string {
-  if (src === 'cnn') return t('scanSourceCnn');
-  if (src === 'environmental_fallback') return t('scanSourceEnvironmentalFallback');
-  if (src === 'environmental') return t('scanSourceEnvironmental');
-  return src || '—';
-}
-
 export function fmtDate(iso?: string | null, withTime = false): string {
   if (!iso) return '—';
   const d = new Date(iso);

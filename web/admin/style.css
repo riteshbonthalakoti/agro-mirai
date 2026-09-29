@@ -28,7 +28,6 @@ main{max-width:1100px;margin:0 auto;padding:1.25rem 16px 3rem}
 .grid{display:grid;gap:1rem;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));margin-bottom:1rem}
 .grid.wide{grid-template-columns:repeat(auto-fit,minmax(320px,1fr))}
 .stat .n{font-size:2rem;font-weight:700;color:var(--accent)}
-.stat .na{font-size:1rem;color:var(--muted)}
 button{font:inherit;background:var(--accent);color:var(--accent-text);border:0;border-radius:8px;padding:.55rem 1rem;cursor:pointer;transition:opacity .15s ease}
 button:hover{opacity:.88}
 button.ghost{background:transparent;color:var(--muted);border:1px solid var(--border)}
@@ -53,7 +52,6 @@ tr.row{cursor:pointer} tr.row:hover td{background:var(--surface)}
 .bar .val{color:var(--muted)}
 .pill{display:inline-block;background:var(--surface);color:var(--accent);border-radius:99px;padding:0 .6rem;font-size:.85rem}
 .pill.live{background:var(--accent);color:var(--accent-text)}
-.gap{border:1px dashed var(--warn);background:var(--surface);color:var(--muted);font-size:.9rem}
 .kv{display:grid;grid-template-columns:max-content 1fr;gap:.25rem 1rem;margin:0}
 .kv dt{color:var(--muted)} .kv dd{margin:0}
 .back{display:inline-block;margin-bottom:.75rem}

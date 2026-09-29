@@ -58,7 +58,6 @@ def call_cnn_service(
     if not base_url:
         return None
 
-    last_exc: requests.RequestException | None = None
     for attempt in range(2):
         try:
             resp = requests.post(
@@ -69,8 +68,7 @@ def call_cnn_service(
                 timeout=cnn_service_timeout(),
             )
             break
-        except requests.RequestException as exc:
-            last_exc = exc
+        except requests.RequestException:
             continue
     else:
         return None  # both attempts failed at the network level

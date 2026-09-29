@@ -20,10 +20,8 @@ from sentry_sdk.integrations.flask import FlaskIntegration
 
 from agro_mirai.api.errors import register_error_handlers
 from agro_mirai.api.request_context import _RequestIdLogFilter, init_request_logging
-from agro_mirai.models.crop_recommendation_model import CropRecommendationModel
 from agro_mirai.models.decision_engine import DecisionEngine
 from agro_mirai.models.disease_risk_model import DiseaseRiskModel
-from agro_mirai.models.irrigation_prediction_model import IrrigationPredictionModel
 from agro_mirai.persistence.sqlite_store import SQLiteDataStore
 
 

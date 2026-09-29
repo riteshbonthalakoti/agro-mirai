@@ -44,10 +44,6 @@ export function KV({ k, v, color }: { k: string; v: string | number | null | und
   );
 }
 
-export function Label({ children }: { children: React.ReactNode }) {
-  return <Text style={st.label}>{children}</Text>;
-}
-
 export function Input(props: TextInputProps) {
   return <TextInput placeholderTextColor={C.muted} {...props} style={[st.input, props.style]} />;
 }

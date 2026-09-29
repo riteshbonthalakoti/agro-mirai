@@ -14,7 +14,7 @@ import { requestNotificationPermission } from '../notifications';
 import { Icon, IconName } from '../../icons';
 import { LANGS, Lang } from '../i18n';
 import { C, S } from '../theme';
-import { Banner, Btn, Chip, Input, Label, Muted, st } from '../ui';
+import { Banner, Btn, Chip, Input, Muted, st } from '../ui';
 import { AuthBackdrop } from '../components/AuthBackdrop';
 
 /** Requested once, right after picking a language -- so the app never
