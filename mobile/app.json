@@ -61,6 +61,10 @@
       ]
     ],
     "owner": "ritesh.bonthalakoti",
+    "runtimeVersion": { "policy": "appVersion" },
+    "updates": {
+      "url": "https://u.expo.dev/68847f91-ef3a-429b-b3cb-d8398450af47"
+    },
     "extra": {
       "eas": {
         "projectId": "68847f91-ef3a-429b-b3cb-d8398450af47"
