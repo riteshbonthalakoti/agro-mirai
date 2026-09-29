@@ -249,3 +249,35 @@ durable Supabase access token from this machine's CLI auth store hit
 the same dead end as Vercel's did (session-scoped, not a real PAT), and
 a fresh PAT generation step wasn't completed in this session. Add it
 the same way `VERCEL_TOKEN` was added, once a token exists.
+
+## OTA updates (EAS Update) -- local build channel binding
+
+Release APKs are built locally, not via `eas build` cloud -- see the Module 51 APK-size work for
+why (Windows path-length limits made cloud builds worth avoiding in favor of a short-path local
+worktree). `eas.json`'s per-profile `"channel"` field only binds a channel for cloud builds. For
+a local build to receive updates from the right EAS Update channel, set `EXPO_UPDATES_CHANNEL`
+as an environment variable *before* running `expo prebuild` (it gets baked into the generated
+native Android manifest at prebuild time -- setting it after prebuild has no effect):
+
+```bash
+# Personal test build (receives `staging` channel updates):
+EXPO_UPDATES_CHANNEL=staging npx expo prebuild --platform android --clean
+
+# Real public release build (receives `production` channel updates):
+EXPO_UPDATES_CHANNEL=production npx expo prebuild --platform android --clean
+```
+
+Publishing an update:
+```bash
+eas update --branch staging --message "<what changed>"
+```
+
+Promoting an already-tested staging update to production (this is the manual safety gate --
+never script this step):
+```bash
+# First, confirm what's actually on staging right now -- don't rely on memory:
+eas channel:view staging
+
+# Then, only if that's genuinely the update you just tested:
+eas channel:edit production --branch staging
+```
