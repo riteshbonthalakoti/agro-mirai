@@ -27,6 +27,7 @@
     "expo-notifications": "~57.0.20",
     "expo-speech": "^57.0.2",
     "expo-task-manager": "~57.0.20",
+    "expo-updates": "~57.0.23",
     "expo-video": "^57.0.4",
     "react": "19.2.3",
     "react-native": "0.86.3",

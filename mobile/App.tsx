@@ -51,6 +51,7 @@ import { ApiError, Farmer, Field, getMe, listFields, logout, patchMe, setUnautho
 import { AppCtx, Ctx, cropLabel, makeT } from './src/ctx';
 import { Key, Lang, LANGS } from './src/i18n';
 import { logError } from './src/errorLog';
+import { checkForAppUpdate } from './src/updates';
 import { AdviceTab } from './src/screens/AdviceTab';
 import { DataTab } from './src/screens/DataTab';
 import { FieldForm } from './src/screens/FieldForm';
@@ -130,6 +131,7 @@ type Tab = 'home' | 'data' | 'advice' | 'scan' | 'me';
 const isLang = (v: unknown): v is Lang => LANGS.some((l) => l.code === v);
 
 export default function App() {
+  useEffect(() => { checkForAppUpdate(); }, []);
   return (
     <ErrorBoundary>
       <SafeAreaProvider>
