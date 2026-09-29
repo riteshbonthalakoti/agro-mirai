@@ -75,7 +75,11 @@
   $("login-form").addEventListener("submit", function (ev) {
     ev.preventDefault();
     var form = ev.target;
+    var submitBtn = form.querySelector('button[type="submit"]');
     var body = new URLSearchParams(new FormData(form));
+    submitBtn.disabled = true;
+    submitBtn.textContent = "Signing in…";
+    $("login-error").hidden = true;
     fetch("/admin/login", { method: "POST", body: body, credentials: "same-origin" })
       .then(function (r) {
         if (new URL(r.url).pathname.replace(/\/$/, "") !== "/admin") {
@@ -89,6 +93,10 @@
       .then(function () { form.reset(); showApp(); })
       .catch(function (e) {
         showLogin(e.code === 401 ? "Not an admin session" : e.message || "Sign in failed");
+      })
+      .finally(function () {
+        submitBtn.disabled = false;
+        submitBtn.textContent = "Sign in";
       });
   });
 
