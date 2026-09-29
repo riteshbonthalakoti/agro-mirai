@@ -398,26 +398,38 @@
   }
   .india-strip .chip .swatch{width:8px; height:8px; border-radius:50%; background:var(--saffron);}
 
-  /* ---------- FEATURES (3D tilt cards) ---------- */
+  /* ---------- FEATURES (bento grid, 3D tilt cards) ---------- */
   .features{background:var(--paper);}
+  /* Bento layout: the crop-recommendation card (the flagship advisory) gets
+     a tall hero tile on the left; the other three stack on the right. Breaks
+     the page's otherwise uniform stacked-section rhythm without adding any
+     new dependency -- plain CSS Grid, same cards, same content. */
   .feature-grid{
     display:grid;
-    grid-template-columns:repeat(4, 1fr);
+    grid-template-columns:1.3fr 1fr;
+    grid-auto-rows:1fr;
     gap:22px;
     perspective:1400px;
   }
-  @media (max-width:920px){ .feature-grid{grid-template-columns:repeat(2,1fr);} }
-  @media (max-width:560px){ .feature-grid{grid-template-columns:1fr;} }
+  .feature-card.is-hero{grid-row:span 3;}
+  @media (max-width:920px){ .feature-grid{grid-template-columns:1fr 1fr;} .feature-card.is-hero{grid-column:span 2; grid-row:span 1;} }
+  @media (max-width:560px){ .feature-grid{grid-template-columns:1fr;} .feature-card.is-hero{grid-column:span 1;} }
   .feature-card{
     background:var(--cream);
     border:1px solid var(--line);
     border-radius:18px;
     padding:30px 26px;
+    display:flex; flex-direction:column; justify-content:center;
     transition:box-shadow .2s ease, border-color .2s ease, opacity .7s cubic-bezier(.16,1,.3,1), transform .7s cubic-bezier(.16,1,.3,1);
     transform-style:preserve-3d;
     will-change:transform;
     position:relative;
   }
+  .feature-card.is-hero{background:var(--leaf-100); border-color:var(--leaf-500); justify-content:flex-start;}
+  .feature-card.is-hero .feature-mark{width:56px; height:56px; background:var(--paper);}
+  .feature-card.is-hero .feature-mark svg{width:29px; height:29px;}
+  .feature-card.is-hero h3{font-size:1.4rem;}
+  .feature-card.is-hero p{font-size:1rem;}
   .feature-card:hover{box-shadow:var(--shadow-lg); border-color:var(--leaf-500);}
   /* once the entrance animation has played, switch to a snappy transition
      so the mouse-follow 3D tilt (set via inline style in JS) feels instant */
@@ -442,46 +454,43 @@
   .feature-card h3{font-size:1.14rem; margin:0 0 10px; color:var(--soil-900); font-weight:600; transform:translateZ(18px);}
   .feature-card p{font-size:0.94rem; color:var(--ink-soft); margin:0; transform:translateZ(10px);}
 
-  /* ---------- HOW IT WORKS ---------- */
+  /* ---------- HOW IT WORKS (sticky-left / scrolling-right split) ---------- */
+  /* Was a 3-column stat-style timeline repeating the same card shape as the
+     feature grid above it. Now a sticky text column pins in place while the
+     three steps scroll past on the right -- one deliberate layout break in
+     an otherwise stacked page, no scroll-jacking library required. */
   .how{background:var(--wheat-100); overflow:hidden; position:relative;}
+  .how-split{display:grid; grid-template-columns:0.85fr 1.15fr; gap:56px; align-items:start;}
+  .how-sticky{position:sticky; top:120px;}
+  .how-sticky .section-head{margin:0; text-align:left; max-width:420px;}
+  @media (max-width:900px){
+    .how-split{grid-template-columns:1fr; gap:8px;}
+    .how-sticky{position:static;}
+  }
   .timeline{
     position:relative;
-    display:grid;
-    grid-template-columns:repeat(3, 1fr);
-    gap:0;
-    margin-top:8px;
+    display:flex;
+    flex-direction:column;
+    gap:40px;
     perspective:1400px;
   }
   .tl-line{
     position:absolute;
-    top:34px; left:calc(16.66% - 1px); right:calc(16.66% - 1px);
-    height:2px;
-    background:repeating-linear-gradient(90deg, var(--leaf-500) 0 10px, transparent 10px 18px);
-    transform-origin:left center;
-    transform:scaleX(0);
+    top:0; bottom:0; left:34px; width:2px; height:auto;
+    background:repeating-linear-gradient(180deg, var(--leaf-500) 0 10px, transparent 10px 18px);
+    transform-origin:top center;
+    transform:scaleY(0);
     transition:transform 1.3s cubic-bezier(.16,1,.3,1);
   }
-  .tl-line.is-drawn{transform:scaleX(1);}
-  @media (max-width:820px){
-    .timeline{grid-template-columns:1fr; gap:36px;}
-    .tl-line{
-      top:0; bottom:0; left:34px; right:auto; width:2px; height:auto;
-      background:repeating-linear-gradient(180deg, var(--leaf-500) 0 10px, transparent 10px 18px);
-      transform-origin:top center;
-      transform:scaleY(0);
-    }
-    .tl-line.is-drawn{transform:scaleY(1);}
-  }
-  .tl-step{position:relative; padding:0 20px; text-align:center;}
-  @media (max-width:820px){ .tl-step{text-align:left; padding:0 0 0 76px; min-height:70px;} }
+  .tl-line.is-drawn{transform:scaleY(1);}
+  .tl-step{position:relative; text-align:left; padding:0 0 0 76px; min-height:70px;}
   .tl-node{
     width:68px; height:68px; border-radius:50%;
     background:var(--paper); border:2px solid var(--leaf-500);
     display:flex; align-items:center; justify-content:center;
-    margin:0 auto 22px; position:relative; z-index:2;
+    position:absolute; left:0; top:0; z-index:2;
     box-shadow:0 8px 20px rgba(63,107,58,0.18);
   }
-  @media (max-width:820px){ .tl-node{position:absolute; left:0; top:0; margin:0;} }
   .tl-node svg{width:30px; height:30px; color:var(--leaf-700);}
   .tl-step .step-num{
     font-family:'Fraunces', serif;
@@ -513,6 +522,29 @@
   .tl-card:hover::after{opacity:1;}
   .tl-card ul{margin:0; padding-left:18px; color:var(--ink-soft); font-size:0.92rem; position:relative; transform:translateZ(10px);}
   .tl-card ul li + li{margin-top:6px;}
+
+  /* ---------- BREATHER (oversized type, no imagery) ---------- */
+  /* A single full-bleed statement between two denser sections -- current
+     "kinetic type" pattern (2026 design-trend roundups), used here just once
+     as a visual pause, not decoration. Deliberately no photo, no card, no
+     motion beyond the same one-time scroll-reveal every other section uses. */
+  .breather{background:var(--soil-900); padding:130px 0;}
+  .breather .container{max-width:920px; text-align:center;}
+  .breather p{
+    font-family:'Fraunces', Georgia, serif;
+    font-size:clamp(1.9rem, 5.2vw, 3.4rem);
+    line-height:1.18;
+    font-weight:600;
+    color:var(--wheat-100);
+    margin:0;
+    letter-spacing:-0.01em;
+    text-wrap:balance;
+  }
+  .breather p em{
+    font-style:normal;
+    background:linear-gradient(180deg, #d8f0c8 0%, #a7d89a 100%);
+    -webkit-background-clip:text; background-clip:text; color:transparent;
+  }
 
   /* ---------- APP MOCKUP (3D layered) ---------- */
   .app-showcase{background:var(--soil-900); color:var(--wheat-100); overflow:hidden;}
@@ -572,19 +604,43 @@
     background:rgba(255,255,255,0.03);
   }
 
-  /* ---------- STATS (real count-up + rings) ---------- */
+  /* ---------- STATS (bento evidence cards, real count-up + rings) ---------- */
   .stats{background:var(--wheat-100);}
+  /* Same bento treatment as the feature grid: the disease-CNN card is the
+     only figure that comes from a trained model's own held-out eval, so it
+     gets the wide hero tile; the other three (an EcoCrop count, a regional
+     cross-check count, and a language count -- none of them "model accuracy"
+     numbers) sit underneath as equal-width supporting tiles. */
   .stat-grid{
     display:grid;
-    grid-template-columns:repeat(4,1fr);
+    grid-template-columns:repeat(3,1fr);
+    grid-template-areas:
+      "hero hero hero"
+      "a b c";
     gap:24px;
   }
-  @media (max-width:820px){ .stat-grid{grid-template-columns:repeat(2,1fr);} }
-  @media (max-width:480px){ .stat-grid{grid-template-columns:1fr;} }
+  .stat-card.is-hero{grid-area:hero; display:grid; grid-template-columns:1fr auto; align-items:center; gap:24px;}
+  @media (max-width:820px){
+    .stat-grid{grid-template-columns:1fr 1fr; grid-template-areas:"hero hero" "a b" "c c";}
+  }
+  @media (max-width:560px){
+    .stat-grid{grid-template-columns:1fr; grid-template-areas:"hero" "a" "b" "c";}
+    .stat-card.is-hero{grid-template-columns:1fr;}
+  }
   .stat-card{
     background:var(--paper); border:1px solid var(--line); border-radius:18px;
     padding:32px 26px; text-align:left;
   }
+  .stat-sparkline{flex:none;}
+  .stat-sparkline path.spark-fill{fill:var(--leaf-100);}
+  .stat-sparkline path.spark-line{fill:none; stroke:var(--leaf-600); stroke-width:2.4; stroke-linecap:round; stroke-linejoin:round;}
+  .stat-sparkline circle{fill:var(--leaf-600);}
+  .stat-sowhat{
+    display:flex; align-items:flex-start; gap:8px;
+    margin-top:14px; padding-top:14px; border-top:1px dashed var(--line);
+    font-size:0.86rem; color:var(--soil-900);
+  }
+  .stat-sowhat strong{color:var(--leaf-700); font-weight:700;}
   .stat-figure{
     font-family:'Fraunces', serif; font-weight:700; color:var(--soil-900);
     font-size:clamp(2.2rem, 3.4vw, 2.6rem); line-height:1;
@@ -719,7 +775,7 @@
       <p>Every recommendation is generated from the farmer's own field data — soil samples, local weather, and satellite NDVI — not a generic lookup table.</p>
     </div>
     <div class="feature-grid" id="feature-grid" data-stagger>
-      <div class="feature-card reveal-card">
+      <div class="feature-card reveal-card is-hero">
         <div class="feature-mark">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3c3 3 3 7 0 10-3-3-3-7 0-10Z"/><path d="M12 13v8"/><path d="M8 21h8"/></svg>
         </div>
@@ -753,11 +809,14 @@
 
 <section class="how" id="how">
   <div class="container">
-    <div class="section-head reveal">
-      <div class="kicker">How it works</div>
-      <h2>From field data to a farmer's advisory</h2>
-      <p>The same pipeline runs behind every advisory type — only the model at the processing step changes.</p>
-    </div>
+    <div class="how-split">
+      <div class="how-sticky">
+        <div class="section-head reveal">
+          <div class="kicker">How it works</div>
+          <h2>From field data to a farmer's advisory</h2>
+          <p>The same pipeline runs behind every advisory type — only the model at the processing step changes.</p>
+        </div>
+      </div>
     <div class="timeline" id="timeline" data-stagger>
       <div class="tl-line" id="tl-line"></div>
       <div class="tl-step reveal-card">
@@ -804,6 +863,13 @@
         </div>
       </div>
     </div>
+    </div>
+  </div>
+</section>
+
+<section class="breather">
+  <div class="container">
+    <p class="reveal">Every figure on this page comes from a <em>real, committed evaluation report</em> — nothing hand-faked.</p>
   </div>
 </section>
 
@@ -869,21 +935,31 @@
       <p>Where a figure comes from a trained model's held-out evaluation, we say so. Where it comes from a rule or a real dataset instead, we say that too — crop and irrigation run on transparent methods, not a black-box accuracy score.</p>
     </div>
     <div class="stat-grid" data-stagger>
-      <div class="stat-card reveal-card">
-        <div class="stat-figure" data-target="99.24" data-suffix="%">0%</div>
-        <div class="stat-bar-track"><span class="stat-bar-fill" data-target="99.24"></span></div>
-        <div class="stat-label">Disease CNN validation accuracy</div>
-        <div class="stat-note">MobileNetV2 on PlantVillage, 38 classes — the only trained model in the pipeline</div>
+      <div class="stat-card reveal-card is-hero">
+        <div>
+          <div class="stat-figure" data-target="99.24" data-suffix="%">0%</div>
+          <div class="stat-bar-track"><span class="stat-bar-fill" data-target="99.24"></span></div>
+          <div class="stat-label">Disease CNN validation accuracy</div>
+          <div class="stat-note">MobileNetV2 on PlantVillage, 38 classes — the only trained model in the pipeline</div>
+          <div class="stat-sowhat"><strong>So what:</strong>&nbsp;this is the only number on this page that comes from a trained model's own held-out score — every other figure below is a real count, not a model claiming confidence in itself.</div>
+        </div>
+        <svg class="stat-sparkline" width="120" height="64" viewBox="0 0 120 64" aria-hidden="true">
+          <path class="spark-fill" d="M0 56 L15 44 L30 40 L45 30 L60 26 L75 16 L90 12 L105 7 L120 6 L120 64 L0 64 Z"/>
+          <path class="spark-line" d="M0 56 L15 44 L30 40 L45 30 L60 26 L75 16 L90 12 L105 7 L120 6"/>
+          <circle cx="120" cy="6" r="3.5"/>
+        </svg>
       </div>
       <div class="stat-card reveal-card">
         <div class="stat-figure" data-target="22" data-suffix="">0</div>
         <div class="stat-label">Crop types ranked</div>
         <div class="stat-note">FAO EcoCrop suitability data, not a trained-model percentage</div>
+        <div class="stat-sowhat"><strong>So what:</strong>&nbsp;ranked against real agronomic tolerance ranges, not a lookup table.</div>
       </div>
       <div class="stat-card reveal-card">
         <div class="stat-figure" data-target="5" data-suffix="">0</div>
         <div class="stat-label">Crops verified regionally correct for Bellary</div>
         <div class="stat-note">Cross-checked against ICAR-CRIDA &amp; state agriculture data, not the model's own opinion</div>
+        <div class="stat-sowhat"><strong>So what:</strong>&nbsp;a second, independent check the model can't override.</div>
       </div>
       <div class="stat-card reveal-card">
         <div class="stat-langs" id="stat-langs">
@@ -894,6 +970,7 @@
         </div>
         <div class="stat-label">Indian languages supported</div>
         <div class="stat-note">Translation, speech-to-text &amp; text-to-speech, all four</div>
+        <div class="stat-sowhat"><strong>So what:</strong>&nbsp;a farmer never has to read English to use this.</div>
       </div>
     </div>
   </div>
