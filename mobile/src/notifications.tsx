@@ -4,6 +4,7 @@ import Constants from 'expo-constants';
 import { cacheGet, cacheSet } from './storage';
 import { feedback } from './feedback';
 import { C, S, levelColor } from './theme';
+import { onAccountEvent } from './accountEvents';
 
 /** Notification system: one `notify()` entry point.
  *   - every alert      -> a real Android system notification (heads-up banner, sound, notification
@@ -144,6 +145,20 @@ export function NotificationsProvider({ children, t }: { children: React.ReactNo
         await Notifications.cancelAllScheduledNotificationsAsync().catch(() => {});
       } catch {}
     })();
+  }, []);
+
+  // Account lifecycle: clear on sign-out, reschedule on sign-in/switch
+  useEffect(() => {
+    const unsubscribe = onAccountEvent('accountSignedOut', () => {
+      if (!Notifications) return;
+      (async () => {
+        try {
+          await Notifications.cancelScheduledNotificationAsync(DAILY_ID).catch(() => {});
+          await Notifications.cancelAllScheduledNotificationsAsync().catch(() => {});
+        } catch {}
+      })();
+    });
+    return unsubscribe;
   }, []);
 
   // Pushes that arrive while the app is open, and taps on a notification.
