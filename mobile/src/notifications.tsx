@@ -23,9 +23,11 @@ type NotifCtx = {
   openInbox: () => void;
   /** Schedules the 7:00 daily reminder (replaces the previous one). No-op without the OS layer/permission. */
   setDailyReminder: (title: string, body: string) => void;
+  /** Cancels all scheduled notifications (daily reminder + background alerts). Call on logout. */
+  clearScheduledNotifications: () => void;
 };
 
-const Ctx = createContext<NotifCtx>({ items: [], unread: 0, notify: () => {}, openInbox: () => {}, setDailyReminder: () => {} });
+const Ctx = createContext<NotifCtx>({ items: [], unread: 0, notify: () => {}, openInbox: () => {}, setDailyReminder: () => {}, clearScheduledNotifications: () => {} });
 export const useNotifications = () => useContext(Ctx);
 
 // Expo Go (Android, SDK 53+) logs a hard error the moment expo-notifications is
@@ -134,6 +136,16 @@ export function NotificationsProvider({ children, t }: { children: React.ReactNo
     })();
   }, []);
 
+  const clearScheduledNotifications = useCallback(() => {
+    if (!Notifications) return;
+    (async () => {
+      try {
+        await Notifications.cancelScheduledNotificationAsync(DAILY_ID).catch(() => {});
+        await Notifications.cancelAllScheduledNotificationsAsync().catch(() => {});
+      } catch {}
+    })();
+  }, []);
+
   // Pushes that arrive while the app is open, and taps on a notification.
   useEffect(() => {
     if (!Notifications) return;
@@ -152,8 +164,8 @@ export function NotificationsProvider({ children, t }: { children: React.ReactNo
   }, []);
 
   const value = useMemo<NotifCtx>(
-    () => ({ items, unread: items.filter((n) => !n.read).length, notify, openInbox, setDailyReminder }),
-    [items, notify, openInbox, setDailyReminder],
+    () => ({ items, unread: items.filter((n) => !n.read).length, notify, openInbox, setDailyReminder, clearScheduledNotifications }),
+    [items, notify, openInbox, setDailyReminder, clearScheduledNotifications],
   );
 
   return (
