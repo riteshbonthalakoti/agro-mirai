@@ -314,13 +314,17 @@ function RootInner({ lang, setLang }: { lang: Lang; setLang: (l: Lang) => void }
 
   const switchAccount = useCallback(async (id: string) => {
     if (id === activeAccountId) return;
+    // Never null out `farmer` here: ctx (and the whole main render) is
+    // gated on `farmer` being set, so doing that would drop straight to
+    // the full sign-in screen for the duration of the switch instead of
+    // showing the `switching` overlay. The previous account's data stays
+    // on screen, under the overlay, until the new account's data (fresh
+    // or cached) is ready to replace it.
+    const previousId = activeAccountId;
     setSwitching(true);
     try {
       await accounts.switchTo(id);
       await refreshAccountsList();
-      setFarmer(null);
-      setFields([]);
-      setFieldId(null);
       setTab('home');
       setForm(null);
       setBugReportContext(null);
@@ -340,6 +344,14 @@ function RootInner({ lang, setLang }: { lang: Lang; setLang: (l: Lang) => void }
             setFields(cachedFields);
             setFieldId(cachedFields[0]?.id ?? null);
           } else {
+            // Nothing to show for this account at all (never synced, and
+            // offline right now) -- revert to the account we were already
+            // on rather than leave the active pointer pointed at an
+            // account whose data never actually loaded.
+            if (previousId) {
+              await accounts.switchTo(previousId);
+              await refreshAccountsList();
+            }
             await dialog.info({ title: t('noCachedAccountDataTitle'), body: t('noCachedAccountDataBody') });
           }
         } else if (!(ae instanceof ApiError && ae.status === 401)) {
