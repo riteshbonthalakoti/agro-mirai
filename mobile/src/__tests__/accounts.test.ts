@@ -48,6 +48,10 @@ test('adding a 6th genuinely new account throws AccountLimitReached', async () =
   expect(await accounts.listAccounts()).toHaveLength(5);
 });
 
+test('MAX_ACCOUNTS is exported so the UI can pre-check the limit before opening the add-account flow', () => {
+  expect(accounts.MAX_ACCOUNTS).toBe(5);
+});
+
 test('switchTo moves the active pointer and token without touching the list length', async () => {
   await accounts.addOrSwitch(farmer('f1', 'Asha', '+919000000001'), 'token-1');
   await accounts.addOrSwitch(farmer('f2', 'Bala', '+919000000002'), 'token-2');

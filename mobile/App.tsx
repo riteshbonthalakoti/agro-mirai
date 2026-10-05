@@ -399,7 +399,13 @@ function RootInner({ lang, setLang }: { lang: Lang; setLang: (l: Lang) => void }
         activeAccountId,
         switchAccount,
         removeAccount,
-        openAddAccount: () => setAddAccountOpen(true),
+        openAddAccount: () => {
+          if (savedAccounts.length >= accounts.MAX_ACCOUNTS) {
+            dialog.info({ title: t('accountLimitTitle'), body: t('accountLimitBody') });
+            return;
+          }
+          setAddAccountOpen(true);
+        },
       }
     : null;
 

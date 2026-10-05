@@ -5,7 +5,7 @@ import { emitAccountSignedIn, emitAccountSignedOut, emitAccountSwitched } from '
 
 const ACCOUNTS_KEY = 'agro:v2:accounts';
 const ACTIVE_KEY = 'agro:v2:activeAccountId';
-const MAX_ACCOUNTS = 5;
+export const MAX_ACCOUNTS = 5;
 
 export type SavedAccount = {
   id: string;
