@@ -22,20 +22,46 @@ from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 from functools import wraps
 
-from flask import g, session
+from flask import current_app, g, session
 
 from agro_mirai.api.errors import ApiError
 
 SESSION_LIFETIME = timedelta(hours=24)
+_TOKEN_SALT = "agro-mirai-bearer-token"
 
 
-def issue_session(farmer_id: str, role: str) -> None:
-    """Called on successful login. Overwrites any prior session content."""
+def _serializer():
+    import itsdangerous
+
+    return itsdangerous.URLSafeTimedSerializer(current_app.secret_key, salt=_TOKEN_SALT)
+
+
+def issue_session(farmer_id: str, role: str) -> str:
+    """Called on successful login. Overwrites any prior session content.
+    Returns a signed Bearer token carrying the same claims as the session
+    cookie, for a client that holds several accounts at once (Module 52)
+    and can't rely on one shared, global cookie jar per account."""
     session.clear()
+    issued_at = datetime.now(timezone.utc).isoformat()
     session["farmer_id"] = farmer_id
     session["role"] = role or "farmer"
-    session["issued_at"] = datetime.now(timezone.utc).isoformat()
+    session["issued_at"] = issued_at
     session.permanent = True
+    return _serializer().dumps({"farmer_id": farmer_id, "role": role or "farmer", "issued_at": issued_at})
+
+
+def decode_token(token: str) -> dict | None:
+    """Verifies the signature and shape of a Module 52 Bearer token.
+    Doesn't check expiry -- that's is_expired's job, same as the cookie."""
+    import itsdangerous
+
+    try:
+        data = _serializer().loads(token)
+    except itsdangerous.BadSignature:
+        return None
+    if not isinstance(data, dict) or "farmer_id" not in data or "issued_at" not in data:
+        return None
+    return data
 
 
 def clear_session() -> None:
