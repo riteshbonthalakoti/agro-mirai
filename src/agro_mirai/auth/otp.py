@@ -5,16 +5,12 @@ short-lived Module 26 Supabase Auth migration, reverted) with the
 simplest thing that works for a farmer with a phone and no email: enter
 name + phone, get a 6-digit OTP, enter it back to log in.
 
-Dev/demo posture, stated plainly (see decisions/0023-name-phone-otp-auth.md):
-no SMS provider is wired up yet, so the OTP is never sent anywhere — it
-is written to the server's own log output via `logging`, which is fine
-for local dev/testing/a capstone demo where the person running the
-server can read the code off the terminal, and is exactly the kind of
-"nothing is hand-faked" honesty CLAUDE.md asks for rather than pretending
-an SMS was sent. `OTP_DELIVERY=log` is the only mode today;
-`send_otp(phone, code)` is the single seam a real provider (Twilio
-Verify, etc.) plugs into later without touching request-otp/verify-otp's
-calling code.
+Module 56: real delivery is now wired up via `agro_mirai.auth.otp_providers`
+(`OtpSender` + `build_otp_sender`, selected by `OTP_PROVIDER`) -- this
+module only generates, stores, and verifies the code; it has no opinion
+on how the code reaches the farmer. `OtpStore.issue`'s optional `code`
+argument lets a caller (the `test` provider's whitelist) force a fixed
+code instead of a random one.
 
 Storage is a single process-local in-memory dict, not a DataStore table
 or Redis — acceptable because a restart invalidating in-flight OTPs is a
@@ -69,9 +65,18 @@ class OtpStore:
         self._lock = threading.Lock()
         self._pending: dict[str, _PendingOtp] = {}
 
-    def issue(self, phone: str, now: datetime | None = None, signup: dict | None = None) -> str:
+    def issue(
+        self,
+        phone: str,
+        now: datetime | None = None,
+        signup: dict | None = None,
+        code: str | None = None,
+    ) -> str:
+        """Generate (or, if `code` is given, use) the pending OTP for
+        `phone`. `code` is for the `test` provider's whitelisted numbers
+        only -- everyone else gets a fresh random code."""
         now = now or datetime.now(timezone.utc)
-        code = f"{secrets.randbelow(10 ** OTP_LENGTH):0{OTP_LENGTH}d}"
+        code = code if code is not None else f"{secrets.randbelow(10 ** OTP_LENGTH):0{OTP_LENGTH}d}"
         with self._lock:
             old = self._pending.get(phone)
             if old is not None and old.issued_at and now - old.issued_at < MIN_RESEND:
@@ -131,13 +136,6 @@ class OtpStore:
             ]
         items.sort(key=lambda i: i["issued_at"] or now, reverse=True)
         return items
-
-
-def send_otp(phone: str, code: str) -> None:
-    """The one delivery seam. Today: server logs only (OTP_DELIVERY=log,
-    the only supported mode). A real SMS provider (e.g. Twilio Verify)
-    replaces this function's body later without touching callers."""
-    logger.info("OTP for %s: %s (valid %d min)", phone, code, int(OTP_TTL.total_seconds() // 60))
 
 
 otp_store = OtpStore()

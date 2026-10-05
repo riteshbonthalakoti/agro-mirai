@@ -191,12 +191,15 @@ def list_scans():
 @admin_bp.get("/otps")
 @require_admin
 def list_pending_otps():
-    """Dev/demo-scale convenience while OTP_DELIVERY=log (no SMS provider
-    wired up, decisions/0023-name-phone-otp-auth.md): lets an admin
-    retrieve a currently-pending OTP without reading Render's own logs.
-    Admin-only (never public) -- see PROGRESS.md's OTP-visibility note for
-    why this isn't exposed any more broadly than that. Read-only: does not
-    consume/invalidate the OTPs it lists."""
+    """Dev/demo convenience for the `log`/`test` OTP providers (Module
+    27/56): lets an admin retrieve a currently-pending OTP without
+    reading Render's own logs. Admin-only (never public). Refuses to
+    serve anything once `sms_gateway` (a real SMS provider) is
+    configured -- a farmer's real code reaching a 2FA bypass endpoint
+    would defeat the point of sending it over SMS at all. Read-only:
+    does not consume/invalidate the OTPs it lists."""
+    if current_app.config.get("OTP_PROVIDER") == "sms_gateway":
+        raise ApiError(404, "NOT_FOUND", "not available with a real SMS provider configured")
     items = [
         {
             "phone": i["phone"],

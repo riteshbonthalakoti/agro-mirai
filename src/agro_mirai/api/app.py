@@ -162,6 +162,16 @@ def create_app(config: dict | None = None) -> Flask:
     # LOGIN_RATE_LIMIT since Module 27 replaced email+password login with
     # Name+Phone+OTP; see decisions/0023-name-phone-otp-auth.md).
     app.config["OTP_RATE_LIMIT"] = os.environ.get("OTP_RATE_LIMIT", "5 per minute")
+    # Module 56 — real SMS delivery. build_otp_sender raises
+    # OtpProviderConfigError (crashing app startup) rather than silently
+    # running a provider this environment forbids (e.g. OTP_PROVIDER=log
+    # in production, which would never send an SMS at all).
+    from agro_mirai.auth.otp_providers import build_otp_sender
+
+    otp_sender, otp_test_numbers = build_otp_sender()
+    app.config["OTP_PROVIDER"] = os.environ.get("OTP_PROVIDER", "log")
+    app.extensions["otp_sender"] = otp_sender
+    app.extensions["otp_test_numbers"] = otp_test_numbers
     # Module 23 — voice endpoints (/v2/advisories/{id}/audio, /v2/stt) are
     # far more expensive per call than a JSON read, so they get their own,
     # tighter limits on top of the general RATE_LIMIT above.

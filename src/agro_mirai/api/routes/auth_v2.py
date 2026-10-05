@@ -3,10 +3,11 @@
 Replaces Module 19's email+password auth (and the reverted Module 26
 Supabase Auth migration) with the simplest thing that works for a
 farmer identified only by name and phone: ``POST /request-otp`` finds-
-or-creates the farmer by phone and generates a 6-digit code (logged to
-the server's own output, not sent anywhere yet — see
-``agro_mirai.auth.otp``'s docstring and
-decisions/0023-name-phone-otp-auth.md); ``POST /verify-otp`` checks that
+or-creates the farmer by phone and generates a 6-digit code, delivered
+by whichever ``OtpSender`` ``OTP_PROVIDER`` selects (Module 56 —
+``agro_mirai.auth.otp_providers``; ``log`` for local dev, ``test`` for a
+whitelisted demo/evaluator number, ``sms_gateway`` for a real SMS, see
+``docs/SMS_OTP_SETUP.md``); ``POST /verify-otp`` checks that
 code and, on success, issues the same signed Flask session
 (``agro_mirai.api.session_auth.issue_session``) every other ``/v2``
 route already expects. ``POST /logout`` is unchanged from Module 19.
@@ -28,7 +29,8 @@ from agro_mirai.api.errors import ApiError
 from agro_mirai.api.login_rate_limit import otp_request_limiter
 from agro_mirai.api.serializers import farmer_to_public_json
 from agro_mirai.api.session_auth import issue_session, clear_session
-from agro_mirai.auth.otp import ResendTooSoon, otp_store, send_otp
+from agro_mirai.auth.otp import ResendTooSoon, otp_store
+from agro_mirai.auth.otp_providers import OtpSendError
 from agro_mirai.auth.validation import validate_name, validate_otp_code, validate_phone
 from agro_mirai.persistence.models import Farmer
 from agro_mirai.persistence.store import ConflictError
@@ -102,11 +104,18 @@ def request_otp():
             )
         signup = {"name": name, "preferred_language": preferred_language}
 
+    test_numbers = current_app.extensions.get("otp_test_numbers") or {}
+    fixed_code = test_numbers.get(phone)
+
     try:
-        code = otp_store.issue(phone, signup=signup)
+        code = otp_store.issue(phone, signup=signup, code=fixed_code)
     except ResendTooSoon:
         raise ApiError(429, "RATE_LIMIT_EXCEEDED", "Please wait a few seconds before asking for another code") from None
-    send_otp(phone, code)
+
+    try:
+        current_app.extensions["otp_sender"].send(phone, code)
+    except OtpSendError:
+        raise ApiError(502, "OTP_SEND_FAILED", "Couldn't send the code, try again") from None
 
     # Additive field (ADR 0017/0023's additive-only rule): lets the client
     # route a first-time phone to a short profile-completion step after OTP

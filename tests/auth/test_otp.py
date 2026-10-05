@@ -95,6 +95,15 @@ def test_signup_details_come_back_only_on_a_correct_code():
     assert store.verify_with_signup("+919000000008", code) == (False, None)
 
 
+def test_issue_accepts_an_explicit_code():
+    """Module 56: the `test` provider forces a fixed code for a
+    whitelisted phone instead of a random one."""
+    store = OtpStore()
+    code = store.issue("+919000000010", code="654321")
+    assert code == "654321"
+    assert store.verify("+919000000010", "654321") is True
+
+
 def test_pending_codes_are_capped():
     from datetime import datetime, timezone
 
