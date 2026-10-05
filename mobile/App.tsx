@@ -61,6 +61,7 @@ import { AuthScreen, LanguageScreen, PermissionsScreen } from './src/screens/Onb
 import { CoachTour, TourStep } from './src/components/CoachTour';
 import { NotificationsProvider, useNotifications } from './src/notifications';
 import { registerBackgroundAlerts, setBackgroundField } from './src/backgroundAlerts';
+import { emitAccountSignedIn, emitAccountSignedOut } from './src/accountEvents';
 import { playOnboardingClip, stopAudio } from './src/audio';
 import { ScanTab } from './src/screens/ScanTab';
 import { FirstField } from './src/screens/FirstField';
@@ -182,6 +183,8 @@ function RootInner({ lang, setLang }: { lang: Lang; setLang: (l: Lang) => void }
     // A 401 during boot just means "not signed in": the boot sequence handles it
     // itself (language -> permissions -> sign-in), with no "session ended" notice.
     if (phaseRef.current === 'boot') return;
+    // Emit sign-out event before clearing state (notifications listener needs to know who signed out)
+    if (farmer) emitAccountSignedOut(farmer.id);
     clearScheduledNotifications();
     setBackgroundField(undefined, undefined);
     await clearFarmerCache();
@@ -190,7 +193,7 @@ function RootInner({ lang, setLang }: { lang: Lang; setLang: (l: Lang) => void }
     setFieldId(null);
     setAuthNotice(notice);
     setPhase('auth');
-  }, [clearScheduledNotifications]);
+  }, [clearScheduledNotifications, farmer]);
 
   // A 401 from any request means the server-side session is gone.
   useEffect(() => {
@@ -229,6 +232,7 @@ function RootInner({ lang, setLang }: { lang: Lang; setLang: (l: Lang) => void }
         const me = await getMe();
         setFarmer(me);
         cacheSet('farmer', me);
+        emitAccountSignedIn(me.id);
         if (isLang(me.preferred_language)) { setLang(me.preferred_language); cacheSet('lang', me.preferred_language); }
         await loadFields();
         // people who were already signed in before notifications existed never saw the permission
