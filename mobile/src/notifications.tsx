@@ -22,7 +22,7 @@ type NotifCtx = {
   notify: (n: { id?: string; title: string; body: string; severity?: string }) => void;
   openInbox: () => void;
   /** Schedules the 7:00 daily reminder (replaces the previous one). No-op without the OS layer/permission. */
-  setDailyReminder: (title: string, body: string) => void;
+  setDailyReminder: (title: string, body: string, fieldId?: string) => void;
   /** Cancels all scheduled notifications (daily reminder + background alerts). Call on logout. */
   clearScheduledNotifications: () => void;
 };
@@ -120,7 +120,7 @@ export function NotificationsProvider({ children, t }: { children: React.ReactNo
     }
   }, [showBanner]);
 
-  const setDailyReminder = useCallback((title: string, body: string) => {
+  const setDailyReminder = useCallback((title: string, body: string, fieldId?: string) => {
     if (!Notifications) return;
     (async () => {
       try {
@@ -129,7 +129,7 @@ export function NotificationsProvider({ children, t }: { children: React.ReactNo
         await Notifications.cancelScheduledNotificationAsync(DAILY_ID).catch(() => {});
         await Notifications.scheduleNotificationAsync({
           identifier: DAILY_ID,
-          content: { title, body, color: '#2E7D32', data: { id: `daily-${new Date().toDateString()}` } },
+          content: { title, body, color: '#2E7D32', data: { id: `daily-${new Date().toDateString()}`, fieldId } },
           trigger: { type: Notifications.SchedulableTriggerInputTypes.DAILY, hour: 7, minute: 0, channelId: CHANNEL },
         });
       } catch {}
