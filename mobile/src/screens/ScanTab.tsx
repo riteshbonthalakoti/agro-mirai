@@ -9,6 +9,7 @@ import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
 import { File as ExpoFile, Paths } from 'expo-file-system';
 import { Icon, IconName } from '../../icons';
 import { AuthBackdrop } from '../components/AuthBackdrop';
+import { BarMeter, ScanTimeline } from '../components/Charts';
 import { feedback } from '../feedback';
 import { ApiError, DiseaseAlert, getDiseaseRisk, isOnline, scanLeaf } from '../api';
 import { diseaseAction, fmtDate, levelLabel, useApp } from '../ctx';
@@ -241,12 +242,22 @@ function ResultView({ result, uri, onRetake, onDone, onZoom }: { result: Disease
           </View>
         )}
 
-        <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: S.md }}>
-          <Text style={{ color: C.muted, fontSize: 14, marginRight: S.sm }}>{t('resHowSure')}</Text>
-          {[1, 2, 3].map((i) => (
-            <View key={i} style={{ width: 26, height: 8, borderRadius: 4, marginRight: 4, backgroundColor: i <= bars ? lvlColor : C.border }} />
-          ))}
-          <Text style={{ marginLeft: S.sm, fontWeight: '700', color: lvlColor }}>{t(lvl === 'High' ? 'sureHigh' : lvl === 'Medium' ? 'sureMedium' : 'sureLow')}</Text>
+        <View style={{ marginTop: S.md }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
+            <Text style={{ color: C.muted, fontSize: 14 }}>{t('resHowSure')}</Text>
+            <Text style={{ fontWeight: '700', color: lvlColor }}>{Math.round(result.confidence * 100)}%</Text>
+          </View>
+          <BarMeter
+            value={result.confidence}
+            min={0}
+            max={1}
+            color={lvlColor}
+            showPercent={false}
+            height={10}
+          />
+          <Text style={{ marginTop: 4, fontWeight: '600', color: lvlColor, fontSize: 13 }}>
+            {t(lvl === 'High' ? 'sureHigh' : lvl === 'Medium' ? 'sureMedium' : 'sureLow')}
+          </Text>
         </View>
 
         {shownSteps.length || generic ? (
@@ -523,6 +534,21 @@ export function ScanTab() {
           {/* history */}
           <LastUpdated at={historyUpdatedAt} stale={false} t={t} />
           <Text style={{ fontSize: 13, fontWeight: '800', letterSpacing: 1, color: C.muted, marginBottom: S.sm }}>{t('scanHistory').toUpperCase()}</Text>
+
+          {/* Scan history timeline */}
+          {history !== null && history.length > 0 && (
+            <>
+              <Text style={{ fontSize: 12, color: C.muted, marginBottom: S.sm }}>Recent confidence levels</Text>
+              <ScanTimeline
+                items={history.map(h => ({
+                  id: h.id,
+                  confidence: h.confidence,
+                  date: h.date,
+                }))}
+              />
+            </>
+          )}
+
           {history === null ? <SkeletonCard /> : null}
           {history !== null && history.length === 0 ? (
             <View style={{ backgroundColor: 'rgba(255,255,255,0.95)', borderRadius: 18, padding: S.lg, alignItems: 'center', borderWidth: 1, borderColor: '#E3E8DC' }}>
