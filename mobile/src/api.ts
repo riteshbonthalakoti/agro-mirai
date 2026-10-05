@@ -1,5 +1,6 @@
 import { File as ExpoFile } from 'expo-file-system';
 import { API_BASE_URL } from './config';
+import { getActiveAccountId, getActiveToken } from './accounts';
 
 // One thin wrapper over the backend's /v2 API (specs/core/openapi.yaml).
 // Auth is the backend's signed session cookie, which React Native's native
@@ -60,8 +61,8 @@ export async function wakeServer(onSlow?: () => void): Promise<void> {
   }
 }
 
-let onUnauthorized: (() => void) | null = null;
-export function setUnauthorizedHandler(fn: (() => void) | null) {
+let onUnauthorized: ((accountId: string | null) => void) | null = null;
+export function setUnauthorizedHandler(fn: ((accountId: string | null) => void) | null) {
   onUnauthorized = fn;
 }
 
@@ -83,15 +84,18 @@ async function request<T>(
   init: RequestInit = {},
   opts: { timeout?: number; auth?: boolean } = {},
 ): Promise<T> {
+  const accountIdAtCallTime = getActiveAccountId();
+  const token = getActiveToken();
   const headers: Record<string, string> = { Accept: 'application/json', ...((init.headers as any) || {}) };
   if (init.body && typeof init.body === 'string') headers['Content-Type'] = 'application/json';
+  if (token) headers['Authorization'] = `Bearer ${token}`;
   const res = await fetchWithTimeout(`${API_BASE_URL}${path}`, { ...init, headers }, opts.timeout ?? 20000);
   setOnline(true);
   if (res.status === 204) return undefined as T;
   const body = await res.json().catch(() => null);
   if (!res.ok) {
     const err = new ApiError(res.status, body?.error?.message || `HTTP ${res.status}`, body?.error?.code);
-    if (res.status === 401 && opts.auth !== false && onUnauthorized) onUnauthorized();
+    if (res.status === 401 && opts.auth !== false && onUnauthorized) onUnauthorized(accountIdAtCallTime);
     throw err;
   }
   return body as T;
@@ -166,7 +170,7 @@ export const requestOtp = (phone: string, name: string, preferred_language: stri
   request<{ phone: string; otp_sent: boolean; is_new_farmer: boolean }>(
     '/v2/auth/request-otp', json('POST', { phone, name, preferred_language }), { auth: false, timeout: 40000 });
 export const verifyOtp = (phone: string, otp: string) =>
-  request<Farmer>('/v2/auth/verify-otp', json('POST', { phone, otp }), { auth: false, timeout: 40000 });
+  request<Farmer & { session_token: string }>('/v2/auth/verify-otp', json('POST', { phone, otp }), { auth: false, timeout: 40000 });
 export const logout = () => request<void>('/v2/auth/logout', { method: 'POST' }, { auth: false, timeout: 6000 }).catch(() => undefined);
 
 // ---- farmer / fields ---------------------------------------------------------
