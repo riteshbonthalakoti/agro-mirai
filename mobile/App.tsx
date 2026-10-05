@@ -61,6 +61,7 @@ import { AddAccountScreen, AuthScreen, LanguageScreen, PermissionsScreen } from 
 import { CoachTour, TourStep } from './src/components/CoachTour';
 import { NotificationsProvider, useNotifications } from './src/notifications';
 import { registerBackgroundAlerts, setBackgroundField } from './src/backgroundAlerts';
+import { emitAccountSignedIn, emitAccountSignedOut } from './src/accountEvents';
 import { playOnboardingClip, stopAudio } from './src/audio';
 import { ScanTab } from './src/screens/ScanTab';
 import { FirstField } from './src/screens/FirstField';
@@ -165,7 +166,7 @@ function RootInner({ lang, setLang }: { lang: Lang; setLang: (l: Lang) => void }
   const phaseRef = useRef<Phase>('boot');
   phaseRef.current = phase;
   const tabRefs = useRef<Record<string, View | null>>({});
-  const { notify } = useNotifications();
+  const { notify, clearScheduledNotifications } = useNotifications();
   const [farmer, setFarmer] = useState<Farmer | null>(null);
   const [fields, setFields] = useState<Field[]>([]);
   const [fieldId, setFieldId] = useState<string | null>(null);
@@ -195,6 +196,10 @@ function RootInner({ lang, setLang }: { lang: Lang; setLang: (l: Lang) => void }
     // A 401 during boot just means "not signed in": the boot sequence handles it
     // itself (language -> permissions -> sign-in), with no "session ended" notice.
     if (phaseRef.current === 'boot') return;
+    // Emit sign-out event before clearing state (notifications listener needs to know who signed out)
+    if (farmer) emitAccountSignedOut(farmer.id);
+    clearScheduledNotifications();
+    setBackgroundField(undefined, undefined);
     const id = accounts.getActiveAccountId();
     if (id) await clearFarmerCache(id);
     setFarmer(null);
@@ -202,7 +207,7 @@ function RootInner({ lang, setLang }: { lang: Lang; setLang: (l: Lang) => void }
     setFieldId(null);
     setAuthNotice(notice);
     setPhase('auth');
-  }, []);
+  }, [clearScheduledNotifications, farmer]);
 
   // A 401 from any request means the server-side session is gone -- unless
   // it was captured under an account we've since switched away from, in
@@ -251,6 +256,7 @@ function RootInner({ lang, setLang }: { lang: Lang; setLang: (l: Lang) => void }
         const me = await getMe();
         setFarmer(me);
         cacheSet('farmer', me);
+        emitAccountSignedIn(me.id);
         if (isLang(me.preferred_language)) { setLang(me.preferred_language); cacheSet('lang', me.preferred_language); }
         await loadFields();
         // people who were already signed in before notifications existed never saw the permission
@@ -380,11 +386,13 @@ function RootInner({ lang, setLang }: { lang: Lang; setLang: (l: Lang) => void }
   }, [activeAccountId, refreshAccountsList, switchAccount]);
 
   const signOut = useCallback(async () => {
+    clearScheduledNotifications();
+    setBackgroundField(undefined, undefined);
     await logout();
     const id = accounts.getActiveAccountId();
     if (id) await removeAccount(id);
     else await goAuth();
-  }, [goAuth, removeAccount]);
+  }, [goAuth, removeAccount, clearScheduledNotifications]);
 
   const ctx: Ctx | null = farmer
     ? {
