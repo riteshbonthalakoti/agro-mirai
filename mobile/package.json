@@ -29,6 +29,7 @@
     "expo-task-manager": "~57.0.20",
     "expo-updates": "~57.0.23",
     "expo-video": "^57.0.4",
+    "@maplibre/maplibre-react-native": "^11.4.0",
     "react": "19.2.3",
     "react-native": "0.86.3",
     "react-native-safe-area-context": "~5.7.0",

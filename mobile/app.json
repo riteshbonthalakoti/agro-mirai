@@ -30,6 +30,7 @@
       "favicon": "./assets/Agro_Mirai_Logo.png"
     },
     "plugins": [
+      "@maplibre/maplibre-react-native",
       "expo-audio",
       [
         "expo-notifications",
