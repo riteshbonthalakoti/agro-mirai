@@ -51,7 +51,7 @@ function Section({ icon, tint, title, children }: { icon: IconName; tint: string
 }
 
 export function MeTab({ initialScreenContext, onConsumeScreenContext }: { initialScreenContext?: string; onConsumeScreenContext?: () => void }) {
-  const { farmer, setFarmer, fields, field, selectField, reloadFields, lang, changeLang, openFieldForm, signOut, t } = useApp();
+  const { farmer, setFarmer, fields, field, selectField, reloadFields, lang, changeLang, openFieldForm, signOut, t, accounts, activeAccountId, switchAccount, removeAccount, openAddAccount } = useApp();
   const [editingName, setEditingName] = useState(false);
   const [name, setName] = useState(farmer.name);
   const [msg, setMsg] = useState('');
@@ -119,6 +119,17 @@ export function MeTab({ initialScreenContext, onConsumeScreenContext }: { initia
   };
 
   const feedbackOn = useFeedbackEnabled();
+  const removeAccountConfirm = async (id: string) => {
+    const ok = await dialog.confirm({
+      title: t('removeAccount'),
+      body: t('removeAccountConfirm'),
+      confirmLabel: t('removeAccount'),
+      cancelLabel: t('cancel'),
+      destructive: true,
+    });
+    if (ok) await removeAccount(id);
+  };
+
   const confirmDelete = async (id: string) => {
     feedback.warning();
     const ok = await dialog.confirm({
@@ -247,6 +258,42 @@ export function MeTab({ initialScreenContext, onConsumeScreenContext }: { initia
             <Switch value={feedbackOn} onValueChange={(v) => { setFeedbackEnabled(v); if (v) feedback.success(); }} trackColor={{ true: C.accent }} />
           </View>
         </Section>
+
+        {/* ---- accounts */}
+        {accounts.length > 0 ? (
+          <Section icon="user" tint="#EDE7F6" title={t('accountsTitle')}>
+            {accounts.map((a) => {
+              const active = a.id === activeAccountId;
+              const avColor2 = avatarColor(a.id);
+              return (
+                <View key={a.id} style={{ flexDirection: 'row', alignItems: 'center', borderRadius: 14, borderWidth: 1.5, borderColor: active ? C.accent : '#E3E8DC', backgroundColor: active ? '#F3F9F1' : '#fff', padding: S.md, marginBottom: S.sm }}>
+                  <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: avColor2, alignItems: 'center', justifyContent: 'center', marginRight: S.md }}>
+                    <Text style={{ fontSize: 15, fontWeight: '800', color: '#fff' }}>{initials(a.name)}</Text>
+                  </View>
+                  <TouchableOpacity
+                    onPress={() => !active && switchAccount(a.id)}
+                    disabled={active}
+                    style={{ flex: 1 }}
+                  >
+                    <Text style={{ fontSize: 15, fontWeight: '700', color: C.text }}>{a.name}</Text>
+                    <Text style={{ fontSize: 12.5, color: C.muted, marginTop: 1 }}>
+                      {`•• ${a.phone.slice(-4)}`}{a.sessionExpired ? ` · ${t('signInAgainTag')}` : ''}
+                    </Text>
+                  </TouchableOpacity>
+                  {active ? (
+                    <View style={{ backgroundColor: C.accent, borderRadius: 10, paddingHorizontal: 8, paddingVertical: 2, marginRight: S.sm }}>
+                      <Icon name="check" size={13} color="#fff" />
+                    </View>
+                  ) : null}
+                  <TouchableOpacity onPress={() => removeAccountConfirm(a.id)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} style={{ padding: 4 }}>
+                    <Text style={{ color: C.danger, fontSize: 12.5, fontWeight: '700' }}>{t('removeAccount')}</Text>
+                  </TouchableOpacity>
+                </View>
+              );
+            })}
+            <Btn label={t('addAnotherAccount')} kind="secondary" onPress={openAddAccount} style={{ marginTop: S.xs }} />
+          </Section>
+        ) : null}
 
         {/* ---- my fields */}
         <Section icon="field" tint="#E8F3E8" title={t('myFields')}>
