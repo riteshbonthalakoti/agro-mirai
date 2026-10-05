@@ -261,3 +261,56 @@ def test_unverified_requests_never_create_farmers():
     for i in range(5):
         assert _request_otp(client, f"+91987650{i:04d}", name="Spam").status_code == 200
     assert app.extensions["data_store"].list_all_farmers() == []
+
+
+def test_verify_otp_returns_a_session_token():
+    app = _app()
+    client = app.test_client()
+    resp = _login(client, "+919000000010", name="Token Farmer")
+    assert resp.status_code == 200
+    assert isinstance(resp.get_json()["session_token"], str)
+    assert resp.get_json()["session_token"]
+
+
+def test_bearer_token_authenticates_without_the_cookie():
+    app = _app()
+    client = app.test_client()
+    resp = _login(client, "+919000000011", name="Bearer Farmer")
+    token = resp.get_json()["session_token"]
+
+    fresh = app.test_client()
+    me = fresh.get("/v2/farmers/me", headers={"Authorization": f"Bearer {token}"})
+    assert me.status_code == 200
+    assert me.get_json()["name"] == "Bearer Farmer"
+
+
+def test_bearer_token_from_one_farmer_cannot_read_another_farmers_data():
+    app = _app()
+    client = app.test_client()
+    resp_a = _login(client, "+919000000012", name="Farmer A")
+    token_a = resp_a.get_json()["session_token"]
+    client.post("/v2/auth/logout")
+
+    resp_b = _login(app.test_client(), "+919000000013", name="Farmer B")
+    token_b = resp_b.get_json()["session_token"]
+
+    me_as_a = client.get("/v2/farmers/me", headers={"Authorization": f"Bearer {token_a}"})
+    assert me_as_a.get_json()["name"] == "Farmer A"
+    me_as_b = client.get("/v2/farmers/me", headers={"Authorization": f"Bearer {token_b}"})
+    assert me_as_b.get_json()["name"] == "Farmer B"
+
+
+def test_malformed_bearer_token_falls_back_to_401_not_a_crash():
+    app = _app()
+    client = app.test_client()
+    resp = client.get("/v2/farmers/me", headers={"Authorization": "Bearer garbage"})
+    assert resp.status_code == 401
+
+
+def test_no_authorization_header_still_works_via_cookie():
+    app = _app()
+    client = app.test_client()
+    _login(client, "+919000000014", name="Cookie Farmer")
+    me = client.get("/v2/farmers/me")
+    assert me.status_code == 200
+    assert me.get_json()["name"] == "Cookie Farmer"

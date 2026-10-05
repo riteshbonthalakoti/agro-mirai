@@ -87,20 +87,37 @@ def is_expired(
 
 
 def require_session_auth(view):
-    """Requires a valid, non-expired session cookie. Sets g.farmer_id and
-    g.role. Every /v2 route (other than register/login) that touches
-    farmer-owned data uses this, never the raw session dict directly, so
-    the expiry check can't accidentally be skipped."""
+    """Requires a valid, non-expired session -- either the signed session
+    cookie, or (Module 52) an Authorization: Bearer token carrying the same
+    claims. Sets g.farmer_id and g.role either way, so every other /v2
+    route stays unaware of which one authenticated the request."""
 
     @wraps(view)
     def wrapped(*args, **kwargs):
-        farmer_id = session.get("farmer_id")
-        issued_at = session.get("issued_at")
+        from flask import request
+
+        farmer_id = None
+        issued_at = None
+        role = "farmer"
+
+        auth_header = request.headers.get("Authorization", "")
+        if auth_header.startswith("Bearer "):
+            data = decode_token(auth_header[len("Bearer "):].strip())
+            if data:
+                farmer_id = data.get("farmer_id")
+                issued_at = data.get("issued_at")
+                role = data.get("role", "farmer")
+
+        if not farmer_id:
+            farmer_id = session.get("farmer_id")
+            issued_at = session.get("issued_at")
+            role = session.get("role", "farmer")
+
         if not farmer_id or not issued_at or is_expired(issued_at):
             clear_session()
             raise ApiError(401, "UNAUTHORIZED", "Not logged in, or session expired")
         g.farmer_id = farmer_id
-        g.role = session.get("role", "farmer")
+        g.role = role
         return view(*args, **kwargs)
 
     return wrapped
