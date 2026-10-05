@@ -121,9 +121,9 @@ export function HomeTab() {
   const { setDailyReminder } = useNotifications();
   useEffect(() => {
     // tomorrow's 7:00 notification carries the latest advice, even if the app is closed by then
-    if (today?.text) setDailyReminder(t('notifDailyTitle'), today.text);
+    if (today?.text) setDailyReminder(t('notifDailyTitle'), today.text, id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [today?.text, lang]);
+  }, [today?.text, lang, id]);
   // the server's crop-specific advice is English: translate it (cached), fall back to the generic line
   const diseaseAdvice = useTranslated([d?.recommended_action], lang);
   const firstLoad = busy && !c && !i && !d;
