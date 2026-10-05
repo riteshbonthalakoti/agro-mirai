@@ -11,6 +11,7 @@ import { SkeletonCard } from '../skeleton';
 import { cacheGet, cacheSet, formatTime } from '../storage';
 import { C, S } from '../theme';
 import { Banner, KV, LastUpdated, Muted } from '../ui';
+import { FieldMapScreen } from './FieldMapScreen';
 
 const AUTO_REFRESH_MS = 30 * 60 * 1000;
 
@@ -59,6 +60,7 @@ export function DataTab() {
   const [updating, setUpdating] = useState(false);
   const [msg, setMsg] = useState('');
   const [err, setErr] = useState('');
+  const [showMap, setShowMap] = useState(false);
   const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
   useEffect(() => () => timers.current.forEach(clearTimeout), []);
 
@@ -101,6 +103,11 @@ export function DataTab() {
   const ndvi = d?.ndvi.latest;
 
   const { width: w } = useWindowDimensions();
+
+  if (showMap) {
+    return <FieldMapScreen onClose={() => setShowMap(false)} />;
+  }
+
   if (sum.loading && !d) {
     return (
       <ScrollView contentContainerStyle={{ padding: S.lg, paddingTop: S.md }}>
@@ -158,6 +165,14 @@ export function DataTab() {
           <View style={{ padding: S.lg, flex: 1 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
               <Text style={{ flex: 1, fontSize: 13, fontWeight: '800', letterSpacing: 1, color: inkSoft }}>{t('weather').toUpperCase()}</Text>
+              <TouchableOpacity
+                onPress={() => setShowMap(true)}
+                accessibilityLabel={t('viewMap')}
+                style={{ minHeight: 40, paddingHorizontal: 14, borderRadius: 20, backgroundColor: night ? 'rgba(255,255,255,0.18)' : 'rgba(255,255,255,0.75)', flexDirection: 'row', alignItems: 'center', marginRight: S.sm }}
+              >
+                <Icon name="location" size={16} color={ink} />
+                <Text style={{ fontSize: 13, fontWeight: '700', color: ink, marginLeft: 4 }}>{t('mapButton')}</Text>
+              </TouchableOpacity>
               <TouchableOpacity
                 onPress={() => doRefresh(false)}
                 disabled={updating}
