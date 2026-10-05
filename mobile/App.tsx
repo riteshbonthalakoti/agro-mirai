@@ -182,7 +182,7 @@ function RootInner({ lang, setLang }: { lang: Lang; setLang: (l: Lang) => void }
     // A 401 during boot just means "not signed in": the boot sequence handles it
     // itself (language -> permissions -> sign-in), with no "session ended" notice.
     if (phaseRef.current === 'boot') return;
-    await clearFarmerCache();
+    await clearFarmerCache(farmer?.id ?? '');
     setFarmer(null);
     setFields([]);
     setFieldId(null);
@@ -237,7 +237,7 @@ function RootInner({ lang, setLang }: { lang: Lang; setLang: (l: Lang) => void }
         if (ae.status === 401) {
           // Not signed in (fresh install, cleared data, or ended session):
           // after the splash, ask for the language, then permissions (first time only), then sign-in.
-          await clearFarmerCache();
+          await clearFarmerCache(farmer?.id ?? '');
           setPendingPhase('lang');
           return;
         }
