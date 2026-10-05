@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Alert, Image, Platform, ScrollView, Switch, Text, TouchableOpacity, View } from 'react-native';
+import { Image, Platform, ScrollView, Switch, Text, TouchableOpacity, View } from 'react-native';
 import { AuthBackdrop } from '../components/AuthBackdrop';
+import { dialog } from '../dialog';
 import { IconName } from '../../icons';
 import Constants from 'expo-constants';
 import * as ImagePicker from 'expo-image-picker';
@@ -118,24 +119,24 @@ export function MeTab({ initialScreenContext, onConsumeScreenContext }: { initia
   };
 
   const feedbackOn = useFeedbackEnabled();
-  const confirmDelete = (id: string) => {
+  const confirmDelete = async (id: string) => {
     feedback.warning();
-    Alert.alert(t('deleteField'), t('deleteConfirm'), [
-      { text: t('cancel'), style: 'cancel' },
-      {
-        text: t('delete'), style: 'destructive',
-        onPress: async () => {
-          try {
-            await deleteField(id);
-            await reloadFields();
-          } catch (e) {
-            const { kind } = classifyError(e);
-            if (kind === 'unknown') logError('MeTab.deleteField', e);
-            setErr(errorText(t, e as ApiError, { write: true }));
-          }
-        },
-      },
-    ]);
+    const ok = await dialog.confirm({
+      title: t('deleteField'),
+      body: t('deleteConfirm'),
+      confirmLabel: t('delete'),
+      cancelLabel: t('cancel'),
+      destructive: true,
+    });
+    if (!ok) return;
+    try {
+      await deleteField(id);
+      await reloadFields();
+    } catch (e) {
+      const { kind } = classifyError(e);
+      if (kind === 'unknown') logError('MeTab.deleteField', e);
+      setErr(errorText(t, e as ApiError, { write: true }));
+    }
   };
 
   const attachBugPhoto = async () => {
@@ -317,7 +318,16 @@ export function MeTab({ initialScreenContext, onConsumeScreenContext }: { initia
           <Text style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>{API_BASE_URL}</Text>
         </View>
         <TouchableOpacity
-          onPress={() => Alert.alert(t('signOut'), t('signOutAsk'), [{ text: t('cancel'), style: 'cancel' }, { text: t('signOut'), style: 'destructive', onPress: signOut }])}
+          onPress={async () => {
+            const ok = await dialog.confirm({
+              title: t('signOut'),
+              body: t('signOutAsk'),
+              confirmLabel: t('signOut'),
+              cancelLabel: t('cancel'),
+              destructive: true,
+            });
+            if (ok) signOut();
+          }}
           style={{ minHeight: 56, borderRadius: 16, borderWidth: 2, borderColor: C.danger, alignItems: 'center', justifyContent: 'center' }}
         >
           <Text style={{ fontSize: 17, fontWeight: '800', color: C.danger }}>{t('signOut')}</Text>

@@ -71,6 +71,7 @@ import { Icon, IconName } from './icons';
 import { ToastProvider } from './src/toast';
 import { AnimatedSplashScreen } from './src/components/AnimatedSplashScreen';
 import { feedback } from './src/feedback';
+import { DialogHost } from './src/dialog';
 
 /** One consistent top bar for every main tab: no logo, no branding -- just
  *  the active field's name, and a chip switcher when there's more than one
@@ -139,6 +140,7 @@ export default function App() {
         <SafeAreaView style={{ flex: 1, backgroundColor: C.bg }} edges={['top', 'bottom']}>
           <ToastProvider>
             <Root />
+            <DialogHost />
           </ToastProvider>
         </SafeAreaView>
       </SafeAreaProvider>
