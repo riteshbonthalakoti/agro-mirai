@@ -161,7 +161,7 @@ function RootInner({ lang, setLang }: { lang: Lang; setLang: (l: Lang) => void }
   const phaseRef = useRef<Phase>('boot');
   phaseRef.current = phase;
   const tabRefs = useRef<Record<string, View | null>>({});
-  const { notify } = useNotifications();
+  const { notify, clearScheduledNotifications } = useNotifications();
   const [farmer, setFarmer] = useState<Farmer | null>(null);
   const [fields, setFields] = useState<Field[]>([]);
   const [fieldId, setFieldId] = useState<string | null>(null);
@@ -182,13 +182,15 @@ function RootInner({ lang, setLang }: { lang: Lang; setLang: (l: Lang) => void }
     // A 401 during boot just means "not signed in": the boot sequence handles it
     // itself (language -> permissions -> sign-in), with no "session ended" notice.
     if (phaseRef.current === 'boot') return;
+    clearScheduledNotifications();
+    setBackgroundField(undefined, undefined);
     await clearFarmerCache();
     setFarmer(null);
     setFields([]);
     setFieldId(null);
     setAuthNotice(notice);
     setPhase('auth');
-  }, []);
+  }, [clearScheduledNotifications]);
 
   // A 401 from any request means the server-side session is gone.
   useEffect(() => {
@@ -269,9 +271,11 @@ function RootInner({ lang, setLang }: { lang: Lang; setLang: (l: Lang) => void }
   }, []);
 
   const signOut = useCallback(async () => {
+    clearScheduledNotifications();
+    setBackgroundField(undefined, undefined);
     await logout();
     await goAuth();
-  }, [goAuth]);
+  }, [goAuth, clearScheduledNotifications]);
 
   const ctx: Ctx | null = farmer
     ? {
