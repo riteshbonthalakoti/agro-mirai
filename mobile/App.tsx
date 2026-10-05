@@ -165,7 +165,7 @@ function RootInner({ lang, setLang }: { lang: Lang; setLang: (l: Lang) => void }
   const phaseRef = useRef<Phase>('boot');
   phaseRef.current = phase;
   const tabRefs = useRef<Record<string, View | null>>({});
-  const { notify } = useNotifications();
+  const { notify, clearScheduledNotifications } = useNotifications();
   const [farmer, setFarmer] = useState<Farmer | null>(null);
   const [fields, setFields] = useState<Field[]>([]);
   const [fieldId, setFieldId] = useState<string | null>(null);
@@ -195,6 +195,8 @@ function RootInner({ lang, setLang }: { lang: Lang; setLang: (l: Lang) => void }
     // A 401 during boot just means "not signed in": the boot sequence handles it
     // itself (language -> permissions -> sign-in), with no "session ended" notice.
     if (phaseRef.current === 'boot') return;
+    clearScheduledNotifications();
+    setBackgroundField(undefined, undefined);
     const id = accounts.getActiveAccountId();
     if (id) {
       await accounts.markSessionExpired(id);
@@ -205,7 +207,7 @@ function RootInner({ lang, setLang }: { lang: Lang; setLang: (l: Lang) => void }
     setFieldId(null);
     setAuthNotice(notice);
     setPhase('auth');
-  }, []);
+  }, [clearScheduledNotifications]);
 
   // A 401 from any request means the server-side session is gone -- unless
   // it was captured under an account we've since switched away from, in
@@ -387,6 +389,8 @@ function RootInner({ lang, setLang }: { lang: Lang; setLang: (l: Lang) => void }
   }, [activeAccountId, refreshAccountsList, switchAccount]);
 
   const signOut = useCallback(async () => {
+    clearScheduledNotifications();
+    setBackgroundField(undefined, undefined);
     const id = accounts.getActiveAccountId();
     if (id) {
       // removeAccount already tells the server for us, with this account's own token.
@@ -397,7 +401,7 @@ function RootInner({ lang, setLang }: { lang: Lang; setLang: (l: Lang) => void }
       await logout();
       await goAuth();
     }
-  }, [goAuth, removeAccount]);
+  }, [goAuth, removeAccount, clearScheduledNotifications]);
 
   const ctx: Ctx | null = farmer
     ? {
