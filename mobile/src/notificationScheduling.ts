@@ -6,16 +6,18 @@ export type SchedulingInput = {
   accountSignedIn: boolean;
   fieldId: string | null;
   adviceText: string | null;
+  reminderEnabled?: boolean;
 };
 
 export type SchedulingDecision = {
   shouldSchedule: boolean;
   reason: string;
+  timeMinutes?: number;
 };
 
 /** Pure function: decide if a daily reminder should be scheduled.
- * Returns false if: no account signed in, no field, or no cached advice.
- * Returns true only if all prerequisites are met. */
+ * Returns false if: no account signed in, no field, no cached advice, or reminders disabled.
+ * Returns true with timeMinutes only if all prerequisites are met and reminders enabled. */
 export function shouldScheduleDailyReminder(input: SchedulingInput): SchedulingDecision {
   if (!input.accountSignedIn) {
     return { shouldSchedule: false, reason: 'noAccount' };
@@ -26,5 +28,8 @@ export function shouldScheduleDailyReminder(input: SchedulingInput): SchedulingD
   if (!input.adviceText) {
     return { shouldSchedule: false, reason: 'noAdvice' };
   }
-  return { shouldSchedule: true, reason: 'ready' };
+  if (input.reminderEnabled === false) {
+    return { shouldSchedule: false, reason: 'remindersDisabled' };
+  }
+  return { shouldSchedule: true, reason: 'ready', timeMinutes: input.reminderEnabled !== false ? 7 * 60 : undefined };
 }

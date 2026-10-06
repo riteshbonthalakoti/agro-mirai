@@ -63,6 +63,7 @@ import { NotificationsProvider, useNotifications } from './src/notifications';
 import { registerBackgroundAlerts, setBackgroundField } from './src/backgroundAlerts';
 import { emitAccountSignedIn, emitAccountSignedOut, onAccountEvent } from './src/accountEvents';
 import { playOnboardingClip, stopAudio } from './src/audio';
+import { getReminderSettings } from './src/reminderSettings';
 import { ScanTab } from './src/screens/ScanTab';
 import { FirstField } from './src/screens/FirstField';
 import { cacheGet, cacheSet, clearFarmerCache } from './src/storage';
@@ -198,23 +199,33 @@ function RootInner({ lang, setLang }: { lang: Lang; setLang: (l: Lang) => void }
     const unsubIn = onAccountEvent('accountSignedIn', () => {
       if (field && farmer) {
         (async () => {
+          const settings = await getReminderSettings();
+          if (!settings.enabled) {
+            clearScheduledNotifications();
+            return;
+          }
           const title = `${field.name}: Daily Reminder`;
           const body = (await getAdvisories(field.id, false).catch(() => null))?.[0]?.title || `Check your ${cropLabel(lang, field.current_crop || '')} field`;
-          setDailyReminder(title, body, field.id, farmer.id);
+          setDailyReminder(title, body, field.id, farmer.id, settings.timeMinutes);
         })();
       }
     });
     const unsubSwitch = onAccountEvent('accountSwitched', () => {
       if (field && farmer) {
         (async () => {
+          const settings = await getReminderSettings();
+          if (!settings.enabled) {
+            clearScheduledNotifications();
+            return;
+          }
           const title = `${field.name}: Daily Reminder`;
           const body = (await getAdvisories(field.id, false).catch(() => null))?.[0]?.title || `Check your ${cropLabel(lang, field.current_crop || '')} field`;
-          setDailyReminder(title, body, field.id, farmer.id);
+          setDailyReminder(title, body, field.id, farmer.id, settings.timeMinutes);
         })();
       }
     });
     return () => { unsubIn(); unsubSwitch(); };
-  }, [field, farmer, lang, setDailyReminder]);
+  }, [field, farmer, lang, setDailyReminder, clearScheduledNotifications]);
 
   const goAuth = useCallback(async (notice = '') => {
     // A 401 during boot just means "not signed in": the boot sequence handles it
