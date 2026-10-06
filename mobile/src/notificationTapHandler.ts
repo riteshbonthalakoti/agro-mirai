@@ -5,7 +5,7 @@ export async function handleNotificationTap(
   listAccounts: () => Promise<SavedAccount[]>,
   goAuth: () => Promise<void>,
   switchAccount: (id: string) => Promise<void>,
-  setTab: (tab: string) => void,
+  setTab: (tab: 'home') => void,
   activeAccountId: string | null,
 ): Promise<void> {
   const tapAccountId = data?.accountId;
