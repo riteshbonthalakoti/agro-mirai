@@ -4,6 +4,7 @@ import Constants from 'expo-constants';
 import { cacheGet, cacheSet } from './storage';
 import { feedback } from './feedback';
 import { C, S, levelColor } from './theme';
+import { onAccountEvent } from './accountEvents';
 
 /** Notification system: one `notify()` entry point.
  *   - every alert      -> a real Android system notification (heads-up banner, sound, notification
@@ -21,11 +22,13 @@ type NotifCtx = {
   unread: number;
   notify: (n: { id?: string; title: string; body: string; severity?: string }) => void;
   openInbox: () => void;
-  /** Schedules the 7:00 daily reminder (replaces the previous one). No-op without the OS layer/permission. */
-  setDailyReminder: (title: string, body: string) => void;
+  /** Schedules a daily reminder at specified time (replaces the previous one). No-op without the OS layer/permission. */
+  setDailyReminder: (title: string, body: string, fieldId?: string, accountId?: string, timeMinutes?: number) => void;
+  /** Cancels all scheduled notifications (daily reminder + background alerts). Call on logout. */
+  clearScheduledNotifications: () => void;
 };
 
-const Ctx = createContext<NotifCtx>({ items: [], unread: 0, notify: () => {}, openInbox: () => {}, setDailyReminder: () => {} });
+const Ctx = createContext<NotifCtx>({ items: [], unread: 0, notify: () => {}, openInbox: () => {}, setDailyReminder: () => {}, clearScheduledNotifications: () => {} });
 export const useNotifications = () => useContext(Ctx);
 
 // Expo Go (Android, SDK 53+) logs a hard error the moment expo-notifications is
@@ -118,20 +121,47 @@ export function NotificationsProvider({ children, t }: { children: React.ReactNo
     }
   }, [showBanner]);
 
-  const setDailyReminder = useCallback((title: string, body: string) => {
+  const setDailyReminder = useCallback((title: string, body: string, fieldId?: string, accountId?: string, timeMinutes?: number) => {
     if (!Notifications) return;
     (async () => {
       try {
         const perm = await Notifications.getPermissionsAsync();
         if (!perm.granted) return;
         await Notifications.cancelScheduledNotificationAsync(DAILY_ID).catch(() => {});
+        const mins = timeMinutes ?? 7 * 60;
+        const hour = Math.floor(mins / 60);
+        const minute = mins % 60;
         await Notifications.scheduleNotificationAsync({
           identifier: DAILY_ID,
-          content: { title, body, color: '#2E7D32', data: { id: `daily-${new Date().toDateString()}` } },
-          trigger: { type: Notifications.SchedulableTriggerInputTypes.DAILY, hour: 7, minute: 0, channelId: CHANNEL },
+          content: { title, body, color: '#2E7D32', data: { id: `daily-${new Date().toDateString()}`, fieldId, accountId } },
+          trigger: { type: Notifications.SchedulableTriggerInputTypes.DAILY, hour, minute, channelId: CHANNEL },
         });
       } catch {}
     })();
+  }, []);
+
+  const clearScheduledNotifications = useCallback(() => {
+    if (!Notifications) return;
+    (async () => {
+      try {
+        await Notifications.cancelScheduledNotificationAsync(DAILY_ID).catch(() => {});
+        await Notifications.cancelAllScheduledNotificationsAsync().catch(() => {});
+      } catch {}
+    })();
+  }, []);
+
+  // Account lifecycle: clear on sign-out, reschedule on sign-in/switch
+  useEffect(() => {
+    const unsubscribe = onAccountEvent('accountSignedOut', () => {
+      if (!Notifications) return;
+      (async () => {
+        try {
+          await Notifications.cancelScheduledNotificationAsync(DAILY_ID).catch(() => {});
+          await Notifications.cancelAllScheduledNotificationsAsync().catch(() => {});
+        } catch {}
+      })();
+    });
+    return unsubscribe;
   }, []);
 
   // Pushes that arrive while the app is open, and taps on a notification.
@@ -152,8 +182,8 @@ export function NotificationsProvider({ children, t }: { children: React.ReactNo
   }, []);
 
   const value = useMemo<NotifCtx>(
-    () => ({ items, unread: items.filter((n) => !n.read).length, notify, openInbox, setDailyReminder }),
-    [items, notify, openInbox, setDailyReminder],
+    () => ({ items, unread: items.filter((n) => !n.read).length, notify, openInbox, setDailyReminder, clearScheduledNotifications }),
+    [items, notify, openInbox, setDailyReminder, clearScheduledNotifications],
   );
 
   return (
