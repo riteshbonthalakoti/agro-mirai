@@ -123,3 +123,29 @@ test('init with nothing saved yet leaves no active account (legacy / fresh insta
   expect(accounts.getActiveAccountId()).toBeNull();
   expect(accounts.getActiveToken()).toBeNull();
 });
+
+// Module 56 regression: a farmer must still be able to sign in even when the
+// Android Keystore (what SecureStore wraps) throws on this device/ROM -- the
+// bug that stranded a real login on the OTP screen with "wrong or expired
+// code" was exactly this path going uncaught further up in Onboarding.tsx.
+test('addOrSwitch still signs the farmer in when SecureStore.setItemAsync throws', async () => {
+  const SecureStore = require('expo-secure-store');
+  SecureStore.setItemAsync.mockRejectedValueOnce(new Error('keystore unavailable'));
+
+  await accounts.addOrSwitch(farmer('f1', 'Asha', '+919000000001'), 'token-1');
+
+  expect(accounts.getActiveAccountId()).toBe('f1');
+  expect(accounts.getActiveToken()).toBe('token-1');
+  expect(await accounts.getTokenFor('f1')).toBe('token-1');
+});
+
+test('getTokenFor still finds the token after a fresh init() when it only ever landed in the AsyncStorage fallback', async () => {
+  const SecureStore = require('expo-secure-store');
+  SecureStore.setItemAsync.mockRejectedValueOnce(new Error('keystore unavailable'));
+  SecureStore.getItemAsync.mockResolvedValueOnce(null); // keystore has nothing for this key either
+
+  await accounts.addOrSwitch(farmer('f1', 'Asha', '+919000000001'), 'token-1');
+  await accounts.init(); // simulate an app restart
+
+  expect(accounts.getActiveToken()).toBe('token-1');
+});

@@ -21,6 +21,40 @@ let activeAccountId: string | null = null;
 let activeToken: string | null = null;
 
 const tokenKey = (id: string) => `account:${id}:token`;
+// Degrade, never fail (project-wide doctrine): SecureStore wraps the
+// Android Keystore, which has real-world failure modes on some OEM ROMs/
+// first-use-on-device timing that have nothing to do with whether the
+// farmer's login is otherwise valid. A plain AsyncStorage fallback is
+// less hardened but still correct and still private to the app sandbox --
+// far better than the farmer being stuck unable to sign in at all.
+const fallbackKey = (id: string) => `account:${id}:token:fallback`;
+
+async function setToken(id: string, token: string): Promise<void> {
+  try {
+    await SecureStore.setItemAsync(tokenKey(id), token);
+  } catch {
+    await AsyncStorage.setItem(fallbackKey(id), token);
+  }
+}
+
+async function getToken(id: string): Promise<string | null> {
+  try {
+    const v = await SecureStore.getItemAsync(tokenKey(id));
+    if (v) return v;
+  } catch {
+    // fall through to the fallback below
+  }
+  return AsyncStorage.getItem(fallbackKey(id));
+}
+
+async function deleteToken(id: string): Promise<void> {
+  try {
+    await SecureStore.deleteItemAsync(tokenKey(id));
+  } catch {
+    // no-op -- nothing securely stored to remove
+  }
+  await AsyncStorage.removeItem(fallbackKey(id));
+}
 
 async function readList(): Promise<SavedAccount[]> {
   try {
@@ -40,7 +74,7 @@ async function writeList(list: SavedAccount[]): Promise<void> {
 export async function init(): Promise<void> {
   try {
     activeAccountId = await AsyncStorage.getItem(ACTIVE_KEY);
-    activeToken = activeAccountId ? await SecureStore.getItemAsync(tokenKey(activeAccountId)) : null;
+    activeToken = activeAccountId ? await getToken(activeAccountId) : null;
   } catch {
     activeAccountId = null;
     activeToken = null;
@@ -57,7 +91,7 @@ export function getActiveToken(): string | null {
 
 // A saved account's own token, not the active one's -- used to log out an account that isn't active.
 export async function getTokenFor(id: string): Promise<string | null> {
-  return SecureStore.getItemAsync(tokenKey(id));
+  return getToken(id);
 }
 
 export async function listAccounts(): Promise<SavedAccount[]> {
@@ -70,7 +104,7 @@ export async function addOrSwitch(farmer: Farmer, token: string): Promise<void> 
   const existing = list.find((a) => a.id === farmer.id);
   if (!existing && list.length >= MAX_ACCOUNTS) throw new AccountLimitReached();
 
-  await SecureStore.setItemAsync(tokenKey(farmer.id), token);
+  await setToken(farmer.id, token);
   const now = Date.now();
   const next = existing
     ? list.map((a) => (a.id === farmer.id ? { ...a, name: farmer.name, phone: farmer.phone || a.phone, lastActiveAt: now, sessionExpired: false } : a))
@@ -91,7 +125,7 @@ export async function switchTo(id: string): Promise<void> {
   const account = list.find((a) => a.id === id);
   if (!account) throw new Error(`No saved account ${id}`);
 
-  const token = await SecureStore.getItemAsync(tokenKey(id));
+  const token = await getToken(id);
   const previousId = activeAccountId;
   await AsyncStorage.setItem(ACTIVE_KEY, id);
   activeAccountId = id;
@@ -111,7 +145,7 @@ export async function markSessionExpired(id: string): Promise<void> {
 export async function remove(id: string): Promise<string | null> {
   const list = await readList();
   const remaining = list.filter((a) => a.id !== id);
-  await SecureStore.deleteItemAsync(tokenKey(id));
+  await deleteToken(id);
   await writeList(remaining);
   emitAccountSignedOut(id);
 
