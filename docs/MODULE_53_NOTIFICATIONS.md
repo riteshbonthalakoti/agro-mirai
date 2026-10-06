@@ -2,7 +2,7 @@
 
 ## Features
 1. **Clear on sign-out**: Scheduled notifications cancelled when user signs out
-2. **Reschedule on sign-in/switch**: Notifications rescheduled with new account's field/language
+2. **Reschedule on sign-in/switch**: Notifications rescheduled; respects per-account settings (enabled/disabled, time)
 3. **Per-account settings**: Reminder on/off + time stored per-account (auto-default: on @ 7 AM)
 4. **Tap-to-route**: Notification tap checks if account still exists, switches to it, navigates home
 
@@ -14,4 +14,5 @@
 - `backgroundAlerts.ts`: No-op when signed out (existing)
 
 ## Tests
-- `notificationScheduling.test.ts`: 6 tests covering account/field/advice conditions
+- `notificationScheduling.test.ts`: 9 tests covering account/field/advice/settings conditions
+- New: disabled reminders, multi-account switching with different settings
