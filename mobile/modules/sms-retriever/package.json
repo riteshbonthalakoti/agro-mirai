@@ -1,0 +1,7 @@
+{
+  "name": "sms-retriever",
+  "version": "1.0.0",
+  "description": "Android SMS Retriever API, local Expo module (Module 56) -- lets the OTP screen auto-fill the code without the farmer touching the keyboard or a clipboard.",
+  "main": "index.ts",
+  "license": "MIT"
+}

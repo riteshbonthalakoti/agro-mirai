@@ -106,6 +106,11 @@ def request_otp():
 
     test_numbers = current_app.extensions.get("otp_test_numbers") or {}
     fixed_code = test_numbers.get(phone)
+    # A returning farmer's own saved preference wins over whatever language
+    # the app's UI happened to be showing at the moment they tapped Send --
+    # that's the account's real preference; a first-time phone has no
+    # account yet, so the signup's just-picked language is all there is.
+    sms_lang = signup["preferred_language"] if signup else (farmer.preferred_language if farmer else "en")
 
     try:
         code = otp_store.issue(phone, signup=signup, code=fixed_code)
@@ -113,7 +118,7 @@ def request_otp():
         raise ApiError(429, "RATE_LIMIT_EXCEEDED", "Please wait a few seconds before asking for another code") from None
 
     try:
-        current_app.extensions["otp_sender"].send(phone, code)
+        current_app.extensions["otp_sender"].send(phone, code, lang=sms_lang)
     except OtpSendError:
         raise ApiError(502, "OTP_SEND_FAILED", "Couldn't send the code, try again") from None
 

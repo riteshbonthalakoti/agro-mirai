@@ -14,8 +14,9 @@ import { requestNotificationPermission } from '../notifications';
 import { Icon, IconName } from '../../icons';
 import { LANGS, Lang } from '../i18n';
 import { C, S } from '../theme';
-import { Banner, Btn, Chip, Input, Muted, st } from '../ui';
+import { Banner, Btn, Chip, Input, Muted, OtpBoxInput, st } from '../ui';
 import { AuthBackdrop } from '../components/AuthBackdrop';
+import { extractOtpCode, getAppSignatures, startSmsRetriever, stopSmsRetriever } from '../../modules/sms-retriever';
 
 /** Requested once, right after picking a language -- so the app never
  *  interrupts the farmer with a permission dialog mid-task later. Declining
@@ -268,16 +269,45 @@ export function AuthScreen({ lang, onLoggedIn, notice, onChangeLanguage }: { lan
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
   const [cooldown, setCooldown] = useState(0);
+  const [otpRequestSeq, setOtpRequestSeq] = useState(0);
   const [noticeOpen, setNoticeOpen] = useState(true);
   const [legal, setLegal] = useState<'terms' | 'privacy' | null>(null);
   const closeNotice = React.useCallback(() => setNoticeOpen(false), []);
   useEffect(() => { setNoticeOpen(true); }, [notice]);
+
+  // Dev-only: prints the hash SMS_APP_HASH needs on the backend (Module
+  // 56) -- `adb logcat -s ReactNativeJS:I` and look for "SmsAppHash" after
+  // installing a debug/dev-client build. __DEV__ is always false in a
+  // release bundle, so this never runs there.
+  useEffect(() => {
+    if (!__DEV__) return;
+    console.log('SmsAppHash', getAppSignatures());
+  }, []);
 
   useEffect(() => {
     if (cooldown <= 0) return;
     const id = setTimeout(() => setCooldown((c) => c - 1), 1000);
     return () => clearTimeout(id);
   }, [cooldown]);
+
+  // Module 56: auto-fill the code from the SMS itself (Android SMS
+  // Retriever API) so the farmer never has to copy/type it -- manual entry
+  // below still works if this times out or isn't available (iOS, no Play
+  // Services). Re-arms on every fresh code (otpRequestSeq bumps on each
+  // request-otp call, including a resend).
+  useEffect(() => {
+    if (step !== 'otp' || otpRequestSeq === 0) return;
+    let cancelled = false;
+    startSmsRetriever().then((body) => {
+      if (cancelled || !body) return;
+      const code = extractOtpCode(body);
+      if (code) setOtp(code);
+    });
+    return () => {
+      cancelled = true;
+      stopSmsRetriever();
+    };
+  }, [step, otpRequestSeq]);
 
   const requestWithName = async (theName: string) => {
     setBusy(true);
@@ -287,6 +317,7 @@ export function AuthScreen({ lang, onLoggedIn, notice, onChangeLanguage }: { lan
       setStep('otp');
       setOtp('');
       setCooldown(20);
+      setOtpRequestSeq((n) => n + 1);
     } catch (e) {
       const ae = e as ApiError;
       if (ae.status === 400 && ae.message === 'name is required') {
@@ -415,21 +446,22 @@ export function AuthScreen({ lang, onLoggedIn, notice, onChangeLanguage }: { lan
             <BigBtn label={t('continue')} onPress={submitName} busy={busy} />
             <BigBtn label={t('changeNumber')} kind="secondary" onPress={() => { setStep('phone'); setErr(''); }} />
           </>
+        ) : busy ? (
+          // Module 56: the 6th digit triggers an immediate auto-verify
+          // (the effect above), but the real network round trip still
+          // takes a moment -- without this, the farmer sees the same OTP
+          // form just sitting there and assumes nothing happened. Swap to
+          // a dedicated "verifying" state the instant busy flips true.
+          <View style={{ alignItems: 'center', justifyContent: 'center', marginTop: S.xl, minHeight: 200 }}>
+            <ActivityIndicator color={C.accent} size="large" />
+            <Text style={[big, { marginTop: S.lg, textAlign: 'center' }]}>{t('verifyingCode')}</Text>
+          </View>
         ) : (
           <>
             <Text style={[big, { marginTop: S.lg }]}>{t('otpSentTo')}</Text>
             <Text style={{ fontSize: 22, fontWeight: '700', color: C.text, marginTop: 2 }}>{`+91 ${phone}`}</Text>
             <Text style={label}>{t('otpLabel')}</Text>
-            <Input
-              value={otp}
-              onChangeText={(v) => setOtp(v.replace(/[^0-9]/g, '').slice(0, 6))}
-              keyboardType="number-pad"
-              maxLength={6}
-              autoFocus
-              textContentType="oneTimeCode"
-              autoComplete="sms-otp"
-              style={[bigInput, { fontSize: 28, letterSpacing: 10, textAlign: 'center', minHeight: 64 }]}
-            />
+            <OtpBoxInput value={otp} onChangeText={setOtp} autoFocus />
             <BigBtn label={t('verify')} onPress={verify} busy={busy} disabled={otp.length < 6} />
             {/* resend sits right under the code box so the keyboard never hides it */}
             <TouchableOpacity

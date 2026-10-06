@@ -10,6 +10,7 @@ from agro_mirai.auth.otp_providers import (
     SmsGatewaySender,
     TestOtpSender,
     build_otp_sender,
+    build_otp_text,
     parse_test_numbers,
 )
 
@@ -64,6 +65,37 @@ def test_sms_gateway_allowed_with_credentials():
 def test_unknown_provider_is_rejected():
     with pytest.raises(OtpProviderConfigError):
         build_otp_sender({"OTP_PROVIDER": "twilio"})
+
+
+def test_build_otp_text_is_localized_per_language():
+    for lang in ("en", "hi", "kn", "te"):
+        text = build_otp_text("123456", lang)
+        assert "123456" in text
+    # each language's template is actually distinct, not all falling back to English
+    texts = {lang: build_otp_text("123456", lang) for lang in ("en", "hi", "kn", "te")}
+    assert len(set(texts.values())) == 4
+
+
+def test_build_otp_text_falls_back_to_english_for_unknown_lang():
+    assert build_otp_text("123456", "fr") == build_otp_text("123456", "en")
+
+
+def test_sms_gateway_sender_sends_requested_language(monkeypatch):
+    captured = {}
+
+    class _FakeResponse:
+        status_code = 200
+
+    def fake_post(url, json, auth, timeout):
+        captured["text"] = json["textMessage"]["text"]
+        return _FakeResponse()
+
+    monkeypatch.setattr(requests, "post", fake_post)
+
+    sender = SmsGatewaySender(username="u", password="p")
+    sender.send("+919000000001", "123456", lang="hi")
+    assert "123456" in captured["text"]
+    assert captured["text"] == build_otp_text("123456", "hi")
 
 
 def test_parse_test_numbers():

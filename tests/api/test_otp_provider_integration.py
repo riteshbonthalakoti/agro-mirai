@@ -52,7 +52,7 @@ def test_sms_gateway_send_failure_returns_clean_error_without_leaking_otp(monkey
     monkeypatch.setenv("SMS_GATEWAY_PASS", "p")
 
     class _AlwaysFailsSender(providers.OtpSender):
-        def send(self, phone, code):
+        def send(self, phone, code, lang="en"):
             raise providers.OtpSendError("gateway down")
 
     app = _app()

@@ -48,6 +48,67 @@ export function Input(props: TextInputProps) {
   return <TextInput placeholderTextColor={C.muted} {...props} style={[st.input, props.style]} />;
 }
 
+/**
+ * A 6-box OTP input (Module 56) -- the single real TextInput still carries
+ * all the autofill plumbing (autoComplete="sms-otp", textContentType,
+ * keyboardType) so manual typing, paste, and Android's SMS autofill all
+ * still work exactly as before; it's just rendered invisibly on top of the
+ * boxes, which only mirror its value back out. Tapping any box focuses it.
+ */
+export function OtpBoxInput({
+  value,
+  onChangeText,
+  length = 6,
+  autoFocus,
+}: {
+  value: string;
+  onChangeText: (v: string) => void;
+  length?: number;
+  autoFocus?: boolean;
+}) {
+  const inputRef = React.useRef<TextInput>(null);
+  const digits = Array.from({ length }, (_, i) => value[i] ?? '');
+  const activeIndex = Math.min(value.length, length - 1);
+
+  return (
+    <TouchableOpacity activeOpacity={1} onPress={() => inputRef.current?.focus()} style={{ marginTop: S.sm }}>
+      <View style={{ flexDirection: 'row', justifyContent: 'center', gap: S.sm }}>
+        {digits.map((d, i) => (
+          <View
+            key={i}
+            style={{
+              width: 44,
+              height: 56,
+              borderRadius: 12,
+              borderWidth: 2,
+              borderColor: i === activeIndex && value.length < length ? C.accent : C.border,
+              backgroundColor: C.surface,
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <Text style={{ fontSize: 24, fontWeight: '800', color: C.text }}>{d}</Text>
+          </View>
+        ))}
+      </View>
+      <TextInput
+        ref={inputRef}
+        value={value}
+        onChangeText={(v) => onChangeText(v.replace(/[^0-9]/g, '').slice(0, length))}
+        keyboardType="number-pad"
+        maxLength={length}
+        autoFocus={autoFocus}
+        textContentType="oneTimeCode"
+        autoComplete="sms-otp"
+        // Invisible but present and focusable -- this is the input that
+        // actually receives typed/pasted/autofilled text; the boxes above
+        // are a pure display mirror of its value.
+        style={{ position: 'absolute', opacity: 0, height: 1, width: 1 }}
+      />
+    </TouchableOpacity>
+  );
+}
+
 export function Muted({ children, style }: { children: React.ReactNode; style?: any }) {
   return <Text style={[st.muted, style]}>{children}</Text>;
 }

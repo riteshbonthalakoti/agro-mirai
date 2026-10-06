@@ -17,7 +17,10 @@ module is the seam that decides what happens to it. One small
   (https://docs.sms-gate.app/), cloud mode: a spare Android phone with
   an Indian SIM runs the gateway app and relays texts sent through its
   cloud API. Free for a demo; carriers may throttle it and the phone
-  must stay powered and online (see docs/SMS_OTP_SETUP.md).
+  must stay powered and online (see docs/SMS_OTP_SETUP.md). When
+  ``SMS_APP_HASH`` is set, the mobile app's 11-char signature is appended
+  to the message so Android's SMS Retriever API (``mobile/modules/sms-
+  retriever``) auto-fills the code with no copy-paste at all.
 
 Swapping in a paid provider later (2Factor, MSG91) means adding one
 more ``OtpSender`` subclass and one more branch in ``build_otp_sender``
@@ -35,6 +38,24 @@ logger = logging.getLogger("agro_mirai.auth.otp_providers")
 _GATEWAY_URL = "https://api.sms-gate.app/3rdparty/v1/message"
 _GATEWAY_TIMEOUT_S = 10.0
 
+# One template per farmer-facing language (mobile/src/i18n.ts's four: en/kn/te/hi).
+# {code} is substituted in; keep each under ~130 chars so the hash suffix
+# (SMS_APP_HASH) still fits a single 160-char SMS segment.
+_OTP_SMS_TEMPLATES = {
+    "en": "{code} is your AGRO MIRAI login code. Valid for 5 minutes. Do not share this code with anyone.",
+    "hi": "{code} आपका AGRO MIRAI लॉगिन कोड है। यह 5 मिनट तक मान्य है। इस कोड को किसी के साथ साझा न करें।",
+    "kn": "{code} ಇದು ನಿಮ್ಮ AGRO MIRAI ಲಾಗಿನ್ ಕೋಡ್. ಇದು 5 ನಿಮಿಷಗಳವರೆಗೆ ಮಾನ್ಯವಾಗಿರುತ್ತದೆ. ಈ ಕೋಡ್ ಅನ್ನು ಯಾರೊಂದಿಗೂ ಹಂಚಿಕೊಳ್ಳಬೇಡಿ.",
+    "te": "{code} మీ AGRO MIRAI లాగిన్ కోడ్. ఇది 5 నిమిషాల వరకు చెల్లుతుంది. ఈ కోడ్‌ను ఎవరితోనూ పంచుకోవద్దు.",
+}
+
+
+def build_otp_text(code: str, lang: str) -> str:
+    """The farmer-facing SMS body in their own preferred language --
+    falls back to English for an unrecognized/missing lang rather than
+    failing the send over a cosmetic mismatch."""
+    template = _OTP_SMS_TEMPLATES.get(lang, _OTP_SMS_TEMPLATES["en"])
+    return template.format(code=code)
+
 
 class OtpSendError(Exception):
     """A provider could not deliver the code. Callers must show a
@@ -49,7 +70,7 @@ class OtpProviderConfigError(Exception):
 
 
 class OtpSender:
-    def send(self, phone: str, code: str) -> None:
+    def send(self, phone: str, code: str, lang: str = "en") -> None:
         raise NotImplementedError
 
 
@@ -57,8 +78,8 @@ class LogOtpSender(OtpSender):
     """Dev/demo only -- the original Module 27 behaviour. Never
     constructed in production (see ``build_otp_sender``)."""
 
-    def send(self, phone: str, code: str) -> None:
-        logger.info("OTP for %s: %s (valid 5 min)", phone, code)
+    def send(self, phone: str, code: str, lang: str = "en") -> None:
+        logger.info("OTP for %s: %s (valid 5 min, lang=%s)", phone, code, lang)
 
 
 class TestOtpSender(OtpSender):
@@ -71,7 +92,7 @@ class TestOtpSender(OtpSender):
     def __init__(self, test_numbers: dict[str, str]):
         self.test_numbers = test_numbers
 
-    def send(self, phone: str, code: str) -> None:
+    def send(self, phone: str, code: str, lang: str = "en") -> None:
         return None
 
 
@@ -87,14 +108,24 @@ class SmsGatewaySender(OtpSender):
         password: str,
         base_url: str = _GATEWAY_URL,
         timeout_s: float = _GATEWAY_TIMEOUT_S,
+        app_hash: str | None = None,
     ):
         self.username = username
         self.password = password
         self.base_url = base_url
         self.timeout_s = timeout_s
+        # Module 56: the Android app's 11-char SMS Retriever signature
+        # (SMS_APP_HASH, read from the mobile app's own
+        # SmsRetriever.getAppSignatures() -- see modules/sms-retriever).
+        # Must be the LAST thing in the message, preceded by a space, or
+        # the OS never delivers the SMS to the app's listener; purely
+        # cosmetic to a human reading the text, so always safe to append.
+        self.app_hash = app_hash
 
-    def send(self, phone: str, code: str) -> None:
-        text = f"{code} is your AGRO MIRAI login code. Valid 5 min."
+    def send(self, phone: str, code: str, lang: str = "en") -> None:
+        text = build_otp_text(code, lang)
+        if self.app_hash:
+            text = f"{text}\n{self.app_hash}"
         last_error: Exception | None = None
         for _attempt in range(2):  # one retry
             try:
@@ -176,6 +207,9 @@ def build_otp_sender(env: "os._Environ[str] | dict[str, str] | None" = None) -> 
             raise OtpProviderConfigError(
                 "OTP_PROVIDER=sms_gateway requires SMS_GATEWAY_USER and SMS_GATEWAY_PASS"
             )
-        return SmsGatewaySender(username=username, password=password), {}
+        return (
+            SmsGatewaySender(username=username, password=password, app_hash=env.get("SMS_APP_HASH")),
+            {},
+        )
 
     raise OtpProviderConfigError(f"unknown OTP_PROVIDER: {provider!r}")
