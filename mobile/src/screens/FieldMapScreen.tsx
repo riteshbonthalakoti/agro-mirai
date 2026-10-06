@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { TouchableOpacity, View, Text } from 'react-native';
 import { Map, Camera, Marker } from '@maplibre/maplibre-react-native';
 import type { CameraRef } from '@maplibre/maplibre-react-native';
@@ -8,6 +8,7 @@ import { useApp } from '../ctx';
 import { Icon } from '../../icons';
 import { C, S } from '../theme';
 import { Banner } from '../ui';
+import { fieldCameraStop } from '../mapCamera';
 
 // NASA GIBS satellite imagery: MODIS_Terra_CorrectedReflectance_TrueColor
 // Free, worldwide, daily updates, no API key required
@@ -42,6 +43,7 @@ export function FieldMapScreen({ onClose }: { onClose: () => void }) {
   const { field, t } = useApp();
   const [userLocation, setUserLocation] = useState<{ lat: number; lon: number } | null>(null);
   const online = isOnline();
+  const cameraRef = useRef<CameraRef>(null);
 
   // Get current location on mount
   useEffect(() => {
@@ -73,11 +75,11 @@ export function FieldMapScreen({ onClose }: { onClose: () => void }) {
         </View>
       )}
 
-      <Map
-        style={{ flex: 1 }}
-        mapStyle={SATELLITE_STYLE}
-        {...({ zoomLevel: initialZoom, centerCoordinate: [fieldLon, fieldLat] } as any)}
-      >
+      <Map style={{ flex: 1 }} mapStyle={SATELLITE_STYLE}>
+        <Camera
+          ref={cameraRef}
+          initialViewState={{ center: [fieldLon, fieldLat], zoom: initialZoom }}
+        />
 
         {/* Field location marker */}
         <Marker
@@ -129,7 +131,9 @@ export function FieldMapScreen({ onClose }: { onClose: () => void }) {
       {/* Focus button */}
       <TouchableOpacity
         onPress={() => {
-          // Zoom to field - would need camera ref to update
+          cameraRef.current?.easeTo(
+            { ...fieldCameraStop(fieldLat, fieldLon, initialZoom), duration: 400 }
+          );
         }}
         style={{
           position: 'absolute',
