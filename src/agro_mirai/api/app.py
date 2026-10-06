@@ -172,6 +172,10 @@ def create_app(config: dict | None = None) -> Flask:
     app.config["OTP_PROVIDER"] = os.environ.get("OTP_PROVIDER", "log")
     app.extensions["otp_sender"] = otp_sender
     app.extensions["otp_test_numbers"] = otp_test_numbers
+    # A saved account's bearer token stays valid until the farmer signs out,
+    # not just 24h like the cookie -- otherwise every saved account would
+    # silently need a fresh OTP once a day.
+    app.config["BEARER_TOKEN_LIFETIME_DAYS"] = os.environ.get("BEARER_TOKEN_LIFETIME_DAYS", "180")
     # Module 23 — voice endpoints (/v2/advisories/{id}/audio, /v2/stt) are
     # far more expensive per call than a JSON read, so they get their own,
     # tighter limits on top of the general RATE_LIMIT above.

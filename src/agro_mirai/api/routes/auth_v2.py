@@ -164,8 +164,10 @@ def verify_otp():
     if farmer is None:
         raise ApiError(401, "UNAUTHORIZED", "No account for this phone number")
 
-    issue_session(farmer.id, farmer.role)
-    return jsonify(farmer_to_public_json(farmer)), 200
+    token = issue_session(farmer.id, farmer.role)
+    payload = farmer_to_public_json(farmer)
+    payload["session_token"] = token
+    return jsonify(payload), 200
 
 
 @auth_v2_bp.post("/logout")
