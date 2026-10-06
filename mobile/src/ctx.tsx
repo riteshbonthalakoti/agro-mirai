@@ -1,6 +1,7 @@
 import React, { createContext, useContext } from 'react';
 import { CROP_LABELS, Key, Lang, SOIL_LABELS, STRINGS } from './i18n';
 import { Farmer, Field } from './api';
+import { SavedAccount } from './accounts';
 
 export type Ctx = {
   lang: Lang;
@@ -15,6 +16,11 @@ export type Ctx = {
   openFieldForm: (f?: Field) => void;
   signOut: () => void;
   openBugReport: (screen: string) => void;
+  accounts: SavedAccount[];
+  activeAccountId: string | null;
+  switchAccount: (id: string) => Promise<void>;
+  removeAccount: (id: string) => Promise<void>;
+  openAddAccount: () => void;
 };
 
 export const AppCtx = createContext<Ctx | null>(null);

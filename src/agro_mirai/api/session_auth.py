@@ -22,20 +22,46 @@ from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 from functools import wraps
 
-from flask import g, session
+import itsdangerous
+from flask import current_app, g, request, session
 
 from agro_mirai.api.errors import ApiError
 
 SESSION_LIFETIME = timedelta(hours=24)
+DEFAULT_BEARER_TOKEN_LIFETIME_DAYS = 180
+_TOKEN_SALT = "agro-mirai-bearer-token"
 
 
-def issue_session(farmer_id: str, role: str) -> None:
-    """Called on successful login. Overwrites any prior session content."""
+def _bearer_token_lifetime() -> timedelta:
+    days = current_app.config.get("BEARER_TOKEN_LIFETIME_DAYS", DEFAULT_BEARER_TOKEN_LIFETIME_DAYS)
+    return timedelta(days=int(days))
+
+
+def _serializer():
+    return itsdangerous.URLSafeTimedSerializer(current_app.secret_key, salt=_TOKEN_SALT)
+
+
+def issue_session(farmer_id: str, role: str) -> str:
+    """Called on successful login. Overwrites any prior session content.
+    Also returns a signed bearer token carrying the same claims as the cookie."""
     session.clear()
+    issued_at = datetime.now(timezone.utc).isoformat()
     session["farmer_id"] = farmer_id
     session["role"] = role or "farmer"
-    session["issued_at"] = datetime.now(timezone.utc).isoformat()
+    session["issued_at"] = issued_at
     session.permanent = True
+    return _serializer().dumps({"farmer_id": farmer_id, "role": role or "farmer", "issued_at": issued_at})
+
+
+def decode_token(token: str) -> dict | None:
+    """Verifies the token's signature and shape. Doesn't check expiry."""
+    try:
+        data = _serializer().loads(token)
+    except itsdangerous.BadSignature:
+        return None
+    if not isinstance(data, dict) or "farmer_id" not in data or "issued_at" not in data:
+        return None
+    return data
 
 
 def clear_session() -> None:
@@ -61,20 +87,36 @@ def is_expired(
 
 
 def require_session_auth(view):
-    """Requires a valid, non-expired session cookie. Sets g.farmer_id and
-    g.role. Every /v2 route (other than register/login) that touches
-    farmer-owned data uses this, never the raw session dict directly, so
-    the expiry check can't accidentally be skipped."""
+    """Requires a valid, non-expired session: the cookie, or a bearer token.
+    Sets g.farmer_id and g.role either way."""
 
     @wraps(view)
     def wrapped(*args, **kwargs):
-        farmer_id = session.get("farmer_id")
-        issued_at = session.get("issued_at")
-        if not farmer_id or not issued_at or is_expired(issued_at):
+        farmer_id = None
+        issued_at = None
+        role = "farmer"
+        lifetime = SESSION_LIFETIME
+
+        auth_header = request.headers.get("Authorization", "")
+        if auth_header.startswith("Bearer "):
+            data = decode_token(auth_header[len("Bearer "):].strip())
+            if data:
+                farmer_id = data.get("farmer_id")
+                issued_at = data.get("issued_at")
+                role = data.get("role", "farmer")
+                lifetime = _bearer_token_lifetime()
+
+        if not farmer_id:
+            farmer_id = session.get("farmer_id")
+            issued_at = session.get("issued_at")
+            role = session.get("role", "farmer")
+            lifetime = SESSION_LIFETIME
+
+        if not farmer_id or not issued_at or is_expired(issued_at, lifetime=lifetime):
             clear_session()
             raise ApiError(401, "UNAUTHORIZED", "Not logged in, or session expired")
         g.farmer_id = farmer_id
-        g.role = session.get("role", "farmer")
+        g.role = role
         return view(*args, **kwargs)
 
     return wrapped
