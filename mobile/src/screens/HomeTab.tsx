@@ -7,6 +7,7 @@ import { cropLabel, diseaseAction, fmtDate, levelLabel, useApp } from '../ctx';
 import { errorText, Load, useLoad, useTranslated } from '../hooks';
 import { feedback } from '../feedback';
 import { useNotifications } from '../notifications';
+import { getReminderSettings } from '../reminderSettings';
 import { SkeletonCard } from '../skeleton';
 import { C, levelColor, S } from '../theme';
 import { Badge, Banner, Btn, KV, LastUpdated, Muted, st } from '../ui';
@@ -120,8 +121,15 @@ export function HomeTab() {
   const today = todayLine(t, i, d, dd);
   const { setDailyReminder } = useNotifications();
   useEffect(() => {
-    // tomorrow's 7:00 notification carries the latest advice, even if the app is closed by then
-    if (today?.text) setDailyReminder(t('notifDailyTitle'), today.text, id);
+    // tomorrow's daily notification carries the latest advice, even if the app is closed by then
+    if (today?.text) {
+      (async () => {
+        const settings = await getReminderSettings();
+        if (settings.enabled) {
+          setDailyReminder(t('notifDailyTitle'), today.text, id, undefined, settings.timeMinutes);
+        }
+      })();
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [today?.text, lang, id]);
   // the server's crop-specific advice is English: translate it (cached), fall back to the generic line

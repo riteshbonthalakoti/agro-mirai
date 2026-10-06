@@ -22,8 +22,8 @@ type NotifCtx = {
   unread: number;
   notify: (n: { id?: string; title: string; body: string; severity?: string }) => void;
   openInbox: () => void;
-  /** Schedules the 7:00 daily reminder (replaces the previous one). No-op without the OS layer/permission. */
-  setDailyReminder: (title: string, body: string, fieldId?: string, accountId?: string) => void;
+  /** Schedules a daily reminder at specified time (replaces the previous one). No-op without the OS layer/permission. */
+  setDailyReminder: (title: string, body: string, fieldId?: string, accountId?: string, timeMinutes?: number) => void;
   /** Cancels all scheduled notifications (daily reminder + background alerts). Call on logout. */
   clearScheduledNotifications: () => void;
 };
@@ -121,17 +121,20 @@ export function NotificationsProvider({ children, t }: { children: React.ReactNo
     }
   }, [showBanner]);
 
-  const setDailyReminder = useCallback((title: string, body: string, fieldId?: string, accountId?: string) => {
+  const setDailyReminder = useCallback((title: string, body: string, fieldId?: string, accountId?: string, timeMinutes?: number) => {
     if (!Notifications) return;
     (async () => {
       try {
         const perm = await Notifications.getPermissionsAsync();
         if (!perm.granted) return;
         await Notifications.cancelScheduledNotificationAsync(DAILY_ID).catch(() => {});
+        const mins = timeMinutes ?? 7 * 60;
+        const hour = Math.floor(mins / 60);
+        const minute = mins % 60;
         await Notifications.scheduleNotificationAsync({
           identifier: DAILY_ID,
           content: { title, body, color: '#2E7D32', data: { id: `daily-${new Date().toDateString()}`, fieldId, accountId } },
-          trigger: { type: Notifications.SchedulableTriggerInputTypes.DAILY, hour: 7, minute: 0, channelId: CHANNEL },
+          trigger: { type: Notifications.SchedulableTriggerInputTypes.DAILY, hour, minute, channelId: CHANNEL },
         });
       } catch {}
     })();
