@@ -25,6 +25,10 @@ const Notifications: typeof import('expo-notifications') | null = enabled ? requ
 // defineTask must run at module load (top level), before the app renders.
 TaskManager?.defineTask(ALERT_TASK, async () => {
   try {
+    // Only process if an account is currently signed in. Verify by checking cached farmer.
+    const farmer = await cacheGet<any>('farmer');
+    if (!farmer) return BackgroundTask!.BackgroundTaskResult.Success;
+
     const target = await cacheGet<{ id: string; name: string }>(BG_FIELD_KEY);
     if (!target || !Notifications) return BackgroundTask!.BackgroundTaskResult.Success;
     const perm = await Notifications.getPermissionsAsync();

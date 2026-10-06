@@ -1,5 +1,5 @@
 import React, { Component, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Image, Modal, ScrollView, StatusBar, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Image, Modal, Platform, ScrollView, StatusBar, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 
 // Top-level dev-facing boundary: catches anything anywhere in the tree
@@ -61,7 +61,9 @@ import { AddAccountScreen, AuthScreen, LanguageScreen, PermissionsScreen } from 
 import { CoachTour, TourStep } from './src/components/CoachTour';
 import { NotificationsProvider, useNotifications } from './src/notifications';
 import { registerBackgroundAlerts, setBackgroundField } from './src/backgroundAlerts';
+import { emitAccountSignedIn, emitAccountSignedOut, onAccountEvent } from './src/accountEvents';
 import { playOnboardingClip, stopAudio } from './src/audio';
+import { getReminderSettings } from './src/reminderSettings';
 import { ScanTab } from './src/screens/ScanTab';
 import { FirstField } from './src/screens/FirstField';
 import { cacheGet, cacheSet, clearFarmerCache } from './src/storage';
@@ -74,6 +76,8 @@ import { feedback } from './src/feedback';
 import { DialogHost, dialog } from './src/dialog';
 import * as accounts from './src/accounts';
 import { SavedAccount } from './src/accounts';
+import { handleNotificationTap } from './src/notificationTapHandler';
+import Constants from 'expo-constants';
 
 /** One consistent top bar for every main tab: no logo, no branding -- just
  *  the active field's name, and a chip switcher when there's more than one
@@ -211,7 +215,7 @@ function RootInner({ lang, setLang }: { lang: Lang; setLang: (l: Lang) => void }
   // See accounts.ts's withinLoginGraceWindow doc comment for why this exists.
   const justLoggedInAtRef = useRef(0);
   const tabRefs = useRef<Record<string, View | null>>({});
-  const { notify } = useNotifications();
+  const { notify, clearScheduledNotifications, setDailyReminder } = useNotifications();
   const [farmer, setFarmer] = useState<Farmer | null>(null);
   const [fields, setFields] = useState<Field[]>([]);
   const [fieldId, setFieldId] = useState<string | null>(null);
@@ -237,11 +241,48 @@ function RootInner({ lang, setLang }: { lang: Lang; setLang: (l: Lang) => void }
 
   useEffect(() => subscribeNet(setOnline), []);
 
+  // Reschedule notifications when signing in or switching accounts
+  useEffect(() => {
+    const unsubIn = onAccountEvent('accountSignedIn', () => {
+      if (field && farmer) {
+        (async () => {
+          const settings = await getReminderSettings();
+          if (!settings.enabled) {
+            clearScheduledNotifications();
+            return;
+          }
+          const title = `${field.name}: Daily Reminder`;
+          const body = (await getAdvisories(field.id, false).catch(() => null))?.[0]?.title || `Check your ${cropLabel(lang, field.current_crop || '')} field`;
+          setDailyReminder(title, body, field.id, farmer.id, settings.timeMinutes);
+        })();
+      }
+    });
+    const unsubSwitch = onAccountEvent('accountSwitched', () => {
+      if (field && farmer) {
+        (async () => {
+          const settings = await getReminderSettings();
+          if (!settings.enabled) {
+            clearScheduledNotifications();
+            return;
+          }
+          const title = `${field.name}: Daily Reminder`;
+          const body = (await getAdvisories(field.id, false).catch(() => null))?.[0]?.title || `Check your ${cropLabel(lang, field.current_crop || '')} field`;
+          setDailyReminder(title, body, field.id, farmer.id, settings.timeMinutes);
+        })();
+      }
+    });
+    return () => { unsubIn(); unsubSwitch(); };
+  }, [field, farmer, lang, setDailyReminder, clearScheduledNotifications]);
+
   const goAuth = useCallback(async (notice = '') => {
     // A 401 during boot just means "not signed in": the boot sequence handles it
     // itself (language -> permissions -> sign-in), with no "session ended" notice.
     if (phaseRef.current === 'boot') return;
     if (accounts.withinLoginGraceWindow(justLoggedInAtRef.current, Date.now())) return;
+    // Emit sign-out event before clearing state (notifications listener needs to know who signed out)
+    if (farmer) emitAccountSignedOut(farmer.id);
+    clearScheduledNotifications();
+    setBackgroundField(undefined, undefined);
     const id = accounts.getActiveAccountId();
     if (id) {
       await accounts.markSessionExpired(id);
@@ -252,7 +293,7 @@ function RootInner({ lang, setLang }: { lang: Lang; setLang: (l: Lang) => void }
     setFieldId(null);
     setAuthNotice(notice);
     setPhase('auth');
-  }, []);
+  }, [clearScheduledNotifications, farmer]);
 
   // A 401 from any request means the server-side session is gone -- unless
   // it was captured under an account we've since switched away from, in
@@ -301,6 +342,7 @@ function RootInner({ lang, setLang }: { lang: Lang; setLang: (l: Lang) => void }
         const me = await getMe();
         setFarmer(me);
         cacheSet('farmer', me);
+        emitAccountSignedIn(me.id);
         if (isLang(me.preferred_language)) { setLang(me.preferred_language); cacheSet('lang', me.preferred_language); }
         await loadFields();
         // people who were already signed in before notifications existed never saw the permission
@@ -434,6 +476,8 @@ function RootInner({ lang, setLang }: { lang: Lang; setLang: (l: Lang) => void }
   }, [activeAccountId, refreshAccountsList, switchAccount]);
 
   const signOut = useCallback(async () => {
+    clearScheduledNotifications();
+    setBackgroundField(undefined, undefined);
     const id = accounts.getActiveAccountId();
     if (id) {
       // removeAccount already tells the server for us, with this account's own token.
@@ -444,7 +488,18 @@ function RootInner({ lang, setLang }: { lang: Lang; setLang: (l: Lang) => void }
       await logout();
       await goAuth();
     }
-  }, [goAuth, removeAccount]);
+  }, [goAuth, removeAccount, clearScheduledNotifications]);
+
+  // Handle notification taps: route to field or auth if account missing
+  useEffect(() => {
+    const IN_EXPO_GO = Constants.executionEnvironment === 'storeClient';
+    const Notifications = IN_EXPO_GO && Platform.OS === 'android' ? null : require('expo-notifications');
+    if (!Notifications) return;
+    const tap = Notifications.addNotificationResponseReceivedListener(async (e: any) => {
+      await handleNotificationTap(e.notification.request.content.data, accounts.listAccounts, goAuth, switchAccount, setTab, activeAccountId);
+    });
+    return () => tap.remove();
+  }, [activeAccountId, switchAccount, goAuth]);
 
   const ctx: Ctx | null = farmer
     ? {
