@@ -1,27 +1,17 @@
 # Module 53: Dynamic Per-Account Notifications
 
-## Bug Fixed
-User logged out but the 7 AM notification still arrived. Notifications were never cancelled on session end.
+## Features
+1. **Clear on sign-out**: Scheduled notifications cancelled when user signs out
+2. **Reschedule on sign-in/switch**: Notifications rescheduled with new account's field/language
+3. **Per-account settings**: Reminder on/off + time stored per-account (auto-default: on @ 7 AM)
+4. **Tap-to-route**: Notification tap checks if account still exists, switches to it, navigates home
 
-## Root Cause
-`App.tsx` sign-out paths didn't cancel OS-scheduled notifications; the reminder persisted and fired after logout.
+## Implementation
+- `App.tsx`: Listens to account lifecycle events, reschedules/routes on sign-in/switch/tap
+- `NotificationsProvider`: Clears on sign-out, accepts accountId in daily reminder payload
+- `reminderSettings.ts`: Per-account storage helpers (uses existing account-namespaced storage)
+- `notificationScheduling.ts/test.ts`: Pure logic for "should schedule" decision (existing)
+- `backgroundAlerts.ts`: No-op when signed out (existing)
 
-## Solution
-- Account lifecycle events (`accountSignedIn`, `accountSignedOut`) emitted from App.tsx
-- NotificationsProvider subscribes to sign-out, clears all scheduled notifications
-- Background task checks cached farmer exists before processing (no unauth alerts)
-- Notification data includes fieldId for future field routing
-- Pure scheduling decision function: tests verify "no account" / "no field" → no schedule
-
-## Files
-- `mobile/src/accountEvents.ts` — event emitter (compatible with Module 52)
-- `mobile/src/notificationScheduling.ts` — pure scheduling decision logic
-- `mobile/src/notificationScheduling.test.ts` — unit tests
-- `mobile/App.tsx` — emit events on sign-in/sign-out
-- `mobile/src/notifications.tsx` — listen to account sign-out
-- `mobile/src/backgroundAlerts.ts` — check farmer cached before processing
-
-## Known Limitations
-- No per-account settings storage yet (future)
-- Notification tap doesn't route to field (data present, routing deferred)
-- When Module 52 merges: accountEvents.ts will be identical, no code changes needed
+## Tests
+- `notificationScheduling.test.ts`: 6 tests covering account/field/advice conditions
