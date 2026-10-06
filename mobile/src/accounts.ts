@@ -7,6 +7,23 @@ const ACCOUNTS_KEY = 'agro:v2:accounts';
 const ACTIVE_KEY = 'agro:v2:activeAccountId';
 export const MAX_ACCOUNTS = 5;
 
+// Module 56 fix: a request already in flight when a farmer finishes signing
+// in (fired with the previous/no account's token, or racing the new token
+// just being written) can land its 401 a moment *after* login already
+// succeeded, forcing the app's sign-out handler (App.tsx's goAuth) to fire
+// for a session that is, in fact, perfectly valid -- the farmer is kicked
+// right back to the sign-in screen with no visible error, even though the
+// login itself worked (a cold restart proves this: it lands on the
+// dashboard). This grace window tells goAuth to ignore a 401-triggered
+// sign-out for a few seconds right after a fresh login/account-switch; a
+// session that's genuinely invalid will 401 again on the very next real
+// request anyway, just not spuriously within this window.
+export const LOGIN_GRACE_MS = 4000;
+
+export function withinLoginGraceWindow(justLoggedInAt: number, now: number): boolean {
+  return now - justLoggedInAt < LOGIN_GRACE_MS;
+}
+
 export type SavedAccount = {
   id: string;
   name: string;
