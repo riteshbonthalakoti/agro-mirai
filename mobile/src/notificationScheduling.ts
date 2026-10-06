@@ -31,5 +31,5 @@ export function shouldScheduleDailyReminder(input: SchedulingInput): SchedulingD
   if (input.reminderEnabled === false) {
     return { shouldSchedule: false, reason: 'remindersDisabled' };
   }
-  return { shouldSchedule: true, reason: 'ready', timeMinutes: input.reminderEnabled !== false ? 7 * 60 : undefined };
+  return { shouldSchedule: true, reason: 'ready', timeMinutes: 7 * 60 };
 }
