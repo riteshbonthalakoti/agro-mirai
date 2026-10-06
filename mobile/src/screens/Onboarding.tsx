@@ -367,15 +367,33 @@ export function AuthScreen({ lang, onLoggedIn, notice, onChangeLanguage, onCance
     verifyingRef.current = true;
     setErr('');
     setBusy(true);
+    // Tracks which half failed: the code itself (verifyOtp) or finishing
+    // sign-in afterward (onLoggedIn -> addAccount -> local storage). The
+    // server already accepted the code by the second point, so "wrong or
+    // expired code" would be an honest-sounding lie there.
+    let codeAccepted = false;
     try {
       const farmer = await verifyOtp(normalizePhone(phone), otp.trim());
+      codeAccepted = true;
       feedback.success();
-      onLoggedIn(farmer, isNew, farmer.session_token);
+      // Module 56 fix: this used to be fire-and-forget -- a failure here
+      // (e.g. local account storage) threw *after* this try/catch had
+      // already finished, as a truly unhandled rejection. The screen just
+      // sat there with the stale filled-in code; tapping Verify again (or
+      // the auto-verify effect re-firing) then got a genuine "wrong or
+      // expired code" for a code that, from the farmer's view, "just
+      // worked". Awaiting it routes any failure through the catch below.
+      await onLoggedIn(farmer, isNew, farmer.session_token);
     } catch (e) {
-      const ae = e as ApiError;
-      const { kind } = classifyError(e);
-      if (kind === 'unknown') logError('Onboarding.verifyOtp', e);
-      setErr(ae.isNetwork ? errorText(t, ae, { write: true }) : ae.status >= 500 ? t('serverBusy') : t('invalidOtp'));
+      if (codeAccepted) {
+        logError('Onboarding.onLoggedIn', e);
+        setErr(t('serverBusy'));
+      } else {
+        const ae = e as ApiError;
+        const { kind } = classifyError(e);
+        if (kind === 'unknown') logError('Onboarding.verifyOtp', e);
+        setErr(ae.isNetwork ? errorText(t, ae, { write: true }) : ae.status >= 500 ? t('serverBusy') : t('invalidOtp'));
+      }
       setOtp('');
       feedback.error();
     } finally {
