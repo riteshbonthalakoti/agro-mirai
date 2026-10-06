@@ -1,5 +1,5 @@
 import React, { Component, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Image, Modal, ScrollView, StatusBar, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Image, Modal, Platform, ScrollView, StatusBar, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 
 // Top-level dev-facing boundary: catches anything anywhere in the tree
@@ -61,7 +61,7 @@ import { AddAccountScreen, AuthScreen, LanguageScreen, PermissionsScreen } from 
 import { CoachTour, TourStep } from './src/components/CoachTour';
 import { NotificationsProvider, useNotifications } from './src/notifications';
 import { registerBackgroundAlerts, setBackgroundField } from './src/backgroundAlerts';
-import { emitAccountSignedIn, emitAccountSignedOut } from './src/accountEvents';
+import { emitAccountSignedIn, emitAccountSignedOut, onAccountEvent } from './src/accountEvents';
 import { playOnboardingClip, stopAudio } from './src/audio';
 import { ScanTab } from './src/screens/ScanTab';
 import { FirstField } from './src/screens/FirstField';
@@ -75,6 +75,7 @@ import { feedback } from './src/feedback';
 import { DialogHost, dialog } from './src/dialog';
 import * as accounts from './src/accounts';
 import { SavedAccount } from './src/accounts';
+import Constants from 'expo-constants';
 
 /** One consistent top bar for every main tab: no logo, no branding -- just
  *  the active field's name, and a chip switcher when there's more than one
@@ -166,7 +167,7 @@ function RootInner({ lang, setLang }: { lang: Lang; setLang: (l: Lang) => void }
   const phaseRef = useRef<Phase>('boot');
   phaseRef.current = phase;
   const tabRefs = useRef<Record<string, View | null>>({});
-  const { notify, clearScheduledNotifications } = useNotifications();
+  const { notify, clearScheduledNotifications, setDailyReminder } = useNotifications();
   const [farmer, setFarmer] = useState<Farmer | null>(null);
   const [fields, setFields] = useState<Field[]>([]);
   const [fieldId, setFieldId] = useState<string | null>(null);
@@ -191,6 +192,29 @@ function RootInner({ lang, setLang }: { lang: Lang; setLang: (l: Lang) => void }
   const field = fields.find((f) => f.id === fieldId) ?? fields[0] ?? null;
 
   useEffect(() => subscribeNet(setOnline), []);
+
+  // Reschedule notifications when signing in or switching accounts
+  useEffect(() => {
+    const unsubIn = onAccountEvent('accountSignedIn', () => {
+      if (field && farmer) {
+        (async () => {
+          const title = `${field.name}: Daily Reminder`;
+          const body = (await getAdvisories(field.id, false).catch(() => null))?.[0]?.title || `Check your ${cropLabel(lang, field.current_crop || '')} field`;
+          setDailyReminder(title, body, field.id, farmer.id);
+        })();
+      }
+    });
+    const unsubSwitch = onAccountEvent('accountSwitched', () => {
+      if (field && farmer) {
+        (async () => {
+          const title = `${field.name}: Daily Reminder`;
+          const body = (await getAdvisories(field.id, false).catch(() => null))?.[0]?.title || `Check your ${cropLabel(lang, field.current_crop || '')} field`;
+          setDailyReminder(title, body, field.id, farmer.id);
+        })();
+      }
+    });
+    return () => { unsubIn(); unsubSwitch(); };
+  }, [field, farmer, lang, setDailyReminder]);
 
   const goAuth = useCallback(async (notice = '') => {
     // A 401 during boot just means "not signed in": the boot sequence handles it
@@ -406,6 +430,32 @@ function RootInner({ lang, setLang }: { lang: Lang; setLang: (l: Lang) => void }
       await goAuth();
     }
   }, [goAuth, removeAccount, clearScheduledNotifications]);
+
+  // Handle notification taps: route to field or auth if account missing
+  useEffect(() => {
+    const IN_EXPO_GO = Constants.executionEnvironment === 'storeClient';
+    const Notifications = IN_EXPO_GO && Platform.OS === 'android' ? null : require('expo-notifications');
+    if (!Notifications) return;
+    const tap = Notifications.addNotificationResponseReceivedListener(async (e: any) => {
+      const data = e.notification.request.content.data as any;
+      const tapAccountId = data?.accountId;
+      const tapFieldId = data?.fieldId;
+      if (!tapAccountId || !tapFieldId) return;
+      const saved = await accounts.listAccounts();
+      const account = saved.find((a) => a.id === tapAccountId);
+      if (!account) {
+        await goAuth();
+        return;
+      }
+      if (account.id !== activeAccountId) {
+        try {
+          await switchAccount(account.id);
+        } catch {}
+      }
+      setTab('home');
+    });
+    return () => tap.remove();
+  }, [activeAccountId, switchAccount, goAuth]);
 
   const ctx: Ctx | null = farmer
     ? {
