@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { RefreshControl, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { AuthBackdrop } from '../components/AuthBackdrop';
+import { BarMeter, SegmentedMeter } from '../components/Charts';
 import { Icon, IconName } from '../../icons';
 import { getDiseaseRiskFull, getIrrigation, getRecommendation, Irrigation, DiseaseAlert, DiseaseDetails } from '../api';
 import { cropLabel, diseaseAction, fmtDate, levelLabel, useApp } from '../ctx';
@@ -206,6 +207,23 @@ export function HomeTab() {
                 const word = fit ? ` · ${t(fit === 'good' ? 'fitGood' : fit === 'fair' ? 'fitFair' : 'fitWeak')}` : '';
                 return <KV k={t('modelConfidence')} v={`${Math.round(c.confidence * 100)}%${word}`} />;
               })()}
+
+              {/* Crop suitability scores visualization */}
+              {c.details?.ranking && c.details.ranking.length > 1 && (
+                <View style={{ marginTop: S.md }}>
+                  <Text style={{ fontSize: 13, fontWeight: '600', color: C.muted, marginBottom: S.sm }}>Top crops</Text>
+                  {c.details.ranking.slice(0, 4).map((r, k) => (
+                    <View key={k} style={{ marginBottom: S.sm }}>
+                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 }}>
+                        <Text style={{ fontSize: 13, color: C.text }}>{cropLabel(lang, r.crop)}</Text>
+                        <Text style={{ fontSize: 12, fontWeight: '600', color: C.muted }}>{Math.round(r.score * 100)}%</Text>
+                      </View>
+                      <BarMeter value={r.score} min={0} max={1} color={C.accent} showPercent={false} height={8} />
+                    </View>
+                  ))}
+                </View>
+              )}
+
               {c.alternatives && c.alternatives.length ? (
                 <KV k={t('alternatives')} v={c.alternatives.map((a) => cropLabel(lang, a)).join(', ')} />
               ) : null}
@@ -231,9 +249,17 @@ export function HomeTab() {
             <>
               <Text style={{ fontSize: 26, fontWeight: '800', color: C.text }}>{`${Math.round(i.recommended_depth_mm * 10) / 10} ${t('mm')}`}</Text>
               <KV k={t('window')} v={`${fmtDate(i.window_start_at)} – ${fmtDate(i.window_end_at)}`} />
+
+              {/* Water balance visualization */}
               {i.details?.method === 'soil_water_balance' && typeof i.details.soil_water_used_pct === 'number' ? (
                 <>
-                  <KV k={t('soilWaterUsed')} v={`${Math.min(i.details.soil_water_used_pct, 100)}%`} />
+                  <View style={{ marginTop: S.md }}>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
+                      <Text style={{ fontSize: 13, fontWeight: '600', color: C.text }}>Soil water used</Text>
+                      <Text style={{ fontSize: 13, fontWeight: '600', color: C.text }}>{Math.min(i.details.soil_water_used_pct, 100)}%</Text>
+                    </View>
+                    <BarMeter value={i.details.soil_water_used_pct} min={0} max={100} color={levelColor(i.urgency)} showPercent={false} />
+                  </View>
                   {typeof i.details.rain_forecast_7d_mm === 'number' ? (
                     <KV k={t('rainNext7')} v={`${Math.round(i.details.rain_forecast_7d_mm)} ${t('mm')}`} />
                   ) : null}
@@ -250,6 +276,24 @@ export function HomeTab() {
           {d ? (
             <>
               <Text style={{ fontSize: 18, fontWeight: '700', color: C.text }}>{d.disease_translated || d.disease}</Text>
+
+              {/* Disease risk level visualization */}
+              <View style={{ marginTop: S.md }}>
+                <SegmentedMeter
+                  value={d.risk_level === 'low' ? 1 : d.risk_level === 'moderate' ? 2 : d.risk_level === 'high' ? 3 : 4}
+                  min={1}
+                  max={4}
+                  segments={[
+                    [0.25, C.low],
+                    [0.25, C.moderate],
+                    [0.25, C.high],
+                    [0.25, C.severe],
+                  ]}
+                  height={10}
+                  markerHeight={20}
+                />
+              </View>
+
               {dd?.trend === 'rising' ? <Badge label={t('riskRising')} color={levelColor('high')} /> : null}
               <Text style={[st.body, { marginTop: S.sm }]}>{diseaseAdvice.out[0] || diseaseAction(t, d.risk_level, d.recommended_action)}</Text>
             </>

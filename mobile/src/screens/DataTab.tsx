@@ -6,6 +6,7 @@ import { fmtDate, useApp } from '../ctx';
 import { errorText, useLoad } from '../hooks';
 import { Key } from '../i18n';
 import { Icon, IconName } from '../../icons';
+import { SegmentedMeter, BarMeter } from '../components/Charts';
 import { SkeletonCard } from '../skeleton';
 import { cacheGet, cacheSet, formatTime } from '../storage';
 import { C, S } from '../theme';
@@ -191,6 +192,24 @@ export function DataTab() {
         {/* ---- forecast as day cards */}
         {d && d.weather.forecast.length ? (
           <Block title={t('forecast')} icon="list">
+            {/* Rain probability/accumulation bars */}
+            <View style={{ marginBottom: S.lg }}>
+              <Text style={{ fontSize: 12, fontWeight: '600', color: C.muted, marginBottom: S.sm }}>Rain forecast</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: S.xs }}>
+                {d.weather.forecast.slice(0, 7).map((f, k) => {
+                  const rain = f.rainfall_mm ?? 0;
+                  const maxRain = Math.max(...d.weather.forecast.slice(0, 7).map(x => x.rainfall_mm ?? 0)) || 10;
+                  const height = Math.max(2, (rain / maxRain) * 40);
+                  return (
+                    <View key={k} style={{ alignItems: 'center', flex: 1, minWidth: 32 }}>
+                      <View style={{ width: '100%', height: Math.max(24, height), borderRadius: 4, backgroundColor: rain >= 1 ? '#5B9BD1' : C.border, marginBottom: 4 }} />
+                      <Text style={{ fontSize: 10, color: C.muted, fontWeight: '600' }}>{new Date(f.observed_at).toLocaleDateString(lang, { weekday: 'narrow' })}</Text>
+                    </View>
+                  );
+                })}
+              </ScrollView>
+            </View>
+
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingRight: S.sm }}>
               {d.weather.forecast.slice(0, 7).map((f, k) => {
                 const rain = f.rainfall_mm ?? 0;
@@ -231,7 +250,7 @@ export function DataTab() {
                 <Text style={{ fontSize: 14, color: C.muted, marginLeft: 6 }}>{t('phName')}</Text>
                 <Text style={{ flex: 1, textAlign: 'right', fontSize: 16, fontWeight: '800', color: C.accent }}>{phBand(t, ph)}</Text>
               </View>
-              <Gauge value={ph ?? null} min={4} max={9} segments={[[0.4, '#E9A64F'], [0.36, '#6FB26A'], [0.24, '#6FA8D8']]} />
+              <SegmentedMeter value={ph ?? null} min={4} max={9} segments={[[0.4, '#E9A64F'], [0.36, '#6FB26A'], [0.24, '#6FA8D8']]} />
               {moist != null ? (
                 <>
                   <View style={{ flexDirection: 'row', marginTop: S.lg }}>
@@ -266,7 +285,7 @@ export function DataTab() {
                 <Text style={{ fontSize: 34, fontWeight: '800', color: C.text }}>{num(ndvi.ndvi, '', 2)}</Text>
                 <Text style={{ flex: 1, textAlign: 'right', fontSize: 16, fontWeight: '800', color: ndvi.ndvi < 0.3 ? C.high : ndvi.ndvi < 0.6 ? C.moderate : C.low }}>{ndviBand(t, ndvi.ndvi)}</Text>
               </View>
-              <Gauge value={ndvi.ndvi} min={0} max={1} segments={[[0.3, '#D9776B'], [0.3, '#E9C24F'], [0.4, '#5FAE62']]} />
+              <SegmentedMeter value={ndvi.ndvi} min={0} max={1} segments={[[0.3, '#D9776B'], [0.3, '#E9C24F'], [0.4, '#5FAE62']]} />
             </>
           ) : <Muted>{t('ndviGathering')}</Muted>}
         </Block>
@@ -334,20 +353,6 @@ function Fact({ icon, value, unit, label, tint }: { icon: IconName; value: strin
   );
 }
 
-/** Coloured scale with a marker: how far along `min..max` the value sits. */
-function Gauge({ value, min, max, segments }: { value: number | null; min: number; max: number; segments: [number, string][] }) {
-  const pos = value == null ? null : Math.max(0, Math.min(1, (value - min) / (max - min)));
-  return (
-    <View style={{ marginTop: S.md, height: 26, justifyContent: 'center' }}>
-      <View style={{ flexDirection: 'row', height: 12, borderRadius: 6, overflow: 'hidden' }}>
-        {segments.map(([f, c], k) => <View key={k} style={{ flex: f, backgroundColor: c }} />)}
-      </View>
-      {pos != null ? (
-        <View style={{ position: 'absolute', left: `${pos * 100}%`, marginLeft: -11, width: 22, height: 22, borderRadius: 11, backgroundColor: '#fff', borderWidth: 4, borderColor: C.text }} />
-      ) : null}
-    </View>
-  );
-}
 
 function Block({ icon, title, children, details }: { icon: IconName; title: string; children: React.ReactNode; details?: React.ReactNode }) {
   const { t } = useApp();
