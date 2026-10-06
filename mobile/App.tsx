@@ -1,6 +1,15 @@
 import React, { Component, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Image, Modal, Platform, ScrollView, StatusBar, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
+import * as SplashScreen from 'expo-splash-screen';
+
+// Keeps Android's native cold-start splash (app.json's expo-splash-screen
+// config: our logo-mark on the same cream background the JS splash uses)
+// on screen until AnimatedSplashScreen itself has mounted and painted a
+// frame -- without this, the native splash auto-hides the instant the JS
+// bundle finishes loading, which can be a beat before React has actually
+// rendered anything, showing a flash of the bare window background.
+SplashScreen.preventAutoHideAsync().catch(() => {});
 
 // Top-level dev-facing boundary: catches anything anywhere in the tree
 // (including boot/lang/perms/auth, before a farmer/`t` even exists) and

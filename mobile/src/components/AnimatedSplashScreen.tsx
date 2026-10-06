@@ -6,6 +6,7 @@ import {
   View,
 } from 'react-native';
 import { useVideoPlayer, VideoView } from 'expo-video';
+import * as SplashScreen from 'expo-splash-screen';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const AnimatedView = Animated.createAnimatedComponent(View);
@@ -20,13 +21,33 @@ export function AnimatedSplashScreen({ onFinish, serverWaking = false }: Animate
   const finishedRef = useRef(false);
   const [videoLoaded, setVideoLoaded] = useState(false);
 
+  // Android's expo-video VideoView is backed by a Surface/TextureView;
+  // tearing it down on unmount can show one real black frame if the next
+  // screen hasn't painted yet underneath it. Fading this component's own
+  // opacity out (instead of an instant conditional swap in App.tsx) means
+  // there's always something on screen during that teardown instead of
+  // the bare window background.
   const triggerFinish = useRef(() => {
     if (finishedRef.current) return;
     finishedRef.current = true;
 
-    // No fade: the sign-in screen uses the same cream, so a straight swap is invisible.
-    onFinish();
+    Animated.timing(fadeAnim, {
+      toValue: 0,
+      duration: 220,
+      useNativeDriver: true,
+    }).start(() => onFinish());
   }).current;
+
+  // Hand off from the native cold-start splash (app.json's expo-splash-
+  // screen config) only once this component has actually mounted and can
+  // paint the very same cream background + logo -- otherwise the native
+  // splash can auto-hide a beat before anything is on screen to replace it.
+  useEffect(() => {
+    const id = requestAnimationFrame(() => {
+      SplashScreen.hideAsync().catch(() => {});
+    });
+    return () => cancelAnimationFrame(id);
+  }, []);
 
   // Fallback safety timer matching ~3.1s duration to guarantee clean transition
   useEffect(() => {

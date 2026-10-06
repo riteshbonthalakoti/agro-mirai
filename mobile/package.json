@@ -3,11 +3,11 @@
   "version": "1.0.0",
   "main": "index.ts",
   "dependencies": {
-    "sms-retriever": "file:./modules/sms-retriever",
     "@expo-google-fonts/fraunces": "^0.4.1",
     "@expo-google-fonts/ibm-plex-mono": "^0.4.1",
     "@expo-google-fonts/poppins": "^0.4.1",
     "@expo/metro-runtime": "~57.0.15",
+    "@maplibre/maplibre-react-native": "^11.4.0",
     "@react-native-async-storage/async-storage": "2.2.0",
     "@react-native-community/datetimepicker": "9.1.0",
     "@react-native/jest-preset": "^0.86.0",
@@ -30,14 +30,15 @@
     "expo-notifications": "~57.0.20",
     "expo-secure-store": "~57.0.4",
     "expo-speech": "^57.0.2",
+    "expo-splash-screen": "~57.0.9",
     "expo-task-manager": "~57.0.20",
     "expo-updates": "~57.0.23",
     "expo-video": "^57.0.4",
-    "@maplibre/maplibre-react-native": "^11.4.0",
     "react": "19.2.3",
     "react-native": "0.86.3",
     "react-native-safe-area-context": "~5.7.0",
-    "react-native-svg": "15.15.4"
+    "react-native-svg": "15.15.4",
+    "sms-retriever": "file:./modules/sms-retriever"
   },
   "devDependencies": {
     "@testing-library/react-native": "~14.0.1",

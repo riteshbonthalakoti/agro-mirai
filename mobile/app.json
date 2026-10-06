@@ -33,6 +33,15 @@
       "@maplibre/maplibre-react-native",
       "expo-audio",
       [
+        "expo-splash-screen",
+        {
+          "image": "./assets/logo-mark.png",
+          "imageWidth": 160,
+          "backgroundColor": "#F1EEE1",
+          "resizeMode": "contain"
+        }
+      ],
+      [
         "expo-notifications",
         {
           "icon": "./assets/notification-icon.png",
