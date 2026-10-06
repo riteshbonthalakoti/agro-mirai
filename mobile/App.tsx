@@ -1,5 +1,5 @@
 import React, { Component, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Image, ScrollView, StatusBar, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Image, Modal, ScrollView, StatusBar, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 
 // Top-level dev-facing boundary: catches anything anywhere in the tree
@@ -47,7 +47,7 @@ class MainErrorBoundary extends React.Component<{ t: (k: Key) => string; childre
     return this.props.children;
   }
 }
-import { ApiError, Farmer, Field, getMe, listFields, logout, patchMe, setUnauthorizedHandler, subscribeNet, isOnline, wakeServer, getAdvisories } from './src/api';
+import { ApiError, Farmer, Field, getMe, listFields, logout, logoutWithToken, patchMe, setUnauthorizedHandler, subscribeNet, isOnline, wakeServer, getAdvisories } from './src/api';
 import { AppCtx, Ctx, cropLabel, makeT } from './src/ctx';
 import { Key, Lang, LANGS } from './src/i18n';
 import { logError } from './src/errorLog';
@@ -57,7 +57,7 @@ import { DataTab } from './src/screens/DataTab';
 import { FieldForm } from './src/screens/FieldForm';
 import { HomeTab } from './src/screens/HomeTab';
 import { MeTab } from './src/screens/MeTab';
-import { AuthScreen, LanguageScreen, PermissionsScreen } from './src/screens/Onboarding';
+import { AddAccountScreen, AuthScreen, LanguageScreen, PermissionsScreen } from './src/screens/Onboarding';
 import { CoachTour, TourStep } from './src/components/CoachTour';
 import { NotificationsProvider, useNotifications } from './src/notifications';
 import { registerBackgroundAlerts, setBackgroundField } from './src/backgroundAlerts';
@@ -71,6 +71,9 @@ import { Icon, IconName } from './icons';
 import { ToastProvider } from './src/toast';
 import { AnimatedSplashScreen } from './src/components/AnimatedSplashScreen';
 import { feedback } from './src/feedback';
+import { DialogHost, dialog } from './src/dialog';
+import * as accounts from './src/accounts';
+import { SavedAccount } from './src/accounts';
 
 /** One consistent top bar for every main tab: no logo, no branding -- just
  *  the active field's name, and a chip switcher when there's more than one
@@ -139,6 +142,7 @@ export default function App() {
         <SafeAreaView style={{ flex: 1, backgroundColor: C.bg }} edges={['top', 'bottom']}>
           <ToastProvider>
             <Root />
+            <DialogHost />
           </ToastProvider>
         </SafeAreaView>
       </SafeAreaProvider>
@@ -172,6 +176,15 @@ function RootInner({ lang, setLang }: { lang: Lang; setLang: (l: Lang) => void }
   const [authNotice, setAuthNotice] = useState('');
   const [bootError, setBootError] = useState('');
   const [waking, setWaking] = useState(false);
+  const [savedAccounts, setSavedAccounts] = useState<SavedAccount[]>([]);
+  const [activeAccountId, setActiveAccountId] = useState<string | null>(null);
+  const [switching, setSwitching] = useState(false);
+  const [addAccountOpen, setAddAccountOpen] = useState(false);
+
+  const refreshAccountsList = useCallback(async () => {
+    setSavedAccounts(await accounts.listAccounts());
+    setActiveAccountId(accounts.getActiveAccountId());
+  }, []);
 
   const t = useMemo(() => makeT(lang), [lang]);
   const field = fields.find((f) => f.id === fieldId) ?? fields[0] ?? null;
@@ -182,7 +195,11 @@ function RootInner({ lang, setLang }: { lang: Lang; setLang: (l: Lang) => void }
     // A 401 during boot just means "not signed in": the boot sequence handles it
     // itself (language -> permissions -> sign-in), with no "session ended" notice.
     if (phaseRef.current === 'boot') return;
-    await clearFarmerCache();
+    const id = accounts.getActiveAccountId();
+    if (id) {
+      await accounts.markSessionExpired(id);
+      await clearFarmerCache(id);
+    }
     setFarmer(null);
     setFields([]);
     setFieldId(null);
@@ -190,11 +207,19 @@ function RootInner({ lang, setLang }: { lang: Lang; setLang: (l: Lang) => void }
     setPhase('auth');
   }, []);
 
-  // A 401 from any request means the server-side session is gone.
+  // A 401 from any request means the server-side session is gone -- unless
+  // it was captured under an account we've since switched away from, in
+  // which case it's stale and shouldn't boot the account that's active now.
   useEffect(() => {
-    setUnauthorizedHandler(() => goAuth(t('sessionExpired')));
+    setUnauthorizedHandler((staleAccountId) => {
+      if (staleAccountId && staleAccountId !== accounts.getActiveAccountId()) {
+        accounts.markSessionExpired(staleAccountId).then(refreshAccountsList);
+        return;
+      }
+      goAuth(t('sessionExpired'));
+    });
     return () => setUnauthorizedHandler(null);
-  }, [goAuth, t]);
+  }, [goAuth, t, refreshAccountsList]);
 
   const loadFields = useCallback(async () => {
     try {
@@ -219,6 +244,8 @@ function RootInner({ lang, setLang }: { lang: Lang; setLang: (l: Lang) => void }
   useEffect(() => {
     (async () => {
       const awake = wakeServer(() => setWaking(true));
+      await accounts.init();
+      await refreshAccountsList();
       const saved = await cacheGet<string>('lang');
       if (isLang(saved)) setLang(saved);
       try {
@@ -237,7 +264,8 @@ function RootInner({ lang, setLang }: { lang: Lang; setLang: (l: Lang) => void }
         if (ae.status === 401) {
           // Not signed in (fresh install, cleared data, or ended session):
           // after the splash, ask for the language, then permissions (first time only), then sign-in.
-          await clearFarmerCache();
+          const bootId = accounts.getActiveAccountId();
+          if (bootId) await clearFarmerCache(bootId);
           setPendingPhase('lang');
           return;
         }
@@ -254,7 +282,7 @@ function RootInner({ lang, setLang }: { lang: Lang; setLang: (l: Lang) => void }
         }
       }
     })();
-  }, [loadFields]);
+  }, [loadFields, refreshAccountsList]);
 
   // Transition from boot to the target phase once the 3-second animated splash completes
   useEffect(() => {
@@ -268,10 +296,108 @@ function RootInner({ lang, setLang }: { lang: Lang; setLang: (l: Lang) => void }
     cacheSet('lang', l);
   }, []);
 
+  const addAccount = useCallback(async (f: Farmer, token: string) => {
+    try {
+      await accounts.addOrSwitch(f, token);
+    } catch (e) {
+      if (e instanceof accounts.AccountLimitReached) {
+        await dialog.info({ title: t('accountLimitTitle'), body: t('accountLimitBody') });
+        return false;
+      }
+      throw e;
+    }
+    await refreshAccountsList();
+    setFarmer(f);
+    cacheSet('farmer', f);
+    setFields([]);
+    setFieldId(null);
+    try { await loadFields(); } catch {}
+    return true;
+  }, [loadFields, refreshAccountsList, t]);
+
+  const switchAccount = useCallback(async (id: string) => {
+    if (id === activeAccountId) return;
+    // Never null out `farmer` here: ctx (and the whole main render) is
+    // gated on `farmer` being set, so doing that would drop straight to
+    // the full sign-in screen for the duration of the switch instead of
+    // showing the `switching` overlay. The previous account's data stays
+    // on screen, under the overlay, until the new account's data (fresh
+    // or cached) is ready to replace it.
+    const previousId = activeAccountId;
+    setSwitching(true);
+    try {
+      await accounts.switchTo(id);
+      await refreshAccountsList();
+      setTab('home');
+      setForm(null);
+      setBugReportContext(null);
+      setTourPending(false);
+      try {
+        const me = await getMe();
+        setFarmer(me);
+        cacheSet('farmer', me);
+        await loadFields();
+      } catch (e) {
+        const ae = e as ApiError;
+        if (ae instanceof ApiError && ae.isNetwork) {
+          const cached = await cacheGet<Farmer>('farmer');
+          if (cached) {
+            setFarmer(cached);
+            const cachedFields = (await cacheGet<Field[]>('fields')) || [];
+            setFields(cachedFields);
+            setFieldId(cachedFields[0]?.id ?? null);
+          } else {
+            // Nothing to show for this account at all (never synced, and
+            // offline right now) -- revert to the account we were already
+            // on rather than leave the active pointer pointed at an
+            // account whose data never actually loaded.
+            if (previousId) {
+              await accounts.switchTo(previousId);
+              await refreshAccountsList();
+            }
+            await dialog.info({ title: t('noCachedAccountDataTitle'), body: t('noCachedAccountDataBody') });
+          }
+        } else if (!(ae instanceof ApiError && ae.status === 401)) {
+          throw e;
+        }
+      }
+    } finally {
+      setSwitching(false);
+    }
+  }, [activeAccountId, loadFields, refreshAccountsList, t]);
+
+  const removeAccount = useCallback(async (id: string) => {
+    const wasActive = id === activeAccountId;
+    // That account's own token, not whatever's active right now -- accounts.remove
+    // below deletes the stored token, so this has to happen first.
+    const token = await accounts.getTokenFor(id);
+    if (token) await logoutWithToken(token);
+    const nextActiveId = await accounts.remove(id);
+    await clearFarmerCache(id);
+    await refreshAccountsList();
+    if (!wasActive) return;
+    if (nextActiveId) {
+      await switchAccount(nextActiveId);
+    } else {
+      setFarmer(null);
+      setFields([]);
+      setFieldId(null);
+      setPhase('auth');
+    }
+  }, [activeAccountId, refreshAccountsList, switchAccount]);
+
   const signOut = useCallback(async () => {
-    await logout();
-    await goAuth();
-  }, [goAuth]);
+    const id = accounts.getActiveAccountId();
+    if (id) {
+      // removeAccount already tells the server for us, with this account's own token.
+      await removeAccount(id);
+    } else {
+      // No saved account at all -- a farmer who signed in before this module
+      // existed, still on the plain cookie.
+      await logout();
+      await goAuth();
+    }
+  }, [goAuth, removeAccount]);
 
   const ctx: Ctx | null = farmer
     ? {
@@ -282,6 +408,17 @@ function RootInner({ lang, setLang }: { lang: Lang; setLang: (l: Lang) => void }
         openFieldForm: (f?: Field) => setForm({ edit: f }),
         signOut,
         openBugReport: (screen: string) => { setBugReportContext(screen); setTab('me'); },
+        accounts: savedAccounts,
+        activeAccountId,
+        switchAccount,
+        removeAccount,
+        openAddAccount: () => {
+          if (savedAccounts.length >= accounts.MAX_ACCOUNTS) {
+            dialog.info({ title: t('accountLimitTitle'), body: t('accountLimitBody') });
+            return;
+          }
+          setAddAccountOpen(true);
+        },
       }
     : null;
 
@@ -357,11 +494,9 @@ function RootInner({ lang, setLang }: { lang: Lang; setLang: (l: Lang) => void }
         lang={lang}
         onChangeLanguage={() => setPhase('lang')}
         notice={authNotice || bootError}
-        onLoggedIn={async (f, isNew) => {
-          setFarmer(f);
-          cacheSet('farmer', f);
+        onLoggedIn={async (f, isNew, token) => {
+          await addAccount(f, token);
           try { await patchMe({ preferred_language: lang }); } catch {}
-          try { await loadFields(); } catch {}
           setAuthNotice('');
           setBootError('');
           // Tied to local device state only, not whether the phone number is
@@ -435,6 +570,23 @@ function RootInner({ lang, setLang }: { lang: Lang; setLang: (l: Lang) => void }
             onDone={finishTour}
             labels={{ next: t('tourNext'), back: t('tourBack'), done: t('tourStart'), skip: t('tourSkip') }}
           />
+        ) : null}
+        {addAccountOpen ? (
+          <Modal visible animationType="slide" onRequestClose={() => setAddAccountOpen(false)}>
+            <AddAccountScreen
+              lang={lang}
+              onCancel={() => setAddAccountOpen(false)}
+              onAdded={async (f, token) => {
+                const ok = await addAccount(f, token);
+                if (ok) setAddAccountOpen(false);
+              }}
+            />
+          </Modal>
+        ) : null}
+        {switching ? (
+          <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(255,255,255,0.7)', alignItems: 'center', justifyContent: 'center' }}>
+            <ActivityIndicator size="large" color={C.accent} />
+          </View>
         ) : null}
       </View>
       </MainErrorBoundary>

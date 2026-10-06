@@ -256,7 +256,13 @@ function Notice({ text, onClose, lang }: { text: string; onClose: () => void; la
   );
 }
 
-export function AuthScreen({ lang, onLoggedIn, notice, onChangeLanguage }: { lang: Lang; onLoggedIn: (f: Farmer, isNew: boolean) => void; notice?: string; onChangeLanguage?: () => void }) {
+export function AuthScreen({ lang, onLoggedIn, notice, onChangeLanguage, onCancel }: {
+  lang: Lang;
+  onLoggedIn: (f: Farmer, isNew: boolean, token: string) => void;
+  notice?: string;
+  onChangeLanguage?: () => void;
+  onCancel?: () => void;
+}) {
   const t = makeT(lang);
   // Phone first, always -- name is only asked for when the backend actually
   // needs it (a phone number it has never seen before). A returning farmer
@@ -352,7 +358,7 @@ export function AuthScreen({ lang, onLoggedIn, notice, onChangeLanguage }: { lan
     try {
       const farmer = await verifyOtp(normalizePhone(phone), otp.trim());
       feedback.success();
-      onLoggedIn(farmer, isNew);
+      onLoggedIn(farmer, isNew, farmer.session_token);
     } catch (e) {
       const ae = e as ApiError;
       const { kind } = classifyError(e);
@@ -396,6 +402,16 @@ export function AuthScreen({ lang, onLoggedIn, notice, onChangeLanguage }: { lan
     <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1, backgroundColor: '#F3F0E3' }}>
       <AuthBackdrop />
       <ScrollView contentContainerStyle={{ padding: S.xl, paddingTop: 48, paddingBottom: 48 }} keyboardShouldPersistTaps="handled">
+        {onCancel ? (
+          <TouchableOpacity
+            onPress={() => { feedback.tap(); onCancel(); }}
+            accessibilityLabel={t('addAccountCancel')}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            style={{ alignSelf: 'flex-start', minHeight: 44, minWidth: 44, alignItems: 'center', justifyContent: 'center' }}
+          >
+            <Icon name="close" size={22} color={C.text} />
+          </TouchableOpacity>
+        ) : null}
         {onChangeLanguage ? (
           <TouchableOpacity
             onPress={() => { feedback.tap(); onChangeLanguage(); }}
@@ -485,6 +501,23 @@ export function AuthScreen({ lang, onLoggedIn, notice, onChangeLanguage }: { lan
       </ScrollView>
       <LegalModal kind={legal} onClose={() => setLegal(null)} lang={lang} />
     </KeyboardAvoidingView>
+  );
+}
+
+/** Lean sign-in for an additional account on this device: same phone/OTP
+ *  flow as AuthScreen, but no language picker (reuses whatever's already
+ *  active) and no tour. Used from the Me tab's Accounts section. */
+export function AddAccountScreen({ lang, onCancel, onAdded }: {
+  lang: Lang;
+  onCancel: () => void;
+  onAdded: (f: Farmer, token: string) => void;
+}) {
+  return (
+    <AuthScreen
+      lang={lang}
+      onCancel={onCancel}
+      onLoggedIn={(f, _isNew, token) => onAdded(f, token)}
+    />
   );
 }
 

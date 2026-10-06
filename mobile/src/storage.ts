@@ -1,6 +1,15 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { getActiveAccountId } from './accounts';
 
 const P = 'agro:v2:';
+// Device preferences, not farmer data -- shared across every account on this phone.
+const DEVICE_GLOBAL_KEYS = new Set(['lang', 'permsAsked', 'permsV2', 'tourSeen']);
+
+function fullKey(key: string): string {
+  if (DEVICE_GLOBAL_KEYS.has(key)) return P + key;
+  const accountId = getActiveAccountId();
+  return accountId ? `${P}${accountId}:${key}` : P + key;
+}
 
 type Envelope<T> = { v: T; t: number };
 
@@ -10,7 +19,7 @@ function isEnvelope(x: unknown): x is Envelope<unknown> {
 
 export async function cacheGet<T>(key: string): Promise<T | null> {
   try {
-    const raw = await AsyncStorage.getItem(P + key);
+    const raw = await AsyncStorage.getItem(fullKey(key));
     if (!raw) return null;
     const parsed = JSON.parse(raw);
     return isEnvelope(parsed) ? (parsed.v as T) : (parsed as T); // pre-envelope entries: return as-is once, next cacheSet re-wraps them
@@ -24,7 +33,7 @@ export async function cacheGet<T>(key: string): Promise<T | null> {
  *  screen refetches once and the entry is enveloped from then on. */
 export async function cacheGetWithTime<T>(key: string): Promise<{ value: T; cachedAt: number } | null> {
   try {
-    const raw = await AsyncStorage.getItem(P + key);
+    const raw = await AsyncStorage.getItem(fullKey(key));
     if (!raw) return null;
     const parsed = JSON.parse(raw);
     if (!isEnvelope(parsed)) return null;
@@ -37,18 +46,18 @@ export async function cacheGetWithTime<T>(key: string): Promise<{ value: T; cach
 export async function cacheSet(key: string, value: unknown): Promise<void> {
   try {
     const envelope: Envelope<unknown> = { v: value, t: Date.now() };
-    await AsyncStorage.setItem(P + key, JSON.stringify(envelope));
+    await AsyncStorage.setItem(fullKey(key), JSON.stringify(envelope));
   } catch {
     // best effort
   }
 }
 
-// Sign-out / dead session: cached data belongs to that farmer. Keeps the
-// language choice (a device preference, not farmer data).
-export async function clearFarmerCache(): Promise<void> {
+// Clears one account's cached data (not necessarily the active one). Leaves device-global keys alone.
+export async function clearFarmerCache(accountId: string): Promise<void> {
   try {
+    const prefix = `${P}${accountId}:`;
     const keys = await AsyncStorage.getAllKeys();
-    const mine = keys.filter((k) => k.startsWith(P) && !['lang', 'permsAsked', 'tourSeen'].some((d) => k === P + d));
+    const mine = keys.filter((k) => k.startsWith(prefix));
     if (mine.length) await AsyncStorage.multiRemove(mine);
   } catch {
     // ignore
