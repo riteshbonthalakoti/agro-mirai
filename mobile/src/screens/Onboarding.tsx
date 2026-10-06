@@ -352,7 +352,19 @@ export function AuthScreen({ lang, onLoggedIn, notice, onChangeLanguage, onCance
     await requestWithName(name.trim());
   };
 
+  // Module 56: two independent sources can fill the code at nearly the same
+  // instant -- Android's own OS-level autofill (autoComplete="sms-otp" on
+  // OtpBoxInput's real input) and our custom SMS Retriever module both read
+  // the same incoming SMS. `busy` (React state) doesn't update synchronously,
+  // so two auto-verify effect firings a few ms apart can both see busy===false
+  // and both call verify() -- the first consumes the one-shot code server-side,
+  // the second then gets a genuine 401 for a code that already "worked". A
+  // ref updates immediately, so it actually blocks the second firing.
+  const verifyingRef = useRef(false);
+
   const verify = async () => {
+    if (verifyingRef.current) return;
+    verifyingRef.current = true;
     setErr('');
     setBusy(true);
     try {
@@ -368,12 +380,13 @@ export function AuthScreen({ lang, onLoggedIn, notice, onChangeLanguage, onCance
       feedback.error();
     } finally {
       setBusy(false);
+      verifyingRef.current = false;
     }
   };
 
   // no need to press Verify: it goes as soon as the 6th digit is in
   useEffect(() => {
-    if (step === 'otp' && otp.length === 6 && !busy) verify();
+    if (step === 'otp' && otp.length === 6 && !verifyingRef.current) verify();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [otp]);
 
@@ -401,7 +414,11 @@ export function AuthScreen({ lang, onLoggedIn, notice, onChangeLanguage, onCance
   return (
     <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1, backgroundColor: '#F3F0E3' }}>
       <AuthBackdrop />
-      <ScrollView contentContainerStyle={{ padding: S.xl, paddingTop: 48, paddingBottom: 48 }} keyboardShouldPersistTaps="handled">
+      <ScrollView
+        contentContainerStyle={{ padding: S.xl, paddingTop: 48, paddingBottom: 48 }}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
+      >
         {onCancel ? (
           <TouchableOpacity
             onPress={() => { feedback.tap(); onCancel(); }}
@@ -447,7 +464,6 @@ export function AuthScreen({ lang, onLoggedIn, notice, onChangeLanguage, onCance
                 keyboardType="number-pad"
                 placeholder={t('phoneHint')}
                 maxLength={10}
-                autoFocus
               />
             </View>
             <BigBtn label={t('sendOtp')} onPress={submitPhone} busy={busy} disabled={cooldown > 0} />

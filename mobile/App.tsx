@@ -51,7 +51,7 @@ import { ApiError, Farmer, Field, getMe, listFields, logout, logoutWithToken, pa
 import { AppCtx, Ctx, cropLabel, makeT } from './src/ctx';
 import { Key, Lang, LANGS } from './src/i18n';
 import { logError } from './src/errorLog';
-import { checkForAppUpdate } from './src/updates';
+import { applyDownloadedUpdate, checkForAppUpdate } from './src/updates';
 import { AdviceTab } from './src/screens/AdviceTab';
 import { DataTab } from './src/screens/DataTab';
 import { FieldForm } from './src/screens/FieldForm';
@@ -134,7 +134,12 @@ type Tab = 'home' | 'data' | 'advice' | 'scan' | 'me';
 const isLang = (v: unknown): v is Lang => LANGS.some((l) => l.code === v);
 
 export default function App() {
-  useEffect(() => { checkForAppUpdate(); }, []);
+  const [updateReady, setUpdateReady] = useState(false);
+  const [restarting, setRestarting] = useState(false);
+  useEffect(() => {
+    checkForAppUpdate().then(setUpdateReady);
+  }, []);
+
   return (
     <ErrorBoundary>
       <SafeAreaProvider>
@@ -143,6 +148,45 @@ export default function App() {
           <ToastProvider>
             <Root />
             <DialogHost />
+            {updateReady ? (
+              // A fetched update applies on next cold start regardless; this
+              // banner just lets the farmer pick the moment (not mid-form)
+              // instead of it silently happening on some future unnoticed
+              // relaunch -- never forces a reload on its own.
+              <View
+                style={{
+                  position: 'absolute',
+                  left: S.lg,
+                  right: S.lg,
+                  bottom: S.lg,
+                  backgroundColor: C.text,
+                  borderRadius: 14,
+                  paddingVertical: S.md,
+                  paddingHorizontal: S.lg,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                }}
+              >
+                <Text style={{ color: '#fff', fontSize: 15, flex: 1, marginRight: S.md }}>
+                  An update is ready to install
+                </Text>
+                <TouchableOpacity
+                  disabled={restarting}
+                  onPress={() => {
+                    setRestarting(true);
+                    applyDownloadedUpdate().catch(() => setRestarting(false));
+                  }}
+                  style={{ minHeight: 36, justifyContent: 'center', paddingHorizontal: S.sm }}
+                >
+                  {restarting ? (
+                    <ActivityIndicator color="#fff" size="small" />
+                  ) : (
+                    <Text style={{ color: '#8BC97F', fontWeight: '800', fontSize: 15 }}>UPDATE</Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+            ) : null}
           </ToastProvider>
         </SafeAreaView>
       </SafeAreaProvider>
