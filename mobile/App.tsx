@@ -208,6 +208,8 @@ function RootInner({ lang, setLang }: { lang: Lang; setLang: (l: Lang) => void }
   const [tourPending, setTourPending] = useState(false);
   const phaseRef = useRef<Phase>('boot');
   phaseRef.current = phase;
+  // See accounts.ts's withinLoginGraceWindow doc comment for why this exists.
+  const justLoggedInAtRef = useRef(0);
   const tabRefs = useRef<Record<string, View | null>>({});
   const { notify } = useNotifications();
   const [farmer, setFarmer] = useState<Farmer | null>(null);
@@ -239,6 +241,7 @@ function RootInner({ lang, setLang }: { lang: Lang; setLang: (l: Lang) => void }
     // A 401 during boot just means "not signed in": the boot sequence handles it
     // itself (language -> permissions -> sign-in), with no "session ended" notice.
     if (phaseRef.current === 'boot') return;
+    if (accounts.withinLoginGraceWindow(justLoggedInAtRef.current, Date.now())) return;
     const id = accounts.getActiveAccountId();
     if (id) {
       await accounts.markSessionExpired(id);
@@ -548,6 +551,7 @@ function RootInner({ lang, setLang }: { lang: Lang; setLang: (l: Lang) => void }
           // and should show the tour again even for a returning phone number.
           const tourSeen = await cacheGet<boolean>('tourSeen');
           if (isNew || !tourSeen) setTourPending(true); // a brand-new farmer always gets the tour
+          justLoggedInAtRef.current = Date.now();
           setPhase('main');
         }}
       />
@@ -622,7 +626,10 @@ function RootInner({ lang, setLang }: { lang: Lang; setLang: (l: Lang) => void }
               onCancel={() => setAddAccountOpen(false)}
               onAdded={async (f, token) => {
                 const ok = await addAccount(f, token);
-                if (ok) setAddAccountOpen(false);
+                if (ok) {
+                  justLoggedInAtRef.current = Date.now();
+                  setAddAccountOpen(false);
+                }
               }}
             />
           </Modal>

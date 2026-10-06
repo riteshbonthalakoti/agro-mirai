@@ -149,3 +149,19 @@ test('getTokenFor still finds the token after a fresh init() when it only ever l
 
   expect(accounts.getActiveToken()).toBe('token-1');
 });
+
+test('withinLoginGraceWindow ignores a stale-token 401 right after a fresh login', () => {
+  const loggedInAt = 1_000_000;
+  expect(accounts.withinLoginGraceWindow(loggedInAt, loggedInAt + 1)).toBe(true);
+  expect(accounts.withinLoginGraceWindow(loggedInAt, loggedInAt + accounts.LOGIN_GRACE_MS - 1)).toBe(true);
+});
+
+test('withinLoginGraceWindow lets a genuinely expired session sign out once the window has passed', () => {
+  const loggedInAt = 1_000_000;
+  expect(accounts.withinLoginGraceWindow(loggedInAt, loggedInAt + accounts.LOGIN_GRACE_MS)).toBe(false);
+  expect(accounts.withinLoginGraceWindow(loggedInAt, loggedInAt + accounts.LOGIN_GRACE_MS + 60_000)).toBe(false);
+});
+
+test('withinLoginGraceWindow with no prior login (0) never blocks a sign-out', () => {
+  expect(accounts.withinLoginGraceWindow(0, Date.now())).toBe(false);
+});
