@@ -76,6 +76,7 @@ import { feedback } from './src/feedback';
 import { DialogHost, dialog } from './src/dialog';
 import * as accounts from './src/accounts';
 import { SavedAccount } from './src/accounts';
+import { handleNotificationTap } from './src/notificationTapHandler';
 import Constants from 'expo-constants';
 
 /** One consistent top bar for every main tab: no logo, no branding -- just
@@ -448,22 +449,7 @@ function RootInner({ lang, setLang }: { lang: Lang; setLang: (l: Lang) => void }
     const Notifications = IN_EXPO_GO && Platform.OS === 'android' ? null : require('expo-notifications');
     if (!Notifications) return;
     const tap = Notifications.addNotificationResponseReceivedListener(async (e: any) => {
-      const data = e.notification.request.content.data as any;
-      const tapAccountId = data?.accountId;
-      const tapFieldId = data?.fieldId;
-      if (!tapAccountId || !tapFieldId) return;
-      const saved = await accounts.listAccounts();
-      const account = saved.find((a) => a.id === tapAccountId);
-      if (!account) {
-        await goAuth();
-        return;
-      }
-      if (account.id !== activeAccountId) {
-        try {
-          await switchAccount(account.id);
-        } catch {}
-      }
-      setTab('home');
+      await handleNotificationTap(e.notification.request.content.data, accounts.listAccounts, goAuth, switchAccount, setTab, activeAccountId);
     });
     return () => tap.remove();
   }, [activeAccountId, switchAccount, goAuth]);
