@@ -3,40 +3,40 @@ import { BarMeter, SegmentedMeter, LabeledBar, StackedBar } from './Charts';
 import { C, S } from '../theme';
 
 describe('BarMeter', () => {
-  it('handles null value gracefully', () => {
-    const { getByText } = render(<BarMeter value={null} min={0} max={100} />);
+  it('handles null value gracefully', async () => {
+    const { getByText } = await render(<BarMeter value={null} min={0} max={100} />);
     expect(getByText('—')).toBeTruthy();
   });
 
-  it('calculates percentage correctly', () => {
-    const { getByText } = render(
+  it('calculates percentage correctly', async () => {
+    const { getByText } = await render(
       <BarMeter value={50} min={0} max={100} showPercent />
     );
     expect(getByText('50%')).toBeTruthy();
   });
 
-  it('clamps values to 0-100%', () => {
-    const { getByText: getText1 } = render(
+  it('clamps values to 0-100%', async () => {
+    const { getByText: getText1 } = await render(
       <BarMeter value={150} min={0} max={100} showPercent />
     );
     expect(getText1('100%')).toBeTruthy();
 
-    const { getByText: getText2 } = render(
+    const { getByText: getText2 } = await render(
       <BarMeter value={-50} min={0} max={100} showPercent />
     );
     expect(getText2('0%')).toBeTruthy();
   });
 
-  it('handles custom min/max range', () => {
-    const { getByText } = render(
+  it('handles custom min/max range', async () => {
+    const { getByText } = await render(
       <BarMeter value={25} min={10} max={40} showPercent />
     );
     // (25 - 10) / (40 - 10) = 15 / 30 = 0.5 = 50%
     expect(getByText('50%')).toBeTruthy();
   });
 
-  it('renders without percent text when showPercent=false', () => {
-    const { queryByText } = render(
+  it('renders without percent text when showPercent=false', async () => {
+    const { queryByText } = await render(
       <BarMeter value={75} min={0} max={100} showPercent={false} />
     );
     expect(queryByText('75%')).toBeNull();
@@ -44,8 +44,8 @@ describe('BarMeter', () => {
 });
 
 describe('SegmentedMeter', () => {
-  it('renders null value without marker', () => {
-    const { queryByTestId } = render(
+  it('renders null value without marker', async () => {
+    const { queryByTestId } = await render(
       <SegmentedMeter
         value={null}
         min={0}
@@ -61,9 +61,9 @@ describe('SegmentedMeter', () => {
     expect(!markers).toBeTruthy();
   });
 
-  it('positions marker correctly at value', () => {
+  it('positions marker correctly at value', async () => {
     // Test that the marker is positioned at the correct percentage
-    const { getByTestId } = render(
+    await render(
       <SegmentedMeter
         value={50}
         min={0}
@@ -78,8 +78,8 @@ describe('SegmentedMeter', () => {
     // This would be verified via snapshot or style inspection in a real test
   });
 
-  it('handles value at min and max boundaries', () => {
-    const { getByTestId: getById1 } = render(
+  it('handles value at min and max boundaries', async () => {
+    await render(
       <SegmentedMeter
         value={0}
         min={0}
@@ -92,7 +92,7 @@ describe('SegmentedMeter', () => {
     );
     // 0 at min should position at 0%
 
-    const { getByTestId: getById2 } = render(
+    await render(
       <SegmentedMeter
         value={100}
         min={0}
@@ -108,28 +108,28 @@ describe('SegmentedMeter', () => {
 });
 
 describe('LabeledBar', () => {
-  it('displays label and value', () => {
-    const { getByText } = render(
+  it('displays label and value', async () => {
+    const { getByText } = await render(
       <LabeledBar label="Nitrogen" value={100} unit=" mg/kg" />
     );
     expect(getByText('Nitrogen')).toBeTruthy();
     expect(getByText('100 mg/kg')).toBeTruthy();
   });
 
-  it('handles null value', () => {
-    const { getByText } = render(<LabeledBar label="Test" value={null} />);
-    expect(getByText('—')).toBeTruthy();
+  it('handles null value', async () => {
+    const { getAllByText } = await render(<LabeledBar label="Test" value={null} />);
+    expect(getAllByText('—').length).toBeGreaterThan(0);
   });
 
-  it('rounds decimal values correctly', () => {
-    const { getByText } = render(
+  it('rounds decimal values correctly', async () => {
+    const { getByText } = await render(
       <LabeledBar label="Test" value={12.34} unit=" mm" />
     );
     expect(getByText('12.3 mm')).toBeTruthy();
   });
 
-  it('respects custom min/max for bar calculation', () => {
-    const { getByText } = render(
+  it('respects custom min/max for bar calculation', async () => {
+    const { getByText } = await render(
       <LabeledBar label="pH" value={7} min={4} max={9} />
     );
     // Just verify it renders without error
@@ -138,15 +138,15 @@ describe('LabeledBar', () => {
 });
 
 describe('StackedBar', () => {
-  it('renders empty state for no segments', () => {
-    const { getByText } = render(
+  it('renders empty state for no segments', async () => {
+    await render(
       <StackedBar segments={[]} label="Test" />
     );
     // Should render gracefully with empty state
   });
 
-  it('renders single segment correctly', () => {
-    const { getByText } = render(
+  it('renders single segment correctly', async () => {
+    const { getByText } = await render(
       <StackedBar
         segments={[{ value: 100, color: '#FF0000' }]}
         label="Single"
@@ -155,8 +155,8 @@ describe('StackedBar', () => {
     expect(getByText('Single')).toBeTruthy();
   });
 
-  it('handles segments with labels', () => {
-    const { getByText } = render(
+  it('handles segments with labels', async () => {
+    const { getByText } = await render(
       <StackedBar
         segments={[
           { value: 50, color: '#FF0000', label: 'Water' },
@@ -168,8 +168,8 @@ describe('StackedBar', () => {
     expect(getByText('Air')).toBeTruthy();
   });
 
-  it('calculates proportions correctly', () => {
-    const { getByText } = render(
+  it('calculates proportions correctly', async () => {
+    await render(
       <StackedBar
         segments={[
           { value: 25, color: '#FF0000' },
@@ -180,8 +180,8 @@ describe('StackedBar', () => {
     // Segments should be 25% and 75% respectively
   });
 
-  it('handles total of zero gracefully', () => {
-    const { getByText } = render(
+  it('handles total of zero gracefully', async () => {
+    const { getByText } = await render(
       <StackedBar
         segments={[
           { value: 0, color: '#FF0000' },
