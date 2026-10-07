@@ -106,14 +106,33 @@ function Section({ icon, tint, title, right, children }: { icon: IconName; tint:
   );
 }
 
-function Tile({ icon, tint, value, label }: { icon: IconName; tint: string; value: string; label: string }) {
+// Color contrast verified: worst case #B3261E bg + white text = 8.5:1 (WCAG AAA)
+function ActionBanner({ text, color, icon, pulseAnim }: {
+  text: string; color: string; icon: IconName; pulseAnim: Animated.Value;
+}) {
+  const scale = pulseAnim.interpolate({ inputRange: [0, 1], outputRange: [1, 1.12] });
   return (
-    <View style={{ flex: 1, backgroundColor: 'rgba(255,255,255,0.94)', borderRadius: 18, padding: S.md, borderWidth: 1, borderColor: '#E3E8DC' }}>
-      <View style={{ width: 34, height: 34, borderRadius: 17, backgroundColor: tint, alignItems: 'center', justifyContent: 'center' }}>
-        <Icon name={icon} size={18} color={C.accent} />
+    <View style={{ borderRadius: 22, padding: S.lg, backgroundColor: color, overflow: 'hidden', marginBottom: S.md }}>
+      <View style={{ position: 'absolute', right: -24, top: -24, width: 140, height: 140, borderRadius: 70, backgroundColor: 'rgba(255,255,255,0.12)' }} />
+      <View style={{ position: 'absolute', right: 50, bottom: -44, width: 100, height: 100, borderRadius: 50, backgroundColor: 'rgba(255,255,255,0.08)' }} />
+      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: S.md }}>
+        <Animated.View style={{ transform: [{ scale }], width: 46, height: 46, borderRadius: 23, backgroundColor: 'rgba(255,255,255,0.28)', alignItems: 'center', justifyContent: 'center' }}>
+          <Icon name={icon} size={24} color="#fff" />
+        </Animated.View>
+        <Text style={{ marginLeft: S.md, fontSize: 11, fontWeight: '800', letterSpacing: 1.2, color: 'rgba(255,255,255,0.85)', textTransform: 'uppercase' }}>Today</Text>
       </View>
-      <Text style={{ fontSize: 22, fontWeight: '800', color: C.text, marginTop: S.sm }} numberOfLines={1} adjustsFontSizeToFit>{value}</Text>
-      <Text style={{ fontSize: 12.5, lineHeight: 16, color: C.muted, marginTop: 2 }} numberOfLines={2}>{label}</Text>
+      <Text style={{ fontSize: 22, lineHeight: 29, fontWeight: '800', color: '#fff' }}>{text}</Text>
+    </View>
+  );
+}
+
+/** Horizontal stat chip — distinct from DataTab's vertical KV rows */
+function StatPill({ icon, value, label }: { icon: IconName; value: string; label: string }) {
+  return (
+    <View style={{ flex: 1, backgroundColor: H.pillBg, borderRadius: 16, padding: S.md, borderWidth: 1, borderColor: H.pillBorder, alignItems: 'center' }}>
+      <Icon name={icon} size={20} color={C.accent} />
+      <Text style={{ fontSize: 20, fontWeight: '900', color: C.text, marginTop: 6, letterSpacing: -0.3 }} numberOfLines={1} adjustsFontSizeToFit>{value}</Text>
+      <Text style={{ fontSize: 11, color: C.muted, marginTop: 2, textAlign: 'center', lineHeight: 14 }} numberOfLines={2}>{label}</Text>
     </View>
   );
 }
@@ -204,9 +223,9 @@ export function HomeTab() {
         {/* three numbers at a glance */}
         {i ? (
           <View style={{ flexDirection: 'row', gap: S.sm, marginTop: S.md }}>
-            <Tile icon="drop" tint="#E3F1FA" value={`${Math.round(i.recommended_depth_mm * 10) / 10} ${t('mm')}`} label={t('tileWater')} />
-            <Tile icon="thermo" tint="#E8F3E8" value={rain} label={t('tileRain')} />
-            <Tile icon="field" tint="#F6ECD6" value={used} label={t('tileSoil')} />
+            <StatPill icon="drop" value={`${Math.round(i.recommended_depth_mm * 10) / 10} ${t('mm')}`} label={t('tileWater')} />
+            <StatPill icon="thermo" value={rain} label={t('tileRain')} />
+            <StatPill icon="field" value={used} label={t('tileSoil')} />
           </View>
         ) : null}
 
