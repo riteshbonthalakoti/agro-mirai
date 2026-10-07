@@ -7,20 +7,24 @@ export type ReminderSettings = {
 
 const DEFAULT_TIME = 7 * 60; // 7:00 AM
 
-export async function getReminderSettings(): Promise<ReminderSettings> {
-  const enabled = await cacheGet<boolean>('reminderEnabled');
-  const time = await cacheGet<number>('reminderTime');
+function key(suffix: string, accountId?: string | null): string {
+  return accountId ? `reminder:${accountId}:${suffix}` : `reminder:${suffix}`;
+}
+
+export async function getReminderSettings(accountId?: string | null): Promise<ReminderSettings> {
+  const enabled = await cacheGet<boolean>(key('enabled', accountId));
+  const time = await cacheGet<number>(key('time', accountId));
   return {
     enabled: enabled !== false, // default true
     timeMinutes: time ?? DEFAULT_TIME,
   };
 }
 
-export async function setReminderEnabled(enabled: boolean): Promise<void> {
-  await cacheSet('reminderEnabled', enabled);
+export async function setReminderEnabled(enabled: boolean, accountId?: string | null): Promise<void> {
+  await cacheSet(key('enabled', accountId), enabled);
 }
 
-export async function setReminderTime(minutes: number): Promise<void> {
+export async function setReminderTime(minutes: number, accountId?: string | null): Promise<void> {
   if (minutes < 0 || minutes > 1439) throw new Error('Invalid time');
-  await cacheSet('reminderTime', minutes);
+  await cacheSet(key('time', accountId), minutes);
 }

@@ -125,9 +125,9 @@ export function HomeTab() {
     // tomorrow's daily notification carries the latest advice, even if the app is closed by then
     if (today?.text) {
       (async () => {
-        const settings = await getReminderSettings();
+        const settings = await getReminderSettings(farmer?.id);
         if (settings.enabled) {
-          setDailyReminder(t('notifDailyTitle'), today.text, id, undefined, settings.timeMinutes);
+          setDailyReminder(t('notifDailyTitle'), today.text, id, farmer?.id, settings.timeMinutes);
         }
       })();
     }
@@ -208,7 +208,7 @@ export function HomeTab() {
               {/* Crop suitability scores visualization */}
               {c.details?.ranking && c.details.ranking.length > 1 && (
                 <View style={{ marginTop: S.md }}>
-                  <Text style={{ fontSize: 13, fontWeight: '600', color: C.muted, marginBottom: S.sm }}>Top crops</Text>
+                  <Text style={{ fontSize: 13, fontWeight: '600', color: C.muted, marginBottom: S.sm }}>{t('topCrops')}</Text>
                   {c.details.ranking.slice(0, 4).map((r, k) => (
                     <View key={k} style={{ marginBottom: S.sm }}>
                       <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 }}>
@@ -252,7 +252,7 @@ export function HomeTab() {
                 <>
                   <View style={{ marginTop: S.md }}>
                     <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
-                      <Text style={{ fontSize: 13, fontWeight: '600', color: C.text }}>Soil water used</Text>
+                      <Text style={{ fontSize: 13, fontWeight: '600', color: C.text }}>{t('soilWaterUsed')}</Text>
                       <Text style={{ fontSize: 13, fontWeight: '600', color: C.text }}>{Math.min(i.details.soil_water_used_pct, 100)}%</Text>
                     </View>
                     <BarMeter value={i.details.soil_water_used_pct} min={0} max={100} color={levelColor(i.urgency)} showPercent={false} />

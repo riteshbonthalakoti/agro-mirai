@@ -473,6 +473,10 @@ const en = {
   notifDailyTitle: 'Today on your farm',
   soundsTitle: 'Sounds & vibration',
   soundsSub: 'Soft taps and sounds when you press, scan or clear something.',
+  dailyReminderTitle: 'Daily farm reminder',
+  dailyReminderSub: 'Get one daily tip at the time of your choice.',
+  reminderAt: 'Reminder time',
+  topCrops: 'Top crops',
 };
 
 export type Key = keyof typeof en;
@@ -925,6 +929,10 @@ const kn: Dict = {
   notifDailyTitle: 'ಇಂದು ನಿಮ್ಮ ಹೊಲದಲ್ಲಿ',
   soundsTitle: 'ಶಬ್ದ ಮತ್ತು ಕಂಪನ',
   soundsSub: 'ಒತ್ತಿದಾಗ, ಸ್ಕ್ಯಾನ್ ಮಾಡಿದಾಗ ಅಥವಾ ತೆರವುಗೊಳಿಸಿದಾಗ ಮೃದು ಸ್ಪರ್ಶ ಮತ್ತು ಶಬ್ದಗಳು.',
+  dailyReminderTitle: 'ದೈನಂದಿನ ಜಮೀನಿನ ಜ್ಞಾಪನೆ',
+  dailyReminderSub: 'ನಿಮ್ಮ ಆಯ್ಕೆಯ ಸಮಯದಲ್ಲಿ ಒಂದು ದೈನಂದಿನ ಸಲಹೆ ಪಡೆಯಿರಿ.',
+  reminderAt: 'ಜ್ಞಾಪನೆ ಸಮಯ',
+  topCrops: 'ಉತ್ತಮ ಬೆಳೆಗಳು',
 };
 
 const te: Dict = {
@@ -1374,6 +1382,10 @@ const te: Dict = {
   notifDailyTitle: 'ఈ రోజు మీ పొలంలో',
   soundsTitle: 'శబ్దాలు & కంపనం',
   soundsSub: 'నొక్కినప్పుడు, స్కాన్ చేసినప్పుడు లేదా క్లియర్ చేసినప్పుడు మృదువైన స్పర్శ మరియు శబ్దాలు.',
+  dailyReminderTitle: 'రోజువారీ వ్యవసాయ రిమైండర్',
+  dailyReminderSub: 'మీరు ఎంచుకున్న సమయంలో రోజువారీ చిట్కా పొందండి.',
+  reminderAt: 'రిమైండర్ సమయం',
+  topCrops: 'మంచి పంటలు',
 };
 
 const hi: Dict = {
@@ -1823,6 +1835,10 @@ const hi: Dict = {
   notifDailyTitle: 'आज आपके खेत में',
   soundsTitle: 'आवाज़ और कंपन',
   soundsSub: 'दबाने, स्कैन करने या साफ़ करने पर हल्के स्पर्श और आवाज़ें।',
+  dailyReminderTitle: 'दैनिक खेत की याद दिलाना',
+  dailyReminderSub: 'अपने चुने हुए समय पर एक दैनिक सुझाव पाएं।',
+  reminderAt: 'याद दिलाने का समय',
+  topCrops: 'सर्वोत्तम फसलें',
 };
 
 export const STRINGS: Record<Lang, Dict> = { en, kn, te, hi };

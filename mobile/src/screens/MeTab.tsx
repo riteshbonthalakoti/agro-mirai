@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Image, Platform, ScrollView, Switch, Text, TouchableOpacity, View } from 'react-native';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { AuthBackdrop } from '../components/AuthBackdrop';
 import { dialog } from '../dialog';
 import { IconName } from '../../icons';
@@ -13,6 +14,7 @@ import { errorText } from '../hooks';
 import { feedback, setFeedbackEnabled, useFeedbackEnabled } from '../feedback';
 import { Icon } from '../../icons';
 import { LANGS } from '../i18n';
+import { getReminderSettings, setReminderEnabled, setReminderTime } from '../reminderSettings';
 import { C, S } from '../theme';
 import { Banner, Btn, Chip, Input, KV, Muted } from '../ui';
 
@@ -65,6 +67,30 @@ export function MeTab({ initialScreenContext, onConsumeScreenContext }: { initia
   const [bugOpen, setBugOpen] = useState(false);
   const [bugScreenContext, setBugScreenContext] = useState<string | null>(null);
   const scrollRef = useRef<ScrollView | null>(null);
+
+  const [reminderOn, setReminderOn] = useState(true);
+  const [reminderMins, setReminderMins] = useState(7 * 60);
+  const [showTimePicker, setShowTimePicker] = useState(false);
+
+  useEffect(() => {
+    getReminderSettings(farmer.id).then((s) => {
+      setReminderOn(s.enabled);
+      setReminderMins(s.timeMinutes);
+    });
+  }, [farmer.id]);
+
+  const toggleReminder = async (v: boolean) => {
+    setReminderOn(v);
+    await setReminderEnabled(v, farmer.id);
+  };
+
+  const changeReminderTime = async (_: any, date?: Date) => {
+    setShowTimePicker(false);
+    if (!date) return;
+    const mins = date.getHours() * 60 + date.getMinutes();
+    setReminderMins(mins);
+    await setReminderTime(mins, farmer.id);
+  };
 
   // Arriving here via a "Report a problem" tap on another tab: open the section
   // pre-expanded with that screen's name as context, then consume it once so it
@@ -257,6 +283,40 @@ export function MeTab({ initialScreenContext, onConsumeScreenContext }: { initia
             <Text style={{ flex: 1, fontSize: 15, lineHeight: 21, color: C.muted, paddingRight: S.md }}>{t('soundsSub')}</Text>
             <Switch value={feedbackOn} onValueChange={(v) => { setFeedbackEnabled(v); if (v) feedback.success(); }} trackColor={{ true: C.accent }} />
           </View>
+
+          <View style={{ height: 1, backgroundColor: '#E3E8DC', marginVertical: S.md }} />
+
+          {/* Daily reminder toggle */}
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 15, fontWeight: '700', color: C.text }}>{t('dailyReminderTitle')}</Text>
+              <Text style={{ fontSize: 13, color: C.muted, marginTop: 2 }}>{t('dailyReminderSub')}</Text>
+            </View>
+            <Switch value={reminderOn} onValueChange={toggleReminder} trackColor={{ true: C.accent }} />
+          </View>
+
+          {reminderOn ? (
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: S.md }}>
+              <Text style={{ flex: 1, fontSize: 15, color: C.muted }}>{t('reminderAt')}</Text>
+              <TouchableOpacity
+                onPress={() => setShowTimePicker(true)}
+                style={{ backgroundColor: '#E8F3E8', borderRadius: 12, paddingHorizontal: S.md, paddingVertical: S.sm }}
+              >
+                <Text style={{ fontSize: 15, fontWeight: '700', color: C.accent }}>
+                  {`${String(Math.floor(reminderMins / 60)).padStart(2, '0')}:${String(reminderMins % 60).padStart(2, '0')}`}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          ) : null}
+
+          {showTimePicker ? (
+            <DateTimePicker
+              mode="time"
+              display={Platform.OS === 'android' ? 'clock' : 'spinner'}
+              value={(() => { const d = new Date(); d.setHours(Math.floor(reminderMins / 60), reminderMins % 60, 0, 0); return d; })()}
+              onChange={changeReminderTime}
+            />
+          ) : null}
         </Section>
 
         {/* ---- accounts */}
