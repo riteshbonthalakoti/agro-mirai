@@ -10,30 +10,30 @@ import { C, S } from '../theme';
 import { Banner } from '../ui';
 import { fieldCameraStop } from '../mapCamera';
 
-// NASA GIBS satellite imagery: MODIS_Terra_CorrectedReflectance_TrueColor
-// Free, worldwide, daily updates, no API key required
-const GIBS_SATELLITE_URL = 'https://gibs.earthdata.nasa.gov/wmts/epsg4326/best/MODIS_Terra_CorrectedReflectance_TrueColor/default/latest/250m/{z}/{y}/{x}.jpg';
+// ESRI World Imagery: free, no API key, Web Mercator XYZ — compatible with MapLibre
+const ESRI_SATELLITE_URL = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
 
 // MapLibre style with satellite raster tiles
 const SATELLITE_STYLE = {
   version: 8 as const,
   sources: {
-    gibs: {
+    esri: {
       type: 'raster' as const,
-      tiles: [GIBS_SATELLITE_URL],
+      tiles: [ESRI_SATELLITE_URL],
       tileSize: 256,
+      attribution: '© Esri, Maxar, Earthstar Geographics',
     },
   },
   layers: [
     {
       id: 'background',
       type: 'background' as const,
-      paint: { 'background-color': '#333333' },
+      paint: { 'background-color': '#1a1a2e' },
     },
     {
-      id: 'gibs-layer',
+      id: 'satellite-layer',
       type: 'raster' as const,
-      source: 'gibs',
+      source: 'esri',
       paint: { 'raster-opacity': 1 },
     },
   ],
@@ -196,7 +196,7 @@ export function FieldMapScreen({ onClose }: { onClose: () => void }) {
       >
         <Icon name="info" size={13} color={C.muted} />
         <Text style={{ marginLeft: S.xs, flex: 1, fontSize: 11, color: C.muted, lineHeight: 15 }}>
-          Imagery: NASA GIBS
+          © Esri, Maxar, Earthstar Geographics
         </Text>
       </View>
     </View>
