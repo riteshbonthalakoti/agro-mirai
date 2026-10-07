@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Image, ImageBackground, KeyboardAvoidingView, Modal, Platform, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Animated, Easing, Image, ImageBackground, KeyboardAvoidingView, Modal, Platform, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
 import { requestRecordingPermissionsAsync } from 'expo-audio';
@@ -17,6 +17,136 @@ import { C, S } from '../theme';
 import { Banner, Btn, Chip, Input, Muted, OtpBoxInput, st } from '../ui';
 import { AuthBackdrop } from '../components/AuthBackdrop';
 import { extractOtpCode, getAppSignatures, startSmsRetriever, stopSmsRetriever } from '../../modules/sms-retriever';
+
+// ─── Custom phone number keyboard ────────────────────────────────────────────
+// App-themed 10-digit keyboard. Auto-hides once 10 digits are entered.
+// Farmer taps digit tiles; a backspace key clears last digit. Smooth spring
+// animation slides the keyboard up from the bottom.
+
+function PhoneKey({
+  label,
+  sub,
+  onPress,
+  wide,
+  danger,
+}: {
+  label: string;
+  sub?: string;
+  onPress: () => void;
+  wide?: boolean;
+  danger?: boolean;
+}) {
+  const scaleAnim = useRef(new Animated.Value(1)).current;
+  const handlePressIn = () =>
+    Animated.spring(scaleAnim, { toValue: 0.88, friction: 4, tension: 160, useNativeDriver: true }).start();
+  const handlePressOut = () =>
+    Animated.spring(scaleAnim, { toValue: 1, friction: 5, tension: 120, useNativeDriver: true }).start();
+
+  return (
+    <TouchableOpacity
+      onPress={onPress}
+      onPressIn={handlePressIn}
+      onPressOut={handlePressOut}
+      activeOpacity={1}
+      style={{ flex: wide ? 2 : 1, margin: 4 }}
+    >
+      <Animated.View
+        style={{
+          transform: [{ scale: scaleAnim }],
+          backgroundColor: danger ? '#FFF1F0' : '#FFFFFF',
+          borderRadius: 14,
+          borderWidth: 1,
+          borderColor: danger ? '#FECDD3' : '#D8E6D0',
+          alignItems: 'center',
+          justifyContent: 'center',
+          paddingVertical: 14,
+          // subtle shadow
+          shadowColor: '#1B4332',
+          shadowOffset: { width: 0, height: 1 },
+          shadowOpacity: 0.07,
+          shadowRadius: 3,
+          elevation: 2,
+        }}
+      >
+        <Text style={{ fontSize: 22, fontWeight: '700', color: danger ? '#B3261E' : '#1A1D19' }}>{label}</Text>
+        {sub ? <Text style={{ fontSize: 10, color: '#888', letterSpacing: 1, marginTop: 1 }}>{sub}</Text> : null}
+      </Animated.View>
+    </TouchableOpacity>
+  );
+}
+
+function PhoneKeyboard({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  const slideAnim = useRef(new Animated.Value(220)).current;
+  const opacityAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (value.length < 10) {
+      Animated.parallel([
+        Animated.spring(slideAnim, { toValue: 0, friction: 7, tension: 50, useNativeDriver: true }),
+        Animated.timing(opacityAnim, { toValue: 1, duration: 200, useNativeDriver: true }),
+      ]).start();
+    } else {
+      // auto-hide at 10 digits
+      Animated.parallel([
+        Animated.timing(slideAnim, { toValue: 220, duration: 260, easing: Easing.in(Easing.quad), useNativeDriver: true }),
+        Animated.timing(opacityAnim, { toValue: 0, duration: 200, useNativeDriver: true }),
+      ]).start();
+    }
+  }, [value.length]);
+
+  const tap = (digit: string) => {
+    if (value.length >= 10) return;
+    onChange(value + digit);
+  };
+  const del = () => onChange(value.slice(0, -1));
+
+  const rows = [
+    ['1', '2', '3'],
+    ['4', '5', '6'],
+    ['7', '8', '9'],
+  ];
+
+  return (
+    <Animated.View
+      style={{
+        opacity: opacityAnim,
+        transform: [{ translateY: slideAnim }],
+        backgroundColor: '#F5F0E8',
+        borderTopLeftRadius: 20,
+        borderTopRightRadius: 20,
+        borderTopWidth: 1.5,
+        borderColor: '#D8E6D0',
+        paddingHorizontal: 12,
+        paddingTop: 8,
+        paddingBottom: Platform.OS === 'ios' ? 28 : 12,
+      }}
+    >
+      {/* drag handle */}
+      <View style={{ alignItems: 'center', marginBottom: 6 }}>
+        <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: '#C8DBC0' }} />
+      </View>
+      {rows.map((row) => (
+        <View key={row.join('')} style={{ flexDirection: 'row' }}>
+          {row.map((d) => (
+            <PhoneKey key={d} label={d} onPress={() => tap(d)} />
+          ))}
+        </View>
+      ))}
+      <View style={{ flexDirection: 'row' }}>
+        <View style={{ flex: 1, margin: 4 }} />
+        <PhoneKey label="0" onPress={() => tap('0')} />
+        <PhoneKey label="⌫" onPress={del} danger />
+      </View>
+    </Animated.View>
+  );
+}
+// ─────────────────────────────────────────────────────────────────────────────
 
 /** Requested once, right after picking a language -- so the app never
  *  interrupts the farmer with a permission dialog mid-task later. Declining
@@ -433,7 +563,7 @@ export function AuthScreen({ lang, onLoggedIn, notice, onChangeLanguage, onCance
     <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1, backgroundColor: '#F3F0E3' }}>
       <AuthBackdrop />
       <ScrollView
-        contentContainerStyle={{ padding: S.xl, paddingTop: 48, paddingBottom: 48 }}
+        contentContainerStyle={{ padding: S.xl, paddingTop: 48, paddingBottom: step === 'phone' ? 8 : 48 }}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
       >
@@ -475,13 +605,16 @@ export function AuthScreen({ lang, onLoggedIn, notice, onChangeLanguage, onCance
               <View style={{ minHeight: 56, borderRadius: 14, backgroundColor: '#E4EFD9', paddingHorizontal: S.md, justifyContent: 'center', marginRight: S.sm }}>
                 <Text style={{ fontSize: 20, fontWeight: '700', color: C.text }}>+91</Text>
               </View>
+              {/* showSoftInputOnFocus=false suppresses the system keyboard;
+                  our PhoneKeyboard handles input instead */}
               <Input
-                style={[bigInput, { flex: 1, letterSpacing: 1 }]}
-                value={phone}
-                onChangeText={(v) => setPhone(v.replace(/[^0-9]/g, '').slice(0, 10))}
-                keyboardType="number-pad"
+                style={[bigInput, { flex: 1, letterSpacing: 2 }]}
+                value={phone.replace(/(\d{5})(\d)/, '$1 $2')}
+                onChangeText={() => {}}
                 placeholder={t('phoneHint')}
-                maxLength={10}
+                maxLength={11}
+                showSoftInputOnFocus={false}
+                caretHidden
               />
             </View>
             <BigBtn label={t('sendOtp')} onPress={submitPhone} busy={busy} disabled={cooldown > 0} />
@@ -533,6 +666,9 @@ export function AuthScreen({ lang, onLoggedIn, notice, onChangeLanguage, onCance
           <Text style={{ color: C.accent, fontWeight: '700', textDecorationLine: 'underline' }} onPress={() => setLegal('privacy')}>{t('privacyLabel')}</Text>
         </Text>
       </ScrollView>
+      {step === 'phone' && phone.length < 10 ? (
+        <PhoneKeyboard value={phone} onChange={(v) => setPhone(v)} />
+      ) : null}
       <LegalModal kind={legal} onClose={() => setLegal(null)} lang={lang} />
     </KeyboardAvoidingView>
   );

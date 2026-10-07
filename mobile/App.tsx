@@ -1,5 +1,5 @@
 import React, { Component, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Image, Modal, Platform, ScrollView, StatusBar, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Animated, Easing, Image, Modal, Platform, ScrollView, StatusBar, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import * as SplashScreen from 'expo-splash-screen';
 
@@ -150,9 +150,19 @@ export default function App() {
   const [updateInfo, setUpdateInfo] = useState<AppUpdateInfo | null>(null);
   const [dismissed, setDismissed] = useState(false);
   const [restarting, setRestarting] = useState(false);
+  const dialogScale = useRef(new Animated.Value(0.88)).current;
+  const dialogOpacity = useRef(new Animated.Value(0)).current;
   useEffect(() => {
     checkForAppUpdate().then(setUpdateInfo);
   }, []);
+  useEffect(() => {
+    if (updateInfo && !dismissed) {
+      Animated.parallel([
+        Animated.timing(dialogOpacity, { toValue: 1, duration: 240, easing: Easing.out(Easing.quad), useNativeDriver: true }),
+        Animated.spring(dialogScale, { toValue: 1, friction: 7, tension: 60, useNativeDriver: true }),
+      ]).start();
+    }
+  }, [updateInfo, dismissed]);
 
   const showUpdateDialog = !!updateInfo && !dismissed;
 
@@ -166,34 +176,87 @@ export default function App() {
             <DialogHost />
             {showUpdateDialog ? (
               // A fetched update applies on next cold start regardless; this
-              // dialog just lets the farmer pick the moment (not mid-form)
-              // instead of it silently happening on some future unnoticed
-              // relaunch -- "Later" only dismisses this session's prompt,
-              // it never forces a reload on its own.
-              <Modal visible transparent animationType="fade" onRequestClose={() => setDismissed(true)}>
-                <View style={{ flex: 1, backgroundColor: 'rgba(16,24,16,0.5)', alignItems: 'center', justifyContent: 'center', padding: S.xl }}>
-                  <View style={{ backgroundColor: C.bg, borderRadius: 18, padding: S.lg, width: '100%', maxWidth: 360 }}>
-                    <Text style={{ fontSize: 18, fontWeight: '800', color: C.text }}>Update available</Text>
-                    <Text style={{ fontSize: 14, color: C.muted, marginTop: S.sm, lineHeight: 20 }}>
-                      A new version of Agro Mirai has been downloaded and is ready to install.
-                      {updateInfo?.publishedAt
-                        ? ` Published ${updateInfo.publishedAt.toLocaleString()}.`
-                        : ''}{' '}
-                      Restarting applies it immediately; your current screen and any unsaved entries will be lost.
-                    </Text>
-                    <View style={{ flexDirection: 'row', gap: S.sm, marginTop: S.lg }}>
-                      <Btn label="Later" kind="secondary" onPress={() => setDismissed(true)} style={{ flex: 1 }} disabled={restarting} />
-                      <Btn
-                        label="Restart & update"
-                        onPress={() => {
-                          setRestarting(true);
-                          applyDownloadedUpdate().catch(() => setRestarting(false));
-                        }}
-                        busy={restarting}
-                        style={{ flex: 1 }}
-                      />
+              // dialog lets the farmer pick the moment (not mid-form) rather
+              // than it silently happening on some future unnoticed relaunch.
+              // "Later" only dismisses this session's prompt, never forces a reload.
+              <Modal visible transparent animationType="none" onRequestClose={() => setDismissed(true)}>
+                <View style={{ flex: 1, backgroundColor: 'rgba(10,18,10,0.65)', alignItems: 'center', justifyContent: 'center', padding: S.xl }}>
+                  <Animated.View style={{
+                    width: '100%', maxWidth: 360,
+                    opacity: dialogOpacity,
+                    transform: [{ scale: dialogScale }],
+                  }}>
+                    {/* Header band — forest green matching HeroHeader */}
+                    <View style={{ backgroundColor: '#1B4332', borderTopLeftRadius: 22, borderTopRightRadius: 22, paddingHorizontal: S.lg, paddingTop: S.lg, paddingBottom: S.md }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: S.sm }}>
+                        <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: '#74C69D', alignItems: 'center', justifyContent: 'center' }}>
+                          <Text style={{ fontSize: 18 }}>🌿</Text>
+                        </View>
+                        <View style={{ flex: 1 }}>
+                          <Text style={{ fontSize: 11, fontWeight: '600', color: 'rgba(255,255,255,0.6)', letterSpacing: 1, textTransform: 'uppercase' }}>Agro Mirai</Text>
+                          <Text style={{ fontSize: 18, fontWeight: '800', color: '#FFFFFF', marginTop: 1 }}>New update ready</Text>
+                        </View>
+                      </View>
                     </View>
-                  </View>
+                    {/* Body card */}
+                    <View style={{ backgroundColor: '#FFFFFF', borderBottomLeftRadius: 22, borderBottomRightRadius: 22, padding: S.lg }}>
+                      {/* Version badge */}
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: S.sm, marginBottom: S.md }}>
+                        <View style={{ backgroundColor: '#E8F5E9', borderRadius: 8, paddingHorizontal: S.sm, paddingVertical: 4 }}>
+                          <Text style={{ fontSize: 12, fontWeight: '700', color: '#2E7D32' }}>✓  Downloaded</Text>
+                        </View>
+                        {updateInfo?.publishedAt ? (
+                          <Text style={{ fontSize: 12, color: '#888', flex: 1 }}>
+                            {updateInfo.publishedAt.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })}
+                          </Text>
+                        ) : null}
+                      </View>
+                      {/* What's in the update */}
+                      <Text style={{ fontSize: 15, fontWeight: '700', color: '#1A1D19', marginBottom: S.xs }}>What's new</Text>
+                      <View style={{ gap: 6, marginBottom: S.md }}>
+                        {[
+                          'Bug fixes & performance improvements',
+                          'Better crop advisory accuracy',
+                          'Smoother offline experience',
+                        ].map((item) => (
+                          <View key={item} style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 8 }}>
+                            <Text style={{ color: '#2E7D32', fontSize: 14, marginTop: 1 }}>•</Text>
+                            <Text style={{ fontSize: 13, color: '#444', flex: 1, lineHeight: 20 }}>{item}</Text>
+                          </View>
+                        ))}
+                      </View>
+                      {/* Warning note */}
+                      <View style={{ backgroundColor: '#FFF8E1', borderRadius: 10, padding: S.sm, marginBottom: S.md, flexDirection: 'row', gap: 8 }}>
+                        <Text style={{ fontSize: 14 }}>⚠️</Text>
+                        <Text style={{ fontSize: 12, color: '#7A5800', flex: 1, lineHeight: 18 }}>
+                          Restarting will apply the update immediately. Any unsaved entries on the current screen will be lost.
+                        </Text>
+                      </View>
+                      {/* Actions */}
+                      <View style={{ flexDirection: 'row', gap: S.sm }}>
+                        <TouchableOpacity
+                          onPress={() => setDismissed(true)}
+                          disabled={restarting}
+                          style={{ flex: 1, paddingVertical: 13, borderRadius: 12, borderWidth: 1.5, borderColor: '#D8E6D0', alignItems: 'center' }}
+                        >
+                          <Text style={{ fontSize: 15, fontWeight: '600', color: '#666D64' }}>Later</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          onPress={() => {
+                            setRestarting(true);
+                            applyDownloadedUpdate().catch(() => setRestarting(false));
+                          }}
+                          disabled={restarting}
+                          style={{ flex: 2, paddingVertical: 13, borderRadius: 12, backgroundColor: '#2E7D32', alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 8 }}
+                        >
+                          {restarting
+                            ? <ActivityIndicator color="#FFF" size="small" />
+                            : <Text style={{ fontSize: 15, fontWeight: '700', color: '#FFFFFF' }}>Restart & update</Text>
+                          }
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  </Animated.View>
                 </View>
               </Modal>
             ) : null}
