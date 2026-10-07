@@ -1,61 +1,58 @@
-/* Matches the mobile app's theme (mobile/src/theme.ts) exactly: white
-   background, one green accent, system font, thin borders, no
-   gradients/shadows/custom fonts -- Ritesh's explicit Module 39 call
-   that an over-designed UI was wrong for this app. This dashboard
-   previously used the landing page's warm cream/wheat/saffron palette
-   instead, which was the wrong reference. */
-:root{
-  --bg:#FFFFFF; --surface:#F5F6F3; --border:#DDE1D9;
-  --text:#1A1D19; --muted:#666D64;
-  --accent:#2E7D32; --accent-text:#FFFFFF;
-  --danger:#B3261E; --warn:#9A5B00;
-  --low:#2E7D32; --moderate:#9A5B00; --high:#C24E00; --severe:#B3261E;
+/* Custom overrides — Tailwind handles everything else */
+[x-cloak] { display: none !important; }
+
+.chart-canvas { max-height: 200px; }
+
+.input-field {
+  width: 100%;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.5rem;
+  padding: 0.375rem 0.625rem;
+  font-size: 0.875rem;
+  outline: none;
+  background: #fff;
+  font-family: inherit;
 }
-*{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--text);font:16px/1.5 -apple-system,'Segoe UI',sans-serif}
-[hidden]{display:none!important}
-h1,h2,h3{margin:0 0 .5rem;line-height:1.2}
-h2{font-size:1.25rem} h3{font-size:1.05rem}
-a{color:var(--accent)}
-.muted{color:var(--muted);font-weight:400}
-.error{color:var(--danger);margin:.25rem 0}
-.topbar{display:flex;align-items:center;gap:1.5rem;padding:.75rem 1.25rem;background:var(--bg);border-bottom:1px solid var(--border);position:sticky;top:0}
-.topbar nav{display:flex;gap:1rem;flex:1}
-.topbar nav a{text-decoration:none;color:var(--muted);padding:.25rem 0;border-bottom:2px solid transparent}
-.topbar nav a.active{color:var(--accent);border-color:var(--accent)}
-main{max-width:1100px;margin:0 auto;padding:1.25rem 16px 3rem}
-.card{background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:1rem 1.1rem}
-.grid{display:grid;gap:1rem;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));margin-bottom:1rem}
-.grid.wide{grid-template-columns:repeat(auto-fit,minmax(320px,1fr))}
-.stat .n{font-size:2rem;font-weight:700;color:var(--accent)}
-button{font:inherit;background:var(--accent);color:var(--accent-text);border:0;border-radius:8px;padding:.55rem 1rem;cursor:pointer;transition:opacity .15s ease}
-button:hover{opacity:.88}
-button.ghost{background:transparent;color:var(--muted);border:1px solid var(--border)}
-button.danger{background:var(--danger)}
-button.danger:hover{opacity:.88}
-button:disabled{opacity:.5;cursor:not-allowed}
-button.small{padding:.3rem .6rem;font-size:.85rem;border-radius:6px}
-input,select{font:inherit;padding:.5rem .6rem;border:1px solid var(--border);border-radius:8px;background:var(--bg);width:100%}
-label{display:block;margin:.75rem 0;color:var(--muted);font-size:.9rem}
-.login{min-height:100vh;display:grid;place-items:center;padding:16px}
-.login-card{width:100%;max-width:380px}
-.toolbar{display:flex;gap:.75rem;margin-bottom:.75rem;flex-wrap:wrap}
-.toolbar input{flex:2;min-width:180px} .toolbar select{flex:1;min-width:140px}
-table{width:100%;border-collapse:collapse;background:var(--bg)}
-th,td{text-align:left;padding:.55rem .7rem;border-bottom:1px solid var(--border);font-size:.95rem}
-th{background:var(--surface);font-weight:600;cursor:default}
-tr.row{cursor:pointer} tr.row:hover td{background:var(--surface)}
-.tablewrap{overflow-x:auto;border:1px solid var(--border);border-radius:10px}
-.bar{display:flex;align-items:center;gap:.5rem;margin:.3rem 0;font-size:.9rem}
-.bar .lbl{width:110px;flex:none}
-.bar .fill{height:14px;background:var(--accent);border-radius:4px;min-width:2px}
-.bar .val{color:var(--muted)}
-.pill{display:inline-block;background:var(--surface);color:var(--accent);border-radius:99px;padding:0 .6rem;font-size:.85rem}
-.pill.live{background:var(--accent);color:var(--accent-text)}
-.kv{display:grid;grid-template-columns:max-content 1fr;gap:.25rem 1rem;margin:0}
-.kv dt{color:var(--muted)} .kv dd{margin:0}
-.back{display:inline-block;margin-bottom:.75rem}
-.actions{display:flex;gap:.4rem;align-items:center}
-.overlay{position:fixed;inset:0;background:rgba(26,29,25,.45);display:flex;align-items:center;justify-content:center;z-index:20}
-.overlay .card{width:100%;max-width:420px}
-@media(max-width:600px){.topbar{gap:.75rem;padding:.6rem 16px}}
+.input-field:focus { outline: 2px solid #22c55e; outline-offset: 1px; }
+
+.btn-primary {
+  background: #22c55e; color: white; font-weight: 600;
+  border-radius: 0.5rem; cursor: pointer; transition: opacity .15s;
+  border: none; font-family: inherit;
+}
+.btn-primary:hover { opacity: .88; }
+.btn-primary:disabled { opacity: .5; cursor: not-allowed; }
+
+.btn-danger {
+  background: #dc2626; color: white; font-weight: 600;
+  border-radius: 0.5rem; cursor: pointer; transition: opacity .15s;
+  border: none; font-family: inherit;
+}
+.btn-danger:hover { opacity: .88; }
+
+/* Risk / severity badges */
+.risk-badge {
+  display: inline-block;
+  font-size: 0.7rem; font-weight: 600;
+  padding: 0.125rem 0.5rem;
+  border-radius: 9999px;
+  text-transform: capitalize;
+}
+.risk-low     { background: #dcfce7; color: #166534; }
+.risk-moderate{ background: #fef9c3; color: #854d0e; }
+.risk-high    { background: #ffedd5; color: #c2410c; }
+.risk-severe  { background: #fee2e2; color: #991b1b; }
+
+/* Audit log JSON block */
+.json-pre {
+  font-size: 0.7rem;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.375rem;
+  padding: 0.5rem;
+  overflow-x: auto;
+  white-space: pre-wrap;
+  word-break: break-all;
+  max-height: 200px;
+  overflow-y: auto;
+}
