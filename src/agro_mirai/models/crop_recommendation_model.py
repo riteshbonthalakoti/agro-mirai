@@ -178,6 +178,13 @@ class CropRecommendationModel:
         rationale += _greenness_note(features)
         if features.soil_chemistry_source and "fallback" in features.soil_chemistry_source:
             rationale += " Soil values are typical for your soil type, not measured."
+        elif features.soil_chemistry_source == "soilgrids":
+            # Honest framing, not a bug report waiting to happen: SoilGrids is a
+            # static geological survey map, not a live sensor reading -- the
+            # same field (or nearby fields) will keep returning the same
+            # numbers for years, which otherwise reads as "this data never
+            # updates." It's correct, just not what "soil data" usually implies.
+            rationale += " Soil values are from a regional soil survey, not a live field reading."
         if fit.out_of_region and regional is not None:
             from agro_mirai.models.explanation_service import _regional_fit_note
 

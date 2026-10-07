@@ -15,6 +15,8 @@ from __future__ import annotations
 
 import re
 
+from agro_mirai.models.disease_risk_scoring import RISK_ACTION
+
 # feature key -> (plain label, unit, show number?)
 _FEATURES: dict[str, tuple[str, str, bool]] = {
     "rainfall": ("recent rainfall", " mm", True),
@@ -42,6 +44,57 @@ _FEATURES: dict[str, tuple[str, str, bool]] = {
 _FACTOR_RE = re.compile(r"([A-Za-z_0-9]+) \((-?[\d.]+), (?:increases|decreases) the result\)")
 _LIST_RE = re.compile(r"The biggest (?:contributing )?factors behind this (.+?) were: (.+?)(?:\.(?:\s|$))", re.S)
 
+# Disease risk level -> what to actually do about it. Reuses
+# disease_risk_scoring.RISK_ACTION directly (not a second copy) so the
+# Advice tab's wording and the disease-scan result's wording never drift
+# apart. "What mattered most" alone restates sensor readings with no
+# action attached -- this is what makes the sentence actually useful to
+# act on, not just read.
+_DISEASE_ACTION = RISK_ACTION
+
+# Standard agronomic soil-pH bands (topsoil, most field crops) -- lets a
+# farmer who doesn't know what "pH 8.0" means see a verdict instead of a
+# bare number. Deliberately conservative language ("most crops"): exact
+# tolerance varies by crop, which this app doesn't model per-crop yet.
+_PH_BANDS = [
+    (5.5, "strongly acidic — can limit nutrient uptake for most crops; liming may help"),
+    (6.5, "slightly acidic — fine for most crops"),
+    (7.3, "near neutral — good for most crops"),
+    (8.5, "slightly alkaline — fine for most crops, but may reduce iron/zinc availability"),
+    (float("inf"), "strongly alkaline — can limit nutrient uptake; adding organic matter or gypsum may help"),
+]
+
+
+def _ph_verdict(ph: float) -> str:
+    for upper, verdict in _PH_BANDS:
+        if ph < upper:
+            return verdict
+    return _PH_BANDS[-1][1]
+
+
+_WB_PARA_RE = re.compile(
+    r"Predicted irrigation need: (\w+) \((?:soil moisture ([\d.]+)%)?.*?\)\. Water balance: "
+    r"ET0=([\d.]+)mm/day, crop ETc=([\d.]+)mm/day over (\d+) days minus ([\d.]+)mm rainfall received "
+    r"= (-?[\d.]+)mm net deficit -> ([\d.]+)mm recommended\.",
+    re.S,
+)
+
+
+def _plain_water_balance(match: re.Match) -> str:
+    """Same rewrite as plain_irrigation(), factored out so plain_paragraph
+    can apply it to the irrigation paragraph inside a combined Advisory
+    body -- previously only the standalone irrigation endpoint got this
+    treatment, so this exact sentence (ET0/ETc/"net deficit") reached
+    farmers verbatim every time via the Advice tab."""
+    _need, moisture, _et0, etc, days, rain, _deficit, rec = match.groups()
+    total = float(etc) * int(days)
+    return (
+        f"Your crop needs about {total:.0f} mm of water over the next {days} days. "
+        f"About {float(rain):.0f} mm of rain has fallen, so about {float(rec):.0f} mm of "
+        f"watering is recommended."
+        + (f" Soil moisture is {float(moisture):.0f}%." if moisture else "")
+    )
+
 
 def _phrase(key: str, value: str) -> str:
     label, unit, show = _FEATURES.get(key, (key.replace("_", " "), "", True))
@@ -51,8 +104,11 @@ def _phrase(key: str, value: str) -> str:
         num = float(value)
         text = f"{num:.0f}" if abs(num) >= 100 or num == int(num) else f"{num:.1f}"
     except ValueError:
-        text = value
-    return f"{label} is {text}{unit}"
+        return f"{label} is {value}{unit}"
+    phrase = f"{label} is {text}{unit}"
+    if key in ("ph", "Soil_pH"):
+        phrase += f" ({_ph_verdict(num)})"
+    return phrase
 
 
 def _factors(listing: str) -> str:
@@ -65,6 +121,17 @@ def plain_paragraph(paragraph: str, drop_regional_caveat: bool = False) -> str:
     para = paragraph.strip()
     if drop_regional_caveat:
         para = re.sub(r"\s*Caveat: .*$", "", para, flags=re.S)
+
+    # Irrigation's water-balance sentence has its own dedicated format
+    # (not the generic "biggest factors" one) -- check it first, or this
+    # paragraph passes through _LIST_RE untouched and a farmer sees
+    # "ET0=5.2mm/day, crop ETc=6.8mm/day ... net deficit" verbatim.
+    wb = _WB_PARA_RE.search(para)
+    if wb:
+        rest = para[wb.end():].strip()
+        out = _plain_water_balance(wb)
+        return f"{out} {rest}".strip()
+
     m = _LIST_RE.search(para)
     if not m:
         return para
@@ -79,7 +146,12 @@ def plain_paragraph(paragraph: str, drop_regional_caveat: bool = False) -> str:
         head = f"Your field's need for watering is {level}."
     elif "disease" in subject:
         level = subject.split()[0]
+        action = _DISEASE_ACTION.get(level, "")
         head = f"Chance of crop disease is {level}."
+        out = f"{head} What mattered most: {reasons}."
+        if action:
+            out += f" What to do: {action}"
+        return f"{out} {rest}".strip()
     else:
         head = f"{subject[0].upper()}{subject[1:]}."
     out = f"{head} What mattered most: {reasons}."
@@ -91,28 +163,13 @@ def plain_advisory(body: str, drop_regional_caveat: bool = False) -> str:
     return "\n\n".join(plain_paragraph(p, drop_regional_caveat) for p in paras)
 
 
-_WB_RE = re.compile(
-    r"Predicted irrigation need: (\w+) \((?:soil moisture ([\d.]+)%)?.*?\)\. Water balance: "
-    r"ET0=([\d.]+)mm/day, crop ETc=([\d.]+)mm/day over (\d+) days minus ([\d.]+)mm rainfall received "
-    r"= (-?[\d.]+)mm net deficit -> ([\d.]+)mm recommended\.",
-    re.S,
-)
-
-
 def plain_irrigation(rationale: str | None) -> str | None:
     if not rationale:
         return rationale
-    m = _WB_RE.search(rationale)
+    m = _WB_PARA_RE.search(rationale)
     if not m:
         return rationale
-    need, moisture, _et0, etc, days, rain, _deficit, rec = m.groups()
-    total = float(etc) * int(days)
-    return (
-        f"Your crop needs about {total:.0f} mm of water over the next {days} days. "
-        f"About {float(rain):.0f} mm of rain has fallen, so about {float(rec):.0f} mm of "
-        f"watering is recommended."
-        + (f" Soil moisture is {float(moisture):.0f}%." if moisture else "")
-    )
+    return _plain_water_balance(m)
 
 
 # Rough bounding box of Karnataka: the crop model's regional check
