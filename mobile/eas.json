@@ -18,6 +18,13 @@
         "buildType": "apk"
       }
     },
+    "release-apk": {
+      "channel": "production",
+      "android": {
+        "buildType": "apk",
+        "gradleCommand": ":app:assembleRelease"
+      }
+    },
     "production": {
       "autoIncrement": true,
       "channel": "production"
