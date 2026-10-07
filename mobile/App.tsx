@@ -252,7 +252,7 @@ function RootInner({ lang, setLang }: { lang: Lang; setLang: (l: Lang) => void }
     const unsubIn = onAccountEvent('accountSignedIn', () => {
       if (field && farmer) {
         (async () => {
-          const settings = await getReminderSettings();
+          const settings = await getReminderSettings(farmer.id);
           if (!settings.enabled) {
             clearScheduledNotifications();
             return;
@@ -266,7 +266,7 @@ function RootInner({ lang, setLang }: { lang: Lang; setLang: (l: Lang) => void }
     const unsubSwitch = onAccountEvent('accountSwitched', () => {
       if (field && farmer) {
         (async () => {
-          const settings = await getReminderSettings();
+          const settings = await getReminderSettings(farmer.id);
           if (!settings.enabled) {
             clearScheduledNotifications();
             return;
