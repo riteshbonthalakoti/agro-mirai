@@ -163,6 +163,24 @@ export function HomeTab() {
   const d = dis.data?.items?.[0];
   const dd = dis.data?.details;
   const today = todayLine(t, i, d, dd);
+
+  const fadeAnim = React.useRef(new Animated.Value(0)).current;
+  const pulseAnim = React.useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    fadeAnim.setValue(0);
+    Animated.timing(fadeAnim, { toValue: 1, duration: 380, useNativeDriver: true }).start();
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, { toValue: 1, duration: 1200, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+        Animated.timing(pulseAnim, { toValue: 0, duration: 1200, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+      ]),
+    );
+    loop.start();
+    return () => loop.stop();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const { setDailyReminder } = useNotifications();
   useEffect(() => {
     // tomorrow's daily notification carries the latest advice, even if the app is closed by then
@@ -182,9 +200,13 @@ export function HomeTab() {
 
   if (firstLoad) {
     return (
-      <ScrollView contentContainerStyle={{ padding: S.lg, paddingTop: S.md }}>
-        <SkeletonCard /><SkeletonCard /><SkeletonCard />
-      </ScrollView>
+      <View style={{ flex: 1, backgroundColor: H.bg }}>
+        <AuthBackdrop />
+        <ScrollView contentContainerStyle={{ padding: S.lg, paddingTop: S.md }}>
+          <View style={{ height: 140, backgroundColor: H.heroBg, borderRadius: 28, marginBottom: S.md }} />
+          <SkeletonCard /><SkeletonCard /><SkeletonCard />
+        </ScrollView>
+      </View>
     );
   }
 
@@ -194,46 +216,38 @@ export function HomeTab() {
   const used = i?.details && typeof i.details.soil_water_used_pct === 'number' ? `${Math.min(i.details.soil_water_used_pct, 100)}%` : '–';
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#F3F0E3' }}>
+    <View style={{ flex: 1, backgroundColor: H.bg }}>
       <AuthBackdrop />
       <ScrollView
         contentContainerStyle={{ padding: S.lg, paddingTop: S.md, paddingBottom: S.xl * 2 }}
         refreshControl={<RefreshControl refreshing={busy} onRefresh={reloadAll} />}
       >
-        {/* greeting + today's one clear thing to do */}
-        <View style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
-          <View style={{ flex: 1 }}>
-            <Text style={{ fontSize: 15, color: C.muted, fontWeight: '600' }}>{`${t(greetKey())}${first ? `, ${first}` : ''}`}</Text>
-            <Text style={{ fontSize: 26, fontWeight: '800', color: C.text, marginTop: 2 }} numberOfLines={1}>
-              {field?.name}{field?.current_crop ? ` · ${cropLabel(lang, field.current_crop)}` : ''}
-            </Text>
-          </View>
-        </View>
+        <HeroHeader
+          name={field?.name ?? '—'}
+          crop={field?.current_crop ? cropLabel(lang, field.current_crop) : null}
+          greeting={`${t(greetKey())}${first ? `, ${first}` : ''}`}
+          fadeAnim={fadeAnim}
+        />
 
-        {today ? (
-          <View style={{ marginTop: S.md, borderRadius: 26, padding: S.lg, backgroundColor: today.color, overflow: 'hidden' }}>
-            <View style={{ position: 'absolute', right: -30, top: -30, width: 150, height: 150, borderRadius: 75, backgroundColor: 'rgba(255,255,255,0.14)' }} />
-            <View style={{ position: 'absolute', right: 40, bottom: -50, width: 110, height: 110, borderRadius: 55, backgroundColor: 'rgba(255,255,255,0.10)' }} />
-            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-              <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(255,255,255,0.25)', alignItems: 'center', justifyContent: 'center' }}>
-                <Icon name={heroIcon} size={24} color="#fff" />
-              </View>
-              <Text style={{ marginLeft: S.md, fontSize: 14, fontWeight: '800', letterSpacing: 1, color: 'rgba(255,255,255,0.9)' }}>{t('todayTitle').toUpperCase()}</Text>
-            </View>
-            <Text style={{ fontSize: 24, lineHeight: 31, fontWeight: '800', color: '#fff', marginTop: S.md }}>{today.text}</Text>
-          </View>
-        ) : null}
+        {!field ? (
+          <Muted style={{ textAlign: 'center', marginTop: S.md }}>{t('notComputed')}</Muted>
+        ) : (
+          <>
+            {today ? (
+              <Animated.View style={{ opacity: fadeAnim }}>
+                <ActionBanner text={today.text} color={today.color} icon={heroIcon} pulseAnim={pulseAnim} />
+              </Animated.View>
+            ) : null}
 
-        {/* three numbers at a glance */}
-        {i ? (
-          <View style={{ flexDirection: 'row', gap: S.sm, marginTop: S.md }}>
-            <StatPill icon="drop" value={`${Math.round(i.recommended_depth_mm * 10) / 10} ${t('mm')}`} label={t('tileWater')} />
-            <StatPill icon="thermo" value={rain} label={t('tileRain')} />
-            <StatPill icon="field" value={used} label={t('tileSoil')} />
-          </View>
-        ) : null}
+            {i ? (
+              <Animated.View style={{ opacity: fadeAnim, flexDirection: 'row', gap: S.sm, marginBottom: S.md }}>
+                <StatPill icon="drop" value={`${Math.round(i.recommended_depth_mm * 10) / 10} ${t('mm')}`} label={t('tileWater')} />
+                <StatPill icon="thermo" value={rain} label={t('tileRain')} />
+                <StatPill icon="field" value={used} label={t('tileSoil')} />
+              </Animated.View>
+            ) : null}
 
-        <View style={{ height: S.md }} />
+            <Animated.View style={{ opacity: fadeAnim }}>
 
         <Section icon="sprout" tint="#E8F3E8" title={t('cropRec')} stripe={H.sectionStripe.crop}>
           <LastUpdated at={crop.lastUpdatedAt} stale={!!crop.error} t={t} />
@@ -341,7 +355,11 @@ export function HomeTab() {
           <ErrorBox load={dis} />
         </Section>
 
-        <Muted style={{ textAlign: 'center' }}>{t('pullToRefresh')}</Muted>
+            </Animated.View>
+          </>
+        )}
+
+        <Muted style={{ textAlign: 'center', marginTop: S.lg }}>{t('pullToRefresh')}</Muted>
       </ScrollView>
     </View>
   );
