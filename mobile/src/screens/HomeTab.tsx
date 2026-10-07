@@ -90,18 +90,22 @@ function HeroHeader({ name, crop, greeting, fadeAnim }: {
   );
 }
 
-/** White rounded section with a coloured icon badge, replacing the plain Card on Home. */
-function Section({ icon, tint, title, right, children }: { icon: IconName; tint: string; title: string; right?: React.ReactNode; children: React.ReactNode }) {
+function Section({ icon, tint, title, stripe, right, children }: {
+  icon: IconName; tint: string; title: string; stripe: string; right?: React.ReactNode; children: React.ReactNode;
+}) {
   return (
-    <View style={{ backgroundColor: 'rgba(255,255,255,0.94)', borderRadius: 22, padding: S.lg, marginBottom: S.md, borderWidth: 1, borderColor: '#E3E8DC' }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: S.md }}>
-        <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: tint, alignItems: 'center', justifyContent: 'center', marginRight: S.md }}>
-          <Icon name={icon} size={22} color={C.accent} />
+    <View style={{ backgroundColor: '#FFFFFF', borderRadius: 20, marginBottom: S.md, overflow: 'hidden', borderWidth: 1, borderColor: H.pillBorder }}>
+      <View style={{ height: 4, backgroundColor: stripe }} />
+      <View style={{ padding: S.lg }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: S.md }}>
+          <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: tint, alignItems: 'center', justifyContent: 'center', marginRight: S.md }}>
+            <Icon name={icon} size={20} color={stripe} />
+          </View>
+          <Text style={{ flex: 1, fontSize: 16, fontWeight: '700', color: C.text, letterSpacing: 0.1 }}>{title}</Text>
+          {right}
         </View>
-        <Text style={{ flex: 1, fontSize: 18, fontWeight: '800', color: C.text }}>{title}</Text>
-        {right}
+        {children}
       </View>
-      {children}
     </View>
   );
 }
@@ -231,7 +235,7 @@ export function HomeTab() {
 
         <View style={{ height: S.md }} />
 
-        <Section icon="sprout" tint="#E8F3E8" title={t('cropRec')}>
+        <Section icon="sprout" tint="#E8F3E8" title={t('cropRec')} stripe={H.sectionStripe.crop}>
           <LastUpdated at={crop.lastUpdatedAt} stale={!!crop.error} t={t} />
           {c ? (
             <>
@@ -279,7 +283,7 @@ export function HomeTab() {
           <ErrorBox load={crop} />
         </Section>
 
-        <Section icon="drop" tint="#E3F1FA" title={t('irrigation')} right={i ? <Badge label={levelLabel(t, i.urgency)} color={levelColor(i.urgency)} /> : undefined}>
+        <Section icon="drop" tint="#E3F1FA" title={t('irrigation')} stripe={H.sectionStripe.irr} right={i ? <Badge label={levelLabel(t, i.urgency)} color={levelColor(i.urgency)} /> : undefined}>
           <LastUpdated at={irr.lastUpdatedAt} stale={!!irr.error} t={t} />
           {i ? (
             <>
@@ -307,7 +311,7 @@ export function HomeTab() {
           <ErrorBox load={irr} />
         </Section>
 
-        <Section icon="blight" tint="#FDF0DC" title={t('diseaseRisk')} right={d ? <Badge label={levelLabel(t, d.risk_level)} color={levelColor(d.risk_level)} /> : undefined}>
+        <Section icon="blight" tint="#FDF0DC" title={t('diseaseRisk')} stripe={H.sectionStripe.dis} right={d ? <Badge label={levelLabel(t, d.risk_level)} color={levelColor(d.risk_level)} /> : undefined}>
           <LastUpdated at={dis.lastUpdatedAt} stale={!!dis.error} t={t} />
           {d ? (
             <>
