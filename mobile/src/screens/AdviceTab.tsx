@@ -305,7 +305,7 @@ function QuestionsList({ fieldId, reloadKey }: { fieldId: string; reloadKey: num
 // Main tab — no auto-load, blank until button tapped
 // ---------------------------------------------------------------------------
 export function AdviceTab() {
-  const { field, t, openBugReport } = useApp();
+  const { field, t } = useApp();
   const id = field?.id;
   const [subTab, setSubTab] = useState<'recs' | 'questions'>('recs');
   const [questionsReload, setQuestionsReload] = useState(0);
@@ -361,9 +361,6 @@ export function AdviceTab() {
           {segTab('recs', t('adviceTabRecs'))}
           {segTab('questions', t('adviceTabQuestions'))}
         </View>
-        <TouchableOpacity onPress={() => openBugReport('Advice')} accessibilityLabel={t('reportProblem')} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} style={{ padding: 6, marginLeft: S.sm }}>
-          <Icon name="bug" size={22} color={C.muted} />
-        </TouchableOpacity>
       </View>
       {subTab === 'recs' ? (
         <ScrollView

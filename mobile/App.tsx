@@ -60,7 +60,7 @@ import { ApiError, Farmer, Field, getMe, listFields, logout, logoutWithToken, pa
 import { AppCtx, Ctx, cropLabel, makeT } from './src/ctx';
 import { Key, Lang, LANGS } from './src/i18n';
 import { logError } from './src/errorLog';
-import { applyDownloadedUpdate, checkForAppUpdate } from './src/updates';
+import { applyDownloadedUpdate, checkForAppUpdate, AppUpdateInfo } from './src/updates';
 import { AdviceTab } from './src/screens/AdviceTab';
 import { DataTab } from './src/screens/DataTab';
 import { FieldForm } from './src/screens/FieldForm';
@@ -147,11 +147,14 @@ type Tab = 'home' | 'data' | 'advice' | 'scan' | 'me';
 const isLang = (v: unknown): v is Lang => LANGS.some((l) => l.code === v);
 
 export default function App() {
-  const [updateReady, setUpdateReady] = useState(false);
+  const [updateInfo, setUpdateInfo] = useState<AppUpdateInfo | null>(null);
+  const [dismissed, setDismissed] = useState(false);
   const [restarting, setRestarting] = useState(false);
   useEffect(() => {
-    checkForAppUpdate().then(setUpdateReady);
+    checkForAppUpdate().then(setUpdateInfo);
   }, []);
+
+  const showUpdateDialog = !!updateInfo && !dismissed;
 
   return (
     <ErrorBoundary>
@@ -161,44 +164,38 @@ export default function App() {
           <ToastProvider>
             <Root />
             <DialogHost />
-            {updateReady ? (
+            {showUpdateDialog ? (
               // A fetched update applies on next cold start regardless; this
-              // banner just lets the farmer pick the moment (not mid-form)
+              // dialog just lets the farmer pick the moment (not mid-form)
               // instead of it silently happening on some future unnoticed
-              // relaunch -- never forces a reload on its own.
-              <View
-                style={{
-                  position: 'absolute',
-                  left: S.lg,
-                  right: S.lg,
-                  bottom: S.lg,
-                  backgroundColor: C.text,
-                  borderRadius: 14,
-                  paddingVertical: S.md,
-                  paddingHorizontal: S.lg,
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                }}
-              >
-                <Text style={{ color: '#fff', fontSize: 15, flex: 1, marginRight: S.md }}>
-                  An update is ready to install
-                </Text>
-                <TouchableOpacity
-                  disabled={restarting}
-                  onPress={() => {
-                    setRestarting(true);
-                    applyDownloadedUpdate().catch(() => setRestarting(false));
-                  }}
-                  style={{ minHeight: 36, justifyContent: 'center', paddingHorizontal: S.sm }}
-                >
-                  {restarting ? (
-                    <ActivityIndicator color="#fff" size="small" />
-                  ) : (
-                    <Text style={{ color: '#8BC97F', fontWeight: '800', fontSize: 15 }}>UPDATE</Text>
-                  )}
-                </TouchableOpacity>
-              </View>
+              // relaunch -- "Later" only dismisses this session's prompt,
+              // it never forces a reload on its own.
+              <Modal visible transparent animationType="fade" onRequestClose={() => setDismissed(true)}>
+                <View style={{ flex: 1, backgroundColor: 'rgba(16,24,16,0.5)', alignItems: 'center', justifyContent: 'center', padding: S.xl }}>
+                  <View style={{ backgroundColor: C.bg, borderRadius: 18, padding: S.lg, width: '100%', maxWidth: 360 }}>
+                    <Text style={{ fontSize: 18, fontWeight: '800', color: C.text }}>Update available</Text>
+                    <Text style={{ fontSize: 14, color: C.muted, marginTop: S.sm, lineHeight: 20 }}>
+                      A new version of Agro Mirai has been downloaded and is ready to install.
+                      {updateInfo?.publishedAt
+                        ? ` Published ${updateInfo.publishedAt.toLocaleString()}.`
+                        : ''}{' '}
+                      Restarting applies it immediately; your current screen and any unsaved entries will be lost.
+                    </Text>
+                    <View style={{ flexDirection: 'row', gap: S.sm, marginTop: S.lg }}>
+                      <Btn label="Later" kind="secondary" onPress={() => setDismissed(true)} style={{ flex: 1 }} disabled={restarting} />
+                      <Btn
+                        label="Restart & update"
+                        onPress={() => {
+                          setRestarting(true);
+                          applyDownloadedUpdate().catch(() => setRestarting(false));
+                        }}
+                        busy={restarting}
+                        style={{ flex: 1 }}
+                      />
+                    </View>
+                  </View>
+                </View>
+              </Modal>
             ) : null}
           </ToastProvider>
         </SafeAreaView>
@@ -699,8 +696,14 @@ function RootInner({ lang, setLang }: { lang: Lang; setLang: (l: Lang) => void }
           </Modal>
         ) : null}
         {switching ? (
-          <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(255,255,255,0.7)', alignItems: 'center', justifyContent: 'center' }}>
+          // Fully opaque, not a translucent tint over the old account's
+          // screen -- a partial tint let the previous account's content
+          // keep visibly shifting underneath (tab changing, data popping
+          // in) while the switch was still in flight, which read as
+          // several things happening at once instead of one clean swap.
+          <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: C.bg, alignItems: 'center', justifyContent: 'center' }}>
             <ActivityIndicator size="large" color={C.accent} />
+            <Text style={{ marginTop: S.md, fontSize: 15, color: C.muted }}>Switching account…</Text>
           </View>
         ) : null}
       </View>

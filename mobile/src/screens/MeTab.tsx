@@ -5,7 +5,7 @@ import { dialog } from '../dialog';
 import { IconName } from '../../icons';
 import Constants from 'expo-constants';
 import * as ImagePicker from 'expo-image-picker';
-import { API_BASE_URL, ApiError, deleteField, isOnline, patchMe, sendBugReport } from '../api';
+import { ApiError, deleteField, isOnline, patchMe, sendBugReport } from '../api';
 import { cropLabel, useApp } from '../ctx';
 import { classifyError } from '../errors';
 import { getRecentErrors, logError } from '../errorLog';
@@ -362,7 +362,6 @@ export function MeTab({ initialScreenContext, onConsumeScreenContext }: { initia
         {/* ---- footer + sign out */}
         <View style={{ alignItems: 'center', marginTop: S.sm, marginBottom: S.md }}>
           <Text style={{ fontSize: 12.5, color: C.muted }}>{`${t('version')} ${Constants.expoConfig?.version}`}</Text>
-          <Text style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>{API_BASE_URL}</Text>
         </View>
         <TouchableOpacity
           onPress={async () => {

@@ -104,7 +104,7 @@ const greetKey = () => {
 };
 
 export function HomeTab() {
-  const { field, t, lang, farmer, openBugReport } = useApp();
+  const { field, t, lang, farmer } = useApp();
   const id = field?.id;
   // "advise on my current crop" instead of proposing a switch (backend: ?keep_current=true)
   const [keep, setKeep] = useState(false);
@@ -165,9 +165,6 @@ export function HomeTab() {
               {field?.name}{field?.current_crop ? ` · ${cropLabel(lang, field.current_crop)}` : ''}
             </Text>
           </View>
-          <TouchableOpacity onPress={() => openBugReport('Home')} accessibilityLabel={t('reportProblem')} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} style={{ padding: 6, marginTop: 2 }}>
-            <Icon name="bug" size={22} color={C.muted} />
-          </TouchableOpacity>
         </View>
 
         {today ? (
