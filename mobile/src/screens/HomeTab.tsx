@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { RefreshControl, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { Animated, Easing, RefreshControl, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { AuthBackdrop } from '../components/AuthBackdrop';
 import { BarMeter, SegmentedMeter } from '../components/Charts';
 import { Icon, IconName } from '../../icons';
@@ -10,7 +10,7 @@ import { feedback } from '../feedback';
 import { useNotifications } from '../notifications';
 import { getReminderSettings } from '../reminderSettings';
 import { SkeletonCard } from '../skeleton';
-import { C, levelColor, S } from '../theme';
+import { C, H, levelColor, S } from '../theme';
 import { Badge, Banner, Btn, KV, LastUpdated, Muted, st } from '../ui';
 
 function ErrorBox({ load }: { load: Load<unknown> }) {
@@ -67,6 +67,26 @@ function Why({ text }: { text?: string | null }) {
         </View>
       ) : null}
     </View>
+  );
+}
+
+function HeroHeader({ name, crop, greeting, fadeAnim }: {
+  name: string; crop: string | null; greeting: string; fadeAnim: Animated.Value;
+}) {
+  return (
+    <Animated.View style={{ opacity: fadeAnim, backgroundColor: H.heroBg, borderRadius: 28, overflow: 'hidden', marginBottom: S.md }}>
+      <View style={{ position: 'absolute', right: -40, top: -40, width: 180, height: 180, borderRadius: 90, backgroundColor: 'rgba(255,255,255,0.06)' }} />
+      <View style={{ position: 'absolute', left: -20, bottom: -30, width: 130, height: 130, borderRadius: 65, backgroundColor: 'rgba(255,255,255,0.04)' }} />
+      <View style={{ padding: S.xl, paddingBottom: S.lg }}>
+        <Text style={{ fontSize: 13, fontWeight: '600', letterSpacing: 0.8, color: H.heroMuted, textTransform: 'uppercase' }}>{greeting}</Text>
+        <Text style={{ fontSize: 28, fontWeight: '900', color: H.heroText, marginTop: 4, letterSpacing: -0.5 }} numberOfLines={1} adjustsFontSizeToFit>{name || '—'}</Text>
+        {crop ? (
+          <View style={{ marginTop: S.sm, alignSelf: 'flex-start', backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: 20, paddingHorizontal: S.md, paddingVertical: 4 }}>
+            <Text style={{ fontSize: 13, fontWeight: '700', color: H.heroAccent }}>{crop}</Text>
+          </View>
+        ) : null}
+      </View>
+    </Animated.View>
   );
 }
 

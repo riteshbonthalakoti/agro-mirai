@@ -28,3 +28,19 @@ export function levelColor(level?: string | null): string {
     default: return C.muted;
   }
 }
+
+/** Home-tab-exclusive palette. No other screen should import this. */
+export const H = {
+  bg:           '#F5F0E8',   // warm ivory page background
+  heroBg:       '#1B4332',   // deep forest green hero
+  heroText:     '#FFFFFF',
+  heroMuted:    'rgba(255,255,255,0.65)',
+  heroAccent:   '#74C69D',   // mint highlight inside hero
+  pillBg:       '#FFFFFF',
+  pillBorder:   '#D8E6D0',
+  sectionStripe: {
+    crop: '#74C69D',   // mint green
+    irr:  '#4FC3F7',   // sky blue
+    dis:  '#FFB74D',   // amber
+  } as Record<string, string>,
+};
