@@ -112,11 +112,29 @@ function AdvisoryCard({ a }: { a: Advisory }) {
 
   const sevColor = levelColor(a.severity);
   const paras = (out[1] || plain).split(/\n\s*\n/).map((x) => x.trim()).filter(Boolean);
-  const ROW: { icon: IconName; tint: string; cap: string }[] = [
-    { icon: 'sprout', tint: '#E8F3E8', cap: t('cropRec') },
-    { icon: 'drop', tint: '#E3F1FA', cap: t('irrigation') },
-    { icon: 'blight', tint: '#FDF0DC', cap: t('diseaseRisk') },
+
+  const ICON_DEFS: { icon: IconName; tint: string; cap: string; keywords: RegExp }[] = [
+    { icon: 'sprout', tint: '#E8F3E8', cap: t('cropRec'),    keywords: /\b(crop|sow|plant|seed|harvest|fertiliz|nutrient|yield|growth|कसल|ಬೆಳೆ|పంట)/i },
+    { icon: 'drop',   tint: '#E3F1FA', cap: t('irrigation'), keywords: /\b(water|irrigat|rain|moisture|drip|soil\s*water|flood|ಿರಿ|ನೀರು|నీరు|पानी|सिंचाई)/i },
+    { icon: 'blight', tint: '#FDF0DC', cap: t('diseaseRisk'), keywords: /\b(disease|pest|fungus|blight|rust|wilt|infestation|spray|रोग|ರೋಗ|వ్యాధి)/i },
   ];
+
+  function pickIcon(text: string, used: Set<IconName>) {
+    for (const d of ICON_DEFS) {
+      if (!used.has(d.icon) && d.keywords.test(text)) return d;
+    }
+    for (const d of ICON_DEFS) {
+      if (!used.has(d.icon)) return d;
+    }
+    return { icon: 'info' as IconName, tint: '#EEF1E8', cap: '' };
+  }
+
+  const usedIcons = new Set<IconName>();
+  const ROW = paras.map((p) => {
+    const d = pickIcon(p, usedIcons);
+    usedIcons.add(d.icon as IconName);
+    return d;
+  });
 
   return (
     <View style={{ backgroundColor: '#fff', borderRadius: 26, marginBottom: S.lg, overflow: 'hidden', borderWidth: 1, borderColor: '#E3E8DC', shadowColor: '#000', shadowOpacity: 0.07, shadowRadius: 12, shadowOffset: { width: 0, height: 4 }, elevation: 3 }}>
@@ -136,14 +154,14 @@ function AdvisoryCard({ a }: { a: Advisory }) {
         {paras.length >= 2 ? (
           <View style={{ marginTop: S.md }}>
             {paras.map((p, k) => {
-              const r = ROW[k] ?? { icon: 'info' as IconName, tint: '#EEF1E8', cap: '' };
+              const r = ROW[k];
               return (
                 <View key={k} style={{ flexDirection: 'row', marginBottom: S.md }}>
                   <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: r.tint, alignItems: 'center', justifyContent: 'center', marginRight: S.md }}>
                     <Icon name={r.icon} size={22} color={C.accent} />
                   </View>
                   <View style={{ flex: 1 }}>
-                    {paras.length === 3 && r.cap ? <Text style={{ fontSize: 12.5, fontWeight: '800', letterSpacing: 0.6, color: C.muted, marginBottom: 2 }}>{r.cap.toUpperCase()}</Text> : null}
+                    {r.cap ? <Text style={{ fontSize: 12.5, fontWeight: '800', letterSpacing: 0.6, color: C.muted, marginBottom: 2 }}>{r.cap.toUpperCase()}</Text> : null}
                     <Text style={{ fontSize: 16.5, lineHeight: 24, color: C.text }}>{p}</Text>
                   </View>
                 </View>
@@ -342,6 +360,7 @@ export function AdviceTab() {
 
   const sorted = [...(advList.data || [])].sort((x, y) => (x.created_at < y.created_at ? 1 : -1));
   const older = sorted.slice(1, 6);
+  const latestIsToday = !!sorted[0] && new Date(sorted[0].created_at).toDateString() === new Date().toDateString();
 
   const segTab = (key: 'recs' | 'questions', label: string) => (
     <TouchableOpacity
@@ -375,16 +394,22 @@ export function AdviceTab() {
           {advList.data && sorted.length === 0 && !creating ? <Muted>{t('noAdvisories')}</Muted> : null}
           {sorted[0] ? <AdvisoryCard key={sorted[0].id} a={sorted[0]} /> : null}
 
-          {/* fresh advice */}
-          <TouchableOpacity
-            onPress={() => generate()}
-            disabled={creating}
-            activeOpacity={0.85}
-            style={{ minHeight: 56, borderRadius: 28, borderWidth: 2, borderColor: C.accent, backgroundColor: 'rgba(255,255,255,0.9)', alignItems: 'center', justifyContent: 'center', marginBottom: S.lg, flexDirection: 'row' }}
-          >
-            <Text style={{ fontSize: 20, color: C.accent, marginRight: S.sm }}>{creating ? '…' : '↻'}</Text>
-            <Text style={{ fontSize: 17, fontWeight: '800', color: C.accent }}>{creating ? t('loading') : t('getAdvice')}</Text>
-          </TouchableOpacity>
+          {/* fresh advice — prominent when empty, quiet link when today's exists */}
+          {latestIsToday ? (
+            <TouchableOpacity onPress={() => generate()} disabled={creating} activeOpacity={0.7} style={{ alignItems: 'center', marginBottom: S.lg }}>
+              <Text style={{ fontSize: 14, color: C.muted }}>{creating ? t('loading') : t('getAdvice')}</Text>
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity
+              onPress={() => generate()}
+              disabled={creating}
+              activeOpacity={0.85}
+              style={{ minHeight: 56, borderRadius: 28, borderWidth: 2, borderColor: C.accent, backgroundColor: 'rgba(255,255,255,0.9)', alignItems: 'center', justifyContent: 'center', marginBottom: S.lg, flexDirection: 'row' }}
+            >
+              <Text style={{ fontSize: 20, color: C.accent, marginRight: S.sm }}>{creating ? '…' : '↻'}</Text>
+              <Text style={{ fontSize: 17, fontWeight: '800', color: C.accent }}>{creating ? t('loading') : t('getAdvice')}</Text>
+            </TouchableOpacity>
+          )}
 
           {older.length ? (
             <>
