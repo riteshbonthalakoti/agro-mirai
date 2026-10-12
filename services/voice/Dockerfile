@@ -10,7 +10,9 @@
 # internet on first boot and a persistent volume for the HF cache so
 # that download doesn't repeat on every restart.
 
-FROM python:3.12-slim
+# 3.11, not 3.12 — piper-tts's piper-phonemize dependency has no Linux
+# wheel for cp312 on PyPI (checked directly), only up through cp311.
+FROM python:3.11-slim
 
 # ffmpeg — Module 23: transcodes Piper's native WAV output to OGG/Vorbis
 # before /text-to-speech responds, so the main API's TTS endpoint never
