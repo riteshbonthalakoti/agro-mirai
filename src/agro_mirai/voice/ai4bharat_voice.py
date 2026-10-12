@@ -157,23 +157,25 @@ class AI4BharatVoiceService:
     def _get_translate_model(self, source_lang: str, target_lang: str):
         direction = (source_lang, target_lang)
         if direction not in self._translate_models:
-            if source_lang == "en":
-                repo_dir = self._model_dir / "indictrans2-en-indic-dist-200M"
-            else:
-                repo_dir = self._model_dir / "indictrans2-indic-en-dist-200M"
-            if not repo_dir.exists():
-                raise VoiceUnavailableError(
-                    f"translation model not downloaded: {repo_dir} does not "
-                    "exist (see docs/TOOLING.md for the hf download command)"
-                )
+            repo_id = (
+                "ai4bharat/indictrans2-en-indic-dist-200M"
+                if source_lang == "en"
+                else "ai4bharat/indictrans2-indic-en-dist-200M"
+            )
+            # Local snapshot dir (a dev machine that already ran the
+            # `hf download ... --local-dir models/voice/<name>` from
+            # docs/TOOLING.md) wins if present; otherwise fall through to
+            # the HF repo id, same lazy-download-into-HF_HOME pattern as
+            # IndicConformer/Whisper below -- both repos are HF-gated, so
+            # this needs HF_TOKEN set (an account with access granted).
+            repo_dir = self._model_dir / repo_id.split("/")[1]
+            source = str(repo_dir) if repo_dir.exists() else repo_id
             try:
                 from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
 
-                tok = AutoTokenizer.from_pretrained(str(repo_dir), trust_remote_code=True)
-                model = AutoModelForSeq2SeqLM.from_pretrained(
-                    str(repo_dir), trust_remote_code=True
-                )
-            except Exception as exc:  # pragma: no cover - defensive
+                tok = AutoTokenizer.from_pretrained(source, trust_remote_code=True)
+                model = AutoModelForSeq2SeqLM.from_pretrained(source, trust_remote_code=True)
+            except Exception as exc:
                 raise VoiceUnavailableError(f"failed to load translation model: {exc}") from exc
             self._translate_models[direction] = (tok, model)
         return self._translate_models[direction]
