@@ -40,6 +40,24 @@ def get_remote_voice_service() -> RemoteVoiceService | None:
         return None
 
 
+#: Translation (IndicTrans2) and Kannada/Telugu TTS (VITS) load much
+#: heavier models than STT/Piper -- on a free-tier instance, all of them
+#: sharing one process's memory is what caused crash-restart loops under
+#: load. VOICE_SERVICE_HEAVY_URL, when set, points those two call sites
+#: at a second, isolated deployment of the same services/voice image so
+#: the lighter STT/Piper service never has to hold IndicTrans2/VITS in
+#: memory. Falls back to the regular service if unset, so a single-service
+#: local dev setup still works unchanged.
+def get_remote_voice_service_heavy() -> RemoteVoiceService | None:
+    url = os.environ.get("VOICE_SERVICE_HEAVY_URL", "").strip()
+    if not url:
+        return get_remote_voice_service()
+    try:
+        return RemoteVoiceService(base_url=url)
+    except VoiceUnavailableError:
+        return None
+
+
 _TRANSLATION_CACHE: dict[tuple[str, str, str], str] = {}
 _AUDIO_CACHE: dict[tuple[str, str], bytes] = {}
 _PARA_BREAK = chr(10) * 2
@@ -115,7 +133,7 @@ def translate_text(text: str, source_lang: str, target_lang: str) -> str | None:
     if sarvam_result is not None:
         _TRANSLATION_CACHE[key] = sarvam_result
         return sarvam_result
-    service = get_remote_voice_service()
+    service = get_remote_voice_service_heavy()
     if service is None:
         return None
     try:
@@ -151,12 +169,20 @@ def synthesize_advisory_audio(advisory: Advisory, language: str) -> bytes | None
     return audio
 
 
+#: en/hi use Piper (light, ~60MB voice files); kn/te use VITS (heavier HF
+#: model) -- mirrors ai4bharat_voice.py's own _PIPER_VOICE_PATH split, so
+#: VITS synthesis is routed to the same isolated service as translation.
+_PIPER_LANGS = {"en", "hi"}
+
+
 def _speak(text: str, language: str) -> bytes | None:
     """Sarvam Bulbul first (~1 s, natural voice), local Piper/VITS second."""
     audio = sarvam.synthesize(text, language) if sarvam.sarvam_configured() else None
     if audio is not None:
         return audio
-    service = get_remote_voice_service()
+    service = (
+        get_remote_voice_service() if language in _PIPER_LANGS else get_remote_voice_service_heavy()
+    )
     if service is None:
         return None
     try:
