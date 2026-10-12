@@ -305,7 +305,9 @@ class AI4BharatVoiceService:
 
         buf = io.BytesIO()
         with wave.open(buf, "wb") as wav_file:
-            self._piper_voices[lang].synthesize_wav(text, wav_file)
+            # piper-tts==1.2.0's method is `synthesize`, not `synthesize_wav`
+            # -- it sets channels/rate/width on wav_file itself.
+            self._piper_voices[lang].synthesize(text, wav_file)
         return buf.getvalue()
 
     def _synthesize_vits(self, text: str, lang: str) -> bytes:
