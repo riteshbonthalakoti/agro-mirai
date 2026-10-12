@@ -25,6 +25,17 @@ WORKDIR /app
 COPY services/voice/requirements.txt ./requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Piper voice files (en, hi) — public, ungated repo, so this works at
+# build time with no HF token. IndicTrans2 and vits_rasa_13 are HF-gated
+# (confirmed via a 401 on an anonymous request) and need an HF_TOKEN
+# from an account that's been granted access to both; not done here.
+RUN hf download rhasspy/piper-voices \
+    en/en_US/lessac/medium/en_US-lessac-medium.onnx \
+    en/en_US/lessac/medium/en_US-lessac-medium.onnx.json \
+    hi/hi_IN/rohan/medium/hi_IN-rohan-medium.onnx \
+    hi/hi_IN/rohan/medium/hi_IN-rohan-medium.onnx.json \
+    --local-dir /app/models/voice/piper
+
 COPY src/agro_mirai /app/agro_mirai_pkg/agro_mirai
 ENV PYTHONPATH=/app/agro_mirai_pkg
 
