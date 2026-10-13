@@ -167,8 +167,18 @@ def test_speak_prefers_sarvam(monkeypatch):
     assert voice_client.synthesize_answer_audio("hi", "en") == b"MP3"
 
 
-def test_translate_prefers_sarvam(monkeypatch):
+def test_translate_prefers_heavy_service_over_sarvam(monkeypatch):
+    # Module 58: re-ordered so the (now isolated) heavy service is tried
+    # before Sarvam, not after -- see voice_client.translate_text.
+    fake = MagicMock()
+    fake.translate.return_value = "heavy-tr"
+    monkeypatch.setattr(voice_client, "get_remote_voice_service_heavy", lambda: fake)
+    monkeypatch.setattr(voice_client.sarvam, "sarvam_configured", lambda: pytest.fail("should not be used"))
+    assert voice_client.translate_text("Water now. Then rest.", "en", "kn") == "heavy-tr"
+
+
+def test_translate_falls_back_to_sarvam_when_heavy_unavailable(monkeypatch):
+    monkeypatch.setattr(voice_client, "get_remote_voice_service_heavy", lambda: None)
     monkeypatch.setattr(voice_client.sarvam, "sarvam_configured", lambda: True)
     monkeypatch.setattr(voice_client.sarvam, "translate", lambda t, s, g: "TR:" + t)
-    monkeypatch.setattr(voice_client, "get_remote_voice_service", lambda: pytest.fail("should not be used"))
     assert voice_client.translate_text("Water now. Then rest.", "en", "kn") == "TR:Water now. Then rest."

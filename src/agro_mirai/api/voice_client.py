@@ -13,6 +13,7 @@ AI4Bharat/torch are never imported into this process
 """
 from __future__ import annotations
 
+import logging
 import os
 
 from agro_mirai.api import sarvam_client as sarvam
@@ -20,6 +21,8 @@ from agro_mirai.api.gemini_client import ask_gemini
 from agro_mirai.persistence.models import Advisory
 from agro_mirai.voice.interface import VoiceUnavailableError
 from agro_mirai.voice.remote_voice import RemoteVoiceService
+
+logger = logging.getLogger("agro_mirai.api.voice_client")
 
 _MAX_FIELDS_IN_PROMPT = 5
 _MAX_ADVISORIES_PER_FIELD = 1
@@ -119,31 +122,43 @@ def _sarvam_pieces(paragraph: str) -> list[str]:
 
 def translate_text(text: str, source_lang: str, target_lang: str) -> str | None:
     """Never-raise translate of server-generated English text (Module 34
-    follow-up, reworked in Module 39): reuses ``RemoteVoiceService``/IndicTrans2.
-    Long text is split into paragraphs and sentence-sized chunks (a whole
-    advisory in one call was rejected with 422) and every result is cached in
-    memory, so a repeat request is instant. Returns ``None`` on any
-    voice-service unavailability so callers fall back to the original text."""
+    follow-up, reworked in Module 39, re-ordered Module 58): reuses
+    ``RemoteVoiceService``/IndicTrans2 first, Sarvam second -- the heavy
+    service is the primary voice stack now that it's isolated onto its
+    own instance (decisions/0019), Sarvam is the fallback for when it's
+    down/OOM'd, not the other way around. Long text is split into
+    paragraphs and sentence-sized chunks (a whole advisory in one call
+    was rejected with 422) and every result is cached in memory, so a
+    repeat request is instant. Returns ``None`` on total unavailability
+    so callers fall back to the original text."""
     if source_lang == target_lang or not text.strip():
         return text
     key = (text, source_lang, target_lang)
     if key in _TRANSLATION_CACHE:
         return _TRANSLATION_CACHE[key]
-    sarvam_result = _sarvam_translate(text, source_lang, target_lang)
-    if sarvam_result is not None:
-        _TRANSLATION_CACHE[key] = sarvam_result
-        return sarvam_result
+
+    result = None
     service = get_remote_voice_service_heavy()
-    if service is None:
+    if service is not None:
+        try:
+            paragraphs = []
+            for para in text.split(_PARA_BREAK):
+                pieces = [service.translate(c, source_lang, target_lang) for c in _chunks(para)]
+                paragraphs.append(" ".join(pieces))
+            result = _PARA_BREAK.join(paragraphs)
+            logger.info("voice_translate_tier tier=heavy %s->%s", source_lang, target_lang)
+        except VoiceUnavailableError:
+            result = None
+
+    if result is None:
+        result = _sarvam_translate(text, source_lang, target_lang)
+        if result is not None:
+            logger.info("voice_translate_tier tier=sarvam %s->%s", source_lang, target_lang)
+
+    if result is None:
+        logger.info("voice_translate_tier tier=none %s->%s", source_lang, target_lang)
         return None
-    try:
-        paragraphs = []
-        for para in text.split(_PARA_BREAK):
-            pieces = [service.translate(c, source_lang, target_lang) for c in _chunks(para)]
-            paragraphs.append(" ".join(pieces))
-        result = _PARA_BREAK.join(paragraphs)
-    except VoiceUnavailableError:
-        return None
+
     _TRANSLATION_CACHE[key] = result
     return result
 
@@ -176,19 +191,43 @@ _PIPER_LANGS = {"en", "hi"}
 
 
 def _speak(text: str, language: str) -> bytes | None:
-    """Sarvam Bulbul first (~1 s, natural voice), local Piper/VITS second."""
-    audio = sarvam.synthesize(text, language) if sarvam.sarvam_configured() else None
-    if audio is not None:
-        return audio
-    service = (
-        get_remote_voice_service() if language in _PIPER_LANGS else get_remote_voice_service_heavy()
-    )
-    if service is None:
-        return None
-    try:
-        return service.text_to_speech(text, language)
-    except VoiceUnavailableError:
-        return None
+    """en/hi: unchanged -- Sarvam Bulbul first (~1 s, natural voice), the
+    light Piper service second. kn/te (Module 58): the opposite order --
+    agro-mirai-voice-heavy's VITS first (the real voice stack), Sarvam
+    second as a fallback for when the heavy service is down/OOM'd, then
+    ``None`` so the caller's existing text-instead-of-audio path (mobile's
+    ``voiceTextOnly`` string, already translated per-language) kicks in --
+    never silence. Logged per tier so a demo run can be traced to which
+    one actually served it."""
+    if language in _PIPER_LANGS:
+        audio = sarvam.synthesize(text, language) if sarvam.sarvam_configured() else None
+        if audio is not None:
+            return audio
+        service = get_remote_voice_service()
+        if service is None:
+            return None
+        try:
+            return service.text_to_speech(text, language)
+        except VoiceUnavailableError:
+            return None
+
+    service = get_remote_voice_service_heavy()
+    if service is not None:
+        try:
+            audio = service.text_to_speech(text, language)
+            logger.info("voice_tts_tier tier=heavy lang=%s", language)
+            return audio
+        except VoiceUnavailableError:
+            pass
+
+    if sarvam.sarvam_configured():
+        audio = sarvam.synthesize(text, language)
+        if audio is not None:
+            logger.info("voice_tts_tier tier=sarvam lang=%s", language)
+            return audio
+
+    logger.info("voice_tts_tier tier=none lang=%s", language)
+    return None
 
 
 def transcribe_audio(audio_bytes: bytes, expected_lang: str | None = None) -> tuple[str, str] | None:
