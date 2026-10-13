@@ -66,18 +66,52 @@ AGRO MIRAI is an AI-powered agricultural advisory platform designed for Indian s
 
 ---
 
-### C. Task 3 — Mobile UI Enhancements & Release APK
+### C. Task 3 — Mobile UI Enhancements, Leaf Scanner, and Maps
 - **UX & Transitions:**
   - Integrated `AnimatedTabPane` in `mobile/App.tsx` providing subtle fade and slide transitions between tabs.
   - Implemented `TabBarButton` with spring scale animations and clear active indicator bars.
+  - Migrated navigation and header icons universally to `lucide-react-native` vector icons (`Sprout`, `CloudRain`, `ShieldAlert`, `MapPin`, `Bell`, `FileText`, `Phone`, etc.), removing legacy emoji icons.
+  - Notification drawer with smooth slide-up bottom sheet and bell-swing micro-animation.
   - Enhanced `VoiceMode.tsx` to display localized warning badges when fallback text-only answers are returned.
-- **Release Signing & Config Plugin:**
-  - Keystore stored in `mobile/release-keys/release.keystore` (PKCS12 format).
-  - Config plugin `mobile/plugins/withReleaseSigning.js` automatically copies the keystore to `android/app/release.keystore` during `expo prebuild` and configures `signingConfigs.release` in `android/app/build.gradle`.
-  - Pass the keystore password at build time via the `RELEASE_KEYSTORE_PASSWORD` environment variable (never hardcoded in source control).
-- **Version Tracking:**
-  - `mobile/app.json`: `version: "2.2.2"`, `versionCode: 17`
-  - `mobile/android/app/build.gradle`: `versionName "2.2.2"`, `versionCode 17`
+- **Leaf Disease Scanner (`leaf_gate.py` & `ScanTab.tsx`):**
+  - Integrated dual-layer biological gate (`src/agro_mirai/models/leaf_gate.py`):
+    - Color distribution filter (evaluates chlorophyll/green hue vs. synthetic grayscale).
+    - Contour and gradient complexity check rejecting photos of faces, screens, memes, and non-foliage items.
+  - Removed confusing crop coverage disclaimers and raw confidence bars in `ScanTab.tsx`; replaced with structured, actionable farmer guidance (disease identification, immediate measures, preventive sprays).
+- **Field Map Screen (`MapTab.tsx`):**
+  - Upgraded to MapLibre GL with smooth satellite/terrain raster layer caching.
+  - Integrated live GPS auto-tracking with pulsing blue beacon dot.
+  - Added floating control to toggle camera focus between farmer's live phone GPS and registered field polygon.
+- **Farmer Data History (`DataTab.tsx`):**
+  - Added farmer-centric weekly summary cards for soil health, root-zone water balance, and NDVI vigor.
+  - Chronological agronomic timeline for sensor readings and historical advisories.
+
+---
+
+### D. Task 4 — Direct APK Distribution Pipeline & Edge CDN
+- **Problem:** GitHub Releases APK download links often fail or stall at 99% in Android web views and mobile browsers (e.g., Xiaomi Mi Browser, Chrome Data Saver) due to gzip transformation and connection resets.
+- **Solution:**
+  1. **Direct CDN Hosting (`web/`):**
+     - Release APK hosted directly at `https://agromirai.vercel.app/app-release.apk`.
+     - Vercel configuration (`vercel.json`) applies strict cache and binary delivery headers:
+       - `Content-Type: application/vnd.android.package-archive`
+       - `Content-Disposition: attachment; filename="app-release.apk"`
+       - `Cache-Control: public, max-age=31536000, immutable, no-transform`
+       - The `no-transform` directive guarantees mobile ISP middleboxes and proxy accelerators do not modify or buffer the stream, resolving the 99% download stall.
+  2. **Landing & Download Page (`web/download/index.html`):**
+     - Clean, responsive download page with auto-download trigger on mobile.
+     - Displays version badge (`v2.2.2`), release date, SHA-256 integrity hash, and step-by-step sideloading instructions.
+
+---
+
+### E. Task 5 — Native SMS OTP Autofill
+- **Android SMS Retriever API Integration:**
+  - Automated detection of incoming verification SMS messages without requesting high-risk `READ_SMS` runtime permissions.
+  - Formatted outbound SMS template in `src/agro_mirai/auth/otp_providers.py`:
+    ```text
+    <#> Your AGRO MIRAI verification code is: 123456
+    ```
+  - Cleaned template to omit trailing hash strings that triggered carrier spam filtering or confused farmers during manual entry.
 
 ---
 
@@ -106,6 +140,7 @@ AGRO MIRAI is an AI-powered agricultural advisory platform designed for Indian s
 4. **Artifact Location:**
    - Output APK: `mobile\android\app\build\outputs\apk\release\app-release.apk`
    - Verified release-signed with PKCS12 keystore `agro-mirai-release`.
+   - Universal APK (`versionCode: 17`, `versionName: 2.2.2`) supporting arm64-v8a, armeabi-v7a, x86, and x86_64.
 
 ---
 
@@ -113,17 +148,21 @@ AGRO MIRAI is an AI-powered agricultural advisory platform designed for Indian s
 
 | File | Purpose | Notes |
 |------|---------|-------|
-| `mobile/app.json` | Expo application manifest | Tracks `version`, `versionCode`, and registered config plugins. |
+| `mobile/app.json` | Expo application manifest | Tracks `version` (2.2.2), `versionCode` (17), config plugins. |
 | `mobile/plugins/withReleaseSigning.js` | Expo Config Plugin | Injects release signing config into `build.gradle` on prebuild. |
 | `mobile/release-keys/credentials.txt` | Keystore metadata | Contains store password, alias, and key passwords. |
 | `src/agro_mirai/api/render_logs.py` | Render log extractor | Queries service logs for OTP retrieval. |
 | `src/agro_mirai/api/sarvam_client.py` | Sarvam AI REST client | Multilingual STT/TTS/Translation fallbacks. |
 | `src/agro_mirai/api/voice_client.py` | Voice routing orchestrator | Implements tiered fallback logic. |
+| `src/agro_mirai/models/leaf_gate.py` | Biological leaf gate | Rejects non-foliage images before CNN / Gemini inference. |
+| `vercel.json` | Vercel routing & headers | Direct APK CDN delivery with `no-transform` header. |
 | `.env` | Backend environment secrets | Supabase, Weather, Gemini, Sarvam credentials. |
 
 ---
 
-## 5. Summary of Git Commits
+## 5. Summary of Recent Milestones & Git Commits
 
 - `06a8dd0`: `add cli.yaml session fallback for render otp lookup`
 - `5ccf919`: `add voice text fallback and smooth tab transitions`
+- `v2.2.2`: `v2.2.2 Universal release with Edge CDN distribution, SMS retriever autofill, MapLibre GPS, and leaf validation gate`
+

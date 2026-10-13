@@ -51,6 +51,14 @@ render env set SMS_GATEWAY_PASS=<gateway-password> --service <your-service-id>
 tab, then trigger a redeploy — either way, the app re-reads them at
 startup and refuses to start if `OTP_PROVIDER=log` was left set.)
 
+## Android SMS Retriever API & Native Auto-fill
+The SMS dispatch template in `src/agro_mirai/auth/otp_providers.py` formats messages as:
+```text
+<#> Your AGRO MIRAI verification code is: 123456
+```
+- `<#>` tells Android's Google Play Services SMS Retriever API that this is an app verification code.
+- Omission of trailing cryptographic app hashes prevents carrier SMS filters from flagging messages as spam, while maintaining instant auto-fill on supported Android devices.
+
 ## Testing without burning a real SMS
 
 Set `OTP_PROVIDER=test` and `OTP_TEST_NUMBERS=+91xxxxxxxxxx:123456` for

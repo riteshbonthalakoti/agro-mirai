@@ -1,0 +1,31 @@
+{
+  "model": "MobileNetV2 (torchvision, ImageNet-pretrained, fine-tuned last 3 feature blocks)",
+  "dataset": "Kaggle abdallahalidev/plantvillage-dataset, color/ split only",
+  "num_classes": 38,
+  "num_images_total": 54305,
+  "train_val_split": {"train_fraction": 0.85, "val_fraction": 0.15, "seed": 42},
+  "img_size": 224,
+  "epochs": 8,
+  "batch_size": 64,
+  "optimizer": "Adam(lr=1e-3, StepLR step_size=4 gamma=0.3)",
+  "trained_on": "Google Colab T4 GPU session, driven via colab CLI (colab exec)",
+  "trained_at": "2026-08-30",
+  "best_val_acc": 0.9923879680785758,
+  "final_epoch_train_acc": 0.9931109185441941,
+  "final_epoch_train_loss": 0.019914439626109094,
+  "history": [
+    {"epoch": 1, "train_loss": 0.22637267404169722, "train_acc": 0.9309575389948007, "val_acc": 0.965500306936771},
+    {"epoch": 2, "train_loss": 0.09876123413030362, "train_acc": 0.9683925476603119, "val_acc": 0.9535911602209944},
+    {"epoch": 3, "train_loss": 0.07454172088917946, "train_acc": 0.9741984402079723, "val_acc": 0.9812154696132597},
+    {"epoch": 4, "train_loss": 0.061944665640521555, "train_acc": 0.9799610051993067, "val_acc": 0.9797421731123389},
+    {"epoch": 5, "train_loss": 0.027633695062161123, "train_acc": 0.9904029462738302, "val_acc": 0.9896869244935543},
+    {"epoch": 6, "train_loss": 0.02217044416482946, "train_acc": 0.9918760831889082, "val_acc": 0.9861264579496624},
+    {"epoch": 7, "train_loss": 0.02119341973764935, "train_acc": 0.9931759098786829, "val_acc": 0.9921424186617557},
+    {"epoch": 8, "train_loss": 0.019914439626109094, "train_acc": 0.9931109185441941, "val_acc": 0.9923879680785758}
+  ],
+  "known_limitations": [
+    "Validation split is a random hold-out from the SAME PlantVillage lab-image distribution as training — this accuracy measures in-distribution generalization only, not real-field-photo generalization. See decisions/0018-disease-cnn.md for why real-field accuracy is expected to be materially lower.",
+    "Only 4 of 38 classes' crops (apple, corn/maize, grape, orange) are in AGRO MIRAI's 22-value crop_type enum.",
+    "No per-disease severity ground truth; risk_level is a confidence-based heuristic, not a learned severity signal — see disease_cnn_labels.py."
+  ]
+}

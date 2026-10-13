@@ -37,13 +37,27 @@ src/agro_mirai/       Flask API, models, persistence, acquisition, voice
 tests/                pytest suite (mirrors src/ layout)
 mobile/               React Native / Expo app (farmer-facing)
 web/                  landing page + admin dashboard (server-rendered/vanilla JS)
+decisions/           30 Architectural Decision Records (ADRs)
+docs/                 Comprehensive docs, evaluations, research, and guides (see docs/INDEX.md)
+specs/core/           enums.md & schema.yaml — CI-enforced contracts
 services/             standalone inference services (CNN ONNX, voice) for separate deployment
 migrations/           SQLite + Postgres schema migrations
-specs/core/            enums.md — the CI-enforced contract
-tools/                 CLI utilities (seeding, spec validation, training scripts)
-supabase/              Supabase-specific config
-data/                  small committed reference datasets
+tools/                CLI utilities (seeding, spec validation, training scripts)
+supabase/             Supabase-specific config
+data/                 small committed reference datasets
 ```
+
+## Documentation
+
+Full architectural documentation, research papers, evaluation reports, and deployment handovers are organized in:
+- **[Documentation Index](file:///c:/Projects/AGRO%20MIRAI/docs/INDEX.md)**: Master directory and technical navigation.
+- **[Architectural Decision Records](file:///c:/Projects/AGRO%20MIRAI/decisions/)**: 30 ADRs detailing all design choices.
+- **[Engineering Handover Guide](file:///c:/Projects/AGRO%20MIRAI/docs/NEXT_TEAM_HANDOVER.md)**: Complete handover for backend, mobile, and ops.
+
+## Download Mobile App (v2.2.2 Universal)
+- **Direct APK CDN Download**: [agromirai.vercel.app/app-release.apk](https://agromirai.vercel.app/app-release.apk)
+- **Web Download Page**: [agromirai.vercel.app/download](https://agromirai.vercel.app/download)
+
 
 ## Running it locally
 

@@ -13,6 +13,11 @@
 - `notificationScheduling.ts/test.ts`: Pure logic for "should schedule" decision (existing)
 - `backgroundAlerts.ts`: No-op when signed out (existing)
 
+## UI Presentation & Drawer
+- **Bell Micro-animation**: Tapping the notification bell in the mobile top navigation triggers a smooth ±15-degree chime swing animation.
+- **Slide-up Notification Sheet**: Replaced full-page modal/backdrop with a modern bottom drawer (`NotificationDrawer.tsx`) featuring gesture drag, unread badges, and direct navigation to alerts.
+
 ## Tests
 - `notificationScheduling.test.ts`: 9 tests covering account/field/advice/settings conditions
 - New: disabled reminders, multi-account switching with different settings
+
