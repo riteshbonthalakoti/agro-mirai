@@ -23,15 +23,34 @@ _TIMEOUT_S = 10.0
 _OTP_LINE = re.compile(r"otp_issued phone=(?P<phone>\S+) otp=(?P<otp>\d+) ts=(?P<ts>\S+)")
 
 
+def _get_render_credentials() -> tuple[str, str, str]:
+    api_key = os.environ.get("RENDER_API_KEY", "").strip()
+    service_id = os.environ.get("RENDER_SERVICE_ID", "").strip() or "srv-dadapin10e5c73e3qhf0"
+    owner_id = os.environ.get("RENDER_OWNER_ID", "").strip()
+
+    if not api_key or not owner_id:
+        cli_path = os.path.expanduser("~/.render/cli.yaml")
+        if os.path.exists(cli_path):
+            try:
+                import yaml
+                with open(cli_path, "r", encoding="utf-8") as f:
+                    cfg = yaml.safe_load(f) or {}
+                if not api_key:
+                    api_key = str(cfg.get("api", {}).get("key", "") or "").strip()
+                if not owner_id:
+                    owner_id = str(cfg.get("workspace", "") or "").strip()
+            except Exception:
+                pass
+    return api_key, service_id, owner_id
+
+
 def find_latest_otp(phone: str, lookback_limit: int = 300) -> dict | None:
     """Most recent ``otp_issued`` log line for ``phone``, or ``None`` if
     none is found in the last ``lookback_limit`` log lines (default 300
     is comfortably more than the busiest realistic 15-minute window) or
     Render isn't reachable/configured. Logs are already newest-first
     (direction=backward), so the first match is the latest."""
-    api_key = os.environ.get("RENDER_API_KEY", "").strip()
-    service_id = os.environ.get("RENDER_SERVICE_ID", "").strip()
-    owner_id = os.environ.get("RENDER_OWNER_ID", "").strip()
+    api_key, service_id, owner_id = _get_render_credentials()
     if not api_key or not service_id or not owner_id:
         return None
 
