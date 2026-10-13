@@ -2,7 +2,7 @@
   "expo": {
     "name": "Agro Mirai",
     "slug": "agro-mirai",
-    "version": "2.2.1",
+    "version": "2.2.2",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -16,7 +16,7 @@
       },
       "predictiveBackGestureEnabled": false,
       "package": "com.ritesh1918.mobile",
-      "versionCode": 16,
+      "versionCode": 17,
       "permissions": [
         "android.permission.RECORD_AUDIO",
         "android.permission.MODIFY_AUDIO_SETTINGS",
@@ -58,6 +58,7 @@
       "expo-secure-store",
       "./plugins/withCleartextTraffic",
       "./plugins/withPinnedJdk",
+      "./plugins/withReleaseSigning",
       "expo-font",
       "@react-native-community/datetimepicker",
       "expo-background-task",

@@ -87,6 +87,7 @@ export function VoiceMode({ visible, onClose }: { visible: boolean; onClose: () 
   const [res, setRes] = useState<AskResult | null>(null);
   const [err, setErr] = useState('');
   const [offline, setOffline] = useState(false);
+  const [textOnly, setTextOnly] = useState(false);
   const stateRef = useRef<VState>('idle');
   const level = useRef(new Animated.Value(0)).current;
   const lastLevel = useRef(0);
@@ -112,7 +113,7 @@ export function VoiceMode({ visible, onClose }: { visible: boolean; onClose: () 
   }, [rs.metering]);
 
   const startListening = useCallback(async () => {
-    setErr(''); setRes(null); setOffline(false);
+    setErr(''); setRes(null); setOffline(false); setTextOnly(false);
     const perm = await requestRecordingPermissionsAsync();
     if (!perm.granted) { setErr(tt('micPerm')); setVS('idle'); return; }
     await stopAudio(); // interrupts the answer if it was still playing
@@ -147,12 +148,20 @@ export function VoiceMode({ visible, onClose }: { visible: boolean; onClose: () 
       if (field?.id) saveConversation(field.id, { question: r.question_text, answer: r.answer_text, lang: r.language }).catch(() => {});
       setVS('speaking');
       if (r.answer_audio_base64) {
+        setTextOnly(false);
         await playBase64(r.answer_audio_base64, r.answer_audio_mimetype, () => setVS('idle'));
       } else if (r.answer_text) {
-        // server voice unavailable: read the answer with the phone's own voice, and say so
+        // server voice unavailable: try device voice, or show honest text fallback message in farmer's language
         const ok = await speakOnDevice(r.answer_text, lang, () => setVS('idle'));
-        if (ok) setOffline(true); else setVS('idle');
-      } else setVS('idle');
+        if (ok) {
+          setOffline(true);
+        } else {
+          setTextOnly(true);
+          setVS('idle');
+        }
+      } else {
+        setVS('idle');
+      }
     } catch (e) {
       const ae = e as ApiError;
       if (ae.status !== 503 && ae.status !== -1) {
@@ -173,7 +182,7 @@ export function VoiceMode({ visible, onClose }: { visible: boolean; onClose: () 
     if (capTimer.current) clearTimeout(capTimer.current);
     stopAudio().catch(() => {});
     if (stateRef.current === 'listening') recorder.stop().catch(() => {});
-    setVS('idle'); setRes(null); setErr(''); setOffline(false);
+    setVS('idle'); setRes(null); setErr(''); setOffline(false); setTextOnly(false);
     onClose();
   };
 
@@ -192,6 +201,7 @@ export function VoiceMode({ visible, onClose }: { visible: boolean; onClose: () 
     err ? err :
     state === 'listening' ? tt('voiceListeningHint') :
     state === 'speaking' ? tt('voiceInterrupt') :
+    textOnly && res ? tt('voiceTextOnly') :
     state === 'idle' && !res ? tt('askIdle') : '';
 
   return (
@@ -223,7 +233,7 @@ export function VoiceMode({ visible, onClose }: { visible: boolean; onClose: () 
             <Orb state={state} level={level} />
           </TouchableOpacity>
           <Text style={{ fontSize: 26, fontWeight: '800', color: C.text, marginTop: res ? S.md : 0 }}>{status}</Text>
-          {sub ? <Text style={{ fontSize: 16, lineHeight: 23, color: err ? C.danger : C.muted, textAlign: 'center', marginTop: S.xs, paddingHorizontal: S.xl }}>{sub}</Text> : null}
+          {sub ? <Text style={{ fontSize: 16, lineHeight: 23, color: err ? C.danger : textOnly ? '#B45309' : C.muted, textAlign: 'center', marginTop: S.xs, paddingHorizontal: S.xl }}>{sub}</Text> : null}
           {offline && state === 'speaking' ? <Text style={{ fontSize: 13, color: C.muted, marginTop: 4 }}>{tt('voiceFallbackToast')}</Text> : null}
         </View>
 
@@ -231,6 +241,11 @@ export function VoiceMode({ visible, onClose }: { visible: boolean; onClose: () 
         <ScrollView style={{ flex: 1, marginTop: S.md }} contentContainerStyle={{ paddingHorizontal: S.lg, paddingBottom: S.lg }} showsVerticalScrollIndicator={false}>
           {res ? (
             <>
+              {textOnly ? (
+                <View style={{ backgroundColor: '#FEF3C7', borderRadius: 14, paddingVertical: 10, paddingHorizontal: 14, marginBottom: S.sm, alignItems: 'center', borderWidth: 1, borderColor: '#FDE68A' }}>
+                  <Text style={{ fontSize: 13.5, fontWeight: '700', color: '#92400E', textAlign: 'center' }}>{tt('voiceTextOnly')}</Text>
+                </View>
+              ) : null}
               <Text style={{ fontSize: 15, lineHeight: 22, color: C.muted, fontStyle: 'italic', textAlign: 'center' }}>{`“${res.question_text}”`}</Text>
               <View style={{ backgroundColor: 'rgba(255,255,255,0.92)', borderRadius: 22, padding: S.lg, marginTop: S.md, borderWidth: 1, borderColor: '#DDE7D3' }}>
                 <Text style={{ fontSize: 12.5, fontWeight: '800', letterSpacing: 0.8, color: C.accent, marginBottom: 6 }}>{tt('answer').toUpperCase()}</Text>

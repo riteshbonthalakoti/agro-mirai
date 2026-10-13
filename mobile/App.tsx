@@ -144,6 +144,102 @@ function Header() {
 type Phase = 'boot' | 'lang' | 'perms' | 'auth' | 'tour' | 'main';
 type Tab = 'home' | 'data' | 'advice' | 'scan' | 'me';
 
+function AnimatedTabPane({ active, children }: { active: boolean; children: React.ReactNode }) {
+  const anim = useRef(new Animated.Value(active ? 1 : 0)).current;
+
+  useEffect(() => {
+    if (active) {
+      anim.setValue(0);
+      Animated.timing(anim, {
+        toValue: 1,
+        duration: 180,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }).start();
+    }
+  }, [active, anim]);
+
+  if (!active) return null;
+
+  return (
+    <Animated.View
+      style={{
+        flex: 1,
+        opacity: anim,
+        transform: [
+          {
+            translateY: anim.interpolate({
+              inputRange: [0, 1],
+              outputRange: [6, 0],
+            }),
+          },
+        ],
+      }}
+    >
+      {children}
+    </Animated.View>
+  );
+}
+
+function TabBarButton({
+  label,
+  icon,
+  on,
+  onPress,
+  tabRef,
+}: {
+  label: string;
+  icon: IconName;
+  on: boolean;
+  onPress: () => void;
+  tabRef: (r: any) => void;
+}) {
+  const scale = useRef(new Animated.Value(on ? 1.05 : 1)).current;
+
+  useEffect(() => {
+    Animated.spring(scale, {
+      toValue: on ? 1.05 : 1,
+      tension: 120,
+      friction: 12,
+      useNativeDriver: true,
+    }).start();
+  }, [on, scale]);
+
+  return (
+    <View ref={tabRef} collapsable={false} style={{ flex: 1 }}>
+      <TouchableOpacity
+        onPress={onPress}
+        activeOpacity={0.75}
+        style={{ paddingTop: 8, paddingBottom: 10, alignItems: 'center' }}
+      >
+        <View
+          style={{
+            height: 3,
+            width: 28,
+            borderRadius: 2,
+            marginBottom: 6,
+            backgroundColor: on ? C.accent : 'transparent',
+          }}
+        />
+        <Animated.View style={{ alignItems: 'center', transform: [{ scale }] }}>
+          <Icon name={icon} size={24} color={on ? C.accent : C.muted} />
+          <Text
+            style={{
+              fontSize: 11,
+              marginTop: 3,
+              fontWeight: on ? '700' : '500',
+              color: on ? C.accent : C.muted,
+            }}
+            numberOfLines={1}
+          >
+            {label}
+          </Text>
+        </Animated.View>
+      </TouchableOpacity>
+    </View>
+  );
+}
+
 const isLang = (v: unknown): v is Lang => LANGS.some((l) => l.code === v);
 
 export default function App() {
@@ -702,35 +798,31 @@ function RootInner({ lang, setLang }: { lang: Lang; setLang: (l: Lang) => void }
           <>
             <Header />
             <View style={{ flex: 1 }}>
-              {tab === 'home' && <HomeTab />}
-              {tab === 'data' && <DataTab />}
-              {tab === 'advice' && <AdviceTab key={field?.id} />}
-              {tab === 'scan' && <ScanTab />}
-              {tab === 'me' && (
+              <AnimatedTabPane active={tab === 'home'}><HomeTab /></AnimatedTabPane>
+              <AnimatedTabPane active={tab === 'data'}><DataTab /></AnimatedTabPane>
+              <AnimatedTabPane active={tab === 'advice'}><AdviceTab key={field?.id} /></AnimatedTabPane>
+              <AnimatedTabPane active={tab === 'scan'}><ScanTab /></AnimatedTabPane>
+              <AnimatedTabPane active={tab === 'me'}>
                 <MeTab
                   initialScreenContext={bugReportContext ?? undefined}
                   onConsumeScreenContext={() => setBugReportContext(null)}
                 />
-              )}
+              </AnimatedTabPane>
             </View>
             <View style={{ flexDirection: 'row', borderTopWidth: 1, borderTopColor: C.border, backgroundColor: C.bg }}>
               {([
                 ['home', t('tabHome'), 'home'], ['data', t('tabData'), 'field'], ['advice', t('tabAdvice'), 'speaker'],
                 ['scan', t('tabScan'), 'camera'], ['me', t('tabMe'), 'user'],
-              ] as [Tab, string, IconName][]).map(([k, label, icon]) => {
-                const on = tab === k;
-                return (
-                  <View key={k} ref={(r) => { tabRefs.current[k] = r; }} collapsable={false} style={{ flex: 1 }}>
-                  <TouchableOpacity onPress={() => { if (k !== tab) feedback.tap(); setTab(k); }} style={{ paddingTop: 8, paddingBottom: 10, alignItems: 'center' }}>
-                    <View style={{ height: 3, width: 28, borderRadius: 2, marginBottom: 6, backgroundColor: on ? C.accent : 'transparent' }} />
-                    <Icon name={icon} size={24} color={on ? C.accent : C.muted} />
-                    <Text style={{ fontSize: 11, marginTop: 3, fontWeight: on ? '700' : '400', color: on ? C.accent : C.muted }} numberOfLines={1}>
-                      {label}
-                    </Text>
-                  </TouchableOpacity>
-                  </View>
-                );
-              })}
+              ] as [Tab, string, IconName][]).map(([k, label, icon]) => (
+                <TabBarButton
+                  key={k}
+                  label={label}
+                  icon={icon}
+                  on={tab === k}
+                  onPress={() => { if (k !== tab) feedback.tap(); setTab(k); }}
+                  tabRef={(r) => { tabRefs.current[k] = r; }}
+                />
+              ))}
             </View>
           </>
         )}
