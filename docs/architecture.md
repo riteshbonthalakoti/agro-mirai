@@ -380,3 +380,29 @@ The main API uses `RemoteCropModel` and `RemoteIrrigationModel` (`src/agro_mirai
 Render Free Tier web services automatically spin down after 15 minutes of zero traffic. To prevent cold-start delays (50–60s) from affecting mobile users, an automated **GitHub Actions Keep-Alive Workflow** (`.github/workflows/keep_alive.yml`) runs on a 12-minute schedule (`cron: '*/12 * * * *'`), sending HTTP GET `/health` requests to all 3 Render URLs to keep all instances permanently awake at zero cost.
 
 > **Update (Module 44):** the `agro-mirai-tabular` service and `RemoteCropModel`/`RemoteIrrigationModel` described above were removed. Crop and irrigation advice run in the main API as rules (EcoCrop, water balance). See decisions/0029.
+
+## v2.2.2 Production Architecture Updates
+
+### 1. Dual-Layer Biological Leaf Gate (`src/agro_mirai/models/leaf_gate.py`)
+To prevent random non-plant images (documents, human faces, cartoons, memes) from reaching the CNN or Gemini fallback inference, a dual-layer OpenCV validation filter runs before model dispatch:
+- **Color Distribution Gate**: Evaluates HSV chlorophyll/green saturation and ratio against synthetic grayscale or monochromatic non-plant hues.
+- **Structural Complexity Gate**: Computes Laplacian variance and contour complexity to reject flat illustrations, graphics, or document text.
+- Rejection returns structured `422 UNPROCESSABLE_ENTITY` with actionable farmer feedback in the chosen regional language.
+
+### 2. 3-Tier Multilingual Voice Resilience (Kannada & Telugu)
+`agro-mirai-voice-heavy` (IndicTrans2 + VITS TTS) exceeds Render's 512 MB free RAM ceiling. The backend implements a 3-tier cascade:
+1. **Tier 1**: Attempts `agro-mirai-voice-heavy` container.
+2. **Tier 2 (Cloud Fallback)**: Calls Sarvam AI REST API (`saaras:v3` STT, `bulbul:v3` TTS, `sarvam-translate:v1`) rotating across multi-key failover.
+3. **Tier 3 (Honest In-App Guidance)**: Returns localized text fallback badge in the farmer's native tongue (Kannada/Telugu/Hindi/English) when quotas are exhausted.
+
+### 3. Edge CDN Direct APK Distribution Pipeline
+- Hosted at `https://agromirai.vercel.app/app-release.apk` with `no-transform` cache header to defeat mobile browser ISP middlebox compression hangs at 99%.
+- Public web download portal at `https://agromirai.vercel.app/download`.
+
+### 4. Interactive MapLibre GL GPS Beacon
+- Real-time phone GPS location tracking with smooth pulsing beacon marker in `MapTab.tsx`.
+- Dynamic toggle switching viewport between farmer's live phone GPS and registered field boundaries.
+
+### 5. Native SMS Retriever API Auto-fill
+- Outbound OTP template formatted as `<#> Your AGRO MIRAI verification code is: 123456` enabling Google Play Services automated detection without dangerous permissions.
+
