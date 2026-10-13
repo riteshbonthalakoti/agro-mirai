@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Download AGRO MIRAI Android App (v2.2.2)</title>
+<meta name="description" content="Download the AGRO MIRAI Android APK (v2.2.2, 54.4 MB) — direct high-speed download with zero redirects and full installation guide.">
+<link rel="canonical" href="https://agromirai.vercel.app/download">
+<meta name="theme-color" content="#3f6b3a">
+
+<!-- Favicons / app icons -->
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="32x32" href="./assets/favicon-32x32.png">
+<link rel="apple-touch-icon" sizes="180x180" href="./assets/apple-touch-icon.png">
+
+<!-- Fonts -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<style>
+  :root {
+    --soil-900: #241d13;
+    --leaf-700: #3f6b3a;
+    --leaf-600: #4d7c47;
+    --leaf-500: #5d8f56;
+    --leaf-100: #e7efe2;
+    --wheat-100: #f6efdf;
+    --wheat-200: #eee1c4;
+    --cream: #fbf7ee;
+    --paper: #ffffff;
+    --ink: #2a2620;
+    --ink-soft: #5a5346;
+    --line: #e3d9c4;
+    --shadow: 0 10px 30px rgba(43,35,24,0.08);
+    --shadow-lg: 0 24px 60px rgba(43,35,24,0.14);
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: 'Source Sans 3', -apple-system, sans-serif;
+    background: var(--cream);
+    color: var(--ink);
+    line-height: 1.6;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+  h1, h2, h3, .brand-word { font-family: 'Fraunces', Georgia, serif; }
+  a { color: inherit; text-decoration: none; }
+
+  /* Nav */
+  header.nav-bar {
+    padding: 18px 24px;
+    background: rgba(251,247,238,0.95);
+    border-bottom: 1px solid var(--line);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    backdrop-filter: blur(10px);
+  }
+  .brand { display: flex; align-items: center; gap: 10px; }
+  .brand img { width: 32px; height: 32px; object-fit: contain; }
+  .brand-word { font-size: 1.15rem; font-weight: 700; color: var(--soil-900); }
+  .brand-word span { color: var(--leaf-700); }
+  .back-link {
+    font-size: 0.92rem;
+    font-weight: 600;
+    color: var(--leaf-700);
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: opacity .2s;
+  }
+  .back-link:hover { opacity: 0.8; }
+
+  /* Main Container */
+  main {
+    flex: 1;
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 48px 24px 80px;
+    width: 100%;
+  }
+
+  /* Status Banner */
+  .dl-status-card {
+    background: var(--paper);
+    border: 2px solid var(--leaf-500);
+    border-radius: 20px;
+    padding: 36px 32px;
+    text-align: center;
+    box-shadow: var(--shadow-lg);
+    margin-bottom: 40px;
+    position: relative;
+    overflow: hidden;
+  }
+  .dl-status-card::before {
+    content: "";
+    position: absolute;
+    top: 0; left: 0; right: 0; height: 6px;
+    background: linear-gradient(90deg, #ff9933 0 33%, #ffffff 33% 66%, #138808 66% 100%);
+  }
+  .dl-icon-pulse {
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
+    background: var(--leaf-100);
+    color: var(--leaf-700);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 16px;
+    animation: pulseIcon 2s infinite ease-in-out;
+  }
+  @keyframes pulseIcon {
+    0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(77, 124, 71, 0.4); }
+    50% { transform: scale(1.05); box-shadow: 0 0 0 14px rgba(77, 124, 71, 0); }
+  }
+  .dl-status-card h1 {
+    font-size: clamp(1.8rem, 3.5vw, 2.3rem);
+    color: var(--soil-900);
+    margin: 0 0 10px;
+    line-height: 1.2;
+  }
+  .dl-status-card p {
+    color: var(--ink-soft);
+    font-size: 1.05rem;
+    margin: 0 0 24px;
+  }
+
+  .btn-primary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    background: var(--leaf-700);
+    color: #fff;
+    padding: 14px 32px;
+    border-radius: 999px;
+    font-size: 1.05rem;
+    font-weight: 700;
+    box-shadow: 0 6px 20px rgba(63, 107, 58, 0.35);
+    transition: all .2s ease;
+    cursor: pointer;
+    border: none;
+  }
+  .btn-primary:hover {
+    background: var(--leaf-600);
+    transform: translateY(-2px);
+    box-shadow: 0 10px 24px rgba(63, 107, 58, 0.45);
+  }
+
+  /* File Details Badge Row */
+  .meta-grid {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 24px;
+    padding-top: 20px;
+    border-top: 1px dashed var(--line);
+  }
+  .meta-pill {
+    background: var(--wheat-100);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 6px 14px;
+    font-size: 0.85rem;
+    color: var(--soil-900);
+    font-weight: 600;
+  }
+  .meta-pill strong { color: var(--leaf-700); }
+
+  /* Checksum Box */
+  .checksum-box {
+    margin-top: 18px;
+    background: #f4efe4;
+    border-radius: 8px;
+    padding: 10px 16px;
+    font-family: monospace;
+    font-size: 0.78rem;
+    color: var(--ink-soft);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    word-break: break-all;
+  }
+  .copy-btn {
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 4px 10px;
+    font-size: 0.76rem;
+    font-family: inherit;
+    font-weight: 600;
+    color: var(--soil-900);
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+  .copy-btn:hover { background: var(--wheat-100); }
+
+  /* Sideloading Guide Cards */
+  h2.guide-title {
+    font-size: 1.5rem;
+    color: var(--soil-900);
+    margin: 40px 0 20px;
+    text-align: center;
+  }
+  .guide-steps {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+  }
+  @media (max-width: 760px) {
+    .guide-steps { grid-template-columns: 1fr; }
+  }
+  .step-card {
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 24px 20px;
+    text-align: left;
+    box-shadow: var(--shadow);
+  }
+  .step-num {
+    display: inline-block;
+    width: 28px;
+    height: 28px;
+    line-height: 28px;
+    text-align: center;
+    border-radius: 50%;
+    background: var(--leaf-100);
+    color: var(--leaf-700);
+    font-weight: 700;
+    font-size: 0.9rem;
+    margin-bottom: 12px;
+  }
+  .step-card h3 {
+    margin: 0 0 8px;
+    font-size: 1.08rem;
+    color: var(--soil-900);
+  }
+  .step-card p {
+    margin: 0;
+    font-size: 0.9rem;
+    color: var(--ink-soft);
+    line-height: 1.5;
+  }
+
+  /* Technical Architecture Notice */
+  .pipeline-notice {
+    margin-top: 40px;
+    background: var(--wheat-100);
+    border-left: 4px solid var(--leaf-600);
+    border-radius: 0 12px 12px 0;
+    padding: 16px 20px;
+    font-size: 0.88rem;
+    color: var(--soil-900);
+  }
+  .pipeline-notice strong { color: var(--leaf-700); }
+
+  footer {
+    text-align: center;
+    padding: 24px;
+    border-top: 1px solid var(--line);
+    font-size: 0.85rem;
+    color: var(--ink-soft);
+  }
+</style>
+</head>
+<body>
+
+<header class="nav-bar">
+  <a class="brand" href="/">
+    <img src="./assets/logo-mark.png" alt="AGRO MIRAI logo">
+    <div class="brand-word">AGRO <span>MIRAI</span></div>
+  </a>
+  <a class="back-link" href="/">
+    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+    Back to Home
+  </a>
+</header>
+
+<main>
+  <div class="dl-status-card">
+    <div class="dl-icon-pulse">
+      <svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+    </div>
+    <h1 id="status-heading">Starting your download...</h1>
+    <p id="status-sub">If your download does not begin in 3 seconds, tap the direct button below.</p>
+
+    <div>
+      <a id="direct-dl-btn" href="/app-release.apk" download="AgroMirai-v2.2.2.apk" class="btn-primary">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Download Agro Mirai APK (v2.2.2)
+      </a>
+    </div>
+
+    <div class="meta-grid">
+      <span class="meta-pill">Version: <strong>v2.2.2 (Release)</strong></span>
+      <span class="meta-pill">Size: <strong>54.4 MB (54,425,716 bytes)</strong></span>
+      <span class="meta-pill">Min OS: <strong>Android 9.0+ (API 28+)</strong></span>
+      <span class="meta-pill">Architecture: <strong>Universal (ARM64 / ARMv7 / x86_64)</strong></span>
+    </div>
+
+    <div class="checksum-box">
+      <span>SHA-256: <span id="checksum-text">c54e6fa679f0632da6d26fec918d441011c6f9e2d9b6e28997746ee702c8f05b</span></span>
+      <button class="copy-btn" id="copy-btn" onclick="copyChecksum()">Copy</button>
+    </div>
+  </div>
+
+  <h2 class="guide-title">How to Install on Android in 3 Simple Steps</h2>
+  <div class="guide-steps">
+    <div class="step-card">
+      <span class="step-num">1</span>
+      <h3>Download the file</h3>
+      <p>When Chrome or your browser warns <em>"File might be harmful"</em>, tap <strong>"Download anyway"</strong>. This is a standard Android notice for apps downloaded outside Google Play Store.</p>
+    </div>
+    <div class="step-card">
+      <span class="step-num">2</span>
+      <h3>Allow installation</h3>
+      <p>Once downloaded, tap the file in your notification bar. If prompted by Android Security, tap <strong>"Settings"</strong> and toggle on <strong>"Allow from this source"</strong>.</p>
+    </div>
+    <div class="step-card">
+      <span class="step-num">3</span>
+      <h3>Tap Install</h3>
+      <p>Return to the installer dialog and tap <strong>"Install"</strong>. Agro Mirai is ready! Open the app to access all field advisories and voice guidance.</p>
+    </div>
+  </div>
+
+  <div class="pipeline-notice">
+    <strong>Direct CDN Pipeline:</strong> Hosted directly on Vercel's Edge CDN with native uncompressed binary streaming (<code>Accept-Ranges: bytes</code>, <code>no-transform</code>, and exact <code>Content-Length</code>). This guarantees Android Chrome's DownloadManager does not freeze or stick at 99%.
+  </div>
+</main>
+
+<footer>
+  <div>&copy; 2026 AGRO MIRAI. Official Production Release v2.2.2. Built for Indian farms.</div>
+</footer>
+
+<script>
+  // Automatic download trigger
+  function initiateDownload() {
+    var link = document.createElement('a');
+    link.href = '/app-release.apk';
+    link.download = 'AgroMirai-v2.2.2.apk';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    setTimeout(function() {
+      var heading = document.getElementById('status-heading');
+      var sub = document.getElementById('status-sub');
+      if (heading) heading.textContent = 'Download in progress...';
+      if (sub) sub.textContent = 'If the download didn\'t start automatically, tap the button below.';
+    }, 1200);
+  }
+
+  window.addEventListener('load', function() {
+    setTimeout(initiateDownload, 600);
+  });
+
+  function copyChecksum() {
+    var text = document.getElementById('checksum-text').innerText;
+    navigator.clipboard.writeText(text).then(function() {
+      var btn = document.getElementById('copy-btn');
+      btn.textContent = 'Copied!';
+      setTimeout(function() { btn.textContent = 'Copy'; }, 2000);
+    });
+  }
+</script>
+
+</body>
+</html>
