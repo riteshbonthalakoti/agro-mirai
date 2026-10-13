@@ -82,7 +82,7 @@
                ? 'text-accent font-medium'
                : 'hover:text-white'"
              :style="view === item.view ? 'background:rgba(34,197,94,.15)' : 'color:#94a3b8'"
-             x-show="item.view !== 'otps' || otpDevMode">
+        >
             <span x-text="item.icon" class="text-base w-5 text-center flex-none"></span>
             <span x-text="item.label" class="flex-1 truncate"></span>
             <span x-show="item.view === 'bugs' && unreadBugs > 0"
@@ -534,35 +534,27 @@
         </div>
       </div>
 
-      <!-- ===== OTPs ===== -->
-      <div x-show="view === 'otps'" x-data="otpsPage()" x-init="startPolling()"
-           @view-changed.window="if($event.detail !== 'otps') stopPolling()" class="p-6">
-        <h1 class="text-xl font-bold text-slate-800 mb-2">Pending OTPs</h1>
-        <p class="text-sm text-slate-500 mb-5">Dev/test mode only. Refreshes every 5 s while this page is open.</p>
-        <div class="bg-white rounded-xl overflow-hidden" style="border:1px solid #f1f5f9;box-shadow:0 1px 3px rgba(0,0,0,.06)">
-          <table class="w-full text-sm">
-            <thead><tr class="text-left text-xs text-slate-500 bg-slate-50" style="border-bottom:1px solid #e2e8f0">
-              <th class="px-4 py-3 font-medium">Phone</th><th class="px-4 py-3 font-medium">Code</th>
-              <th class="px-4 py-3 font-medium">Issued</th><th class="px-4 py-3 font-medium">Expires</th>
-            </tr></thead>
-            <tbody>
-              <template x-for="(o,i) in otps" :key="i">
-                <tr style="border-bottom:1px solid #f8fafc">
-                  <td class="px-4 py-3 text-slate-600" x-text="o.phone"></td>
-                  <td class="px-4 py-3">
-                    <code class="rounded px-2 py-0.5 text-xs font-mono" style="background:#f1f5f9"
-                          x-text="o.code"></code>
-                  </td>
-                  <td class="px-4 py-3 text-slate-400 text-xs" x-text="fmtDt(o.issued_at)"></td>
-                  <td class="px-4 py-3 text-slate-400 text-xs" x-text="fmtDt(o.expires_at)"></td>
-                </tr>
-              </template>
-              <tr x-show="!otps.length">
-                <td colspan="4" class="px-4 py-8 text-slate-400 text-sm text-center">No pending OTPs.</td>
-              </tr>
-            </tbody>
-          </table>
+      <!-- ===== OTP Lookup ===== -->
+      <div x-show="view === 'otps'" x-data="otpLookupPage()" class="p-6 max-w-md">
+        <h1 class="text-xl font-bold text-slate-800 mb-2">OTP Lookup</h1>
+        <p class="text-sm text-slate-500 mb-5">Backup for when a real SMS doesn't arrive. Reads the code straight out of the server's own logs — nothing is stored separately.</p>
+        <form @submit.prevent="lookup()" class="flex gap-2 mb-5">
+          <input x-model="phone" type="tel" placeholder="+91XXXXXXXXXX" class="input-field flex-1">
+          <button type="submit" :disabled="busy" class="px-4 py-2 rounded-lg text-sm font-medium text-white"
+                  style="background:#22c55e" :style="busy ? 'opacity:.6' : ''">
+            <span x-show="!busy">Look up</span>
+            <span x-show="busy">Looking up…</span>
+          </button>
+        </form>
+        <div x-show="result" class="bg-white rounded-xl p-5" style="border:1px solid #f1f5f9;box-shadow:0 1px 3px rgba(0,0,0,.06)">
+          <div class="text-xs text-slate-500 mb-1" x-text="result && result.phone"></div>
+          <code class="text-2xl font-mono font-bold text-slate-800" x-text="result && result.otp"></code>
+          <div class="text-xs text-slate-400 mt-2" x-text="result && ageLabel(result.seconds_old)"></div>
         </div>
+        <div x-show="notFound" class="text-sm text-slate-500 bg-slate-50 rounded-xl p-5" style="border:1px solid #f1f5f9">
+          No recent OTP found for this number in the last 15 minutes.
+        </div>
+        <div x-show="errorMsg" x-text="errorMsg" class="text-sm text-red-600"></div>
       </div>
 
     </main>

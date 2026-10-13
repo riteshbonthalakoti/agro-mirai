@@ -95,7 +95,7 @@ function adminApp() {
       { view: 'fields',   hash: 'fields',  icon: '🌾', label: 'Fields' },
       { view: 'bugs',     hash: 'bugs',    icon: '🐛', label: 'Bug Reports' },
       { view: 'audit',    hash: 'audit',   icon: '📋', label: 'Audit Log' },
-      { view: 'otps',     hash: 'otps',    icon: '🔑', label: 'OTPs (dev)' },
+      { view: 'otps',     hash: 'otps',    icon: '🔑', label: 'OTP Lookup' },
     ],
 
     init() {
@@ -674,30 +674,36 @@ function auditLogPage() {
   };
 }
 
-// ── otpsPage ──────────────────────────────────────────────────────────────────
+// ── otpLookupPage ────────────────────────────────────────────────────────────
 
-function otpsPage() {
-  var _timer = null;
-
+function otpLookupPage() {
   return {
-    otps: [],
-    fmtDt: fmtDt,
+    phone: '',
+    busy: false,
+    result: null,
+    notFound: false,
+    errorMsg: '',
 
-    startPolling() {
-      var self = this;
-      self._fetch();
-      _timer = setInterval(function () { self._fetch(); }, 5000);
+    ageLabel(s) {
+      if (s == null) return '';
+      if (s < 60) return s + 's ago';
+      return Math.floor(s / 60) + 'm ' + (s % 60) + 's ago';
     },
 
-    stopPolling() {
-      if (_timer) { clearInterval(_timer); _timer = null; }
-    },
-
-    _fetch() {
+    lookup() {
       var self = this;
-      api('/v2/admin/otps').then(function (r) { self.otps = r.items; }).catch(function (e) {
-        retryAfterAuth(e, function () { self._fetch(); });
-      });
+      if (!self.phone.trim()) return;
+      self.busy = true;
+      self.result = null;
+      self.notFound = false;
+      self.errorMsg = '';
+      api('/v2/admin/otps/lookup?phone=' + encodeURIComponent(self.phone.trim()))
+        .then(function (r) { self.result = r; })
+        .catch(function (e) {
+          if (e.message && /not found/i.test(e.message)) self.notFound = true;
+          else self.errorMsg = e.message || 'Lookup failed';
+        })
+        .finally(function () { self.busy = false; });
     },
   };
 }
@@ -712,5 +718,5 @@ document.addEventListener('alpine:init', function () {
   Alpine.data('fieldsPage',       fieldsPage);
   Alpine.data('bugReportsPage',   bugReportsPage);
   Alpine.data('auditLogPage',     auditLogPage);
-  Alpine.data('otpsPage',         otpsPage);
+  Alpine.data('otpLookupPage',    otpLookupPage);
 });
