@@ -19,6 +19,7 @@ provisioned out-of-band with a real password, per
 """
 from __future__ import annotations
 
+import logging
 import re
 import uuid
 from datetime import datetime, timezone
@@ -37,6 +38,8 @@ from agro_mirai.persistence.store import ConflictError
 from agro_mirai.voice.interface import V1_LANGUAGES
 
 auth_v2_bp = Blueprint("auth_v2", __name__, url_prefix="/v2/auth")
+
+logger = logging.getLogger("agro_mirai.auth")
 
 
 def _normalize_phone(raw) -> str:
@@ -116,6 +119,14 @@ def request_otp():
         code = otp_store.issue(phone, signup=signup, code=fixed_code)
     except ResendTooSoon:
         raise ApiError(429, "RATE_LIMIT_EXCEEDED", "Please wait a few seconds before asking for another code") from None
+
+    # Grep-friendly backup path for the admin dashboard's OTP lookup
+    # (Module 57) — reads this straight out of Render's own logs, no new
+    # storage. Nothing beyond phone + otp + timestamp on this line.
+    logger.info(
+        "otp_issued phone=%s otp=%s ts=%s",
+        phone, code, datetime.now(timezone.utc).isoformat(),
+    )
 
     try:
         current_app.extensions["otp_sender"].send(phone, code, lang=sms_lang)

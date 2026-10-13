@@ -16,9 +16,12 @@ from flask import Blueprint, Response, current_app, g, jsonify, request
 
 from agro_mirai.api.audit import write_audit_log
 from agro_mirai.api.errors import ApiError
+from agro_mirai.api.render_logs import find_latest_otp, seconds_old
+from agro_mirai.api.routes.auth_v2 import _normalize_phone
 from agro_mirai.api.serializers import farmer_to_public_json, to_json
 from agro_mirai.api.session_auth import require_admin
 from agro_mirai.auth.otp import otp_store
+from agro_mirai.auth.validation import validate_phone
 from agro_mirai.feedback.aggregator import FeedbackAggregator
 
 admin_bp = Blueprint("admin", __name__, url_prefix="/v2/admin")
@@ -210,6 +213,31 @@ def list_pending_otps():
         for i in otp_store.peek_all()
     ]
     return jsonify({"items": items}), 200
+
+
+@admin_bp.get("/otps/lookup")
+@require_admin
+def lookup_otp():
+    """Backup path for when a real SMS doesn't arrive (Module 57) --
+    works regardless of OTP_PROVIDER, unlike /otps above. Reads the
+    otp_issued line auth_v2.py logs on every send straight out of
+    Render's own log stream; never stores an OTP anywhere new."""
+    phone = _normalize_phone(request.args.get("phone"))
+    try:
+        validate_phone(phone)
+    except ValueError as e:
+        raise ApiError(400, "BAD_REQUEST", str(e)) from e
+
+    found = find_latest_otp(phone)
+    if found is None:
+        raise ApiError(404, "NOT_FOUND", "No recent OTP found for this number")
+
+    return jsonify({
+        "phone": found["phone"],
+        "otp": found["otp"],
+        "issued_at": found["issued_at"],
+        "seconds_old": seconds_old(found["issued_at"]),
+    }), 200
 
 
 @admin_bp.get("/advisories")
