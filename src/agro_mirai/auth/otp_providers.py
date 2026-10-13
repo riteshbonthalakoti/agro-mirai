@@ -42,10 +42,10 @@ _GATEWAY_TIMEOUT_S = 10.0
 # {code} is substituted in; keep each under ~130 chars so the hash suffix
 # (SMS_APP_HASH) still fits a single 160-char SMS segment.
 _OTP_SMS_TEMPLATES = {
-    "en": "{code} is your AGRO MIRAI login code. Valid for 5 minutes. Do not share this code with anyone.",
-    "hi": "{code} आपका AGRO MIRAI लॉगिन कोड है। यह 5 मिनट तक मान्य है। इस कोड को किसी के साथ साझा न करें।",
-    "kn": "{code} ಇದು ನಿಮ್ಮ AGRO MIRAI ಲಾಗಿನ್ ಕೋಡ್. ಇದು 5 ನಿಮಿಷಗಳವರೆಗೆ ಮಾನ್ಯವಾಗಿರುತ್ತದೆ. ಈ ಕೋಡ್ ಅನ್ನು ಯಾರೊಂದಿಗೂ ಹಂಚಿಕೊಳ್ಳಬೇಡಿ.",
-    "te": "{code} మీ AGRO MIRAI లాగిన్ కోడ్. ఇది 5 నిమిషాల వరకు చెల్లుతుంది. ఈ కోడ్‌ను ఎవరితోనూ పంచుకోవద్దు.",
+    "en": "<#> {code} is your AGRO MIRAI login code. Valid for 5 minutes. Do not share this code with anyone.",
+    "hi": "<#> {code} आपका AGRO MIRAI लॉगिन कोड है। यह 5 मिनट तक मान्य है। इस कोड को किसी के साथ साझा न करें।",
+    "kn": "<#> {code} ಇದು ನಿಮ್ಮ AGRO MIRAI ಲಾಗಿನ್ ಕೋಡ್. 5 ನಿಮಿಷಗಳವರೆಗೆ ಮಾನ್ಯವಾಗಿರುತ್ತದೆ. ಯಾರೊಂದಿಗೂ ಹಂಚಿಕೊಳ್ಳಬೇಡಿ.",
+    "te": "<#> {code} మీ AGRO MIRAI లాగిన్ కోడ్. 5 నిమిషాల వరకు చెల్లుతుంది. ఎవరితోనూ పంచుకోవద్దు.",
 }
 
 
@@ -114,18 +114,10 @@ class SmsGatewaySender(OtpSender):
         self.password = password
         self.base_url = base_url
         self.timeout_s = timeout_s
-        # Module 56: the Android app's 11-char SMS Retriever signature
-        # (SMS_APP_HASH, read from the mobile app's own
-        # SmsRetriever.getAppSignatures() -- see modules/sms-retriever).
-        # Must be the LAST thing in the message, preceded by a space, or
-        # the OS never delivers the SMS to the app's listener; purely
-        # cosmetic to a human reading the text, so always safe to append.
         self.app_hash = app_hash
 
     def send(self, phone: str, code: str, lang: str = "en") -> None:
         text = build_otp_text(code, lang)
-        if self.app_hash:
-            text = f"{text}\n{self.app_hash}"
         last_error: Exception | None = None
         for _attempt in range(2):  # one retry
             try:

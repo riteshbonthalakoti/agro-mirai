@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { RefreshControl, ScrollView, Text, TouchableOpacity, View, useWindowDimensions } from 'react-native';
 import Svg, { Circle, Defs, LinearGradient, Path, Rect, Stop } from 'react-native-svg';
-import { ApiError, dataSummary, refreshData, Weather } from '../api';
+import { ApiError, dataSummary, refreshData, Weather, DataSummary } from '../api';
 import { fmtDate, useApp } from '../ctx';
 import { errorText, useLoad } from '../hooks';
 import { Key } from '../i18n';
@@ -229,8 +229,8 @@ export function DataTab() {
               {cur ? (
                 <View style={{ flexDirection: 'row', gap: S.sm, marginTop: -28, paddingHorizontal: S.sm }}>
                   <Fact icon="drop" value={num(cur.rainfall_mm, ' mm', 0)} label={t('rainName')} tint="#E3F1FA" />
-                  <Fact icon="thermo" value={num(cur.humidity_pct, '%', 0)} label={t('humidityName')} tint="#E8F3E8" />
-                  <Fact icon="bolt" value={num(cur.wind_mps !== null && cur.wind_mps !== undefined ? cur.wind_mps * 3.6 : null, '', 0)} unit="km/h" label={t('wind')} tint="#F6ECD6" />
+                  <Fact icon="humidity" value={num(cur.humidity_pct, '%', 0)} label={t('humidityName')} tint="#E8F3E8" />
+                  <Fact icon="wind" value={num(cur.wind_mps !== null && cur.wind_mps !== undefined ? cur.wind_mps * 3.6 : null, '', 0)} unit="km/h" label={t('wind')} tint="#F6ECD6" />
                 </View>
               ) : null}
               {d?.fetched_at ? <Text style={{ fontSize: 12.5, color: C.muted, textAlign: 'center', marginTop: S.sm }}>{`${t('lastChecked')}: ${formatTime(d.fetched_at)}`}</Text> : null}
@@ -324,34 +324,228 @@ export function DataTab() {
               </Block>
             </>
           ) : (
-            /* History tab */
-            <>
-              {/* Weather recent */}
-              {d && d.weather.recent.length ? (
-                <Block title={t('recentDays')} icon="list">
-                  {[...d.weather.recent].reverse().map((w, k) => <WeatherRow key={k} w={w} />)}
-                </Block>
-              ) : (
-                <Block title={t('recentDays')} icon="list">
-                  <Muted>{t('noData')}</Muted>
-                </Block>
-              )}
-
-              {/* NDVI history */}
-              {d && d.ndvi.history.length ? (
-                <Block title={t('ndviName')} icon="leaf">
-                  {[...d.ndvi.history].reverse().map((n, k) => (
-                    <KV
-                      key={k}
-                      k={fmtDate(n.observed_at, true)}
-                      v={`${num(n.ndvi, '', 2)} — ${ndviHealthLabel(t, n.ndvi)}`}
-                    />
-                  ))}
-                </Block>
-              ) : null}
-            </>
+            /* Farmer-Centric History Sub-Tab */
+            <FarmerHistoryView d={d} />
           )}
         </ScrollView>
+      )}
+    </View>
+  );
+}
+
+function FarmerHistoryView({ d }: { d: DataSummary | null }) {
+  const { t } = useApp();
+  const [filter, setFilter] = useState<'all' | 'rain' | 'ndvi'>('all');
+
+  if (!d) return null;
+
+  const recent = d.weather.recent || [];
+  const ndviHistory = d.ndvi.history || [];
+
+  // Summary statistics for recent cycle
+  const totalRain = recent.reduce((sum, w) => sum + (w.rainfall_mm || 0), 0);
+  const maxTemp = recent.length ? Math.max(...recent.map((w) => w.temp_max_c ?? w.temp_c)) : null;
+  const minTemp = recent.length ? Math.min(...recent.map((w) => w.temp_min_c ?? w.temp_c)) : null;
+
+  // NDVI vigor trend
+  const latestNdvi = ndviHistory.length ? ndviHistory[ndviHistory.length - 1].ndvi : null;
+
+  const reversedRecent = [...recent].reverse();
+  const filteredRecent = filter === 'rain'
+    ? reversedRecent.filter((w) => (w.rainfall_mm || 0) >= 0.5)
+    : reversedRecent;
+
+  return (
+    <View style={{ gap: S.md }}>
+      {/* 1. Agronomic Weekly Snapshot */}
+      <View style={{
+        backgroundColor: '#FFFFFF',
+        borderRadius: 20,
+        padding: S.lg,
+        borderWidth: 1,
+        borderColor: '#E2DEC8',
+        shadowColor: '#000',
+        shadowOpacity: 0.05,
+        shadowRadius: 6,
+        elevation: 2,
+      }}>
+        <Text style={{ fontSize: 13, fontWeight: '800', letterSpacing: 0.8, color: C.accent, textTransform: 'uppercase', marginBottom: S.xs }}>
+          Field Summary (Recent Cycle)
+        </Text>
+        <Text style={{ fontSize: 18, fontWeight: '800', color: C.text, marginBottom: S.md }}>
+          What happened in your field
+        </Text>
+
+        <View style={{ flexDirection: 'row', gap: S.sm }}>
+          <View style={{ flex: 1, backgroundColor: '#EBF5FB', borderRadius: 14, padding: S.sm, alignItems: 'center' }}>
+            <Icon name="drop" size={20} color="#2980B9" />
+            <Text style={{ fontSize: 18, fontWeight: '800', color: '#1B4F72', marginTop: 4 }}>
+              {Math.round(totalRain * 10) / 10} mm
+            </Text>
+            <Text style={{ fontSize: 11, color: '#5499C7', fontWeight: '600', textAlign: 'center' }}>
+              Total Rainfall
+            </Text>
+          </View>
+
+          <View style={{ flex: 1, backgroundColor: '#FEF9E7', borderRadius: 14, padding: S.sm, alignItems: 'center' }}>
+            <Icon name="thermo" size={20} color="#D4AC0D" />
+            <Text style={{ fontSize: 18, fontWeight: '800', color: '#7D6608', marginTop: 4 }}>
+              {minTemp !== null && maxTemp !== null ? `${Math.round(minTemp)}°–${Math.round(maxTemp)}°` : '—'}
+            </Text>
+            <Text style={{ fontSize: 11, color: '#B7950B', fontWeight: '600', textAlign: 'center' }}>
+              Temp Range
+            </Text>
+          </View>
+
+          <View style={{ flex: 1, backgroundColor: '#EAFAF1', borderRadius: 14, padding: S.sm, alignItems: 'center' }}>
+            <Icon name="leaf" size={20} color="#27AE60" />
+            <Text style={{ fontSize: 18, fontWeight: '800', color: '#145A32', marginTop: 4 }}>
+              {latestNdvi !== null ? (latestNdvi >= 0.5 ? 'Good' : 'Fair') : '—'}
+            </Text>
+            <Text style={{ fontSize: 11, color: '#52BE80', fontWeight: '600', textAlign: 'center' }}>
+              Crop Vigor
+            </Text>
+          </View>
+        </View>
+
+        {/* Practical takeaway */}
+        <View style={{ marginTop: S.md, paddingTop: S.sm, borderTopWidth: 1, borderTopColor: '#F0ECE0', flexDirection: 'row', alignItems: 'center', gap: S.sm }}>
+          <Icon name="info" size={16} color={C.accent} />
+          <Text style={{ flex: 1, fontSize: 13, color: C.muted, lineHeight: 18 }}>
+            {totalRain >= 15
+              ? 'Soil moisture is well recharged. Irrigation needs were naturally reduced.'
+              : totalRain > 0
+              ? 'Light showers received. Regular monitoring of crop water balance advised.'
+              : 'Dry period across this cycle. Follow recommended irrigation depths.'}
+          </Text>
+        </View>
+      </View>
+
+      {/* 2. Filter Pills */}
+      <View style={{ flexDirection: 'row', gap: S.xs, marginTop: S.xs }}>
+        {[
+          { id: 'all', label: 'All Days' },
+          { id: 'rain', label: 'Rain Events' },
+          { id: 'ndvi', label: 'Satellite Vigor' },
+        ].map((btn) => (
+          <TouchableOpacity
+            key={btn.id}
+            onPress={() => setFilter(btn.id as any)}
+            style={{
+              paddingHorizontal: 12,
+              paddingVertical: 6,
+              borderRadius: 14,
+              backgroundColor: filter === btn.id ? C.accent : '#FFFFFF',
+              borderWidth: 1,
+              borderColor: filter === btn.id ? C.accent : '#DCE2D6',
+            }}
+          >
+            <Text style={{ fontSize: 12, fontWeight: '700', color: filter === btn.id ? '#FFFFFF' : C.text }}>
+              {btn.label}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+
+      {/* 3. Timeline Items */}
+      {filter === 'ndvi' ? (
+        <View style={{ gap: S.sm }}>
+          {ndviHistory.length ? (
+            [...ndviHistory].reverse().map((n, idx) => (
+              <View key={idx} style={{
+                backgroundColor: '#FFFFFF',
+                borderRadius: 16,
+                padding: S.md,
+                borderWidth: 1,
+                borderColor: '#E2DEC8',
+              }}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                  <Text style={{ fontSize: 15, fontWeight: '800', color: C.text }}>{fmtDate(n.observed_at, true)}</Text>
+                  <View style={{ backgroundColor: ndviHealthColor(n.ndvi), paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10 }}>
+                    <Text style={{ color: '#fff', fontSize: 11, fontWeight: '700' }}>{ndviHealthLabel(t, n.ndvi)}</Text>
+                  </View>
+                </View>
+                <Text style={{ fontSize: 13, color: C.muted }}>
+                  Satellite NDVI score: <Text style={{ fontWeight: '700', color: C.text }}>{Math.round(n.ndvi * 100) / 100}</Text>
+                  {n.cloud_cover_pct !== null && n.cloud_cover_pct !== undefined ? ` · Cloud: ${Math.round(n.cloud_cover_pct)}%` : ''}
+                </Text>
+              </View>
+            ))
+          ) : (
+            <View style={{ padding: S.lg, backgroundColor: '#fff', borderRadius: 16, alignItems: 'center' }}>
+              <Muted>{t('noData')}</Muted>
+            </View>
+          )}
+        </View>
+      ) : (
+        <View style={{ gap: S.sm }}>
+          {filteredRecent.length ? (
+            filteredRecent.map((w, idx) => {
+              const rain = w.rainfall_mm ?? 0;
+              const hasRain = rain >= 0.5;
+              const isHot = (w.temp_max_c ?? w.temp_c) >= 36;
+              return (
+                <View key={idx} style={{
+                  backgroundColor: '#FFFFFF',
+                  borderRadius: 16,
+                  padding: S.md,
+                  borderWidth: 1,
+                  borderColor: '#E2DEC8',
+                  borderLeftWidth: 4,
+                  borderLeftColor: hasRain ? '#2980B9' : isHot ? '#E67E22' : '#27AE60',
+                }}>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                    <Text style={{ fontSize: 15, fontWeight: '800', color: C.text }}>
+                      {fmtDate(w.observed_at)}
+                    </Text>
+                    <View style={{
+                      backgroundColor: hasRain ? '#EBF5FB' : isHot ? '#FEF5E7' : '#EAFAF1',
+                      paddingHorizontal: 8,
+                      paddingVertical: 2,
+                      borderRadius: 10,
+                    }}>
+                      <Text style={{
+                        fontSize: 11,
+                        fontWeight: '700',
+                        color: hasRain ? '#1B4F72' : isHot ? '#935116' : '#145A32',
+                      }}>
+                        {hasRain ? `Rain: ${Math.round(rain * 10) / 10} mm` : isHot ? 'Heat Alert' : 'Normal Conditions'}
+                      </Text>
+                    </View>
+                  </View>
+
+                  <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: S.sm, marginTop: 4 }}>
+                    <Text style={{ fontSize: 13, color: C.muted }}>
+                      🌡️ Temp: <Text style={{ fontWeight: '700', color: C.text }}>{`${num(w.temp_min_c, '°', 0)} – ${num(w.temp_max_c ?? w.temp_c, '°', 0)}`}</Text>
+                    </Text>
+                    {w.humidity_pct !== null && w.humidity_pct !== undefined ? (
+                      <Text style={{ fontSize: 13, color: C.muted }}>
+                        💧 Humidity: <Text style={{ fontWeight: '700', color: C.text }}>{`${Math.round(w.humidity_pct)}%`}</Text>
+                      </Text>
+                    ) : null}
+                    {w.wind_mps !== null && w.wind_mps !== undefined ? (
+                      <Text style={{ fontSize: 13, color: C.muted }}>
+                        💨 Wind: <Text style={{ fontWeight: '700', color: C.text }}>{`${Math.round(w.wind_mps * 3.6)} km/h`}</Text>
+                      </Text>
+                    ) : null}
+                  </View>
+
+                  <Text style={{ fontSize: 12, color: '#7D735B', marginTop: 8, fontStyle: 'italic' }}>
+                    {hasRain
+                      ? 'Rainfall contributed to soil water. Evaporative demand satisfied.'
+                      : isHot
+                      ? 'Elevated evaporative demand. Ensure soil moisture is checked.'
+                      : 'Moderate weather. Crop transpiring normally.'}
+                  </Text>
+                </View>
+              );
+            })
+          ) : (
+            <View style={{ padding: S.lg, backgroundColor: '#fff', borderRadius: 16, alignItems: 'center' }}>
+              <Muted>{t('noData')}</Muted>
+            </View>
+          )}
+        </View>
       )}
     </View>
   );

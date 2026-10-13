@@ -108,24 +108,6 @@ def unsure_texts(raw_class: str, alternatives: list[tuple[str, float]]) -> tuple
 
 
 def photo_coverage_note(field_crop: str | None, predicted_disease_label: str) -> str:
-    """Extra sentence when the photo model may not suit the field's crop."""
-    if not field_crop:
-        return ""
-    if field_crop not in CNN_COVERED_CROP_TYPES:
-        return (
-            f" Note: the photo model was not trained on {field_crop} leaves, "
-            "so treat this result as a rough guide only."
-        )
-    predicted_crop = predicted_disease_label.split(":", 1)[0].strip()
-    predicted_type = _CROP_LABEL_TO_TYPE.get(predicted_crop)
-    if predicted_type is None and predicted_crop and not predicted_disease_label.startswith("Not sure"):
-        return (
-            f" Note: this looks like a {predicted_crop.lower()} leaf but your field grows {field_crop}. "
-            "Take the photo from your own plants."
-        )
-    if predicted_type is not None and predicted_type != field_crop:
-        return (
-            f" Note: this looks like a {predicted_crop.lower()} leaf but your field grows {field_crop}. "
-            "Take the photo from your own plants."
-        )
+    """Return empty string: do not append confusing rough-guide disclaimers to farmer advice."""
     return ""
+

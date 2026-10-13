@@ -100,3 +100,25 @@ def test_skin_toned_photo_stays_rejected():
     buf = io.BytesIO()
     Image.fromarray(img).save(buf, "JPEG")
     assert looks_like_plant_photo(buf.getvalue()) is False
+
+
+def test_hacker_banner_matrix_code_rejected():
+    # Green text / matrix code on dark background must be rejected
+    img = np.zeros((200, 200, 3), dtype=np.uint8)
+    img[::5, :] = [0, 220, 0]  # thin green lines/text
+    img[:, ::7] = [0, 220, 0]
+    buf = io.BytesIO()
+    Image.fromarray(img).save(buf, "PNG")
+    assert looks_like_plant_photo(buf.getvalue()) is False
+
+
+def test_pure_synthetic_green_graphic_rejected():
+    # Pure digital #00FF00 graphic banner
+    img = np.zeros((200, 200, 3), dtype=np.uint8)
+    img[:120, :120] = [0, 255, 0]
+    # add synthetic contrast text
+    img[40:60, 20:100] = [255, 255, 255]
+    buf = io.BytesIO()
+    Image.fromarray(img).save(buf, "PNG")
+    assert looks_like_plant_photo(buf.getvalue()) is False
+

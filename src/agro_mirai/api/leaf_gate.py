@@ -34,6 +34,7 @@ MIN_EDGE_FRACTION = 0.02
 def plant_stats(image_bytes: bytes) -> dict[str, float]:
     img = Image.open(io.BytesIO(image_bytes)).convert("RGB")
     img.thumbnail((256, 256))
+    rgb = np.asarray(img, dtype=np.float32)
     hsv = np.asarray(img.convert("HSV"), dtype=np.float32)
     hue = hsv[..., 0] * 360.0 / 255.0
     sat = hsv[..., 1] / 255.0
@@ -44,6 +45,20 @@ def plant_stats(image_bytes: bytes) -> dict[str, float]:
     lesion = (hue >= 15) & (hue < 45) & (sat >= 0.30) & (val >= 0.15)
     green_frac = float(green.mean())
     lesion_frac = float(lesion.mean())
+
+    # Check for synthetic text/thin-lines or fragmented matrix code:
+    # 3x3 erosion checks if green pixels form contiguous spatial masses (like a real leaf)
+    # vs thin 1-2px computer text lines or scattered noise
+    if green.shape[0] > 2 and green.shape[1] > 2:
+        eroded_green = green[1:-1, 1:-1] & green[:-2, 1:-1] & green[2:, 1:-1] & green[1:-1, :-2] & green[1:-1, 2:]
+        eroded_green_frac = float(eroded_green.mean())
+    else:
+        eroded_green_frac = 0.0
+
+    # Pure synthetic digital greens (e.g. #00FF00 where R=0 and B=0)
+    synthetic_green = green & (rgb[..., 0] <= 15) & (rgb[..., 2] <= 15) & (rgb[..., 1] >= 180)
+    synthetic_frac = float(synthetic_green.mean())
+
     # lesions only count when there is real foliage around them
     plant_frac = green_frac + (lesion_frac if green_frac >= _MIN_GREEN_FOR_LESIONS else 0.0)
 
@@ -56,12 +71,23 @@ def plant_stats(image_bytes: bytes) -> dict[str, float]:
     gy = np.abs(np.diff(lum, axis=0))[:, :-1]
     edge_frac = float(((gx + gy) > 0.04).mean())
     return {
-        "green": green_frac, "lesion": lesion_frac, "plant": plant_frac,
-        "lum_std": lum_std, "edge": edge_frac,
+        "green": green_frac,
+        "eroded_green": eroded_green_frac,
+        "synthetic": synthetic_frac,
+        "lesion": lesion_frac,
+        "plant": plant_frac,
+        "lum_std": lum_std,
+        "edge": edge_frac,
     }
 
 
 def looks_like_plant_photo(image_bytes: bytes) -> bool:
     s = plant_stats(image_bytes)
+    # Reject pure synthetic digital colors (e.g. hacker matrix green)
+    if s["synthetic"] > 0.05 and s["synthetic"] > s["green"] * 0.4:
+        return False
+    # Reject disconnected text/lines (if green exists but is almost all thin edges, eroded is < 15% of green)
+    if s["green"] >= 0.08 and s["eroded_green"] < s["green"] * 0.15:
+        return False
     textured = s["lum_std"] >= MIN_LUM_STD and s["edge"] >= MIN_EDGE_FRACTION
     return s["plant"] >= MIN_PLANT_FRACTION and textured

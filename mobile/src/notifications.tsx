@@ -5,6 +5,7 @@ import { cacheGet, cacheSet } from './storage';
 import { feedback } from './feedback';
 import { C, S, levelColor } from './theme';
 import { onAccountEvent } from './accountEvents';
+import { Icon } from '../icons';
 
 /** Notification system: one `notify()` entry point.
  *   - every alert      -> a real Android system notification (heads-up banner, sound, notification
@@ -214,38 +215,64 @@ export function NotificationsProvider({ children, t }: { children: React.ReactNo
       ) : null}
 
       <Modal visible={inbox} animationType="slide" transparent onRequestClose={() => setInbox(false)}>
-        <View style={{ flex: 1, backgroundColor: 'rgba(16,24,16,0.5)', justifyContent: 'flex-end' }}>
-          <View style={{ backgroundColor: C.bg, borderTopLeftRadius: 20, borderTopRightRadius: 20, maxHeight: '75%', padding: S.lg }}>
+        <View style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'transparent' }}>
+          <TouchableOpacity activeOpacity={1} onPress={() => setInbox(false)} style={{ flex: 1 }} />
+          <View style={{
+            backgroundColor: '#FFFFFF',
+            borderTopLeftRadius: 24,
+            borderTopRightRadius: 24,
+            maxHeight: '75%',
+            padding: S.lg,
+            borderTopWidth: 1.5,
+            borderLeftWidth: 1,
+            borderRightWidth: 1,
+            borderColor: '#E2DEC8',
+            elevation: 8,
+          }}>
+            {/* Grab handle */}
+            <View style={{ width: 38, height: 4, borderRadius: 2, backgroundColor: '#D4DDD0', alignSelf: 'center', marginBottom: S.md }} />
+            
             <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: S.md }}>
-              <Text style={{ flex: 1, fontSize: 20, fontWeight: '700', color: C.text }}>{t('notifTitle')}</Text>
+              <Text style={{ flex: 1, fontSize: 20, fontWeight: '800', color: C.text }}>{t('notifTitle')}</Text>
               {items.length ? (
                 <TouchableOpacity
                   onPress={() => {
                     feedback.clear();
                     setItems(persist([]));
-                    // also empty what is still sitting in the Android notification shade
                     Notifications?.dismissAllNotificationsAsync().catch(() => {});
                   }}
-                  style={{ marginRight: S.lg }}
+                  style={{ marginRight: S.lg, paddingVertical: 4, paddingHorizontal: 8 }}
                 >
-                  <Text style={{ color: C.muted }}>{t('notifClear')}</Text>
+                  <Text style={{ color: C.muted, fontWeight: '600', fontSize: 13 }}>{t('notifClear')}</Text>
                 </TouchableOpacity>
               ) : null}
-              <TouchableOpacity onPress={() => setInbox(false)}>
-                <Text style={{ color: C.accent, fontWeight: '700' }}>{t('close')}</Text>
+              <TouchableOpacity onPress={() => setInbox(false)} style={{ paddingVertical: 4, paddingHorizontal: 8 }}>
+                <Text style={{ color: C.accent, fontWeight: '700', fontSize: 14 }}>{t('close')}</Text>
               </TouchableOpacity>
             </View>
-            <ScrollView>
+
+            <ScrollView showsVerticalScrollIndicator={false}>
               {items.length === 0 ? (
-                <Text style={{ color: C.muted, paddingVertical: S.xl, textAlign: 'center' }}>{t('notifEmpty')}</Text>
+                <View style={{ alignItems: 'center', paddingVertical: S.xl }}>
+                  <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: '#F0F5EC', alignItems: 'center', justifyContent: 'center', marginBottom: S.sm }}>
+                    <Icon name="bell" size={24} color={C.muted} />
+                  </View>
+                  <Text style={{ color: C.muted, fontSize: 14, fontWeight: '600' }}>{t('notifEmpty')}</Text>
+                </View>
               ) : items.map((n) => (
                 <View key={n.id} style={{
-                  borderLeftWidth: 4, borderLeftColor: levelColor(n.severity) || C.accent, backgroundColor: C.surface,
-                  borderRadius: 10, padding: S.md, marginBottom: S.sm,
+                  borderLeftWidth: 4,
+                  borderLeftColor: levelColor(n.severity) || C.accent,
+                  backgroundColor: '#F8F6EE',
+                  borderWidth: 1,
+                  borderColor: '#EAE6D6',
+                  borderRadius: 12,
+                  padding: S.md,
+                  marginBottom: S.sm,
                 }}>
-                  <Text style={{ fontWeight: '700', color: C.text }}>{n.title}</Text>
-                  <Text style={{ color: C.muted, marginTop: 2 }}>{n.body}</Text>
-                  <Text style={{ color: C.muted, fontSize: 11, marginTop: 4 }}>{new Date(n.ts).toLocaleString()}</Text>
+                  <Text style={{ fontWeight: '700', color: C.text, fontSize: 15 }}>{n.title}</Text>
+                  <Text style={{ color: C.muted, marginTop: 3, fontSize: 13, lineHeight: 18 }}>{n.body}</Text>
+                  <Text style={{ color: '#8C826A', fontSize: 11, marginTop: 6, fontWeight: '500' }}>{new Date(n.ts).toLocaleString()}</Text>
                 </View>
               ))}
             </ScrollView>

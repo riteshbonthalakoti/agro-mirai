@@ -42,23 +42,36 @@ const SATELLITE_STYLE = {
 export function FieldMapScreen({ onClose }: { onClose: () => void }) {
   const { field, t } = useApp();
   const [userLocation, setUserLocation] = useState<{ lat: number; lon: number } | null>(null);
+  const [activeFocus, setActiveFocus] = useState<'phone' | 'field'>('phone');
   const online = isOnline();
   const cameraRef = useRef<CameraRef>(null);
 
-  // Get current location on mount
+  // Get current location on mount and immediately fly to phone's location
   useEffect(() => {
+    let isMounted = true;
     const getLocation = async () => {
       try {
         const perm = await Location.requestForegroundPermissionsAsync();
         if (perm.status === 'granted') {
-          const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
-          setUserLocation({ lat: loc.coords.latitude, lon: loc.coords.longitude });
+          const last = await Location.getLastKnownPositionAsync();
+          if (last && isMounted) {
+            const coords = { lat: last.coords.latitude, lon: last.coords.longitude };
+            setUserLocation(coords);
+            cameraRef.current?.easeTo({ center: [coords.lon, coords.lat], zoom: 15, duration: 600 });
+          }
+          const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
+          if (isMounted) {
+            const coords = { lat: loc.coords.latitude, lon: loc.coords.longitude };
+            setUserLocation(coords);
+            cameraRef.current?.easeTo({ center: [coords.lon, coords.lat], zoom: 15, duration: 800 });
+          }
         }
       } catch {
-        // Silently fail — map still works without user location
+        // Silently fall back to field plot
       }
     };
     getLocation();
+    return () => { isMounted = false; };
   }, []);
 
   if (!field) return null;
@@ -66,6 +79,24 @@ export function FieldMapScreen({ onClose }: { onClose: () => void }) {
   const fieldLat = field.latitude;
   const fieldLon = field.longitude;
   const initialZoom = 14;
+
+  const focusPhone = () => {
+    setActiveFocus('phone');
+    if (userLocation) {
+      cameraRef.current?.easeTo({ center: [userLocation.lon, userLocation.lat], zoom: 15, duration: 600 });
+    } else {
+      Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High }).then((loc) => {
+        const coords = { lat: loc.coords.latitude, lon: loc.coords.longitude };
+        setUserLocation(coords);
+        cameraRef.current?.easeTo({ center: [coords.lon, coords.lat], zoom: 15, duration: 600 });
+      }).catch(() => {});
+    }
+  };
+
+  const focusField = () => {
+    setActiveFocus('field');
+    cameraRef.current?.easeTo({ ...fieldCameraStop(fieldLat, fieldLon, initialZoom), duration: 600 });
+  };
 
   return (
     <View style={{ flex: 1 }}>
@@ -85,7 +116,10 @@ export function FieldMapScreen({ onClose }: { onClose: () => void }) {
         <Marker
           {...({ anchor: 'bottom', coordinate: [fieldLon, fieldLat] } as any)}
         >
-          <View style={{ width: 40, height: 40, alignItems: 'center', justifyContent: 'center' }}>
+          <View style={{ alignItems: 'center', justifyContent: 'center' }}>
+            <View style={{ backgroundColor: C.accent, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10, marginBottom: 4 }}>
+              <Text style={{ color: '#fff', fontSize: 10, fontWeight: '700' }}>{field.name || 'Field'}</Text>
+            </View>
             <View
               style={{
                 width: 32,
@@ -94,9 +128,11 @@ export function FieldMapScreen({ onClose }: { onClose: () => void }) {
                 backgroundColor: C.accent,
                 alignItems: 'center',
                 justifyContent: 'center',
+                borderWidth: 2,
+                borderColor: '#fff',
                 shadowColor: '#000',
                 shadowOffset: { width: 0, height: 2 },
-                shadowOpacity: 0.3,
+                shadowOpacity: 0.35,
                 shadowRadius: 4,
               }}
             >
@@ -105,50 +141,124 @@ export function FieldMapScreen({ onClose }: { onClose: () => void }) {
           </View>
         </Marker>
 
-        {/* User location marker */}
+        {/* User live phone location marker */}
         {userLocation && (
           <Marker
             {...({ anchor: 'center', coordinate: [userLocation.lon, userLocation.lat] } as any)}
           >
-            <View
-              style={{
-                width: 16,
-                height: 16,
-                borderRadius: 8,
-                backgroundColor: '#1976D2',
-                borderWidth: 3,
-                borderColor: '#fff',
-                shadowColor: '#000',
-                shadowOffset: { width: 0, height: 1 },
-                shadowOpacity: 0.3,
-                shadowRadius: 2,
-              }}
-            />
+            <View style={{ alignItems: 'center', justifyContent: 'center' }}>
+              <View style={{ backgroundColor: '#1976D2', paddingHorizontal: 7, paddingVertical: 2, borderRadius: 9, marginBottom: 2, shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 2, elevation: 3 }}>
+                <Text style={{ color: '#fff', fontSize: 10, fontWeight: '800', letterSpacing: 0.2 }}>Your Phone</Text>
+              </View>
+              <View
+                style={{
+                  width: 34,
+                  height: 34,
+                  borderRadius: 17,
+                  backgroundColor: 'rgba(25, 118, 210, 0.22)',
+                  borderWidth: 1.5,
+                  borderColor: 'rgba(25, 118, 210, 0.55)',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <View
+                  style={{
+                    width: 16,
+                    height: 16,
+                    borderRadius: 8,
+                    backgroundColor: '#1976D2',
+                    borderWidth: 2.5,
+                    borderColor: '#fff',
+                    shadowColor: '#000',
+                    shadowOffset: { width: 0, height: 2 },
+                    shadowOpacity: 0.35,
+                    shadowRadius: 3,
+                    elevation: 4,
+                  }}
+                />
+              </View>
+            </View>
           </Marker>
         )}
       </Map>
 
-      {/* Focus button */}
-      <TouchableOpacity
-        onPress={() => {
-          cameraRef.current?.easeTo(
-            { ...fieldCameraStop(fieldLat, fieldLon, initialZoom), duration: 400 }
-          );
-        }}
+      {/* Top Bar with View Switcher */}
+      <View
         style={{
           position: 'absolute',
           top: S.lg,
+          left: 64,
+          right: 64,
+          flexDirection: 'row',
+          justifyContent: 'center',
+          gap: S.xs,
+        }}
+      >
+        <TouchableOpacity
+          onPress={focusPhone}
+          activeOpacity={0.85}
+          style={{
+            backgroundColor: activeFocus === 'phone' ? '#1976D2' : 'rgba(255,255,255,0.92)',
+            paddingHorizontal: 12,
+            paddingVertical: 8,
+            borderRadius: 20,
+            borderWidth: 1,
+            borderColor: activeFocus === 'phone' ? '#1976D2' : '#D0D8C8',
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: 0.15,
+            shadowRadius: 3,
+            elevation: 3,
+          }}
+        >
+          <Text style={{ fontSize: 12, fontWeight: '700', color: activeFocus === 'phone' ? '#fff' : C.text }}>
+            📍 Your Phone
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          onPress={focusField}
+          activeOpacity={0.85}
+          style={{
+            backgroundColor: activeFocus === 'field' ? C.accent : 'rgba(255,255,255,0.92)',
+            paddingHorizontal: 12,
+            paddingVertical: 8,
+            borderRadius: 20,
+            borderWidth: 1,
+            borderColor: activeFocus === 'field' ? C.accent : '#D0D8C8',
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: 0.15,
+            shadowRadius: 3,
+            elevation: 3,
+          }}
+        >
+          <Text style={{ fontSize: 12, fontWeight: '700', color: activeFocus === 'field' ? '#fff' : C.text }}>
+            🌱 Field Plot
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Floating GPS Recenter button */}
+      <TouchableOpacity
+        onPress={focusPhone}
+        activeOpacity={0.85}
+        style={{
+          position: 'absolute',
+          bottom: 64,
           right: S.lg,
-          width: 48,
-          height: 48,
-          borderRadius: 24,
-          backgroundColor: C.accent,
+          width: 50,
+          height: 50,
+          borderRadius: 25,
+          backgroundColor: '#1976D2',
           alignItems: 'center',
           justifyContent: 'center',
           shadowColor: '#000',
-          shadowOffset: { width: 0, height: 2 },
-          shadowOpacity: 0.25,
-          shadowRadius: 4,
+          shadowOffset: { width: 0, height: 3 },
+          shadowOpacity: 0.3,
+          shadowRadius: 5,
+          elevation: 5,
         }}
       >
         <Icon name="location" size={24} color="#fff" />

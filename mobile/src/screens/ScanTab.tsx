@@ -9,7 +9,6 @@ import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
 import { File as ExpoFile, Paths } from 'expo-file-system';
 import { Icon, IconName } from '../../icons';
 import { AuthBackdrop } from '../components/AuthBackdrop';
-import { BarMeter, ScanTimeline } from '../components/Charts';
 import { feedback } from '../feedback';
 import { ApiError, DiseaseAlert, getDiseaseRisk, isOnline, scanLeaf } from '../api';
 import { diseaseAction, fmtDate, levelLabel, useApp } from '../ctx';
@@ -203,10 +202,6 @@ function splitAdvice(raw: string): { steps: string[]; others: string[]; note: st
   return { steps, others, note };
 }
 
-function sureLevel(c: number): 'High' | 'Medium' | 'Low' {
-  return c >= 0.7 ? 'High' : c >= 0.45 ? 'Medium' : 'Low';
-}
-
 function ResultView({ result, uri, onRetake, onDone, onZoom }: { result: DiseaseAlert; uri: string; onRetake: () => void; onDone: () => void; onZoom: (u: string) => void }) {
   const { t, lang } = useApp();
   const { width } = useWindowDimensions();
@@ -217,11 +212,7 @@ function ResultView({ result, uri, onRetake, onDone, onZoom }: { result: Disease
   // the advice is English from the server: translate it into the farmer's language (cached on the device)
   const tr = useTranslated([...steps, note], lang);
   const shownSteps = steps.map((s, i) => tr.out[i] || s);
-  const shownNote = tr.out[steps.length] || note;
   const generic = !steps.length ? diseaseAction(t, result.risk_level, result.recommended_action) : '';
-  const lvl = sureLevel(result.confidence);
-  const lvlColor = lvl === 'High' ? C.low : lvl === 'Medium' ? C.moderate : C.high;
-  const bars = lvl === 'High' ? 3 : lvl === 'Medium' ? 2 : 1;
 
   return (
     <View>
@@ -242,24 +233,6 @@ function ResultView({ result, uri, onRetake, onDone, onZoom }: { result: Disease
           </View>
         )}
 
-        <View style={{ marginTop: S.md }}>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
-            <Text style={{ color: C.muted, fontSize: 14 }}>{t('resHowSure')}</Text>
-            <Text style={{ fontWeight: '700', color: lvlColor }}>{Math.round(result.confidence * 100)}%</Text>
-          </View>
-          <BarMeter
-            value={result.confidence}
-            min={0}
-            max={1}
-            color={lvlColor}
-            showPercent={false}
-            height={10}
-          />
-          <Text style={{ marginTop: 4, fontWeight: '600', color: lvlColor, fontSize: 13 }}>
-            {t(lvl === 'High' ? 'sureHigh' : lvl === 'Medium' ? 'sureMedium' : 'sureLow')}
-          </Text>
-        </View>
-
         {shownSteps.length || generic ? (
           <>
             <Text style={{ fontSize: 16, fontWeight: '700', color: C.text, marginTop: S.lg }}>{t('resWhatToDo')}</Text>
@@ -279,13 +252,6 @@ function ResultView({ result, uri, onRetake, onDone, onZoom }: { result: Disease
             <Text style={{ fontSize: 14, fontWeight: '700', color: C.muted, marginTop: S.lg }}>{t('resCouldBe')}</Text>
             {others.map((o, i) => <Text key={i} style={{ fontSize: 14, color: C.text, marginTop: 4 }}>{`• ${o}`}</Text>)}
           </>
-        ) : null}
-
-        {shownNote ? (
-          <View style={{ flexDirection: 'row', backgroundColor: C.surface, borderRadius: 10, padding: S.md, marginTop: S.lg }}>
-            <Icon name="info" size={16} color={C.muted} />
-            <Text style={{ flex: 1, marginLeft: S.sm, fontSize: 13, lineHeight: 18, color: C.muted }}>{shownNote}</Text>
-          </View>
         ) : null}
       </View>
 
@@ -518,10 +484,6 @@ export function ScanTab() {
                 <Text style={{ flex: 1, fontSize: 15.5, lineHeight: 21, color: C.text }}>{line}</Text>
               </View>
             ))}
-            <View style={{ flexDirection: 'row', backgroundColor: '#F6ECD6', borderRadius: 12, padding: S.md, marginTop: S.md }}>
-              <Icon name="info" size={16} color={C.muted} />
-              <Text style={{ flex: 1, marginLeft: S.sm, fontSize: 13, lineHeight: 18, color: C.muted }}>{t('scanCoverage')}</Text>
-            </View>
           </View>
 
           {notice ? <Banner text={notice} kind="error" /> : null}
@@ -529,20 +491,6 @@ export function ScanTab() {
           {/* history */}
           <LastUpdated at={historyUpdatedAt} stale={false} t={t} />
           <Text style={{ fontSize: 13, fontWeight: '800', letterSpacing: 1, color: C.muted, marginBottom: S.sm }}>{t('scanHistory').toUpperCase()}</Text>
-
-          {/* Scan history timeline */}
-          {history !== null && history.length > 0 && (
-            <>
-              <Text style={{ fontSize: 12, color: C.muted, marginBottom: S.sm }}>Recent confidence levels</Text>
-              <ScanTimeline
-                items={history.map(h => ({
-                  id: h.id,
-                  confidence: h.confidence,
-                  date: h.date,
-                }))}
-              />
-            </>
-          )}
 
           {history === null ? <SkeletonCard /> : null}
           {history !== null && history.length === 0 ? (
