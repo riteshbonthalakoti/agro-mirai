@@ -30,6 +30,20 @@ function apiJSON(path, method, body) {
   });
 }
 
+// Every page component's x-init="load()" fires at mount regardless of
+// auth state (x-show only hides the DOM, it doesn't delay mounting), so
+// on a fresh page load these race the session check and lose -- the
+// resulting empty state never retried before this fix. A page's own
+// catch calls this instead of showing an error toast when the failure
+// was specifically "not logged in yet": once adminApp confirms the
+// session (existing cookie or a fresh login), it dispatches
+// 'admin-authed' and every page still waiting on one fires its retry.
+function retryAfterAuth(e, loadFn) {
+  if (e.code !== 401) return false;
+  window.addEventListener('admin-authed', loadFn, { once: true });
+  return true;
+}
+
 // Chart.js helpers — destroy before recreate to avoid "Canvas already in use"
 var _charts = {};
 function destroyChart(id) {
@@ -91,6 +105,7 @@ function adminApp() {
         self.otpDevMode = d.otp_dev_mode === true;
         self.authed = true;
         self._routeFromHash();
+        window.dispatchEvent(new CustomEvent('admin-authed'));
       }).catch(function (e) {
         if (e.code !== 401) self.loginError = 'Backend unreachable.';
       });
@@ -161,6 +176,7 @@ function adminApp() {
           self.loginEmail = '';
           self.loginPassword = '';
           self.view = 'overview';
+          window.dispatchEvent(new CustomEvent('admin-authed'));
         })
         .catch(function (e) { self.loginError = e.message || 'Sign in failed'; })
         .finally(function () { self.loginBusy = false; });
@@ -253,6 +269,7 @@ function overviewPage() {
         self.ovLoading = false;
         self.$nextTick(function () { self._drawCharts(); });
       }).catch(function (e) {
+        if (retryAfterAuth(e, function () { self.load(); })) return;
         self.ovLoading = false;
         window.dispatchEvent(new CustomEvent('admin-toast', { detail: { msg: e.message, type: 'error' } }));
       });
@@ -306,6 +323,7 @@ function farmersPage() {
       var self = this;
       api('/v2/admin/farmers').then(function (r) { self.farmers = r.items; })
         .catch(function (e) {
+          if (retryAfterAuth(e, function () { self.load(); })) return;
           window.dispatchEvent(new CustomEvent('admin-toast', { detail: { msg: e.message, type: 'error' } }));
         });
     },
@@ -401,6 +419,7 @@ function farmerDetailPage() {
         self.fdAdvisories = ad.items.filter(function (a) { return a.farmer_id === id; });
         self.fdLoading = false;
       }).catch(function (e) {
+        if (retryAfterAuth(e, function () { self.load(id); })) return;
         self.fdLoading = false;
         window.dispatchEvent(new CustomEvent('admin-toast', { detail: { msg: e.message, type: 'error' } }));
       });
@@ -473,6 +492,7 @@ function fieldsPage() {
           return Object.assign({}, f, { farmer_name: farmerMap[f.farmer_id] || '—' });
         });
       }).catch(function (e) {
+        if (retryAfterAuth(e, function () { self.load(); })) return;
         window.dispatchEvent(new CustomEvent('admin-toast', { detail: { msg: e.message, type: 'error' } }));
       });
     },
@@ -568,6 +588,7 @@ function bugReportsPage() {
         });
         self._startStream();
       }).catch(function (e) {
+        if (retryAfterAuth(e, function () { self.load(); })) return;
         window.dispatchEvent(new CustomEvent('admin-toast', { detail: { msg: e.message, type: 'error' } }));
       });
     },
@@ -645,6 +666,7 @@ function auditLogPage() {
         self.alEntries = r.items.map(function (e) { return Object.assign({ _open: false }, e); });
         self.alLoading = false;
       }).catch(function (e) {
+        if (retryAfterAuth(e, function () { self.load(); })) return;
         self.alLoading = false;
         window.dispatchEvent(new CustomEvent('admin-toast', { detail: { msg: e.message, type: 'error' } }));
       });
@@ -673,7 +695,9 @@ function otpsPage() {
 
     _fetch() {
       var self = this;
-      api('/v2/admin/otps').then(function (r) { self.otps = r.items; }).catch(function () {});
+      api('/v2/admin/otps').then(function (r) { self.otps = r.items; }).catch(function (e) {
+        retryAfterAuth(e, function () { self._fetch(); });
+      });
     },
   };
 }
