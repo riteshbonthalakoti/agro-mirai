@@ -90,24 +90,45 @@ function adminApp() {
     drawer: { show: false, title: '', bodyHtml: '', save: null, saving: false, error: '' },
 
     navItems: [
-      { view: 'overview', hash: '',        icon: '📊', label: 'Overview' },
-      { view: 'farmers',  hash: 'farmers', icon: '👩‍🌾', label: 'Farmers' },
-      { view: 'fields',   hash: 'fields',  icon: '🌾', label: 'Fields' },
-      { view: 'bugs',     hash: 'bugs',    icon: '🐛', label: 'Bug Reports' },
-      { view: 'audit',    hash: 'audit',   icon: '📋', label: 'Audit Log' },
-      { view: 'otps',     hash: 'otps',    icon: '🔑', label: 'OTP Lookup' },
+      { view: 'overview', hash: '',        icon: '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/></svg>', label: 'Overview' },
+      { view: 'farmers',  hash: 'farmers', icon: '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>', label: 'Farmers' },
+      { view: 'fields',   hash: 'fields',  icon: '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>', label: 'Fields' },
+      { view: 'bugs',     hash: 'bugs',    icon: '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>', label: 'Bug Reports' },
+      { view: 'audit',    hash: 'audit',   icon: '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/></svg>', label: 'Audit Log' },
+      { view: 'otps',     hash: 'otps',    icon: '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/></svg>', label: 'OTP Lookup' },
     ],
 
     init() {
       var self = this;
-      // Try existing session cookie
+      var cached = null;
+      try {
+        var raw = localStorage.getItem('admin_session');
+        if (raw) cached = JSON.parse(raw);
+      } catch (err) {}
+
+      // If cached session exists within 7 days, preserve authed state immediately
+      if (cached && cached.authed && (Date.now() - (cached.at || 0) < 7 * 86400000)) {
+        self.authed = true;
+        self.loginEmail = cached.email || '';
+        self._routeFromHash();
+      }
+
+      // Verify or refresh session with backend
       api('/v2/admin/overview').then(function (d) {
         self.otpDevMode = d.otp_dev_mode === true;
         self.authed = true;
+        try {
+          localStorage.setItem('admin_session', JSON.stringify({ authed: true, email: self.loginEmail, at: Date.now() }));
+          document.cookie = "admin_auth=1; path=/; max-age=604800; SameSite=Lax";
+        } catch (e) {}
         self._routeFromHash();
         window.dispatchEvent(new CustomEvent('admin-authed'));
       }).catch(function (e) {
-        if (e.code !== 401) self.loginError = 'Backend unreachable.';
+        if (e.code === 401 && !cached) {
+          self.authed = false;
+        } else if (e.code !== 401) {
+          self.loginError = 'Backend unreachable.';
+        }
       });
 
       window.addEventListener('hashchange', function () { self._routeFromHash(); });
@@ -173,7 +194,10 @@ function adminApp() {
         })
         .then(function () {
           self.authed = true;
-          self.loginEmail = '';
+          try {
+            localStorage.setItem('admin_session', JSON.stringify({ authed: true, email: self.loginEmail, at: Date.now() }));
+            document.cookie = "admin_auth=1; path=/; max-age=604800; SameSite=Lax";
+          } catch (e) {}
           self.loginPassword = '';
           self.view = 'overview';
           window.dispatchEvent(new CustomEvent('admin-authed'));
@@ -184,11 +208,16 @@ function adminApp() {
 
     logout() {
       var self = this;
+      try {
+        localStorage.removeItem('admin_session');
+        document.cookie = "admin_auth=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+      } catch (e) {}
       fetch('/admin/logout', { method: 'POST', credentials: 'same-origin' })
         .finally(function () {
           self.authed = false;
           self.view = 'overview';
           self.unreadBugs = 0;
+          location.hash = '';
         });
     },
 

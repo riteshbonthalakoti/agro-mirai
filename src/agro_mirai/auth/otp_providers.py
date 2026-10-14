@@ -118,6 +118,9 @@ class SmsGatewaySender(OtpSender):
 
     def send(self, phone: str, code: str, lang: str = "en") -> None:
         text = build_otp_text(code, lang)
+        app_hash = self.app_hash or os.environ.get("SMS_APP_HASH")
+        if app_hash:
+            text = f"{text}\n\n{app_hash}"
         last_error: Exception | None = None
         for _attempt in range(2):  # one retry
             try:
@@ -200,7 +203,7 @@ def build_otp_sender(env: "os._Environ[str] | dict[str, str] | None" = None) -> 
                 "OTP_PROVIDER=sms_gateway requires SMS_GATEWAY_USER and SMS_GATEWAY_PASS"
             )
         return (
-            SmsGatewaySender(username=username, password=password, app_hash=env.get("SMS_APP_HASH")),
+            SmsGatewaySender(username=username, password=password, app_hash=env.get("SMS_APP_HASH", "M+MVX6Au1Vp uVyEdq3/+28")),
             {},
         )
 

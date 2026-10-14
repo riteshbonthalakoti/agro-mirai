@@ -70,9 +70,12 @@ function Why({ text }: { text?: string | null }) {
   );
 }
 
-function HeroHeader({ name, crop, greeting, fadeAnim }: {
-  name: string; crop: string | null; greeting: string; fadeAnim: Animated.Value;
+function HeroHeader({ name, crop, greeting, fadeAnim, lat, lon }: {
+  name: string; crop: string | null; greeting: string; fadeAnim: Animated.Value; lat?: number; lon?: number;
 }) {
+  const coordText = lat !== undefined && lon !== undefined
+    ? `${Math.abs(lat).toFixed(4)}°${lat >= 0 ? 'N' : 'S'}, ${Math.abs(lon).toFixed(4)}°${lon >= 0 ? 'E' : 'W'}`
+    : null;
   return (
     <Animated.View style={{ opacity: fadeAnim, backgroundColor: H.heroBg, borderRadius: 28, overflow: 'hidden', marginBottom: S.md }}>
       <View style={{ position: 'absolute', right: -40, top: -40, width: 180, height: 180, borderRadius: 90, backgroundColor: 'rgba(255,255,255,0.06)' }} />
@@ -80,11 +83,19 @@ function HeroHeader({ name, crop, greeting, fadeAnim }: {
       <View style={{ padding: S.xl, paddingBottom: S.lg }}>
         <Text style={{ fontSize: 13, fontWeight: '600', letterSpacing: 0.8, color: H.heroMuted, textTransform: 'uppercase' }}>{greeting}</Text>
         <Text style={{ fontSize: 28, fontWeight: '900', color: H.heroText, marginTop: 4, letterSpacing: -0.5 }} numberOfLines={1} adjustsFontSizeToFit>{name || '—'}</Text>
-        {crop ? (
-          <View style={{ marginTop: S.sm, alignSelf: 'flex-start', backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: 20, paddingHorizontal: S.md, paddingVertical: 4 }}>
-            <Text style={{ fontSize: 13, fontWeight: '700', color: H.heroAccent }}>{crop}</Text>
-          </View>
-        ) : null}
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: S.sm }}>
+          {crop ? (
+            <View style={{ alignSelf: 'flex-start', backgroundColor: 'rgba(255,255,255,0.18)', borderRadius: 20, paddingHorizontal: S.md, paddingVertical: 4 }}>
+              <Text style={{ fontSize: 13, fontWeight: '700', color: H.heroAccent }}>{crop}</Text>
+            </View>
+          ) : null}
+          {coordText ? (
+            <View style={{ alignSelf: 'flex-start', backgroundColor: 'rgba(255,255,255,0.12)', borderRadius: 20, paddingHorizontal: 12, paddingVertical: 4, flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+              <Text style={{ fontSize: 12 }}>📍</Text>
+              <Text style={{ fontSize: 12, fontWeight: '600', color: '#DCE7D6' }}>{coordText}</Text>
+            </View>
+          ) : null}
+        </View>
       </View>
     </Animated.View>
   );
@@ -227,6 +238,8 @@ export function HomeTab() {
           crop={field?.current_crop ? cropLabel(lang, field.current_crop) : null}
           greeting={`${t(greetKey())}${first ? `, ${first}` : ''}`}
           fadeAnim={fadeAnim}
+          lat={field?.latitude}
+          lon={field?.longitude}
         />
 
         {!field ? (

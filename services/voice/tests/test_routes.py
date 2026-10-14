@@ -5,9 +5,15 @@ import io
 import sys
 from pathlib import Path
 
+import importlib.util
+
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from app import create_app  # noqa: E402
+_voice_app_path = Path(__file__).resolve().parent.parent / "app.py"
+_voice_spec = importlib.util.spec_from_file_location("voice_service_app", _voice_app_path)
+app_module = importlib.util.module_from_spec(_voice_spec)
+_voice_spec.loader.exec_module(app_module)
+create_app = app_module.create_app
 
 
 class _StubVoice:
@@ -115,8 +121,6 @@ def test_text_to_speech_success(monkeypatch):
     # transcode → audio/ogg response), not whether ffmpeg is installed on
     # the test machine. The transcode function itself is covered by the
     # ffmpeg-missing test below and by CI's explicit ffmpeg install step.
-    import app as app_module
-
     monkeypatch.setattr(app_module, "_transcode_wav_to_ogg", lambda wav: b"OggS\x00fake")
     client = _client(lambda: _StubVoice())
     resp = client.post("/text-to-speech", json={"text": "hello", "lang": "en"})
@@ -126,8 +130,6 @@ def test_text_to_speech_success(monkeypatch):
 
 
 def test_text_to_speech_success_hi(monkeypatch):
-    import app as app_module
-
     monkeypatch.setattr(app_module, "_transcode_wav_to_ogg", lambda wav: b"OggS\x00fake")
     client = _client(lambda: _StubVoice())
     resp = client.post("/text-to-speech", json={"text": "hello", "lang": "hi"})
@@ -136,8 +138,6 @@ def test_text_to_speech_success_hi(monkeypatch):
 
 
 def test_text_to_speech_ffmpeg_missing_returns_422_not_500(monkeypatch):
-    import app as app_module
-
     monkeypatch.setattr(app_module.shutil, "which", lambda name: None)
     client = _client(lambda: _StubVoice())
     resp = client.post("/text-to-speech", json={"text": "hello", "lang": "en"})

@@ -53,24 +53,6 @@ function AdvisoryCard({ a }: { a: Advisory }) {
     setNote('');
     const shown = out[1] || plain;
     if (!isOnline()) {
-      // The server audio itself is never cached (playAdvisory in ../audio downloads it but
-      // doesn't expose the file URI, and audio.ts is out of this file's scope) -- this only
-      // marks that the advisory was successfully voiced before, so offline "replay" is really
-      // on-device TTS resynthesizing `shown`, not a replay of the original server audio.
-      const spokenBefore = await cacheGet<boolean>(`voice:${a.id}`);
-      if (!spokenBefore) {
-        toast.show(errorText(t, new ApiError(0, 'offline'), { write: true }), 'error');
-        return;
-      }
-      // Same guard playAdvisory's own device-TTS fallback uses (../audio:157): never read
-      // untranslated English text through a non-English device voice. Offline, useTranslated
-      // can't fetch a translation, so if it isn't already translated, refuse to speak rather
-      // than silently reading the wrong text in the wrong-language voice.
-      const translated = lang === 'en' || state === 'done';
-      if (!translated) {
-        toast.show(t('voiceTextOnly'), 'error');
-        return;
-      }
       setPlay(true);
       const ok = await speakOnDevice(shown, lang, () => setPlay(false));
       if (!ok) { setPlay(false); setNote(t('voiceTextOnly')); toast.show(t('voiceTextOnly'), 'error'); }
@@ -113,10 +95,10 @@ function AdvisoryCard({ a }: { a: Advisory }) {
   const sevColor = levelColor(a.severity);
   const paras = (out[1] || plain).split(/\n\s*\n/).map((x) => x.trim()).filter(Boolean);
 
-  const ICON_DEFS: { icon: IconName; tint: string; cap: string; keywords: RegExp }[] = [
-    { icon: 'sprout', tint: '#E8F3E8', cap: t('cropRec'),    keywords: /\b(crop|sow|plant|seed|harvest|fertiliz|nutrient|yield|growth|कसल|ಬೆಳೆ|పంట)/i },
-    { icon: 'drop',   tint: '#E3F1FA', cap: t('irrigation'), keywords: /\b(water|irrigat|rain|moisture|drip|soil\s*water|flood|ಿರಿ|ನೀರು|నీరు|पानी|सिंचाई)/i },
-    { icon: 'blight', tint: '#FDF0DC', cap: t('diseaseRisk'), keywords: /\b(disease|pest|fungus|blight|rust|wilt|infestation|spray|रोग|ರೋಗ|వ్యాధి)/i },
+  const ICON_DEFS: { icon: IconName; tint: string; cap: string; category: 'crop' | 'irrigation' | 'disease'; keywords: RegExp }[] = [
+    { icon: 'sprout', tint: '#E8F3E8', cap: t('cropRec'),    category: 'crop',       keywords: /\b(crop|sow|plant|seed|harvest|fertiliz|nutrient|yield|growth|कसल|ಬೆಳೆ|పంట)/i },
+    { icon: 'drop',   tint: '#E3F1FA', cap: t('irrigation'), category: 'irrigation', keywords: /\b(water|irrigat|rain|moisture|drip|soil\s*water|flood|ಿರಿ|ನೀರು|నీరు|पानी|सिंचाई)/i },
+    { icon: 'blight', tint: '#FDF0DC', cap: t('diseaseRisk'), category: 'disease',    keywords: /\b(disease|pest|fungus|blight|rust|wilt|infestation|spray|scout|रोग|ರೋಗ|వ్యాధి)/i },
   ];
 
   function pickIcon(text: string, used: Set<IconName>) {
@@ -126,7 +108,7 @@ function AdvisoryCard({ a }: { a: Advisory }) {
     for (const d of ICON_DEFS) {
       if (!used.has(d.icon)) return d;
     }
-    return { icon: 'info' as IconName, tint: '#EEF1E8', cap: '' };
+    return { icon: 'info' as IconName, tint: '#EEF1E8', cap: '', category: 'crop' as const };
   }
 
   const usedIcons = new Set<IconName>();
@@ -135,6 +117,59 @@ function AdvisoryCard({ a }: { a: Advisory }) {
     usedIcons.add(d.icon as IconName);
     return d;
   });
+
+  // Parses raw/translated text into clean, structured farmer-friendly components
+  function parseSectionContent(text: string, category: 'crop' | 'irrigation' | 'disease') {
+    let action = '';
+    const chips: { label: string; value: string; icon: IconName }[] = [];
+    const bullets: string[] = [];
+
+    // 1. Extract explicit "What to do" or primary recommendation
+    const actionMatch = text.match(/(?:What to do|చేయవలసినవి|ಏನು ಮಾಡಬೇಕು|क्या करें)\s*:\s*([^.]+)/i);
+    if (actionMatch) {
+      action = actionMatch[1].trim();
+    } else if (category === 'irrigation') {
+      const irrMatch = text.match(/(?:about\s+)?(\d+\s*mm\s+of\s+watering\s+is\s+recommended|watering\s+is\s+(?:recommended|needed)[^.]*)/i);
+      if (irrMatch) action = irrMatch[1].trim();
+    } else if (category === 'crop') {
+      const cropMatch = text.match(/(?:Best crop for your field|recommendation of)\s*:\s*([^.]+)/i);
+      if (cropMatch) action = `${t('cropRec')}: ${cropMatch[1].trim()}`;
+    }
+
+    // 2. Extract key metrics for quick farmer glance
+    const moistureM = text.match(/(?:soil moisture(?:\s*is)?|తేమ|ತೇವಾಂಶ|नमी)\s*[:=]?\s*(\d+)%/i);
+    if (moistureM) chips.push({ label: 'Moisture', value: `${moistureM[1]}%`, icon: 'drop' });
+
+    const waterM = text.match(/(\d+)\s*mm\s*(?:of\s*(?:watering|water)|నీరు|నీరు|पानी)/i);
+    if (waterM) chips.push({ label: 'Water Need', value: `${waterM[1]} mm`, icon: 'drop' });
+
+    const rainM = text.match(/(\d+)\s*mm\s*(?:of\s*rain|rainfall|వర్షం|ಮಳೆ|बारिश)/i);
+    if (rainM) chips.push({ label: 'Rain', value: `${rainM[1]} mm`, icon: 'drop' });
+
+    const tempM = text.match(/(\d+(?:\.\d+)?)\s*°C/);
+    if (tempM) chips.push({ label: 'Temp', value: `${tempM[1]}°C`, icon: 'thermo' });
+
+    const humM = text.match(/(?:humidity(?:\s*is)?|గాలిలో తేమ|ಆರ್ದ್ರತೆ|आर्द्रता)\s*[:=]?\s*(\d+)%/i);
+    if (humM) chips.push({ label: 'Humidity', value: `${humM[1]}%`, icon: 'humidity' });
+
+    const phM = text.match(/(?:pH|acidity)\s*(?:is\s*)?([\d.]+)/i);
+    if (phM) chips.push({ label: 'pH', value: phM[1], icon: 'sprout' });
+
+    // 3. Clean and bulletize the remaining practical sentences
+    const cleanSentences = text
+      .split(/(?<=[.!?])\s+/)
+      .map((s) => s.trim())
+      .filter((s) => {
+        if (!s) return false;
+        if (action && s.toLowerCase().includes(action.toLowerCase().slice(0, 20))) return false;
+        return true;
+      })
+      .map((s) => s.replace(/^(?:What mattered most|What to do)\s*:\s*/i, ''));
+
+    bullets.push(...cleanSentences);
+
+    return { action, chips, bullets };
+  }
 
   return (
     <View style={{ backgroundColor: '#fff', borderRadius: 26, marginBottom: S.lg, overflow: 'hidden', borderWidth: 1, borderColor: '#E3E8DC', shadowColor: '#000', shadowOpacity: 0.07, shadowRadius: 12, shadowOffset: { width: 0, height: 4 }, elevation: 3 }}>
@@ -147,23 +182,105 @@ function AdvisoryCard({ a }: { a: Advisory }) {
       </View>
 
       <View style={{ padding: S.lg }}>
-        <Text style={{ fontSize: 21, lineHeight: 28, fontWeight: '800', color: C.text }}>{out[0] || a.title}</Text>
+        <Text style={{ fontSize: 22, lineHeight: 28, fontWeight: '800', color: C.text }}>{out[0] || a.title}</Text>
         {state === 'loading' ? <Muted style={{ marginTop: 4 }}>{t('translating')}</Muted> : null}
         {state === 'failed' ? <Muted style={{ marginTop: 4 }}>{t('translateFailed')}</Muted> : null}
 
-        {paras.length >= 2 ? (
-          <View style={{ marginTop: S.md }}>
+        {paras.length >= 1 ? (
+          <View style={{ marginTop: S.md, gap: S.md }}>
             {paras.map((p, k) => {
-              const r = ROW[k];
+              const r = ROW[k] || { icon: 'info' as IconName, tint: '#EEF1E8', cap: '', category: 'crop' as const };
+              const { action, chips, bullets } = parseSectionContent(p, r.category);
+              const isUrgent = a.severity === 'high' || a.severity === 'severe';
+
               return (
-                <View key={k} style={{ flexDirection: 'row', marginBottom: S.md }}>
-                  <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: r.tint, alignItems: 'center', justifyContent: 'center', marginRight: S.md }}>
-                    <Icon name={r.icon} size={22} color={C.accent} />
+                <View
+                  key={k}
+                  style={{
+                    backgroundColor: '#FAFAF7',
+                    borderRadius: 18,
+                    borderWidth: 1.2,
+                    borderColor: '#E8ECE2',
+                    padding: S.md,
+                  }}
+                >
+                  {/* Category Header */}
+                  <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: S.sm }}>
+                    <View style={{ width: 38, height: 38, borderRadius: 19, backgroundColor: r.tint, alignItems: 'center', justifyContent: 'center', marginRight: S.sm }}>
+                      <Icon name={r.icon} size={20} color={C.accent} />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      {r.cap ? (
+                        <Text style={{ fontSize: 13, fontWeight: '800', letterSpacing: 0.6, color: C.accent }}>
+                          {r.cap.toUpperCase()}
+                        </Text>
+                      ) : null}
+                    </View>
                   </View>
-                  <View style={{ flex: 1 }}>
-                    {r.cap ? <Text style={{ fontSize: 12.5, fontWeight: '800', letterSpacing: 0.6, color: C.muted, marginBottom: 2 }}>{r.cap.toUpperCase()}</Text> : null}
-                    <Text style={{ fontSize: 16.5, lineHeight: 24, color: C.text }}>{p}</Text>
-                  </View>
+
+                  {/* Primary Action Box (Clear Takeaway for the Farmer) */}
+                  {action ? (
+                    <View
+                      style={{
+                        backgroundColor: isUrgent && r.category === 'disease' ? '#FEF2F2' : '#F0F9F0',
+                        borderRadius: 12,
+                        borderLeftWidth: 4,
+                        borderLeftColor: isUrgent && r.category === 'disease' ? C.danger : C.accent,
+                        paddingVertical: 10,
+                        paddingHorizontal: 12,
+                        marginBottom: S.sm,
+                      }}
+                    >
+                      <Text style={{ fontSize: 12, fontWeight: '800', color: isUrgent && r.category === 'disease' ? C.danger : C.accent, letterSpacing: 0.5, marginBottom: 2 }}>
+                        {isUrgent && r.category === 'disease' ? '⚠️ RECOMMENDED ACTION' : '✓ ACTION'}
+                      </Text>
+                      <Text style={{ fontSize: 16, fontWeight: '700', color: C.text, lineHeight: 22 }}>
+                        {action}
+                      </Text>
+                    </View>
+                  ) : null}
+
+                  {/* Metric Chips (Numbers at a glance) */}
+                  {chips.length > 0 ? (
+                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: S.sm }}>
+                      {chips.map((c, ci) => (
+                        <View
+                          key={ci}
+                          style={{
+                            flexDirection: 'row',
+                            alignItems: 'center',
+                            backgroundColor: '#FFFFFF',
+                            borderRadius: 14,
+                            borderWidth: 1,
+                            borderColor: '#D8DFD2',
+                            paddingHorizontal: 10,
+                            paddingVertical: 4,
+                          }}
+                        >
+                          <Icon name={c.icon} size={14} color={C.accent} />
+                          <Text style={{ fontSize: 12, fontWeight: '700', color: C.text, marginLeft: 4 }}>
+                            {c.label}: <Text style={{ color: C.accent, fontWeight: '800' }}>{c.value}</Text>
+                          </Text>
+                        </View>
+                      ))}
+                    </View>
+                  ) : null}
+
+                  {/* Clean, readable bullet points instead of a wall of text */}
+                  {bullets.length > 0 ? (
+                    <View style={{ gap: 6, marginTop: 2 }}>
+                      {bullets.map((b, bi) => (
+                        <View key={bi} style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
+                          <Text style={{ color: C.accent, fontSize: 15, marginRight: 6, lineHeight: 22 }}>•</Text>
+                          <Text style={{ flex: 1, fontSize: 15, lineHeight: 22, color: '#333D29' }}>
+                            {b}
+                          </Text>
+                        </View>
+                      ))}
+                    </View>
+                  ) : (
+                    <Text style={{ fontSize: 15.5, lineHeight: 23, color: C.text }}>{p}</Text>
+                  )}
                 </View>
               );
             })}

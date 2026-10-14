@@ -109,15 +109,18 @@ const DEVICE_LOCALE: Record<string, string> = { en: 'en-IN', kn: 'kn-IN', te: 't
  *  resolves, falling back to the engine default. */
 export async function deviceVoiceLocale(lang: string): Promise<string | null> {
   const want = DEVICE_LOCALE[lang];
-  if (!want) return null;
+  if (!want) return lang === 'en' ? 'en-IN' : null;
   try {
     const voices = await Speech.getAvailableVoicesAsync();
-    const norm = (l: string) => l.replace('_', '-').toLowerCase();
-    const hit = voices.find((v) => norm(v.language) === norm(want))
-      ?? voices.find((v) => norm(v.language).startsWith(lang));
-    if (hit) return hit.language;
+    if (voices && voices.length > 0) {
+      const norm = (l: string) => l.replace('_', '-').toLowerCase();
+      const hit = voices.find((v) => norm(v.language) === norm(want))
+        ?? voices.find((v) => norm(v.language).startsWith(lang));
+      if (hit) return hit.language;
+    }
   } catch {}
-  return lang === 'en' ? want : null;
+  // Default to device locale tag so system TTS speaks offline
+  return want;
 }
 
 /** Dev-only switch to exercise the fallback without touching the real voice
@@ -153,11 +156,27 @@ export async function playAdvisory(
     await playUri(f.uri, ticket, onDone);
     return ticket === current ? 'server' : 'cancelled';
   } catch {
-    if (ticket !== current) return 'cancelled';
+    try {
+      await setAudioModeAsync({ allowsRecording: false, playsInSilentMode: true });
+    } catch {}
     const locale = (lang === 'en' || translated) ? await deviceVoiceLocale(lang) : null;
     if (ticket !== current) return 'cancelled';
-    if (!locale) { onDone(); return 'text-only'; }
-    Speech.speak(displayText.replace(/\(.*?\)/g, ''), { language: locale, onDone, onError: onDone, onStopped: onDone });
+    const clean = displayText.replace(/\(.*?\)/g, '').trim();
+    if (!clean) { onDone(); return 'text-only'; }
+    Speech.speak(clean, {
+      language: locale || undefined,
+      pitch: 1.0,
+      rate: 0.9,
+      onDone,
+      onError: () => {
+        if (locale) {
+          Speech.speak(clean, { pitch: 1.0, rate: 0.9, onDone, onError: onDone, onStopped: onDone });
+        } else {
+          onDone();
+        }
+      },
+      onStopped: onDone,
+    });
     return 'device';
   }
 }
@@ -165,8 +184,25 @@ export async function playAdvisory(
 /** Reads `text` with the phone's own voice in `lang` (used when the server voice is down).
  *  Returns false, speaking nothing, when the phone has no voice for that language. */
 export async function speakOnDevice(text: string, lang: string, onDone: () => void): Promise<boolean> {
+  try {
+    await setAudioModeAsync({ allowsRecording: false, playsInSilentMode: true });
+  } catch {}
   const locale = await deviceVoiceLocale(lang);
-  if (!locale) return false;
-  Speech.speak(text.replace(/\(.*?\)/g, ''), { language: locale, onDone, onError: onDone, onStopped: onDone });
+  const clean = text.replace(/\(.*?\)/g, '').trim();
+  if (!clean) { onDone(); return false; }
+  Speech.speak(clean, {
+    language: locale || undefined,
+    pitch: 1.0,
+    rate: 0.9,
+    onDone,
+    onError: () => {
+      if (locale) {
+        Speech.speak(clean, { pitch: 1.0, rate: 0.9, onDone, onError: onDone, onStopped: onDone });
+      } else {
+        onDone();
+      }
+    },
+    onStopped: onDone,
+  });
   return true;
 }

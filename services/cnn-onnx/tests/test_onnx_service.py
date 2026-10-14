@@ -9,10 +9,15 @@ import numpy as np
 import pytest
 from PIL import Image
 
+import importlib.util
+
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "src"))
 
-import app as svc  # noqa: E402
+_onnx_app_path = Path(__file__).resolve().parent.parent / "app.py"
+_onnx_spec = importlib.util.spec_from_file_location("cnn_onnx_service_app", _onnx_app_path)
+svc = importlib.util.module_from_spec(_onnx_spec)
+_onnx_spec.loader.exec_module(svc)
 
 NAMES = ["Tomato___Late_blight", "Tomato___healthy"]
 

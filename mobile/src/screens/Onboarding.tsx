@@ -75,6 +75,21 @@ function PhoneKey({
   );
 }
 
+function BlinkingCursor() {
+  const op = useRef(new Animated.Value(1)).current;
+  useEffect(() => {
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(op, { toValue: 0, duration: 450, useNativeDriver: true }),
+        Animated.timing(op, { toValue: 1, duration: 450, useNativeDriver: true }),
+      ]),
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [op]);
+  return <Animated.Text style={{ opacity: op, fontSize: 24, color: C.accent, fontWeight: '700', marginLeft: 2 }}>|</Animated.Text>;
+}
+
 function PhoneKeyboard({
   value,
   onChange,
@@ -220,15 +235,15 @@ export function LanguageScreen({ onPick }: { onPick: (l: Lang) => void }) {
   // own await resolves -- tapping a second block before that happens could
   // let both starts race. Force a clean stop first so at most one clip is
   // ever mid-play.
-  const pick = async (l: Lang) => {
+  const pick = (l: Lang) => {
     setSel(l);
-    await stopAudio();
+    stopAudio().catch(() => {});
     playOnboardingClip('welcome', l).catch(() => {});
   };
 
   const continueTo = () => {
     if (!sel) return;
-    stopAudio().catch(() => {}); // greeting stops at once; never wait on it
+    stopAudio().catch(() => {});
     onPick(sel);
   };
 
@@ -600,22 +615,32 @@ export function AuthScreen({ lang, onLoggedIn, notice, onChangeLanguage, onCance
 
         {step === 'phone' ? (
           <>
-            <Text style={label}>{t('phoneLabel')}</Text>
-            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-              <View style={{ minHeight: 56, borderRadius: 14, backgroundColor: '#E4EFD9', paddingHorizontal: S.md, justifyContent: 'center', marginRight: S.sm }}>
-                <Text style={{ fontSize: 20, fontWeight: '700', color: C.text }}>+91</Text>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: S.xl, marginBottom: S.sm }}>
+              <Text style={{ fontSize: 16, fontWeight: '700', color: C.text }}>{t('phoneLabel')}</Text>
+              <View style={{ paddingHorizontal: 10, paddingVertical: 3, borderRadius: 12, backgroundColor: phone.length === 10 ? '#E8F5E9' : '#F1EEDC', borderWidth: 1, borderColor: phone.length === 10 ? '#81C784' : '#D4CCA7' }}>
+                <Text style={{ fontSize: 12, fontWeight: '700', color: phone.length === 10 ? '#2E7D32' : C.muted }}>
+                  {phone.length === 10 ? '✓ 10 digits' : `${phone.length}/10 digits`}
+                </Text>
               </View>
-              {/* showSoftInputOnFocus=false suppresses the system keyboard;
-                  our PhoneKeyboard handles input instead */}
-              <Input
-                style={[bigInput, { flex: 1, letterSpacing: 2 }]}
-                value={phone.replace(/(\d{5})(\d)/, '$1 $2')}
-                onChangeText={() => {}}
-                placeholder={t('phoneHint')}
-                maxLength={11}
-                showSoftInputOnFocus={false}
-                caretHidden
-              />
+            </View>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <View style={{ minHeight: 56, borderRadius: 14, backgroundColor: '#E4EFD9', paddingHorizontal: 14, justifyContent: 'center', marginRight: S.sm, borderWidth: 1.5, borderColor: '#C8DBC0', flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <Text style={{ fontSize: 18 }}>🇮🇳</Text>
+                <Text style={{ fontSize: 19, fontWeight: '700', color: C.text }}>+91</Text>
+              </View>
+              <View style={{ flex: 1, minHeight: 56, borderWidth: 2, borderColor: phone.length > 0 ? C.accent : '#B9C9B4', borderRadius: 14, backgroundColor: '#fff', paddingHorizontal: S.md, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+                  <Text style={{ fontSize: 22, fontWeight: '700', color: phone ? C.text : '#A0AAB0', letterSpacing: 2 }}>
+                    {phone ? phone.replace(/(\d{5})(\d)/, '$1 $2') : t('phoneHint')}
+                  </Text>
+                  {phone.length < 10 ? <BlinkingCursor /> : null}
+                </View>
+                {phone.length > 0 ? (
+                  <TouchableOpacity onPress={() => setPhone('')} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} style={{ padding: 4 }}>
+                    <Icon name="close" size={18} color={C.muted} />
+                  </TouchableOpacity>
+                ) : null}
+              </View>
             </View>
             <BigBtn label={t('sendOtp')} onPress={submitPhone} busy={busy} disabled={cooldown > 0} />
             <Text style={{ fontSize: 15, lineHeight: 22, color: C.muted, textAlign: 'center', marginTop: S.md }}>🔒  {t('authTrust')}</Text>

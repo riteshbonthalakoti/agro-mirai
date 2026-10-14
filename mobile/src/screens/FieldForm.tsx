@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, ImageBackground, ScrollView, Text, TouchableOpacity, View, useWindowDimensions } from 'react-native';
 import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 import * as Location from 'expo-location';
-import { ApiError, Field, createField, patchField } from '../api';
+import { ApiError, Field, createField, patchField, getRecommendation, getIrrigation, getDiseaseRiskFull, dataSummary } from '../api';
 import { cropLabel, soilLabel, useApp } from '../ctx';
 import { DateField } from '../datepicker';
 import { classifyError } from '../errors';
@@ -177,6 +177,13 @@ export function FieldForm({ initial, onDone, onCancel }: { initial?: Field; onDo
         onDone(saved); // editing an existing field: no need for the new-field ready screen
       } else {
         feedback.success();
+        // Warm up and pre-seed the caches so Home and Data tabs load immediately without empty states
+        Promise.all([
+          getRecommendation(saved.id, false).then((r) => cacheSet(`rec:${saved.id}:false`, r)).catch(() => {}),
+          getIrrigation(saved.id).then((i) => cacheSet(`irr:${saved.id}`, i)).catch(() => {}),
+          getDiseaseRiskFull(saved.id, lang).then((d) => cacheSet(`dis:${saved.id}:${lang}`, d)).catch(() => {}),
+          dataSummary(saved.id).then((s) => cacheSet(`summary:${saved.id}`, s)).catch(() => {}),
+        ]).catch(() => {});
         setSavedField(saved);
       }
     } catch (e) {
@@ -217,7 +224,7 @@ export function FieldForm({ initial, onDone, onCancel }: { initial?: Field; onDo
         style={{ minHeight: 84, borderRadius: 18, borderWidth: hasLocation ? 2 : 1.5, borderColor: hasLocation ? C.accent : '#B9C9B4', backgroundColor: hasLocation ? '#E8F3E8' : '#fff', flexDirection: 'row', alignItems: 'center', padding: S.md }}
       >
         <View style={{ width: 52, height: 52, borderRadius: 26, backgroundColor: hasLocation ? C.accent : '#E4EFD9', alignItems: 'center', justifyContent: 'center', marginRight: S.md }}>
-          <Icon name={hasLocation ? 'check' : 'location'} size={26} color={hasLocation ? '#fff' : C.accent} />
+          {locating ? <ActivityIndicator size="small" color={C.accent} /> : <Icon name={hasLocation ? 'check' : 'location'} size={26} color={hasLocation ? '#fff' : C.accent} />}
         </View>
         <View style={{ flex: 1 }}>
           <Text style={{ fontSize: 18, fontWeight: '800', color: C.text }}>
@@ -226,15 +233,38 @@ export function FieldForm({ initial, onDone, onCancel }: { initial?: Field; onDo
           <Text style={{ fontSize: 14, color: C.muted, marginTop: 2 }}>{hasLocation ? t('locationTapAgain') : t('locationStandInField')}</Text>
         </View>
       </TouchableOpacity>
-      <TouchableOpacity onPress={() => setShowCoords(!showCoords)} style={{ minHeight: 44, justifyContent: 'center' }}>
-        <Text style={{ color: C.accent, fontWeight: '700', fontSize: 15, textDecorationLine: 'underline' }}>{showCoords ? t('hideCoords') : t('enterCoords')}</Text>
-      </TouchableOpacity>
-      {showCoords ? (
+
+      {hasLocation ? (
+        <View style={{ marginTop: S.md, padding: S.md, backgroundColor: '#F1F7EE', borderRadius: 16, borderWidth: 1.5, borderColor: '#C4DFC0' }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <Text style={{ fontSize: 16 }}>📍</Text>
+              <Text style={{ fontSize: 14, fontWeight: '800', color: '#1B4332' }}>Exact Location Pin</Text>
+            </View>
+            <View style={{ backgroundColor: '#2E7D32', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10 }}>
+              <Text style={{ fontSize: 11, fontWeight: '700', color: '#fff' }}>PINNED</Text>
+            </View>
+          </View>
+          <Text style={{ fontSize: 13, color: '#2D6A4F', fontWeight: '600' }}>
+            {`${parseFloat(lat).toFixed(5)}°N, ${parseFloat(lon).toFixed(5)}°E`}
+          </Text>
+          {placeName ? (
+            <Text style={{ fontSize: 12, color: C.muted, marginTop: 2 }}>
+              {placeName}
+            </Text>
+          ) : null}
+        </View>
+      ) : null}
+
+      <View style={{ marginTop: S.md }}>
+        <Text style={{ fontSize: 14, fontWeight: '700', color: C.text, marginBottom: 6 }}>
+          {t('enterCoords')} (Latitude / Longitude)
+        </Text>
         <View style={{ flexDirection: 'row', gap: S.sm }}>
           <Input style={[bigInput, { flex: 1 }]} value={lat} onChangeText={setLat} onEndEditing={onCoordsBlur} placeholder={t('latitude')} keyboardType="numbers-and-punctuation" />
           <Input style={[bigInput, { flex: 1 }]} value={lon} onChangeText={setLon} onEndEditing={onCoordsBlur} placeholder={t('longitude')} keyboardType="numbers-and-punctuation" />
         </View>
-      ) : null}
+      </View>
     </Q>
   );
 

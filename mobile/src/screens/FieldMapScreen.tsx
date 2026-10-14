@@ -1,7 +1,22 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { TouchableOpacity, View, Text } from 'react-native';
-import { Map, Camera, Marker } from '@maplibre/maplibre-react-native';
-import type { CameraRef } from '@maplibre/maplibre-react-native';
+let Map: any = View;
+let Camera: any = View;
+let Marker: any = View;
+let hasMapLibre = false;
+
+try {
+  const ML = require('@maplibre/maplibre-react-native');
+  if (ML && (ML.Map || ML.MapView)) {
+    Map = ML.Map || ML.MapView;
+    Camera = ML.Camera;
+    Marker = ML.Marker;
+    hasMapLibre = true;
+  }
+} catch {
+  hasMapLibre = false;
+}
+type CameraRef = any;
 import * as Location from 'expo-location';
 import { isOnline } from '../api';
 import { useApp } from '../ctx';

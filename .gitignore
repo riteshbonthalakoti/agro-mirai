@@ -70,3 +70,8 @@ AGRO_MIRAI_DEMO.zip
 !services/cnn-onnx/model/*.onnx
 !services/tabular-ml/model/*.joblib
 *.local.txt
+.superpowers/
+Claude outputs/
+HANDOVER_STATUS_*.md
+.gradle/
+*.apk

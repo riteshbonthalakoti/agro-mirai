@@ -100,10 +100,8 @@ export function OtpBoxInput({
         autoFocus={autoFocus}
         textContentType="oneTimeCode"
         autoComplete="sms-otp"
-        // Invisible but present and focusable -- this is the input that
-        // actually receives typed/pasted/autofilled text; the boxes above
-        // are a pure display mirror of its value.
-        style={{ position: 'absolute', opacity: 0, height: 1, width: 1 }}
+        // Full-size invisible overlay so Android Autofill detects a valid input
+        style={[{ ...StyleSheet.absoluteFill as any, opacity: 0.01 }]}
       />
     </TouchableOpacity>
   );

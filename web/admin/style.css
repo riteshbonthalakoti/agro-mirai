@@ -5,23 +5,29 @@
 
 .input-field {
   width: 100%;
-  border: 1px solid #e2e8f0;
-  border-radius: 0.5rem;
-  padding: 0.375rem 0.625rem;
+  border: 1px solid #D8E2DC;
+  border-radius: 0.625rem;
+  padding: 0.5rem 0.75rem;
   font-size: 0.875rem;
   outline: none;
   background: #fff;
   font-family: inherit;
 }
-.input-field:focus { outline: 2px solid #22c55e; outline-offset: 1px; }
+.input-field:focus { outline: 2px solid #2D6A4F; outline-offset: 1px; border-color: #2D6A4F; }
 
 .btn-primary {
-  background: #22c55e; color: white; font-weight: 600;
-  border-radius: 0.5rem; cursor: pointer; transition: opacity .15s;
-  border: none; font-family: inherit;
+  background: linear-gradient(135deg, #2D6A4F, #1B4332);
+  color: white;
+  font-weight: 600;
+  border-radius: 0.625rem;
+  cursor: pointer;
+  transition: all .15s ease-in-out;
+  border: none;
+  font-family: inherit;
+  box-shadow: 0 2px 6px rgba(27, 67, 50, 0.25);
 }
-.btn-primary:hover { opacity: .88; }
-.btn-primary:disabled { opacity: .5; cursor: not-allowed; }
+.btn-primary:hover { opacity: .92; transform: translateY(-1px); }
+.btn-primary:disabled { opacity: .5; cursor: not-allowed; transform: none; }
 
 .btn-danger {
   background: #dc2626; color: white; font-weight: 600;

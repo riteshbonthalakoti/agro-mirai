@@ -189,7 +189,7 @@ export const refreshData = (id: string) =>
   request<{ data_acquisition: Record<string, string> }>(`/v2/fields/${id}/refresh-data`, { method: 'POST' }, { timeout: 45000 });
 export const dataSummary = async (id: string): Promise<DataSummary> => {
   try {
-    const res = await request<DataSummary>(`/v2/fields/${id}/data-summary`, {}, { timeout: 15000 });
+    const res = await request<DataSummary>(`/v2/fields/${id}/data-summary`, {}, { timeout: 4000 });
     if (res && res.weather) return res;
     throw new Error('empty_summary');
   } catch {
@@ -255,7 +255,7 @@ export const dataSummary = async (id: string): Promise<DataSummary> => {
 // ---- the three models + advisory ---------------------------------------------
 export const getRecommendation = async (id: string, keepCurrent = false): Promise<CropRec> => {
   try {
-    const res = await request<CropRec>(`/v2/fields/${id}/recommendation${keepCurrent ? '?keep_current=true' : ''}`, {}, { timeout: 20000 });
+    const res = await request<CropRec>(`/v2/fields/${id}/recommendation${keepCurrent ? '?keep_current=true' : ''}`, {}, { timeout: 4000 });
     if (res && res.recommended_crop) return res;
     throw new Error('empty_rec');
   } catch {
@@ -288,7 +288,7 @@ export const getRecommendation = async (id: string, keepCurrent = false): Promis
 
 export const getIrrigation = async (id: string): Promise<Irrigation> => {
   try {
-    const res = await request<Irrigation>(`/v2/fields/${id}/irrigation`, {}, { timeout: 20000 });
+    const res = await request<Irrigation>(`/v2/fields/${id}/irrigation`, {}, { timeout: 4000 });
     if (res && res.recommended_depth_mm !== undefined) return res;
     throw new Error('empty_irr');
   } catch {
@@ -320,7 +320,7 @@ export const getIrrigation = async (id: string): Promise<Irrigation> => {
 // same call, but keeps the `details` object (trend, wet days) next to the items
 export const getDiseaseRiskFull = async (id: string, lang: string) => {
   try {
-    const res = await request<{ items: DiseaseAlert[]; details?: DiseaseDetails | null }>(`/v2/fields/${id}/disease-risk?language=${lang}`, {}, { timeout: 20000 });
+    const res = await request<{ items: DiseaseAlert[]; details?: DiseaseDetails | null }>(`/v2/fields/${id}/disease-risk?language=${lang}`, {}, { timeout: 4000 });
     if (res && res.items && res.items.length > 0) return res;
     throw new Error('empty_risk');
   } catch {
