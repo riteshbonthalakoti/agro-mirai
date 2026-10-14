@@ -27,49 +27,47 @@ function PhoneKey({
   label,
   sub,
   onPress,
-  wide,
   danger,
 }: {
   label: string;
   sub?: string;
   onPress: () => void;
-  wide?: boolean;
   danger?: boolean;
 }) {
   const scaleAnim = useRef(new Animated.Value(1)).current;
   const handlePressIn = () =>
-    Animated.spring(scaleAnim, { toValue: 0.88, friction: 4, tension: 160, useNativeDriver: true }).start();
+    Animated.timing(scaleAnim, { toValue: 0.94, duration: 80, useNativeDriver: true }).start();
   const handlePressOut = () =>
-    Animated.spring(scaleAnim, { toValue: 1, friction: 5, tension: 120, useNativeDriver: true }).start();
+    Animated.timing(scaleAnim, { toValue: 1, duration: 100, useNativeDriver: true }).start();
 
   return (
     <TouchableOpacity
       onPress={onPress}
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
-      activeOpacity={1}
-      style={{ flex: wide ? 2 : 1, margin: 4 }}
+      activeOpacity={0.8}
+      style={{ flex: 1, marginHorizontal: 5, marginVertical: 4 }}
     >
       <Animated.View
         style={{
           transform: [{ scale: scaleAnim }],
-          backgroundColor: danger ? '#FFF1F0' : '#FFFFFF',
+          backgroundColor: danger ? '#FEE2E2' : '#FFFFFF',
           borderRadius: 14,
           borderWidth: 1,
-          borderColor: danger ? '#FECDD3' : '#D8E6D0',
+          borderColor: danger ? '#FECACA' : '#E5E7EB',
           alignItems: 'center',
           justifyContent: 'center',
-          paddingVertical: 14,
-          // subtle shadow
-          shadowColor: '#1B4332',
+          paddingVertical: 10,
+          minHeight: 52,
+          shadowColor: '#000',
           shadowOffset: { width: 0, height: 1 },
-          shadowOpacity: 0.07,
-          shadowRadius: 3,
-          elevation: 2,
+          shadowOpacity: 0.04,
+          shadowRadius: 2,
+          elevation: 1,
         }}
       >
-        <Text style={{ fontSize: 22, fontWeight: '700', color: danger ? '#B3261E' : '#1A1D19' }}>{label}</Text>
-        {sub ? <Text style={{ fontSize: 10, color: '#888', letterSpacing: 1, marginTop: 1 }}>{sub}</Text> : null}
+        <Text style={{ fontSize: 22, fontWeight: '700', color: danger ? '#DC2626' : '#111827' }}>{label}</Text>
+        {sub ? <Text style={{ fontSize: 9, fontWeight: '600', color: '#6B7280', letterSpacing: 0.8, marginTop: 1 }}>{sub}</Text> : null}
       </Animated.View>
     </TouchableOpacity>
   );
@@ -90,6 +88,19 @@ function BlinkingCursor() {
   return <Animated.Text style={{ opacity: op, fontSize: 24, color: C.accent, fontWeight: '700', marginLeft: 2 }}>|</Animated.Text>;
 }
 
+const KEYPAD_LETTERS: Record<string, string> = {
+  '1': '',
+  '2': 'ABC',
+  '3': 'DEF',
+  '4': 'GHI',
+  '5': 'JKL',
+  '6': 'MNO',
+  '7': 'PQRS',
+  '8': 'TUV',
+  '9': 'WXYZ',
+  '0': '+',
+};
+
 function PhoneKeyboard({
   value,
   onChange,
@@ -97,24 +108,6 @@ function PhoneKeyboard({
   value: string;
   onChange: (v: string) => void;
 }) {
-  const slideAnim = useRef(new Animated.Value(220)).current;
-  const opacityAnim = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    if (value.length < 10) {
-      Animated.parallel([
-        Animated.spring(slideAnim, { toValue: 0, friction: 7, tension: 50, useNativeDriver: true }),
-        Animated.timing(opacityAnim, { toValue: 1, duration: 200, useNativeDriver: true }),
-      ]).start();
-    } else {
-      // auto-hide at 10 digits
-      Animated.parallel([
-        Animated.timing(slideAnim, { toValue: 220, duration: 260, easing: Easing.in(Easing.quad), useNativeDriver: true }),
-        Animated.timing(opacityAnim, { toValue: 0, duration: 200, useNativeDriver: true }),
-      ]).start();
-    }
-  }, [value.length]);
-
   const tap = (digit: string) => {
     if (value.length >= 10) return;
     onChange(value + digit);
@@ -128,37 +121,29 @@ function PhoneKeyboard({
   ];
 
   return (
-    <Animated.View
+    <View
       style={{
-        opacity: opacityAnim,
-        transform: [{ translateY: slideAnim }],
-        backgroundColor: '#F5F0E8',
-        borderTopLeftRadius: 20,
-        borderTopRightRadius: 20,
-        borderTopWidth: 1.5,
-        borderColor: '#D8E6D0',
-        paddingHorizontal: 12,
-        paddingTop: 8,
-        paddingBottom: Platform.OS === 'ios' ? 28 : 12,
+        backgroundColor: '#F9FAFB',
+        borderTopWidth: 1,
+        borderColor: '#E5E7EB',
+        paddingHorizontal: 16,
+        paddingTop: 10,
+        paddingBottom: Platform.OS === 'ios' ? 24 : 12,
       }}
     >
-      {/* drag handle */}
-      <View style={{ alignItems: 'center', marginBottom: 6 }}>
-        <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: '#C8DBC0' }} />
-      </View>
       {rows.map((row) => (
         <View key={row.join('')} style={{ flexDirection: 'row' }}>
           {row.map((d) => (
-            <PhoneKey key={d} label={d} onPress={() => tap(d)} />
+            <PhoneKey key={d} label={d} sub={KEYPAD_LETTERS[d]} onPress={() => tap(d)} />
           ))}
         </View>
       ))}
       <View style={{ flexDirection: 'row' }}>
-        <View style={{ flex: 1, margin: 4 }} />
-        <PhoneKey label="0" onPress={() => tap('0')} />
+        <View style={{ flex: 1, marginHorizontal: 5, marginVertical: 4 }} />
+        <PhoneKey label="0" sub={KEYPAD_LETTERS['0']} onPress={() => tap('0')} />
         <PhoneKey label="⌫" onPress={del} danger />
       </View>
-    </Animated.View>
+    </View>
   );
 }
 // ─────────────────────────────────────────────────────────────────────────────
@@ -294,11 +279,12 @@ export function LanguageScreen({ onPick }: { onPick: (l: Lang) => void }) {
   );
 }
 
-const TOUR_STEPS: { clip: 'tour_home' | 'tour_data' | 'tour_advice' | 'tour_scan'; titleKey: 'tabHome' | 'tabData' | 'tabAdvice' | 'tabScan' }[] = [
+const TOUR_STEPS: { clip: 'tour_home' | 'tour_data' | 'tour_advice' | 'tour_scan' | 'tour_me'; titleKey: 'tabHome' | 'tabData' | 'tabAdvice' | 'tabScan' | 'tabMe' }[] = [
   { clip: 'tour_home', titleKey: 'tabHome' },
   { clip: 'tour_data', titleKey: 'tabData' },
   { clip: 'tour_advice', titleKey: 'tabAdvice' },
   { clip: 'tour_scan', titleKey: 'tabScan' },
+  { clip: 'tour_me', titleKey: 'tabMe' },
 ];
 
 /** Narrated first-run tour shown right after signup, in the language the
@@ -615,35 +601,46 @@ export function AuthScreen({ lang, onLoggedIn, notice, onChangeLanguage, onCance
 
         {step === 'phone' ? (
           <>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: S.xl, marginBottom: S.sm }}>
-              <Text style={{ fontSize: 16, fontWeight: '700', color: C.text }}>{t('phoneLabel')}</Text>
-              <View style={{ paddingHorizontal: 10, paddingVertical: 3, borderRadius: 12, backgroundColor: phone.length === 10 ? '#E8F5E9' : '#F1EEDC', borderWidth: 1, borderColor: phone.length === 10 ? '#81C784' : '#D4CCA7' }}>
-                <Text style={{ fontSize: 12, fontWeight: '700', color: phone.length === 10 ? '#2E7D32' : C.muted }}>
-                  {phone.length === 10 ? '✓ 10 digits' : `${phone.length}/10 digits`}
+            <View style={{ marginTop: S.xl, marginBottom: S.sm }}>
+              <Text style={{ fontSize: 13, fontWeight: '700', letterSpacing: 0.6, color: '#4B5563', textTransform: 'uppercase' }}>
+                {t('phoneLabel')}
+              </Text>
+            </View>
+            <View
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                backgroundColor: '#FFFFFF',
+                borderRadius: 16,
+                borderWidth: 1.5,
+                borderColor: phone.length > 0 ? C.accent : '#D1D5DB',
+                paddingHorizontal: 16,
+                minHeight: 58,
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 1 },
+                shadowOpacity: 0.05,
+                shadowRadius: 3,
+                elevation: 1,
+              }}
+            >
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginRight: 14 }}>
+                <Text style={{ fontSize: 18, fontWeight: '700', color: '#1F2937' }}>+91</Text>
+                <View style={{ width: 1.5, height: 24, backgroundColor: '#E5E7EB', marginLeft: 12 }} />
+              </View>
+              <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }}>
+                <Text style={{ fontSize: 22, fontWeight: '700', color: phone ? '#111827' : '#9CA3AF', letterSpacing: 2 }}>
+                  {phone ? phone.replace(/(\d{5})(\d)/, '$1 $2') : t('phoneHint')}
                 </Text>
+                {phone.length < 10 ? <BlinkingCursor /> : null}
               </View>
+              {phone.length > 0 ? (
+                <TouchableOpacity onPress={() => setPhone('')} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }} style={{ padding: 4 }}>
+                  <Icon name="close" size={18} color="#6B7280" />
+                </TouchableOpacity>
+              ) : null}
             </View>
-            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-              <View style={{ minHeight: 56, borderRadius: 14, backgroundColor: '#E4EFD9', paddingHorizontal: 14, justifyContent: 'center', marginRight: S.sm, borderWidth: 1.5, borderColor: '#C8DBC0', flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                <Text style={{ fontSize: 18 }}>🇮🇳</Text>
-                <Text style={{ fontSize: 19, fontWeight: '700', color: C.text }}>+91</Text>
-              </View>
-              <View style={{ flex: 1, minHeight: 56, borderWidth: 2, borderColor: phone.length > 0 ? C.accent : '#B9C9B4', borderRadius: 14, backgroundColor: '#fff', paddingHorizontal: S.md, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
-                  <Text style={{ fontSize: 22, fontWeight: '700', color: phone ? C.text : '#A0AAB0', letterSpacing: 2 }}>
-                    {phone ? phone.replace(/(\d{5})(\d)/, '$1 $2') : t('phoneHint')}
-                  </Text>
-                  {phone.length < 10 ? <BlinkingCursor /> : null}
-                </View>
-                {phone.length > 0 ? (
-                  <TouchableOpacity onPress={() => setPhone('')} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} style={{ padding: 4 }}>
-                    <Icon name="close" size={18} color={C.muted} />
-                  </TouchableOpacity>
-                ) : null}
-              </View>
-            </View>
-            <BigBtn label={t('sendOtp')} onPress={submitPhone} busy={busy} disabled={cooldown > 0} />
-            <Text style={{ fontSize: 15, lineHeight: 22, color: C.muted, textAlign: 'center', marginTop: S.md }}>🔒  {t('authTrust')}</Text>
+            <BigBtn label={t('sendOtp')} onPress={submitPhone} busy={busy} disabled={phone.length < 10 || cooldown > 0} />
+            <Text style={{ fontSize: 14, color: '#6B7280', textAlign: 'center', marginTop: S.md }}>🔒  {t('authTrust')}</Text>
           </>
         ) : step === 'name' ? (
           <>
@@ -691,7 +688,7 @@ export function AuthScreen({ lang, onLoggedIn, notice, onChangeLanguage, onCance
           <Text style={{ color: C.accent, fontWeight: '700', textDecorationLine: 'underline' }} onPress={() => setLegal('privacy')}>{t('privacyLabel')}</Text>
         </Text>
       </ScrollView>
-      {step === 'phone' && phone.length < 10 ? (
+      {step === 'phone' ? (
         <PhoneKeyboard value={phone} onChange={(v) => setPhone(v)} />
       ) : null}
       <LegalModal kind={legal} onClose={() => setLegal(null)} lang={lang} />

@@ -59,6 +59,10 @@ const ONBOARDING_CLIPS: Record<string, Record<string, number>> = {
     en: require('../assets/audio/tour_scan_en.mp3'), kn: require('../assets/audio/tour_scan_kn.mp3'),
     te: require('../assets/audio/tour_scan_te.mp3'), hi: require('../assets/audio/tour_scan_hi.mp3'),
   },
+  tour_me: {
+    en: require('../assets/audio/tour_me_en.mp3'), kn: require('../assets/audio/tour_me_kn.mp3'),
+    te: require('../assets/audio/tour_me_te.mp3'), hi: require('../assets/audio/tour_me_hi.mp3'),
+  },
 };
 export type OnboardingClip = keyof typeof ONBOARDING_CLIPS;
 

@@ -70,14 +70,14 @@ function Why({ text }: { text?: string | null }) {
   );
 }
 
-function HeroHeader({ name, crop, greeting, fadeAnim, lat, lon }: {
-  name: string; crop: string | null; greeting: string; fadeAnim: Animated.Value; lat?: number; lon?: number;
+function HeroHeader({ name, crop, greeting, lat, lon }: {
+  name: string; crop: string | null; greeting: string; lat?: number; lon?: number;
 }) {
   const coordText = lat !== undefined && lon !== undefined
     ? `${Math.abs(lat).toFixed(4)}°${lat >= 0 ? 'N' : 'S'}, ${Math.abs(lon).toFixed(4)}°${lon >= 0 ? 'E' : 'W'}`
     : null;
   return (
-    <Animated.View style={{ opacity: fadeAnim, backgroundColor: H.heroBg, borderRadius: 28, overflow: 'hidden', marginBottom: S.md }}>
+    <View style={{ backgroundColor: H.heroBg, borderRadius: 28, overflow: 'hidden', marginBottom: S.md }}>
       <View style={{ position: 'absolute', right: -40, top: -40, width: 180, height: 180, borderRadius: 90, backgroundColor: 'rgba(255,255,255,0.06)' }} />
       <View style={{ position: 'absolute', left: -20, bottom: -30, width: 130, height: 130, borderRadius: 65, backgroundColor: 'rgba(255,255,255,0.04)' }} />
       <View style={{ padding: S.xl, paddingBottom: S.lg }}>
@@ -97,7 +97,7 @@ function HeroHeader({ name, crop, greeting, fadeAnim, lat, lon }: {
           ) : null}
         </View>
       </View>
-    </Animated.View>
+    </View>
   );
 }
 
@@ -175,12 +175,9 @@ export function HomeTab() {
   const dd = dis.data?.details;
   const today = todayLine(t, i, d, dd);
 
-  const fadeAnim = React.useRef(new Animated.Value(0)).current;
   const pulseAnim = React.useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    fadeAnim.setValue(0);
-    Animated.timing(fadeAnim, { toValue: 1, duration: 380, useNativeDriver: true }).start();
     const loop = Animated.loop(
       Animated.sequence([
         Animated.timing(pulseAnim, { toValue: 1, duration: 1200, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
@@ -189,8 +186,7 @@ export function HomeTab() {
     );
     loop.start();
     return () => loop.stop();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [pulseAnim]);
 
   const { setDailyReminder } = useNotifications();
   useEffect(() => {
@@ -237,7 +233,6 @@ export function HomeTab() {
           name={field?.name ?? '—'}
           crop={field?.current_crop ? cropLabel(lang, field.current_crop) : null}
           greeting={`${t(greetKey())}${first ? `, ${first}` : ''}`}
-          fadeAnim={fadeAnim}
           lat={field?.latitude}
           lon={field?.longitude}
         />
@@ -247,20 +242,18 @@ export function HomeTab() {
         ) : (
           <>
             {today ? (
-              <Animated.View style={{ opacity: fadeAnim }}>
-                <ActionBanner text={today.text} color={today.color} icon={heroIcon} pulseAnim={pulseAnim} />
-              </Animated.View>
+              <ActionBanner text={today.text} color={today.color} icon={heroIcon} pulseAnim={pulseAnim} />
             ) : null}
 
             {i ? (
-              <Animated.View style={{ opacity: fadeAnim, flexDirection: 'row', gap: S.sm, marginBottom: S.md }}>
+              <View style={{ flexDirection: 'row', gap: S.sm, marginBottom: S.md }}>
                 <StatPill icon="drop" value={`${Math.round(i.recommended_depth_mm * 10) / 10} ${t('mm')}`} label={t('tileWater')} />
                 <StatPill icon="thermo" value={rain} label={t('tileRain')} />
                 <StatPill icon="field" value={used} label={t('tileSoil')} />
-              </Animated.View>
+              </View>
             ) : null}
 
-            <Animated.View style={{ opacity: fadeAnim }}>
+            <View>
 
         <Section icon="sprout" tint="#E8F3E8" title={t('cropRec')} stripe={H.sectionStripe.crop}>
           <LastUpdated at={crop.lastUpdatedAt} stale={!!crop.error} t={t} />
@@ -368,7 +361,7 @@ export function HomeTab() {
           <ErrorBox load={dis} />
         </Section>
 
-            </Animated.View>
+            </View>
           </>
         )}
 

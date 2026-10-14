@@ -44,11 +44,13 @@ TaskManager?.defineTask(ALERT_TASK, async () => {
     for (const a of fresh) {
       const title = `${target.name}: ${a.title}`;
       const body = (a.body_plain || a.body).slice(0, 140);
+      const id = `adv-${a.id}`;
       await Notifications.scheduleNotificationAsync({
-        content: { title, body, color: '#2E7D32', data: { id: `adv-${a.id}`, severity: a.severity } },
+        identifier: id,
+        content: { title, body, color: '#2E7D32', data: { id, severity: a.severity } },
         trigger: { channelId: CHANNEL } as any,
       });
-      inbox.unshift({ id: `adv-${a.id}`, title, body, severity: a.severity, ts: Date.now(), read: false });
+      inbox.unshift({ id, title, body, severity: a.severity, ts: Date.now(), read: false });
     }
     if (fresh.length) await cacheSet('inbox', inbox.slice(0, 50));
 
@@ -66,6 +68,7 @@ TaskManager?.defineTask(ALERT_TASK, async () => {
       const id = `daily-${today}-${target.id}`;
       if (!seen.has(id)) {
         await Notifications.scheduleNotificationAsync({
+          identifier: id,
           content: { title, body, color: '#2E7D32', data: { id, severity: top.severity } },
           trigger: { channelId: CHANNEL } as any,
         });

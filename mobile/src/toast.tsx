@@ -30,7 +30,8 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     }, 3000);
   }, [anim]);
 
-  const color = toast?.kind === 'error' ? C.danger : toast?.kind === 'ok' ? C.accent : C.text;
+  const iconText = toast?.kind === 'ok' ? '✓' : toast?.kind === 'error' ? '⚠️' : 'ℹ';
+  const iconColor = toast?.kind === 'ok' ? '#15803D' : toast?.kind === 'error' ? '#DC2626' : '#2563EB';
 
   return (
     <Ctx.Provider value={{ show }}>
@@ -39,12 +40,35 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
         <Animated.View
           pointerEvents="none"
           style={{
-            position: 'absolute', top: 56, left: S.lg, right: S.lg,
-            opacity: anim, transform: [{ translateY: anim.interpolate({ inputRange: [0, 1], outputRange: [-12, 0] }) }],
+            position: 'absolute',
+            top: 54,
+            left: 0,
+            right: 0,
+            alignItems: 'center',
+            opacity: anim,
+            transform: [{ translateY: anim.interpolate({ inputRange: [0, 1], outputRange: [-16, 0] }) }],
+            zIndex: 9999,
           }}
         >
-          <View style={{ backgroundColor: '#1A1D19', borderRadius: 10, paddingVertical: S.sm, paddingHorizontal: S.md, borderLeftWidth: 4, borderLeftColor: color }}>
-            <Text style={{ color: '#fff', fontSize: 14 }}>{toast.text}</Text>
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              backgroundColor: '#FFFFFF',
+              borderRadius: 24,
+              paddingVertical: 9,
+              paddingHorizontal: 18,
+              borderWidth: 1,
+              borderColor: '#E5E7EB',
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: 3 },
+              shadowOpacity: 0.1,
+              shadowRadius: 8,
+              elevation: 4,
+            }}
+          >
+            <Text style={{ fontSize: 15, fontWeight: '800', color: iconColor, marginRight: 8 }}>{iconText}</Text>
+            <Text style={{ color: '#1F2937', fontSize: 14, fontWeight: '600', letterSpacing: 0.2 }}>{toast.text}</Text>
           </View>
         </Animated.View>
       ) : null}

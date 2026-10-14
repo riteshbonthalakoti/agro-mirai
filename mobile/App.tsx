@@ -732,8 +732,8 @@ function RootInner({ lang, setLang }: { lang: Lang; setLang: (l: Lang) => void }
     return () => { stop = true; clearInterval(id); };
   }, [phase, fieldIdForAlerts, fieldNameForAlerts, notify]);
 
-  const TOUR_CLIPS: Record<string, 'tour_home' | 'tour_data' | 'tour_advice' | 'tour_scan' | undefined> = {
-    home: 'tour_home', data: 'tour_data', advice: 'tour_advice', scan: 'tour_scan',
+  const TOUR_CLIPS: Record<string, 'tour_home' | 'tour_data' | 'tour_advice' | 'tour_scan' | 'tour_me' | undefined> = {
+    home: 'tour_home', data: 'tour_data', advice: 'tour_advice', scan: 'tour_scan', me: 'tour_me',
   };
   const tourSteps: TourStep[] = useMemo(() => ([
     { key: 'home', title: t('tabHome'), body: t('tourBody_tour_home' as any) },

@@ -113,6 +113,7 @@ export function NotificationsProvider({ children, t }: { children: React.ReactNo
     if (Notifications) {
       // always a real system notification; the inbox above keeps the history
       Notifications.scheduleNotificationAsync({
+        identifier: id,
         content: { title: n.title, body: n.body, color: '#2E7D32', data: { id, severity: n.severity } },
         trigger: Platform.OS === 'android' ? { channelId: CHANNEL } as any : null,
       }).catch(() => {});
