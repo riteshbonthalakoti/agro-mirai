@@ -24,39 +24,32 @@ const BACKEND_PORT = 5000;
  * their current network automatically, with nothing to hand-edit here.
  */
 function resolveApiBaseUrl(): string {
-  // Build-time override (EXPO_PUBLIC_* is inlined by Metro at bundle time), so
-  // a standalone release APK can be pointed at a specific backend with no
-  // Metro/hostUri to infer from -- e.g. EXPO_PUBLIC_API_BASE_URL=http://<host>:5000
   const override = process.env.EXPO_PUBLIC_API_BASE_URL;
   if (override) return override.replace(/\/+$/, '');
 
-  if (Platform.OS === 'web') {
-    if (typeof window !== 'undefined' && window.location?.hostname) {
-      return `http://${window.location.hostname}:${BACKEND_PORT}`;
-    }
-  } else {
-    const hostUri = Constants.expoConfig?.hostUri;
-    if (hostUri) {
-      const host = hostUri.split(':')[0];
-      if (host) {
-        return `http://${host}:${BACKEND_PORT}`;
+  // If explicitly configured for local development, resolve dev machine IP
+  if (process.env.EXPO_PUBLIC_USE_LOCAL_BACKEND === 'true') {
+    if (Platform.OS === 'web') {
+      if (typeof window !== 'undefined' && window.location?.hostname) {
+        return `http://${window.location.hostname}:${BACKEND_PORT}`;
+      }
+    } else {
+      const hostUri = Constants.expoConfig?.hostUri;
+      if (hostUri) {
+        const host = hostUri.split(':')[0];
+        if (host) {
+          return `http://${host}:${BACKEND_PORT}`;
+        }
       }
     }
   }
 
-  console.warn(
-    'Could not derive API_BASE_URL from the dev server host (no hostUri/window.location available -- ' +
-      'likely a standalone production build). Falling back to PRODUCTION_API_BASE_URL.'
-  );
+  // Default to live verified production cloud backend (Render)
   return PRODUCTION_API_BASE_URL;
 }
 
-// The real hosted backend (Render) -- so a standalone build (no Metro dev
-// server to infer a host from, e.g. the release APK on GitHub) always has
-// somewhere to call, even if EXPO_PUBLIC_API_BASE_URL was left unset at
-// build time. Module 40: replaces the empty placeholder now that the
-// backend is actually deployed.
 const PRODUCTION_API_BASE_URL = 'https://agro-mirai.onrender.com';
+
 
 export const API_BASE_URL = resolveApiBaseUrl();
 
