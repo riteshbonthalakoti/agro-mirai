@@ -9,8 +9,6 @@ own logs) as env vars; returns None for any failure (missing config,
 network, non-200) so the route can turn that into a clean 404 rather
 than a 500.
 """
-from __future__ import annotations
-
 import os
 import re
 from datetime import datetime, timezone

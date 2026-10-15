@@ -5,8 +5,6 @@ Implements exactly the weighted threshold system documented in
 any weight, threshold, or window choice here. No sklearn, no trained
 artifact: this is a rule-based composite score, not a classifier.
 """
-from __future__ import annotations
-
 from dataclasses import dataclass
 
 from agro_mirai.models.disease_named_risks import NamedRiskResult, score_named

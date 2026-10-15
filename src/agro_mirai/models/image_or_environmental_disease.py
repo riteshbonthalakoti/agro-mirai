@@ -11,8 +11,6 @@ lives in exactly one place — see ``decisions/0019-deployment-architecture.md``
 and ``decisions/0018-disease-cnn.md``'s "additive, not integrated into
 DecisionEngine yet" section, which this module closes.
 """
-from __future__ import annotations
-
 import dataclasses
 from typing import Callable
 

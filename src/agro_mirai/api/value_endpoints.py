@@ -19,8 +19,6 @@ in behaviour — including the Module 22 degrade-not-fail contracts (422
 on data-exhaustion, ``environmental_fallback`` on an unreachable CNN
 service), which both surfaces get "for free" from calling the same code.
 """
-from __future__ import annotations
-
 import dataclasses
 import uuid
 from datetime import datetime, timedelta, timezone

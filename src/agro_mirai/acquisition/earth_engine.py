@@ -31,8 +31,6 @@ precomputed value for the golden-fixture farm (``farm-001``) — see
 case that still raises :class:`SourceUnavailableError` (there is nothing
 truthful to return, and fabricating a value is forbidden).
 """
-from __future__ import annotations
-
 import concurrent.futures
 import json
 import logging

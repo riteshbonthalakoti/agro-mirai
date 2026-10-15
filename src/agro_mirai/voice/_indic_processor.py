@@ -17,9 +17,8 @@ as plain CPython — no compiler needed. Logic is otherwise unchanged.
 
 Upstream: https://github.com/AI4Bharat/IndicTransToolkit
 """
-from __future__ import annotations
-
 from queue import Queue
+from typing import Any
 
 import regex as re
 from indicnlp.normalize.indic_normalize import IndicNormalizerFactory
@@ -29,7 +28,7 @@ from sacremoses import MosesDetokenizer, MosesPunctNormalizer, MosesTokenizer
 
 
 class IndicProcessor:
-    def __init__(self, inference: bool = True):
+    def __init__(self, inference: bool = True) -> None:
         self.inference = inference
 
         self._flores_codes = {
@@ -130,12 +129,12 @@ class IndicProcessor:
             "ऐटि", "آئی ڈی ", "ᱟᱭᱰᱤ ᱾", "आयडी", "ऐडि", "आइडि", "ᱟᱭᱰᱤ",
         ]
 
-    def _apply_punc_replacements(self, text, replacements):
+    def _apply_punc_replacements(self, text: str, replacements: list[Any]) -> str:
         for pattern, repl in replacements:
             text = pattern.sub(repl, text)
         return text
 
-    def _punc_norm(self, text):
+    def _punc_norm(self, text: str) -> str:
         text = self._apply_punc_replacements(text, self._PUNC_REPLACEMENTS)
         text = self._MULTISPACE_REGEX.sub(" ", text)
         text = self._END_BRACKET_SPACE_PUNC_REGEX.sub(r")\1", text)
@@ -144,7 +143,7 @@ class IndicProcessor:
         text = self._DIGIT_NBSP_DIGIT.sub(r"\1.\2", text)
         return text.strip()
 
-    def _wrap_with_placeholders(self, text):
+    def _wrap_with_placeholders(self, text: str) -> str:
         serial_no = 1
         placeholder_entity_map = {}
         patterns = [
@@ -203,13 +202,13 @@ class IndicProcessor:
         self._placeholder_entity_maps.put(placeholder_entity_map)
         return text
 
-    def _normalize(self, text):
+    def _normalize(self, text: str) -> str:
         text = text.translate(self._digits_translation_table)
         if self.inference:
             text = self._wrap_with_placeholders(text)
         return text
 
-    def _do_indic_tokenize_and_transliterate(self, sentence, normalizer, iso_lang, transliterate):
+    def _do_indic_tokenize_and_transliterate(self, sentence: str, normalizer: Any, iso_lang: str, transliterate: bool) -> str:
         normed = normalizer.normalize(sentence.strip())
         tokens = indic_tokenize.trivial_tokenize(normed, iso_lang)
         joined = " ".join(tokens)
@@ -219,7 +218,7 @@ class IndicProcessor:
             xlated = xlated.replace(" ् ", "्")
         return xlated
 
-    def _preprocess(self, sent, src_lang, tgt_lang, normalizer, is_target):
+    def _preprocess(self, sent: str, src_lang: str, tgt_lang: str | None, normalizer: Any, is_target: bool) -> str:
         iso_lang = self._flores_codes.get(src_lang, "hi")
         script_part = src_lang.split("_")[1]
         do_transliterate = True
@@ -245,7 +244,7 @@ class IndicProcessor:
             return f"{src_lang} {tgt_lang} {processed_sent}"
         return processed_sent
 
-    def _postprocess(self, sent, lang, placeholder_entity_map=None):
+    def _postprocess(self, sent: str | list | tuple, lang: str, placeholder_entity_map: dict[str, str] | None = None) -> str:
         if isinstance(sent, (tuple, list)):
             sent = sent[0]
 
@@ -274,7 +273,8 @@ class IndicProcessor:
         xlated = self._xliterator.transliterate(sent, "hi", iso_lang)
         return indic_detokenize.trivial_detokenize(xlated, iso_lang)
 
-    def preprocess_batch(self, batch, src_lang, tgt_lang=None, is_target=False, visualize=False):
+    def preprocess_batch(self, batch: list[str], src_lang: str, tgt_lang: str | None = None, is_target: bool = False, visualize: bool = False) -> list[str]:
+        """Normalize, tokenize, and transliterate a batch of sentences for model input."""
         iso_code = self._flores_codes.get(src_lang, "hi")
         normalizer = None
         if src_lang != "eng_Latn":
@@ -282,7 +282,8 @@ class IndicProcessor:
 
         return [self._preprocess(s, src_lang, tgt_lang, normalizer, is_target) for s in batch]
 
-    def postprocess_batch(self, sents, lang="hin_Deva", visualize=False, num_return_sequences=1):
+    def postprocess_batch(self, sents: list[str], lang: str = "hin_Deva", visualize: bool = False, num_return_sequences: int = 1) -> list[str]:
+        """Detokenize and restore placeholders for a batch of model-output sentences."""
         n = len(sents)
         num_inputs = n // num_return_sequences
 

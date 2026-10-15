@@ -17,8 +17,6 @@ Blocker A ship unnoticed: the existing
 ``test_full_cross_tenant_isolation_flow`` only ever exercised
 ``/v2/fields``).
 """
-from __future__ import annotations
-
 from flask import Blueprint, current_app, g, jsonify, request
 
 from agro_mirai.api import value_endpoints

@@ -10,8 +10,6 @@ live at import time in ``routes/voice_v2.py``, independent of any one
 ``Flask`` instance. ``voice_limiter.init_app(app)`` is called once per app
 in ``create_app`` (see ``app.py``).
 """
-from __future__ import annotations
-
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 

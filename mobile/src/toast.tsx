@@ -31,7 +31,8 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   }, [anim]);
 
   const iconText = toast?.kind === 'ok' ? '✓' : toast?.kind === 'error' ? '⚠️' : 'ℹ';
-  const iconColor = toast?.kind === 'ok' ? '#15803D' : toast?.kind === 'error' ? '#DC2626' : '#2563EB';
+  // TODO: add #2563EB as C.info to theme.ts
+  const iconColor = toast?.kind === 'ok' ? C.accent : toast?.kind === 'error' ? C.danger : '#2563EB';
 
   return (
     <Ctx.Provider value={{ show }}>
@@ -54,12 +55,12 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
             style={{
               flexDirection: 'row',
               alignItems: 'center',
-              backgroundColor: '#FFFFFF',
+              backgroundColor: C.bg,
               borderRadius: 24,
               paddingVertical: 9,
               paddingHorizontal: 18,
               borderWidth: 1,
-              borderColor: '#E5E7EB',
+              borderColor: C.border,
               shadowColor: '#000',
               shadowOffset: { width: 0, height: 3 },
               shadowOpacity: 0.1,
@@ -68,7 +69,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
             }}
           >
             <Text style={{ fontSize: 15, fontWeight: '800', color: iconColor, marginRight: 8 }}>{iconText}</Text>
-            <Text style={{ color: '#1F2937', fontSize: 14, fontWeight: '600', letterSpacing: 0.2 }}>{toast.text}</Text>
+            <Text style={{ color: C.text, fontSize: 14, fontWeight: '600', letterSpacing: 0.2 }}>{toast.text}</Text>
           </View>
         </Animated.View>
       ) : null}

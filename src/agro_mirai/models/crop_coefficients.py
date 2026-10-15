@@ -47,8 +47,6 @@ the crop isn't in this table, growth stage defaults to ``mid_season``
 (Kc_mid) — a neutral, moderate-demand assumption rather than refusing
 to produce an estimate.
 """
-from __future__ import annotations
-
 from dataclasses import dataclass
 
 GrowthStage = str  # "initial" | "development" | "mid_season" | "late_season"

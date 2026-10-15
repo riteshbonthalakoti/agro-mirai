@@ -3,8 +3,6 @@
 underlying advisory. See ``decisions/0010-explainability.md`` for the
 SHAP-vs-rule-attribution split and the full field-by-field rationale.
 """
-from __future__ import annotations
-
 from dataclasses import dataclass
 from datetime import datetime
 

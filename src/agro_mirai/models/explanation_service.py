@@ -9,8 +9,6 @@ as direct feature attributions, labeled ``method="rule_weight"``. There is
 no SHAP any more: the RandomForests it explained were retired. See
 ``decisions/0010-explainability.md`` (history) and ``decisions/0029``.
 """
-from __future__ import annotations
-
 import logging
 import uuid
 from datetime import datetime, timezone
@@ -54,7 +52,7 @@ class ExplanationService:
     """Constructed with the same trained artifacts Modules 06/07 already
     load, plus an optional ``VoiceService`` for Kannada summaries."""
 
-    def __init__(self, crop_model=None, irrigation_model=None, voice_service=None):
+    def __init__(self, crop_model: object | None = None, irrigation_model: object | None = None, voice_service: object | None = None) -> None:
         self._crop_model = crop_model
         self._irrigation_model = irrigation_model
         self._voice_service = voice_service
@@ -64,7 +62,7 @@ class ExplanationService:
             return None
         return self._voice_service.translate(summary_en, "en", target_lang)
 
-    def _finish(self, top, subject_type, subject_id, field_id, label, target_lang, extra="", method="rule_weight", fallback=None):
+    def _finish(self, top: list[FeatureContribution], subject_type: str, subject_id: str, field_id: str, label: str, target_lang: str, extra: str = "", method: str = "rule_weight", fallback: str | None = None) -> Explanation:
         summary_en = _summary_en(label, top) if top else (
             fallback or f"No detailed breakdown is available for this {label}; the result itself is unaffected."
         )

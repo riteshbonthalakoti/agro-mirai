@@ -2,6 +2,7 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useR
 import { Animated, AppState, Image, Modal, PanResponder, Platform, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import Constants from 'expo-constants';
 import { cacheGet, cacheSet } from './storage';
+import { useDragToDismiss } from './hooks';
 import { feedback } from './feedback';
 import { C, S, levelColor } from './theme';
 import { onAccountEvent } from './accountEvents';
@@ -60,7 +61,7 @@ export async function setupNotificationChannel() {
     await Notifications.setNotificationChannelAsync(CHANNEL, {
       name: 'Farm alerts',
       importance: Notifications.AndroidImportance.HIGH,
-      lightColor: '#2E7D32',
+      lightColor: C.accent,
       vibrationPattern: [0, 200, 100, 200],
     });
   } catch {}
@@ -89,37 +90,16 @@ export function NotificationsProvider({ children, t }: { children: React.ReactNo
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const seen = useRef<Set<string>>(new Set());
 
-  const panResponder = useMemo(
-    () =>
-      PanResponder.create({
-        onStartShouldSetPanResponder: () => true,
-        onMoveShouldSetPanResponder: (_, gestureState) => gestureState.dy > 5,
-        onPanResponderMove: (_, gestureState) => {
-          if (gestureState.dy > 0) {
-            panY.setValue(gestureState.dy);
-          }
-        },
-        onPanResponderRelease: (_, gestureState) => {
-          if (gestureState.dy > 60 || gestureState.vy > 0.5) {
-            Animated.timing(panY, {
-              toValue: 400,
-              duration: 200,
-              useNativeDriver: true,
-            }).start(() => {
-              setInbox(false);
-              panY.setValue(0);
-            });
-          } else {
-            Animated.spring(panY, {
-              toValue: 0,
-              useNativeDriver: true,
-              friction: 8,
-            }).start();
-          }
-        },
-      }),
-    [panY],
-  );
+  const panResponder = useDragToDismiss(panY, () => {
+    Animated.timing(panY, {
+      toValue: 400,
+      duration: 200,
+      useNativeDriver: true,
+    }).start(() => {
+      setInbox(false);
+      panY.setValue(0);
+    });
+  }, 60);
 
   useEffect(() => {
     setupNotificationChannel();
@@ -158,7 +138,7 @@ export function NotificationsProvider({ children, t }: { children: React.ReactNo
       if (Notifications) {
         Notifications.scheduleNotificationAsync({
           identifier: id,
-          content: { title: n.title, body: n.body, color: '#2E7D32', data: { id, severity: n.severity } },
+          content: { title: n.title, body: n.body, color: C.accent, data: { id, severity: n.severity } },
           trigger: Platform.OS === 'android' ? ({ channelId: CHANNEL } as any) : null,
         }).catch(() => {});
       }
@@ -177,7 +157,7 @@ export function NotificationsProvider({ children, t }: { children: React.ReactNo
         const minute = mins % 60;
         await Notifications.scheduleNotificationAsync({
           identifier: DAILY_ID,
-          content: { title, body, color: '#2E7D32', data: { id: `daily-${new Date().toDateString()}`, fieldId, accountId } },
+          content: { title, body, color: C.accent, data: { id: `daily-${new Date().toDateString()}`, fieldId, accountId } },
           trigger: { type: Notifications.SchedulableTriggerInputTypes.DAILY, hour, minute, channelId: CHANNEL },
         });
       } catch {}
@@ -256,15 +236,15 @@ export function NotificationsProvider({ children, t }: { children: React.ReactNo
         >
           <TouchableOpacity activeOpacity={0.9} onPress={() => { setBanner(null); openInbox(); }}>
             <View style={{
-              flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFFFFF', borderRadius: 16, padding: S.md,
-              borderWidth: 1, borderColor: '#E5E7EB', borderLeftWidth: 4, borderLeftColor: levelColor(banner.severity) || C.accent,
+              flexDirection: 'row', alignItems: 'center', backgroundColor: C.bg, borderRadius: 16, padding: S.md,
+              borderWidth: 1, borderColor: C.border, borderLeftWidth: 4, borderLeftColor: levelColor(banner.severity) || C.accent,
               elevation: 4, shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 8, shadowOffset: { width: 0, height: 2 },
             }}>
               <Image source={require('../assets/logo-mark.png')} style={{ width: 32, height: 32, marginRight: S.md }} resizeMode="contain" />
               <View style={{ flex: 1 }}>
-                <Text style={{ fontSize: 11, fontWeight: '700', color: '#6B7280', letterSpacing: 0.5 }}>AGRO MIRAI</Text>
-                <Text style={{ fontSize: 14, fontWeight: '700', color: '#111827' }} numberOfLines={1}>{banner.title}</Text>
-                <Text style={{ fontSize: 13, color: '#4B5563', marginTop: 1 }} numberOfLines={2}>{banner.body}</Text>
+                <Text style={{ fontSize: 11, fontWeight: '700', color: C.muted, letterSpacing: 0.5 }}>AGRO MIRAI</Text>
+                <Text style={{ fontSize: 14, fontWeight: '700', color: C.text }} numberOfLines={1}>{banner.title}</Text>
+                <Text style={{ fontSize: 13, color: C.muted, marginTop: 1 }} numberOfLines={2}>{banner.body}</Text>
               </View>
             </View>
           </TouchableOpacity>
@@ -277,7 +257,7 @@ export function NotificationsProvider({ children, t }: { children: React.ReactNo
           <Animated.View
             style={{
               transform: [{ translateY: panY }],
-              backgroundColor: '#FFFFFF',
+              backgroundColor: C.bg,
               borderTopLeftRadius: 24,
               borderTopRightRadius: 24,
               maxHeight: '78%',
@@ -285,7 +265,7 @@ export function NotificationsProvider({ children, t }: { children: React.ReactNo
               paddingTop: S.sm,
               paddingBottom: S.xl,
               borderTopWidth: 1,
-              borderColor: '#E5E7EB',
+              borderColor: C.border,
               shadowColor: '#000',
               shadowOffset: { width: 0, height: -3 },
               shadowOpacity: 0.1,
@@ -295,15 +275,15 @@ export function NotificationsProvider({ children, t }: { children: React.ReactNo
           >
             {/* Grab handle with PanResponder for drag-to-dismiss */}
             <View {...panResponder.panHandlers} style={{ paddingVertical: 10, alignItems: 'center', width: '100%' }}>
-              <View style={{ width: 44, height: 5, borderRadius: 2.5, backgroundColor: '#D1D5DB' }} />
+              <View style={{ width: 44, height: 5, borderRadius: 2.5, backgroundColor: C.border }} />
             </View>
 
             <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: S.md, paddingTop: 4 }}>
               <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                <Text style={{ fontSize: 20, fontWeight: '800', color: '#111827' }}>{t('notifTitle')}</Text>
+                <Text style={{ fontSize: 20, fontWeight: '800', color: C.text }}>{t('notifTitle')}</Text>
                 {items.length > 0 ? (
-                  <View style={{ backgroundColor: '#F3F4F6', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10 }}>
-                    <Text style={{ fontSize: 12, fontWeight: '700', color: '#4B5563' }}>{items.length}</Text>
+                  <View style={{ backgroundColor: C.surface, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10 }}>
+                    <Text style={{ fontSize: 12, fontWeight: '700', color: C.muted }}>{items.length}</Text>
                   </View>
                 ) : null}
               </View>
@@ -317,25 +297,25 @@ export function NotificationsProvider({ children, t }: { children: React.ReactNo
                   hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                   style={{ marginRight: S.md, paddingVertical: 4, paddingHorizontal: 8 }}
                 >
-                  <Text style={{ color: '#6B7280', fontWeight: '600', fontSize: 13 }}>{t('notifClear')}</Text>
+                  <Text style={{ color: C.muted, fontWeight: '600', fontSize: 13 }}>{t('notifClear')}</Text>
                 </TouchableOpacity>
               ) : null}
               <TouchableOpacity
                 onPress={() => setInbox(false)}
                 hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: '#F3F4F6', alignItems: 'center', justifyContent: 'center' }}
+                style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: C.surface, alignItems: 'center', justifyContent: 'center' }}
               >
-                <Icon name="close" size={16} color="#4B5563" />
+                <Icon name="close" size={16} color={C.muted} />
               </TouchableOpacity>
             </View>
 
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: S.lg }}>
               {items.length === 0 ? (
                 <View style={{ alignItems: 'center', paddingVertical: S.xl * 1.5 }}>
-                  <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: '#F3F4F6', alignItems: 'center', justifyContent: 'center', marginBottom: S.sm }}>
-                    <Icon name="bell" size={26} color="#9CA3AF" />
+                  <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: C.surface, alignItems: 'center', justifyContent: 'center', marginBottom: S.sm }}>
+                    <Icon name="bell" size={26} color={C.muted} />
                   </View>
-                  <Text style={{ color: '#4B5563', fontSize: 15, fontWeight: '600' }}>{t('notifEmpty')}</Text>
+                  <Text style={{ color: C.muted, fontSize: 15, fontWeight: '600' }}>{t('notifEmpty')}</Text>
                 </View>
               ) : (
                 items.map((n) => (
@@ -343,25 +323,25 @@ export function NotificationsProvider({ children, t }: { children: React.ReactNo
                     key={n.id}
                     style={{
                       borderLeftWidth: 4,
-                      borderLeftColor: levelColor(n.severity) || '#2D6A4F',
-                      backgroundColor: '#FAFAF9',
+                      borderLeftColor: levelColor(n.severity) || C.accent,
+                      backgroundColor: C.surface,
                       borderWidth: 1,
-                      borderColor: '#E5E7EB',
+                      borderColor: C.border,
                       borderRadius: 14,
                       padding: S.md,
                       marginBottom: S.sm,
                     }}
                   >
                     <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 3 }}>
-                      <Text style={{ fontWeight: '700', color: '#111827', fontSize: 15, flex: 1 }}>{n.title}</Text>
+                      <Text style={{ fontWeight: '700', color: C.text, fontSize: 15, flex: 1 }}>{n.title}</Text>
                       {n.severity ? (
                         <View style={{ backgroundColor: `${levelColor(n.severity)}18`, paddingHorizontal: 6, paddingVertical: 1.5, borderRadius: 6, marginLeft: 6 }}>
                           <Text style={{ fontSize: 10, fontWeight: '800', color: levelColor(n.severity), textTransform: 'uppercase' }}>{n.severity}</Text>
                         </View>
                       ) : null}
                     </View>
-                    <Text style={{ color: '#4B5563', fontSize: 13.5, lineHeight: 19 }}>{n.body}</Text>
-                    <Text style={{ color: '#9CA3AF', fontSize: 11, marginTop: 6, fontWeight: '500' }}>{new Date(n.ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} · {new Date(n.ts).toLocaleDateString()}</Text>
+                    <Text style={{ color: C.muted, fontSize: 13.5, lineHeight: 19 }}>{n.body}</Text>
+                    <Text style={{ color: C.muted, fontSize: 11, marginTop: 6, fontWeight: '500' }}>{new Date(n.ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} · {new Date(n.ts).toLocaleDateString()}</Text>
                   </View>
                 ))
               )}

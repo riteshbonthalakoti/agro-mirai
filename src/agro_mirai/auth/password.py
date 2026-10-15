@@ -6,8 +6,6 @@ See decisions/0017-multi-tenant-v2.md for why bcrypt over argon2 (both
 are acceptable per the module spec; bcrypt was picked for its smaller,
 dependency-free wheel and this project's scale).
 """
-from __future__ import annotations
-
 import bcrypt
 
 

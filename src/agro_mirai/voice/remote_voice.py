@@ -11,8 +11,6 @@ need to change to consume it — same Protocol shape, different transport.
 Uses ``requests``, consistent with ``agro_mirai.api.cnn_client`` and the
 Module 03 acquisition adapters.
 """
-from __future__ import annotations
-
 import os
 
 import requests

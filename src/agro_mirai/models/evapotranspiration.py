@@ -27,8 +27,6 @@ requirements*, FAO Irrigation and Drainage Paper 56, Rome.
   - Ra (extraterrestrial radiation): FAO-56 Chapter 3, Equations 21-25.
   - Hargreaves-Samani ET0: FAO-56 Chapter 3, Equation 52 (and Annex).
 """
-from __future__ import annotations
-
 import math
 
 # FAO-56 Eq 20: 1 mm of water evaporated corresponds to 2.45 MJ/m^2

@@ -31,8 +31,6 @@ none of which match the module prompt's original per-capability pick
 All three translation/ASR/TTS models load lazily and are cached on the
 instance — constructing ``AI4BharatVoiceService()`` does no model I/O.
 """
-from __future__ import annotations
-
 import io
 from pathlib import Path
 

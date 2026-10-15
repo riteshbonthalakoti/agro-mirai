@@ -4,8 +4,6 @@ Every 400/401/404/422/500 response uses the ``ErrorEnvelope`` shape from
 ``specs/core/openapi.yaml``: ``{"error": {"code", "message", "details"}}``.
 Flask's default HTML error pages are never returned.
 """
-from __future__ import annotations
-
 from flask import Flask, jsonify
 from flask_limiter.errors import RateLimitExceeded
 from werkzeug.exceptions import HTTPException

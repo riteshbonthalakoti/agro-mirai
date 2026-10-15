@@ -13,8 +13,6 @@ Construction raises ``RuntimeError`` immediately if either is unset —
 callers (including the parity test suite) are expected to catch that and
 skip rather than limp along without a backend.
 """
-from __future__ import annotations
-
 import os
 import uuid
 from datetime import datetime, timezone

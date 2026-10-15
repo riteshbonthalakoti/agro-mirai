@@ -11,8 +11,6 @@ without a try/except at every call site. Talks to the service only via
 AI4Bharat/torch are never imported into this process
 (decisions/0019-deployment-architecture.md).
 """
-from __future__ import annotations
-
 import logging
 import os
 

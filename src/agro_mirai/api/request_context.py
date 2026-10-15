@@ -4,8 +4,6 @@ client-supplied header), stashed on ``flask.g``, echoed back as
 request is in flight — so one request's log lines are traceable end to
 end without pulling in a new logging dependency.
 """
-from __future__ import annotations
-
 import logging
 import uuid
 

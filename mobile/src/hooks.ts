@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { Animated, PanResponder, PanResponderInstance } from 'react-native';
 import { ApiError, isOnline, subscribeNet } from './api';
 import { Key } from './i18n';
 import { cacheGet, cacheGetWithTime, cacheSet } from './storage';
@@ -163,4 +164,27 @@ export function useTranslated(texts: (string | null | undefined)[], lang: Lang) 
   }, [sig]);
 
   return { out, state };
+}
+
+export function useDragToDismiss(
+  translateY: Animated.Value,
+  onDismiss: () => void,
+  threshold: number = 80,
+): PanResponderInstance {
+  return useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: (_, g) => g.dy > 5,
+      onPanResponderMove: (_, g) => {
+        if (g.dy > 0) translateY.setValue(g.dy);
+      },
+      onPanResponderRelease: (_, g) => {
+        if (g.dy > threshold) {
+          onDismiss();
+        } else {
+          Animated.spring(translateY, { toValue: 0, useNativeDriver: true }).start();
+        }
+      },
+    })
+  ).current;
 }

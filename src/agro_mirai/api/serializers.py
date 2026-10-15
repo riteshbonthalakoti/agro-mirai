@@ -1,8 +1,6 @@
 """Dataclass -> JSON dict helpers matching ``specs/core/schema.yaml``'s
 ``date-time``/``date`` string formats.
 """
-from __future__ import annotations
-
 import dataclasses
 from datetime import date, datetime
 

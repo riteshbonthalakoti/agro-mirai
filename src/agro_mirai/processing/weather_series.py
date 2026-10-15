@@ -6,8 +6,6 @@ The store keeps everything ever fetched: an instantaneous "current" reading
 Summing all of them double counts rain, so everything downstream (rain
 windows, soil water balance) goes through here first.
 """
-from __future__ import annotations
-
 from datetime import date
 
 from agro_mirai.persistence.models import WeatherReading

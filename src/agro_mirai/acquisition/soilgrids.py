@@ -46,8 +46,6 @@ rather than silently reinterpreted, because narrowing the schema's
 meaning is a contract change per CLAUDE.md rule #2, not a Module 03
 decision.
 """
-from __future__ import annotations
-
 import time
 from typing import Any
 

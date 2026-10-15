@@ -22,8 +22,6 @@ its own dict) — the same documented limitation the general per-key rate
 limiter already carries (see api/app.py's `_configure_rate_limit`
 docstring), not a new one.
 """
-from __future__ import annotations
-
 import logging
 import secrets
 import threading

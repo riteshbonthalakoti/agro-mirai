@@ -25,10 +25,7 @@ real current reading rather than a week of forecast rows, which is
 enough to unblock feature-building's degrade-not-fail thresholds but
 less than the primary path normally provides.
 """
-from __future__ import annotations
-
 import os
-import time
 from datetime import datetime, timezone
 from typing import Any
 
@@ -41,6 +38,7 @@ from .base import (
     SourceUnavailableError,
     new_id,
 )
+from .utils import fetch_with_retry as _fetch_with_retry
 
 CURRENT_WEATHER_URL = "https://api.openweathermap.org/data/2.5/weather"
 
@@ -118,34 +116,24 @@ class OpenWeatherMapAdapter(Adapter):
 
     # -- transport ---------------------------------------------------------
     def _get_with_retry(self, url: str, params: dict[str, Any]) -> dict[str, Any]:
-        last_exc: Exception | None = None
-        for attempt in range(2):  # initial try + one retry
-            try:
-                resp = self._session.get(url, params=params, timeout=self.timeout_s)
-                if resp.status_code == 401:
-                    # Not transient — a bad/missing key won't fix itself on retry.
-                    raise SourceResponseError(
-                        "OpenWeatherMap returned 401 (invalid API key)"
-                    )
-                if resp.status_code >= 500:
-                    raise SourceUnavailableError(
-                        f"OpenWeatherMap returned {resp.status_code}"
-                    )
-                if resp.status_code >= 400:
-                    raise SourceResponseError(
-                        f"OpenWeatherMap returned {resp.status_code}: {resp.text[:200]}"
-                    )
-                return resp.json()
-            except SourceResponseError:
-                raise
-            except (requests.RequestException, SourceUnavailableError) as exc:
-                last_exc = exc
-                if attempt == 0:
-                    time.sleep(0.5)
-                    continue
-        raise SourceUnavailableError(
-            f"OpenWeatherMap unreachable after retry: {last_exc}"
-        ) from last_exc
+        # 401 is non-retriable (bad/missing key won't fix itself); pass it as
+        # a specific non-retriable status so fetch_with_retry raises immediately.
+        try:
+            return _fetch_with_retry(
+                url,
+                params=params,
+                session=self._session,
+                timeout=self.timeout_s,
+                source_name="OpenWeatherMap",
+                non_retriable_statuses=(401,),
+            )
+        except SourceResponseError as exc:
+            # Re-raise with the more descriptive 401 message callers expect.
+            if "401" in str(exc):
+                raise SourceResponseError(
+                    "OpenWeatherMap returned 401 (invalid API key)"
+                ) from exc
+            raise
 
 
 def _num(value: Any) -> float:

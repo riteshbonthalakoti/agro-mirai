@@ -5,8 +5,6 @@ an audit_log row via api/audit.write_audit_log -- see
 decisions/0030-admin-write-actions.md for why the original read-only
 scope (decisions/0017) was superseded.
 """
-from __future__ import annotations
-
 import dataclasses
 import json
 import time

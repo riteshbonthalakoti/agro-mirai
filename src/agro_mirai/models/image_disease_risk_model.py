@@ -15,8 +15,6 @@ project-local ``.venv/``. Importing torch happens lazily inside
 ``__init__`` so importing this module doesn't require torch to be
 installed — only instantiating the model does.
 """
-from __future__ import annotations
-
 import json
 import uuid
 from datetime import datetime, timedelta, timezone

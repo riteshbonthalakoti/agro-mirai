@@ -20,8 +20,6 @@ specifically because each request-otp call generates and "sends" (logs)
 a real code — without a limit, an attacker could spam a phone number
 with OTPs or brute-force-probe which phone numbers exist.
 """
-from __future__ import annotations
-
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 

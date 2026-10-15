@@ -26,8 +26,6 @@ Swapping in a paid provider later (2Factor, MSG91) means adding one
 more ``OtpSender`` subclass and one more branch in ``build_otp_sender``
 -- callers (``api/routes/auth_v2.py``) only ever see the interface.
 """
-from __future__ import annotations
-
 import logging
 import os
 

@@ -9,16 +9,17 @@ Single-farmer view per ADR 0003: no farmer/account switcher, just a
 field picker for whichever ``Field``s the one configured ``FARMER_ID``
 owns.
 """
-from __future__ import annotations
-
 from flask import Blueprint, flash, redirect, render_template, request, url_for
 
 from agro_mirai.api.frontend_client import ApiError, api_get, api_post
+from agro_mirai.api.session_auth import require_session_auth
 
 frontend_bp = Blueprint("frontend", __name__)
 
 
+# Legacy web UI — requires session auth
 @frontend_bp.get("/")
+@require_session_auth
 def dashboard():
     try:
         farmer = api_get("/farmers/me")
@@ -28,7 +29,9 @@ def dashboard():
     return render_template("index.html", farmer=farmer, fields=fields)
 
 
+# Legacy web UI — requires session auth
 @frontend_bp.get("/field/<field_id>")
+@require_session_auth
 def field_detail(field_id: str):
     try:
         field = api_get(f"/fields/{field_id}")
@@ -49,7 +52,9 @@ def field_detail(field_id: str):
     )
 
 
+# Legacy web UI — requires session auth
 @frontend_bp.post("/ui/feedback")
+@require_session_auth
 def submit_feedback():
     field_id = request.form.get("field_id", "")
     advisory_id = request.form.get("advisory_id", "")

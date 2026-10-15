@@ -17,8 +17,6 @@ The admin-account email+password login path
 provisioned out-of-band with a real password, per
 ``MANUAL_TEST_GUIDE.md``'s step 8.
 """
-from __future__ import annotations
-
 import logging
 import re
 import uuid
@@ -66,6 +64,7 @@ def _normalize_phone(raw) -> str:
     return cleaned
 
 
+# PUBLIC — no auth required: Phone must be unauthenticated to receive OTP
 @auth_v2_bp.post("/request-otp")
 @otp_request_limiter.limit(lambda: current_app.config["OTP_RATE_LIMIT"])
 def request_otp():
@@ -140,6 +139,7 @@ def request_otp():
     return jsonify({"phone": phone, "otp_sent": True, "is_new_farmer": is_new_farmer}), 200
 
 
+# PUBLIC — no auth required: OTP verification is the auth mechanism itself
 @auth_v2_bp.post("/verify-otp")
 def verify_otp():
     body = request.get_json(silent=True)
@@ -186,6 +186,7 @@ def verify_otp():
     return jsonify(payload), 200
 
 
+# PUBLIC — no auth required: Session may be invalid/expired; allow unauthenticated logout
 @auth_v2_bp.post("/logout")
 def logout():
     clear_session()

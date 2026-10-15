@@ -16,6 +16,7 @@ import { C, S } from '../theme';
 type VState = 'idle' | 'listening' | 'thinking' | 'speaking';
 
 const ORB = 250;
+// TODO: orb blob colors have no semantic match in theme.ts — decorative only
 const GREEN = { a: '#34D399', b: '#A3E635', c: '#22C55E', d: '#2DD4BF' };
 // how fast the blobs drift per state (ms per turn): calm -> lively -> busy
 const SPIN: Record<VState, [number, number, number]> = {
@@ -64,6 +65,7 @@ function Orb({ state, level }: { state: VState; level: Animated.Value }) {
   return (
     <View style={{ width: ORB + 70, height: ORB + 70, alignItems: 'center', justifyContent: 'center' }}>
       <Animated.View style={{ position: 'absolute', width: ORB * 1.15, height: ORB * 1.15, borderRadius: ORB, backgroundColor: GREEN.a, opacity: state === 'idle' ? 0.16 : 0.26, transform: [{ scale: glowScale }] }} />
+      {/* TODO: '#1F9D62' orb fill and '#16A34A' shadow have no theme.ts token — decorative orb greens */}
       <Animated.View style={{ width: ORB, height: ORB, borderRadius: ORB / 2, overflow: 'hidden', backgroundColor: '#1F9D62', alignItems: 'center', justifyContent: 'center', transform: [{ scale }], shadowColor: '#16A34A', shadowOpacity: 0.55, shadowRadius: 40, shadowOffset: { width: 0, height: 12 }, elevation: 16 }}>
         {blob(0, GREEN.b, ORB * 0.66, ORB * 0.16, -ORB * 0.06, 1)}
         {blob(1, GREEN.d, ORB * 0.7, -ORB * 0.15, ORB * 0.1, -1)}
@@ -206,6 +208,7 @@ export function VoiceMode({ visible, onClose }: { visible: boolean; onClose: () 
 
   return (
     <Modal visible={visible} animationType="fade" statusBarTranslucent onRequestClose={close}>
+      {/* TODO: '#F1F6EA' voice-mode page bg has no theme.ts token (C.surface is '#F5F6F3', different hue) */}
       <View style={{ flex: 1, backgroundColor: '#F1F6EA' }}>
         <Svg width="100%" height="100%" style={{ position: 'absolute' }}>
           <Defs>
@@ -233,7 +236,7 @@ export function VoiceMode({ visible, onClose }: { visible: boolean; onClose: () 
             <Orb state={state} level={level} />
           </TouchableOpacity>
           <Text style={{ fontSize: 26, fontWeight: '800', color: C.text, marginTop: res ? S.md : 0 }}>{status}</Text>
-          {sub ? <Text style={{ fontSize: 16, lineHeight: 23, color: err ? C.danger : textOnly ? '#B45309' : C.muted, textAlign: 'center', marginTop: S.xs, paddingHorizontal: S.xl }}>{sub}</Text> : null}
+          {sub ? <Text style={{ fontSize: 16, lineHeight: 23, color: err ? C.danger : textOnly ? C.warn : C.muted, textAlign: 'center', marginTop: S.xs, paddingHorizontal: S.xl }}>{sub}</Text> : null}
           {offline && state === 'speaking' ? <Text style={{ fontSize: 13, color: C.muted, marginTop: 4 }}>{tt('voiceFallbackToast')}</Text> : null}
         </View>
 
@@ -242,11 +245,13 @@ export function VoiceMode({ visible, onClose }: { visible: boolean; onClose: () 
           {res ? (
             <>
               {textOnly ? (
+                // TODO: '#FEF3C7' / '#FDE68A' amber bg/border have no theme.ts token
                 <View style={{ backgroundColor: '#FEF3C7', borderRadius: 14, paddingVertical: 10, paddingHorizontal: 14, marginBottom: S.sm, alignItems: 'center', borderWidth: 1, borderColor: '#FDE68A' }}>
-                  <Text style={{ fontSize: 13.5, fontWeight: '700', color: '#92400E', textAlign: 'center' }}>{tt('voiceTextOnly')}</Text>
+                  <Text style={{ fontSize: 13.5, fontWeight: '700', color: C.warn, textAlign: 'center' }}>{tt('voiceTextOnly')}</Text>
                 </View>
               ) : null}
               <Text style={{ fontSize: 15, lineHeight: 22, color: C.muted, fontStyle: 'italic', textAlign: 'center' }}>{`“${res.question_text}”`}</Text>
+              {/* TODO: '#DDE7D3' answer card border has no theme.ts token (C.border is '#DDE1D9', close but different) */}
               <View style={{ backgroundColor: 'rgba(255,255,255,0.92)', borderRadius: 22, padding: S.lg, marginTop: S.md, borderWidth: 1, borderColor: '#DDE7D3' }}>
                 <Text style={{ fontSize: 12.5, fontWeight: '800', letterSpacing: 0.8, color: C.accent, marginBottom: 6 }}>{tt('answer').toUpperCase()}</Text>
                 <Text style={{ fontSize: 17.5, lineHeight: 26, color: C.text }}>{res.answer_text}</Text>

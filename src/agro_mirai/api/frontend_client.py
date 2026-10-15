@@ -6,8 +6,6 @@ Uses ``current_app.test_client()`` to issue a real request/response round
 trip through the full blueprint/auth/error-handling stack, attaching the
 server-held ``API_KEY`` itself so the browser never sees it.
 """
-from __future__ import annotations
-
 from flask import current_app
 
 

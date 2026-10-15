@@ -2,8 +2,6 @@
 ``DataStore`` currently holds — the same fetch-then-build shape Module 05
 was designed for, wired to a real repository instead of a fixture.
 """
-from __future__ import annotations
-
 import os
 from datetime import date, datetime, timezone
 

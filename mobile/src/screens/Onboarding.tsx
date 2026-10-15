@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Animated, Easing, Image, ImageBackground, KeyboardAvoidingView, Modal, PanResponder, Platform, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Animated, Easing, Image, ImageBackground, KeyboardAvoidingView, Modal, Platform, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
 import { requestRecordingPermissionsAsync } from 'expo-audio';
@@ -7,7 +7,7 @@ import { ApiError, Farmer, requestOtp, verifyOtp } from '../api';
 import { classifyError } from '../errors';
 import { logError } from '../errorLog';
 import { feedback } from '../feedback';
-import { errorText } from '../hooks';
+import { errorText, useDragToDismiss } from '../hooks';
 import { playOnboardingClip, stopAudio } from '../audio';
 import { makeT } from '../ctx';
 import { requestNotificationPermission } from '../notifications';
@@ -354,22 +354,7 @@ function LegalModal({ kind, onClose, lang }: { kind: 'terms' | 'privacy' | null;
     }
   }, [kind, panY]);
 
-  const panResponder = useRef(
-    PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
-      onMoveShouldSetPanResponder: (_, gestureState) => gestureState.dy > 5,
-      onPanResponderMove: (_, gestureState) => {
-        if (gestureState.dy > 0) panY.setValue(gestureState.dy);
-      },
-      onPanResponderRelease: (_, gestureState) => {
-        if (gestureState.dy > 100) {
-          onClose();
-        } else {
-          Animated.spring(panY, { toValue: 0, useNativeDriver: true, bounciness: 4 }).start();
-        }
-      },
-    })
-  ).current;
+  const panResponder = useDragToDismiss(panY, onClose, 100);
 
   return (
     <Modal visible={kind !== null} animationType="fade" transparent onRequestClose={onClose}>

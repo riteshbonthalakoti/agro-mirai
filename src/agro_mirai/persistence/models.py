@@ -8,8 +8,6 @@ Timestamps are timezone-aware ``datetime`` in UTC in memory (per
 ``repository-interface.md`` design rule 6); stores serialise to/from
 their engine's native representation at the boundary.
 """
-from __future__ import annotations
-
 from dataclasses import dataclass, field
 from datetime import date, datetime
 

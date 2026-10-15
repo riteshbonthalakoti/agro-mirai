@@ -17,10 +17,11 @@ rule-based model; here there is no server-side substitute for spoken
 audio, so the fallback has to happen on the client — see
 decisions/0020-v2-value-endpoints-and-voice-api.md).
 """
-from __future__ import annotations
-
 import base64
 import hashlib
+import logging
+import uuid
+from datetime import datetime, timezone
 
 from flask import Blueprint, Response, current_app, g, jsonify, request
 
@@ -36,6 +37,7 @@ from agro_mirai.api.voice_client import (
     transcribe_audio,
 )
 from agro_mirai.api.voice_rate_limit import voice_limiter
+from agro_mirai.persistence.models import Conversation
 from agro_mirai.voice.interface import V1_LANGUAGES
 
 voice_v2_bp = Blueprint("voice_v2", __name__, url_prefix="/v2")
@@ -49,6 +51,55 @@ ADVISORY_AUDIO_MIMETYPE = "audio/ogg"
 _VOICE_UNAVAILABLE_MESSAGE = (
     "Voice service is unreachable; the client should fall back to on-device TTS/STT."
 )
+
+
+_log = logging.getLogger("agro_mirai.api.voice_v2")
+
+
+def _save_transcript(
+    store,
+    farmer_id: str,
+    field_id: str | None,
+    question: str,
+    answer: str,
+    lang: str,
+    conv_id: str,
+) -> None:
+    """Persist conversation to the data store. Fire-and-forget safe."""
+    try:
+        conv = Conversation(
+            id=conv_id,
+            farmer_id=farmer_id,
+            field_id=field_id,
+            question=question,
+            answer=answer,
+            language=lang,
+            created_at=datetime.now(timezone.utc),
+        )
+        store.save_conversation(farmer_id, conv)
+    except Exception as exc:
+        _log.warning("failed to save conversation: %s", exc)
+
+
+def _build_voice_response(
+    conv_id: str,
+    question_text: str,
+    detected_lang: str,
+    answer_text: str,
+    language: str,
+    tts_audio: bytes | None,
+) -> dict:
+    """Shape the JSON response body for a voice query."""
+    audio_b64 = base64.b64encode(tts_audio).decode("ascii") if tts_audio is not None else None
+    return {
+        "id": conv_id,
+        "question_text": question_text,
+        "detected_lang": detected_lang,
+        "answer_text": answer_text,
+        "language": language,
+        "answer_audio_base64": audio_b64,
+        "answer_audio_mimetype": sniff_audio_mimetype(tts_audio) if audio_b64 else None,
+    }
 
 
 def _resolve_language(store, farmer_id: str) -> str:
@@ -162,44 +213,11 @@ def post_voice_ask():
         )
 
     answer_audio = synthesize_answer_audio(answer_text, language)
-    audio_b64 = base64.b64encode(answer_audio).decode("ascii") if answer_audio is not None else None
-
-    # Persist the question and answer to the backend database
-    import uuid
-    from datetime import datetime, timezone
-    from agro_mirai.persistence.models import Conversation
-
     conv_id = str(uuid.uuid4())
     field_id = request.form.get("field_id") or None
-    try:
-        conv = Conversation(
-            id=conv_id,
-            farmer_id=g.farmer_id,
-            field_id=field_id,
-            question=question_text,
-            answer=answer_text,
-            language=language,
-            created_at=datetime.now(timezone.utc),
-        )
-        store.save_conversation(g.farmer_id, conv)
-    except Exception as e:
-        import logging
-        logging.getLogger("agro_mirai.api.voice_v2").warning("failed to save conversation: %s", e)
+    _save_transcript(store, g.farmer_id, field_id, question_text, answer_text, language, conv_id)
 
-    return (
-        jsonify(
-            {
-                "id": conv_id,
-                "question_text": question_text,
-                "detected_lang": detected_lang,
-                "answer_text": answer_text,
-                "language": language,
-                "answer_audio_base64": audio_b64,
-                "answer_audio_mimetype": sniff_audio_mimetype(answer_audio) if audio_b64 else None,
-            }
-        ),
-        200,
-    )
+    return jsonify(_build_voice_response(conv_id, question_text, detected_lang, answer_text, language, answer_audio)), 200
 
 
 @voice_v2_bp.post("/translate")
@@ -263,10 +281,6 @@ def get_conversations():
 @require_session_auth
 def post_conversation():
     """Module 57: Save a question & answer into DB so it persists across devices."""
-    import uuid
-    from datetime import datetime, timezone
-    from agro_mirai.persistence.models import Conversation
-
     store = current_app.extensions["data_store"]
     body = request.get_json(silent=True) or {}
     question = body.get("question", "").strip()

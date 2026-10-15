@@ -14,8 +14,6 @@ disease for the crop, and confidence is floored at 0.85.  This makes
 demo runs show actionable alerts without requiring adverse weather.
 Remove or unset the env var to revert to real scoring.
 """
-from __future__ import annotations
-
 import os
 import random
 import uuid

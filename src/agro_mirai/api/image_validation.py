@@ -4,8 +4,6 @@ Mirrors the care Module 16's validation audit (``api/validation.py``)
 already established for `/fields`/`/feedback`: real checks, not just
 trusting the client's `Content-Type` header or filename extension.
 """
-from __future__ import annotations
-
 import io
 
 from agro_mirai.api.errors import ApiError

@@ -13,8 +13,6 @@ Both return rows in the same dict shape as ``WeatherAdapter`` so the caller
 saves them the same way. Every function returns [] on failure and never
 raises.
 """
-from __future__ import annotations
-
 import logging
 from collections import defaultdict
 from datetime import date, datetime, timedelta, timezone

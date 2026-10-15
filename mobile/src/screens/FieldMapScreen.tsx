@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { TouchableOpacity, View, Text } from 'react-native';
+import { StyleSheet, TouchableOpacity, View, Text } from 'react-native';
 let Map: any = View;
 let Camera: any = View;
 let Marker: any = View;
@@ -114,14 +114,14 @@ export function FieldMapScreen({ onClose }: { onClose: () => void }) {
   };
 
   return (
-    <View style={{ flex: 1 }}>
+    <View style={styles.container}>
       {!online && (
-        <View style={{ paddingHorizontal: S.lg, paddingTop: S.md, paddingBottom: 0 }}>
+        <View style={styles.offlineBanner}>
           <Banner text={t('cantReachServer')} kind="error" />
         </View>
       )}
 
-      <Map style={{ flex: 1 }} mapStyle={SATELLITE_STYLE}>
+      <Map style={styles.container} mapStyle={SATELLITE_STYLE}>
         <Camera
           ref={cameraRef}
           initialViewState={{ center: [fieldLon, fieldLat], zoom: initialZoom }}
@@ -131,26 +131,11 @@ export function FieldMapScreen({ onClose }: { onClose: () => void }) {
         <Marker
           {...({ anchor: 'bottom', coordinate: [fieldLon, fieldLat] } as any)}
         >
-          <View style={{ alignItems: 'center', justifyContent: 'center' }}>
-            <View style={{ backgroundColor: C.accent, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10, marginBottom: 4 }}>
-              <Text style={{ color: '#fff', fontSize: 10, fontWeight: '700' }}>{field.name || 'Field'}</Text>
+          <View style={styles.markerContainer}>
+            <View style={styles.fieldLabel}>
+              <Text style={styles.fieldLabelText}>{field.name || 'Field'}</Text>
             </View>
-            <View
-              style={{
-                width: 32,
-                height: 32,
-                borderRadius: 16,
-                backgroundColor: C.accent,
-                alignItems: 'center',
-                justifyContent: 'center',
-                borderWidth: 2,
-                borderColor: '#fff',
-                shadowColor: '#000',
-                shadowOffset: { width: 0, height: 2 },
-                shadowOpacity: 0.35,
-                shadowRadius: 4,
-              }}
-            >
+            <View style={styles.fieldMarkerDot}>
               <Icon name="location" size={18} color="#fff" />
             </View>
           </View>
@@ -161,37 +146,12 @@ export function FieldMapScreen({ onClose }: { onClose: () => void }) {
           <Marker
             {...({ anchor: 'center', coordinate: [userLocation.lon, userLocation.lat] } as any)}
           >
-            <View style={{ alignItems: 'center', justifyContent: 'center' }}>
-              <View style={{ backgroundColor: '#1976D2', paddingHorizontal: 7, paddingVertical: 2, borderRadius: 9, marginBottom: 2, shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 2, elevation: 3 }}>
-                <Text style={{ color: '#fff', fontSize: 10, fontWeight: '800', letterSpacing: 0.2 }}>Your Phone</Text>
+            <View style={styles.markerContainer}>
+              <View style={styles.phoneLabelBubble}>
+                <Text style={styles.phoneLabelText}>Your Phone</Text>
               </View>
-              <View
-                style={{
-                  width: 34,
-                  height: 34,
-                  borderRadius: 17,
-                  backgroundColor: 'rgba(25, 118, 210, 0.22)',
-                  borderWidth: 1.5,
-                  borderColor: 'rgba(25, 118, 210, 0.55)',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                <View
-                  style={{
-                    width: 16,
-                    height: 16,
-                    borderRadius: 8,
-                    backgroundColor: '#1976D2',
-                    borderWidth: 2.5,
-                    borderColor: '#fff',
-                    shadowColor: '#000',
-                    shadowOffset: { width: 0, height: 2 },
-                    shadowOpacity: 0.35,
-                    shadowRadius: 3,
-                    elevation: 4,
-                  }}
-                />
+              <View style={styles.phoneLocationRing}>
+                <View style={styles.phoneLocationDot} />
               </View>
             </View>
           </Marker>
@@ -199,17 +159,7 @@ export function FieldMapScreen({ onClose }: { onClose: () => void }) {
       </Map>
 
       {/* Top Bar with View Switcher */}
-      <View
-        style={{
-          position: 'absolute',
-          top: S.lg,
-          left: 64,
-          right: 64,
-          flexDirection: 'row',
-          justifyContent: 'center',
-          gap: S.xs,
-        }}
-      >
+      <View style={styles.topBar}>
         <TouchableOpacity
           onPress={focusPhone}
           activeOpacity={0.85}
@@ -259,22 +209,7 @@ export function FieldMapScreen({ onClose }: { onClose: () => void }) {
       <TouchableOpacity
         onPress={focusPhone}
         activeOpacity={0.85}
-        style={{
-          position: 'absolute',
-          bottom: 64,
-          right: S.lg,
-          width: 50,
-          height: 50,
-          borderRadius: 25,
-          backgroundColor: '#1976D2',
-          alignItems: 'center',
-          justifyContent: 'center',
-          shadowColor: '#000',
-          shadowOffset: { width: 0, height: 3 },
-          shadowOpacity: 0.3,
-          shadowRadius: 5,
-          elevation: 5,
-        }}
+        style={styles.gpsButton}
       >
         <Icon name="location" size={24} color="#fff" />
       </TouchableOpacity>
@@ -282,48 +217,161 @@ export function FieldMapScreen({ onClose }: { onClose: () => void }) {
       {/* Close button */}
       <TouchableOpacity
         onPress={onClose}
-        style={{
-          position: 'absolute',
-          top: S.lg,
-          left: S.lg,
-          width: 48,
-          height: 48,
-          borderRadius: 24,
-          backgroundColor: '#fff',
-          alignItems: 'center',
-          justifyContent: 'center',
-          shadowColor: '#000',
-          shadowOffset: { width: 0, height: 2 },
-          shadowOpacity: 0.25,
-          shadowRadius: 4,
-        }}
+        style={styles.closeButton}
       >
         <Icon name="chevron-back" size={24} color={C.accent} />
       </TouchableOpacity>
 
       {/* Attribution */}
-      <View
-        style={{
-          position: 'absolute',
-          bottom: S.lg,
-          left: S.lg,
-          right: S.lg,
-          backgroundColor: 'rgba(255, 255, 255, 0.92)',
-          padding: S.sm,
-          borderRadius: 8,
-          flexDirection: 'row',
-          alignItems: 'center',
-          shadowColor: '#000',
-          shadowOffset: { width: 0, height: 1 },
-          shadowOpacity: 0.15,
-          shadowRadius: 2,
-        }}
-      >
+      <View style={styles.attributionBox}>
         <Icon name="info" size={13} color={C.muted} />
-        <Text style={{ marginLeft: S.xs, flex: 1, fontSize: 11, color: C.muted, lineHeight: 15 }}>
+        <Text style={styles.attributionText}>
           © Esri, Maxar, Earthstar Geographics
         </Text>
       </View>
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  offlineBanner: {
+    paddingHorizontal: S.lg,
+    paddingTop: S.md,
+    paddingBottom: 0,
+  },
+  markerContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  fieldLabel: {
+    backgroundColor: C.accent,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 10,
+    marginBottom: 4,
+  },
+  fieldLabelText: {
+    color: '#fff',
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  fieldMarkerDot: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: C.accent,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: '#fff',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.35,
+    shadowRadius: 4,
+  },
+  phoneLabelBubble: {
+    backgroundColor: '#1976D2',
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 9,
+    marginBottom: 2,
+    shadowColor: '#000',
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+    elevation: 3,
+  },
+  phoneLabelText: {
+    color: '#fff',
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.2,
+  },
+  phoneLocationRing: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: 'rgba(25, 118, 210, 0.22)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(25, 118, 210, 0.55)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  phoneLocationDot: {
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: '#1976D2',
+    borderWidth: 2.5,
+    borderColor: '#fff',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.35,
+    shadowRadius: 3,
+    elevation: 4,
+  },
+  topBar: {
+    position: 'absolute',
+    top: S.lg,
+    left: 64,
+    right: 64,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: S.xs,
+  },
+  gpsButton: {
+    position: 'absolute',
+    bottom: 64,
+    right: S.lg,
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: '#1976D2',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.3,
+    shadowRadius: 5,
+    elevation: 5,
+  },
+  closeButton: {
+    position: 'absolute',
+    top: S.lg,
+    left: S.lg,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#fff',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+  },
+  attributionBox: {
+    position: 'absolute',
+    bottom: S.lg,
+    left: S.lg,
+    right: S.lg,
+    backgroundColor: 'rgba(255, 255, 255, 0.92)',
+    padding: S.sm,
+    borderRadius: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.15,
+    shadowRadius: 2,
+  },
+  attributionText: {
+    marginLeft: S.xs,
+    flex: 1,
+    fontSize: 11,
+    color: C.muted,
+    lineHeight: 15,
+  },
+});

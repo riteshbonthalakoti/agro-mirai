@@ -7,8 +7,6 @@ instead of the single shared ``API_KEY``/``FARMER_ID`` — this is where
 ADR 0003's ownership rule gets enforced per-farmer for real. Deliberately
 NOT registered under the /v1 prefix per decisions/0017-multi-tenant-v2.md.
 """
-from __future__ import annotations
-
 import uuid
 from datetime import date, datetime, timezone
 

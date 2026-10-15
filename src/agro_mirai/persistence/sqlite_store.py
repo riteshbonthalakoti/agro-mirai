@@ -8,8 +8,6 @@ not-found reads return ``None`` (design rule 4); timestamps are
 timezone-aware UTC ``datetime`` in the public API and ISO-8601 TEXT on
 disk (design rule 6).
 """
-from __future__ import annotations
-
 import json
 import sqlite3
 import threading

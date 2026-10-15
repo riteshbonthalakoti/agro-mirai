@@ -13,8 +13,6 @@ exactly this reason); a magic-byte check catches "this isn't audio at
 all," not "this WAV is truncated/corrupt mid-stream" — an honest,
 documented gap, not a silent one.
 """
-from __future__ import annotations
-
 from agro_mirai.api.errors import ApiError
 
 MAX_AUDIO_BYTES = 10 * 1024 * 1024  # 10MB — several minutes of compressed speech audio.

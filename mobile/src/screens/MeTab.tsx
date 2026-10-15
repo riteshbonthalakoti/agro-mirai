@@ -10,7 +10,7 @@ import { ApiError, deleteField, isOnline, patchMe, sendBugReport } from '../api'
 import { cropLabel, useApp } from '../ctx';
 import { classifyError } from '../errors';
 import { getRecentErrors, logError } from '../errorLog';
-import { errorText } from '../hooks';
+import { errorText, useLoad } from '../hooks';
 import { feedback, setFeedbackEnabled, useFeedbackEnabled } from '../feedback';
 import { Icon } from '../../icons';
 import { LANGS } from '../i18n';
@@ -68,28 +68,23 @@ export function MeTab({ initialScreenContext, onConsumeScreenContext }: { initia
   const [bugScreenContext, setBugScreenContext] = useState<string | null>(null);
   const scrollRef = useRef<ScrollView | null>(null);
 
-  const [reminderOn, setReminderOn] = useState(true);
-  const [reminderMins, setReminderMins] = useState(7 * 60);
   const [showTimePicker, setShowTimePicker] = useState(false);
 
-  useEffect(() => {
-    getReminderSettings(farmer.id).then((s) => {
-      setReminderOn(s.enabled);
-      setReminderMins(s.timeMinutes);
-    });
-  }, [farmer.id]);
+  const reminders = useLoad('reminders:' + farmer.id, () => getReminderSettings(farmer.id), [farmer.id]);
+  const reminderOn = reminders.data?.enabled ?? true;
+  const reminderMins = reminders.data?.timeMinutes ?? 7 * 60;
 
   const toggleReminder = async (v: boolean) => {
-    setReminderOn(v);
     await setReminderEnabled(v, farmer.id);
+    reminders.reload();
   };
 
   const changeReminderTime = async (_: any, date?: Date) => {
     setShowTimePicker(false);
     if (!date) return;
     const mins = date.getHours() * 60 + date.getMinutes();
-    setReminderMins(mins);
     await setReminderTime(mins, farmer.id);
+    reminders.reload();
   };
 
   // Arriving here via a "Report a problem" tap on another tab: open the section

@@ -9,8 +9,6 @@ dependency. ``call_cnn_service`` never raises for a reachability problem
 ``None`` so the caller can apply the hard fallback-to-rule-based
 requirement (never a 500) without a try/except at every call site.
 """
-from __future__ import annotations
-
 import os
 
 import requests

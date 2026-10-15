@@ -11,8 +11,6 @@ Input is a ``FeatureVector``; output is a schema-valid
 ``CropRecommendation`` (``persistence/models.py``). ``confidence`` is now
 the suitability score (0-1), not a class probability.
 """
-from __future__ import annotations
-
 import uuid
 from datetime import datetime, timezone
 

@@ -5,8 +5,6 @@ against the ``Authorization: Bearer <key>`` header. Per ADR 0003
 (single-farmer-per-account), the key maps to exactly one ``farmer_id``
 (``FARMER_ID`` env var); there is no per-user key store yet.
 """
-from __future__ import annotations
-
 from functools import wraps
 
 from flask import current_app, g, request

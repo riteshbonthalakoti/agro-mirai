@@ -9,8 +9,6 @@ path (``api/routes/admin_ui.py``), which still authenticates via
 email+password since admin accounts are provisioned directly against the
 DataStore, not through farmer self-registration.
 """
-from __future__ import annotations
-
 import re
 
 _EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")

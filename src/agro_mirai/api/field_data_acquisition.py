@@ -24,8 +24,6 @@ try/except (degrade-not-fail, CLAUDE.md hard rule #4 generalized to all
 three sources) -- one adapter failing never loses the other two's real
 data, and never blocks field creation itself.
 """
-from __future__ import annotations
-
 import logging
 import threading
 from datetime import datetime, timezone
@@ -273,10 +271,6 @@ def acquire_field_data(store, farmer_id: str, field_id: str, latitude: float, lo
     """
     field_input = FieldInput(latitude=latitude, longitude=longitude, field_id=field_id)
 
-    # weather and soil run side by side (was one after the other, ~25 s on
-    # Render, mostly SoilGrids). Weather is needed for any advice so we wait
-    # for it; soil gets a few seconds, then finishes in the background and
-    # the models use the soil-type typical values until it lands.
     outcome: dict[str, bool | None] = {"weather": None, "soil": None}
 
     def _run(key: str, fn) -> None:

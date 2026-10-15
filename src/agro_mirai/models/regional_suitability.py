@@ -54,8 +54,6 @@ Zone contingency-crop guidance and is also the `current_crop` on
 (see the ADR's "Known limitations" section) rather than silently
 presented with the same confidence as the other four.
 """
-from __future__ import annotations
-
 from dataclasses import dataclass
 
 BELLARY_REGIONAL_CROPS: frozenset[str] = frozenset(

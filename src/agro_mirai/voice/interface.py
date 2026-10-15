@@ -7,8 +7,6 @@ depends on this ``Protocol``, never on a specific vendor SDK. Both
 full; a shared conformance test suite (``tests/voice/test_conformance.py``)
 runs the same assertions against both.
 """
-from __future__ import annotations
-
 from typing import Protocol, runtime_checkable
 
 #: v1 scope — see specs/core/voice-interface.md "Supported language set

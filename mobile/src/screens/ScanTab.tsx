@@ -83,7 +83,7 @@ function CameraCapture({ onCaptured, onClose, onGallery }: { onCaptured: (uri: s
     }
   };
 
-  if (!perm) return <View style={{ flex: 1, backgroundColor: '#000' }} />;
+  if (!perm) return <View style={{ flex: 1, backgroundColor: C.text }} />;
   if (!perm.granted) {
     return (
       <View style={{ flex: 1, backgroundColor: C.bg, padding: S.xl, justifyContent: 'center' }}>
@@ -104,7 +104,7 @@ function CameraCapture({ onCaptured, onClose, onGallery }: { onCaptured: (uri: s
   const band = (boxH - width) / 2;
   const corner = (pos: object) => <View style={[{ position: 'absolute', width: 28, height: 28, borderColor: '#fff' }, pos]} />;
   return (
-    <View style={{ flex: 1, backgroundColor: '#000' }}>
+    <View style={{ flex: 1, backgroundColor: C.text }}>
       <View style={{ width, height: boxH, marginTop: 44, alignSelf: 'center' }}>
         <CameraView ref={cam} style={{ flex: 1 }} facing="back" enableTorch={torch} onCameraReady={() => setReady(true)} />
         {/* dim everything outside the square */}
@@ -116,7 +116,7 @@ function CameraCapture({ onCaptured, onClose, onGallery }: { onCaptured: (uri: s
           {corner({ left: 8, bottom: 8, borderLeftWidth: 4, borderBottomWidth: 4, borderBottomLeftRadius: 8 })}
           {corner({ right: 8, bottom: 8, borderRightWidth: 4, borderBottomWidth: 4, borderBottomRightRadius: 8 })}
         </View>
-        <Text style={{ position: 'absolute', top: band / 2 - 10, alignSelf: 'center', color: '#fff', fontWeight: '700', fontSize: 15 }}>{t('camGuide')}</Text>
+        <Text style={{ position: 'absolute', top: band / 2 - 10, alignSelf: 'center', color: C.bg, fontWeight: '700', fontSize: 15 }}>{t('camGuide')}</Text>
       </View>
 
       <TouchableOpacity onPress={onClose} accessibilityLabel={t('cancel')} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
@@ -129,11 +129,11 @@ function CameraCapture({ onCaptured, onClose, onGallery }: { onCaptured: (uri: s
           <Icon name="gallery" size={26} color="#fff" />
         </TouchableOpacity>
         <TouchableOpacity onPress={shoot} disabled={!ready || busy} accessibilityLabel={t('takePhoto')} activeOpacity={0.7}
-          style={{ width: 84, height: 84, borderRadius: 42, borderWidth: 5, borderColor: '#fff', alignItems: 'center', justifyContent: 'center', opacity: ready ? 1 : 0.5 }}>
-          {busy ? <ActivityIndicator color="#fff" /> : <View style={{ width: 62, height: 62, borderRadius: 31, backgroundColor: '#fff' }} />}
+          style={{ width: 84, height: 84, borderRadius: 42, borderWidth: 5, borderColor: C.bg, alignItems: 'center', justifyContent: 'center', opacity: ready ? 1 : 0.5 }}>
+          {busy ? <ActivityIndicator color={C.bg} /> : <View style={{ width: 62, height: 62, borderRadius: 31, backgroundColor: C.bg }} />}
         </TouchableOpacity>
-        <TouchableOpacity onPress={() => setTorch(!torch)} accessibilityLabel="Torch" style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: torch ? '#F5C518' : 'rgba(255,255,255,0.18)', alignItems: 'center', justifyContent: 'center' }}>
-          <Icon name="bolt" size={26} color={torch ? '#000' : '#fff'} />
+        <TouchableOpacity onPress={() => setTorch(!torch)} accessibilityLabel="Torch" style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: torch ? '#F5C518' /* TODO: no C token for torch-yellow */ : 'rgba(255,255,255,0.18)', alignItems: 'center', justifyContent: 'center' }}>
+          <Icon name="bolt" size={26} color={torch ? C.text : C.bg} />
         </TouchableOpacity>
       </View>
     </View>
@@ -277,6 +277,7 @@ function ProblemView({ kind, message, uri, onRetry, onRetake, onCancel }: { kind
   return (
     <View>
       {uri ? <Image source={{ uri }} style={{ width: size, height: size * 0.5, borderRadius: 16, marginBottom: S.md, opacity: 0.85 }} resizeMode="cover" /> : null}
+      {/* TODO: add C.dangerBg / C.dangerBorder tokens for '#FDECEA' / '#F5C6C0' */}
       <View style={{ backgroundColor: '#FDECEA', borderWidth: 1, borderColor: '#F5C6C0', borderRadius: 16, padding: S.lg }}>
         <Icon name="alert" size={26} color={C.danger} />
         <Text style={{ fontSize: 20, fontWeight: '700', color: C.text, marginTop: S.sm }}>{title}</Text>
@@ -454,7 +455,7 @@ export function ScanTab() {
       {phase === 'home' ? (
         <>
           {/* hero: big camera card, the one clear action */}
-          <View style={{ borderRadius: 28, overflow: 'hidden', backgroundColor: '#14532D', marginBottom: S.md }}>
+          <View style={{ borderRadius: 28, overflow: 'hidden', backgroundColor: C.accent, marginBottom: S.md }}>
             <View style={{ position: 'absolute', right: -34, top: -34, width: 160, height: 160, borderRadius: 80, backgroundColor: 'rgba(255,255,255,0.08)' }} />
             <View style={{ position: 'absolute', right: 30, bottom: -46, width: 100, height: 100, borderRadius: 50, backgroundColor: 'rgba(255,255,255,0.06)' }} />
             <View style={{ padding: S.lg, alignItems: 'center' }}>
@@ -463,9 +464,9 @@ export function ScanTab() {
               </View>
               <Text style={{ fontSize: 21, fontWeight: '800', color: '#fff', marginTop: S.md, textAlign: 'center' }}>{t('scanHero')}</Text>
               <Text style={{ fontSize: 14.5, lineHeight: 20, color: 'rgba(255,255,255,0.82)', textAlign: 'center', marginTop: 4 }}>{t('scanHeroSub')}</Text>
-              <TouchableOpacity onPress={openCamera} activeOpacity={0.85} style={{ minHeight: 58, borderRadius: 29, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center', flexDirection: 'row', alignSelf: 'stretch', marginTop: S.lg }}>
-                <Icon name="camera" size={22} color="#14532D" />
-                <Text style={{ fontSize: 18, fontWeight: '800', color: '#14532D', marginLeft: S.sm }}>{t('takePhoto')}</Text>
+              <TouchableOpacity onPress={openCamera} activeOpacity={0.85} style={{ minHeight: 58, borderRadius: 29, backgroundColor: C.bg, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', alignSelf: 'stretch', marginTop: S.lg }}>
+                <Icon name="camera" size={22} color={C.accent} />
+                <Text style={{ fontSize: 18, fontWeight: '800', color: C.accent, marginLeft: S.sm }}>{t('takePhoto')}</Text>
               </TouchableOpacity>
               <TouchableOpacity onPress={pickGallery} style={{ minHeight: 48, alignItems: 'center', justifyContent: 'center', marginTop: S.xs }}>
                 <Text style={{ fontSize: 15, fontWeight: '700', color: 'rgba(255,255,255,0.85)', textDecorationLine: 'underline' }}>{t('pickGallery')}</Text>
@@ -474,7 +475,7 @@ export function ScanTab() {
           </View>
 
           {/* how it works */}
-          <View style={{ backgroundColor: 'rgba(255,255,255,0.95)', borderRadius: 22, padding: S.lg, marginBottom: S.md, borderWidth: 1, borderColor: '#E3E8DC' }}>
+          <View style={{ backgroundColor: 'rgba(255,255,255,0.95)', borderRadius: 22, padding: S.lg, marginBottom: S.md, borderWidth: 1, borderColor: C.border }}>
             <Text style={{ fontSize: 17, fontWeight: '800', color: C.text, marginBottom: S.md }}>{t('scanHowTitle')}</Text>
             {[t('scanHow1'), t('scanHow2'), t('scanHow3')].map((line, i) => (
               <View key={i} style={{ flexDirection: 'row', alignItems: 'center', marginTop: i ? S.md : 0 }}>
@@ -494,7 +495,7 @@ export function ScanTab() {
 
           {history === null ? <SkeletonCard /> : null}
           {history !== null && history.length === 0 ? (
-            <View style={{ backgroundColor: 'rgba(255,255,255,0.95)', borderRadius: 18, padding: S.lg, alignItems: 'center', borderWidth: 1, borderColor: '#E3E8DC' }}>
+            <View style={{ backgroundColor: 'rgba(255,255,255,0.95)', borderRadius: 18, padding: S.lg, alignItems: 'center', borderWidth: 1, borderColor: C.border }}>
               <Muted>{t('noScans')}</Muted>
             </View>
           ) : null}
@@ -503,11 +504,12 @@ export function ScanTab() {
               key={h.id}
               onPress={() => setOpenItem(h)}
               activeOpacity={0.85}
-              style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.95)', borderRadius: 16, padding: S.sm, marginBottom: S.sm, borderWidth: 1, borderColor: '#E3E8DC' }}
+              style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.95)', borderRadius: 16, padding: S.sm, marginBottom: S.sm, borderWidth: 1, borderColor: C.border }}
             >
               {photos[h.id] ? (
                 <Image source={{ uri: photos[h.id] }} style={{ width: 56, height: 56, borderRadius: 12, marginRight: S.md }} />
               ) : (
+                // TODO: add C.successBg token for '#EEF4E8'
                 <View style={{ width: 56, height: 56, borderRadius: 12, marginRight: S.md, backgroundColor: '#EEF4E8', alignItems: 'center', justifyContent: 'center' }}>
                   <Icon name="leaf" size={22} color={C.accent} />
                 </View>

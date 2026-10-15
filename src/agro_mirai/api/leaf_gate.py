@@ -14,8 +14,6 @@ screens, sky, floors, and flat/solid green images (a green screen has no leaf
 texture). It cannot catch a textured green fake such as a patterned cloth. The
 response says how to retake the photo instead of guessing.
 """
-from __future__ import annotations
-
 import io
 
 import numpy as np

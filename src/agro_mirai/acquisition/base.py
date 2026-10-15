@@ -18,8 +18,6 @@ silent empty list. The one deliberate exception to "fail loudly" is the
 NDVI adapter's live→cache fallback (CLAUDE.md hard rule #4), which is a
 *successful* result served from a different path, not a failure.
 """
-from __future__ import annotations
-
 import abc
 import uuid
 from dataclasses import dataclass

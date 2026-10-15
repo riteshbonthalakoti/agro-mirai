@@ -11,8 +11,6 @@ than synthesized, why all three models are always called, and why the
 alert-threshold signal reuses ``Advisory.severity`` instead of a new
 field.
 """
-from __future__ import annotations
-
 import uuid
 from datetime import datetime, timezone
 

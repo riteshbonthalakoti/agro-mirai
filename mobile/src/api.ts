@@ -483,7 +483,7 @@ export const fetchConversationsApi = async (fieldId?: string): Promise<Conversat
   return res.conversations || [];
 };
 
-export const saveConversationApi = async (entry: { field_id?: string; question: string; answer: string; lang: string }): Promise<ConversationItem> => {
+export const saveConversationApi = async (entry: { field_id?: string; question: string; answer: string; lang: string; ts?: number }): Promise<ConversationItem> => {
   return request<ConversationItem>('/v2/conversations', {
     method: 'POST',
     body: JSON.stringify(entry),

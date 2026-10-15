@@ -21,8 +21,6 @@ is a reasonable proxy for "how soon should this be acted on" and
 ADR 0015 documents why that part of ADR 0008 was kept rather than
 recomputed from the deficit.
 """
-from __future__ import annotations
-
 import uuid
 from datetime import datetime, timedelta, timezone
 

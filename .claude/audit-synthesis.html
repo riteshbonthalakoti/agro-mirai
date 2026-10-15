@@ -1,0 +1,937 @@
+<title>AGRO MIRAI Audit Report</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/* Layout: sticky sidebar nav + main content column */
+:root {
+  --bg: #F7F8F5;
+  --surface: #FFFFFF;
+  --border: #E2E5DC;
+  --fg: #1A1F14;
+  --muted: #5C6652;
+  --accent: #2E6B3E;
+  --accent-light: #EAF2EC;
+  --warn: #8A4A00;
+  --warn-bg: #FFF4E6;
+  --crit: #991B1B;
+  --crit-bg: #FEF2F2;
+  --ok: #166534;
+  --ok-bg: #F0FDF4;
+  --score-bar: #2E6B3E;
+
+  --font-display: 'DM Sans', system-ui, sans-serif;
+  --font-body: 'Inter', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #111810;
+    --surface: #1C231A;
+    --border: #2D3829;
+    --fg: #E8EDE4;
+    --muted: #8DA882;
+    --accent: #5EAD74;
+    --accent-light: #1A2E1E;
+    --warn: #F8B860;
+    --warn-bg: #2A1E0A;
+    --crit: #F87171;
+    --crit-bg: #1F0A0A;
+    --ok: #86EFAC;
+    --ok-bg: #0A1F10;
+    --score-bar: #5EAD74;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #111810;
+  --surface: #1C231A;
+  --border: #2D3829;
+  --fg: #E8EDE4;
+  --muted: #8DA882;
+  --accent: #5EAD74;
+  --accent-light: #1A2E1E;
+  --warn: #F8B860;
+  --warn-bg: #2A1E0A;
+  --crit: #F87171;
+  --crit-bg: #1F0A0A;
+  --ok: #86EFAC;
+  --ok-bg: #0A1F10;
+  --score-bar: #5EAD74;
+  color-scheme: dark;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-body);
+  font-size: 14px;
+  line-height: 1.6;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 0;
+}
+
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+code {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  background: var(--border);
+  padding: 1px 5px;
+  border-radius: 3px;
+  color: var(--fg);
+}
+
+/* PAGE SHELL */
+.page-wrap {
+  max-width: 1100px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  grid-template-rows: auto 1fr;
+  gap: 0;
+  min-height: 100%;
+}
+
+/* HEADER */
+.site-header {
+  grid-column: 1 / -1;
+  padding: 28px 0 20px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.header-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.brand-leaf {
+  width: 32px;
+  height: 32px;
+  background: var(--accent);
+  border-radius: 50% 50% 50% 0;
+  transform: rotate(-45deg);
+  flex-shrink: 0;
+}
+.brand-name {
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.3px;
+  color: var(--fg);
+}
+.brand-sub {
+  font-size: 12px;
+  color: var(--muted);
+  font-weight: 400;
+}
+.header-meta {
+  text-align: right;
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.4;
+}
+.header-meta strong { color: var(--fg); font-size: 13px; display: block; }
+
+/* SIDEBAR NAV */
+.sidebar {
+  padding: 28px 20px 40px 0;
+  border-right: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow-y: auto;
+}
+.nav-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 8px;
+  margin-top: 20px;
+}
+.nav-label:first-child { margin-top: 0; }
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 8px;
+  border-radius: 5px;
+  font-size: 13px;
+  color: var(--muted);
+  cursor: pointer;
+  transition: background 0.1s, color 0.1s;
+  text-decoration: none;
+}
+.nav-item:hover { background: var(--accent-light); color: var(--fg); text-decoration: none; }
+.nav-item.active { background: var(--accent-light); color: var(--accent); font-weight: 600; }
+.nav-dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.dot-crit { background: var(--crit); }
+.dot-high { background: var(--warn); }
+.dot-med  { background: #6B7280; }
+.dot-ok   { background: var(--ok); }
+.dot-accent { background: var(--accent); }
+
+/* MAIN */
+.main {
+  padding: 28px 0 60px 32px;
+  min-width: 0;
+}
+
+/* SCORE BANNER */
+.score-banner {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 20px 24px;
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  margin-bottom: 32px;
+  flex-wrap: wrap;
+}
+.score-circle {
+  width: 70px; height: 70px;
+  border-radius: 50%;
+  background: conic-gradient(var(--score-bar) calc(6.8 / 10 * 360deg), var(--border) 0);
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  position: relative;
+}
+.score-inner {
+  width: 52px; height: 52px;
+  border-radius: 50%;
+  background: var(--surface);
+  display: flex; align-items: center; justify-content: center;
+  flex-direction: column;
+}
+.score-num {
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--accent);
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.score-denom { font-size: 10px; color: var(--muted); }
+.score-details { flex: 1; min-width: 0; }
+.score-title {
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+.score-desc { font-size: 13px; color: var(--muted); line-height: 1.5; }
+.score-pills {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+.pill {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 9px;
+  border-radius: 20px;
+  letter-spacing: 0.02em;
+}
+.pill-ok  { background: var(--ok-bg); color: var(--ok); }
+.pill-warn { background: var(--warn-bg); color: var(--warn); }
+.pill-crit { background: var(--crit-bg); color: var(--crit); }
+
+/* TODAY ACTIONS */
+.actions-today {
+  background: var(--accent-light);
+  border: 1px solid var(--accent);
+  border-radius: 10px;
+  padding: 18px 22px;
+  margin-bottom: 32px;
+}
+.actions-today-title {
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 12px;
+}
+.action-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+}
+.action-item:last-child { border-bottom: none; padding-bottom: 0; }
+.action-num {
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--bg);
+  font-size: 11px;
+  font-weight: 800;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+.action-text { min-width: 0; }
+.action-text strong { font-size: 13px; display: block; margin-bottom: 2px; }
+.action-text p { font-size: 12px; color: var(--muted); }
+
+/* SECTIONS */
+section { margin-bottom: 40px; }
+.section-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border);
+}
+.section-badge {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 9px;
+  border-radius: 4px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.badge-block  { background: var(--crit-bg);  color: var(--crit); }
+.badge-sprint1 { background: var(--warn-bg); color: var(--warn); }
+.badge-sprint2 { background: var(--border); color: var(--muted); }
+.badge-dead   { background: var(--ok-bg);  color: var(--ok); }
+.section-title {
+  font-family: var(--font-display);
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--fg);
+}
+
+/* FINDING CARDS */
+.finding-list { display: flex; flex-direction: column; gap: 10px; }
+.finding-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 14px 16px;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 10px 14px;
+  align-items: start;
+}
+.finding-card.is-crit { border-left: 3px solid var(--crit); }
+.finding-card.is-high { border-left: 3px solid var(--warn); }
+.finding-card.is-med  { border-left: 3px solid #9CA3AF; }
+.finding-card.is-ok   { border-left: 3px solid var(--ok); }
+
+.finding-num {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--muted);
+  padding-top: 2px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.finding-body { min-width: 0; }
+.finding-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--fg);
+  margin-bottom: 4px;
+  line-height: 1.4;
+}
+.finding-desc {
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.55;
+}
+.finding-tags {
+  display: flex;
+  gap: 5px;
+  flex-wrap: wrap;
+  margin-top: 6px;
+}
+.tag {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 3px;
+  letter-spacing: 0.04em;
+}
+.tag-backend  { background: #EEF4FB; color: #2563EB; }
+.tag-mobile   { background: #F5F0FB; color: #7C3AED; }
+.tag-security { background: var(--crit-bg); color: var(--crit); }
+.tag-contract { background: var(--warn-bg); color: var(--warn); }
+.tag-dry      { background: var(--border); color: var(--muted); }
+.tag-perf     { background: var(--ok-bg); color: var(--ok); }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .tag-backend { background: #1A2A3F; color: #93C5FD; }
+  :root:not([data-theme="light"]) .tag-mobile  { background: #1F1A3F; color: #C4B5FD; }
+}
+:root[data-theme="dark"] .tag-backend { background: #1A2A3F; color: #93C5FD; }
+:root[data-theme="dark"] .tag-mobile  { background: #1F1A3F; color: #C4B5FD; }
+
+/* DEAD CODE TABLE */
+.dead-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  overflow-x: auto;
+  display: block;
+}
+.dead-table th {
+  text-align: left;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  padding: 6px 12px;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+.dead-table td {
+  padding: 9px 12px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+  line-height: 1.5;
+}
+.dead-table tr:last-child td { border-bottom: none; }
+.dead-table tr:hover td { background: var(--accent-light); }
+.safety { font-size: 11px; font-weight: 700; padding: 2px 6px; border-radius: 3px; }
+.safety-safe { background: var(--ok-bg); color: var(--ok); }
+
+/* HEALTH GRID */
+.health-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 10px;
+  margin-top: 0;
+}
+.health-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 14px;
+}
+.health-area { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin-bottom: 6px; }
+.health-score {
+  font-family: var(--font-display);
+  font-size: 26px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  margin-bottom: 4px;
+}
+.health-verdict { font-size: 11px; color: var(--muted); line-height: 1.4; }
+.score-green { color: var(--ok); }
+.score-yellow { color: var(--warn); }
+.score-red { color: var(--crit); }
+
+/* RESPONSIVENESS */
+@media (max-width: 700px) {
+  .page-wrap { grid-template-columns: 1fr; }
+  .sidebar { display: none; }
+  .main { padding: 20px 0 40px; }
+  .score-banner { flex-direction: column; align-items: flex-start; }
+}
+</style>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;700;800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;700&display=swap">
+
+<div class="page-wrap">
+  <!-- HEADER -->
+  <header class="site-header">
+    <div class="header-brand">
+      <div class="brand-leaf"></div>
+      <div>
+        <div class="brand-name">AGRO MIRAI</div>
+        <div class="brand-sub">5-Agent Parallel Audit — Full Codebase</div>
+      </div>
+    </div>
+    <div class="header-meta">
+      <strong>Audit Synthesis Report</strong>
+      330 tests passing · 0 failures · Oct 15 2026
+    </div>
+  </header>
+
+  <!-- SIDEBAR -->
+  <nav class="sidebar">
+    <div class="nav-label">Overview</div>
+    <a class="nav-item active" href="#score"><span class="nav-dot dot-accent"></span>Health Score</a>
+    <a class="nav-item" href="#today"><span class="nav-dot dot-accent"></span>Do Today</a>
+
+    <div class="nav-label">Action Plan</div>
+    <a class="nav-item" href="#blockers"><span class="nav-dot dot-crit"></span>Release Blockers</a>
+    <a class="nav-item" href="#sprint1"><span class="nav-dot dot-high"></span>Sprint 1 Cleanup</a>
+    <a class="nav-item" href="#sprint2"><span class="nav-dot dot-med"></span>Sprint 2 Backlog</a>
+    <a class="nav-item" href="#dead"><span class="nav-dot dot-ok"></span>Dead Code</a>
+
+    <div class="nav-label">Agents</div>
+    <a class="nav-item" href="#backend"><span class="nav-dot dot-accent"></span>Backend Explorer</a>
+    <a class="nav-item" href="#mobile"><span class="nav-dot dot-accent"></span>Mobile Explorer</a>
+    <a class="nav-item" href="#security"><span class="nav-dot dot-accent"></span>Security Audit</a>
+    <a class="nav-item" href="#contract"><span class="nav-dot dot-accent"></span>Contract Guardian</a>
+    <a class="nav-item" href="#tests"><span class="nav-dot dot-ok"></span>Test Suite</a>
+  </nav>
+
+  <!-- MAIN -->
+  <main class="main">
+
+    <!-- SCORE -->
+    <div id="score" class="score-banner">
+      <div class="score-circle">
+        <div class="score-inner">
+          <span class="score-num">6.8</span>
+          <span class="score-denom">/10</span>
+        </div>
+      </div>
+      <div class="score-details">
+        <div class="score-title">Solid foundation, architectural debt accumulating</div>
+        <div class="score-desc">Tests green, contracts matched, no SQL injection, no hardcoded secrets. The gaps are structural: zero Supabase RLS on all tables is a data isolation time-bomb; three unauthenticated frontend routes; two god-classes that make every backend feature require dual edits; and pervasive theme/spacing violations in mobile that will worsen with every new screen.</div>
+        <div class="score-pills">
+          <span class="pill pill-ok">330 tests passing</span>
+          <span class="pill pill-ok">No SQL injection</span>
+          <span class="pill pill-ok">No hardcoded secrets</span>
+          <span class="pill pill-warn">No Supabase RLS</span>
+          <span class="pill pill-crit">3 unauth routes</span>
+          <span class="pill pill-warn">2 god-classes</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Health breakdown grid -->
+    <div id="health-detail" style="margin-bottom:32px;">
+      <div class="health-grid">
+        <div class="health-card">
+          <div class="health-area">Test Coverage</div>
+          <div class="health-score score-green">9</div>
+          <div class="health-verdict">330 passing, 0 failures. TypeScript compiles clean.</div>
+        </div>
+        <div class="health-card">
+          <div class="health-area">Security</div>
+          <div class="health-score score-red">5</div>
+          <div class="health-verdict">Zero Supabase RLS. 3 unauth frontend routes. Cleartext traffic allowed.</div>
+        </div>
+        <div class="health-card">
+          <div class="health-area">API Contracts</div>
+          <div class="health-score score-green">8</div>
+          <div class="health-verdict">Mobile/backend conversation contract exact match. Auth coverage solid on v2 routes.</div>
+        </div>
+        <div class="health-card">
+          <div class="health-area">Backend Arch</div>
+          <div class="health-score score-yellow">6</div>
+          <div class="health-verdict">God-classes, duplicate stores, 72 raw SQL strings, no retry helper.</div>
+        </div>
+        <div class="health-card">
+          <div class="health-area">Mobile Quality</div>
+          <div class="health-score score-yellow">6</div>
+          <div class="health-verdict">Theme violations, 370 hardcoded pixels, screens 200-794 lines.</div>
+        </div>
+        <div class="health-card">
+          <div class="health-area">Data Isolation</div>
+          <div class="health-score score-red">4</div>
+          <div class="health-verdict">App-layer only tenant scoping on Supabase. No DB-layer RLS anywhere.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TODAY -->
+    <div id="today" class="actions-today">
+      <div class="actions-today-title">Recommended First 3 Actions — Do Today</div>
+      <div class="action-item">
+        <div class="action-num">1</div>
+        <div class="action-text">
+          <strong>Write Supabase RLS migrations for all 10 tables</strong>
+          <p>No row-level security exists anywhere. Add <code>ENABLE ROW LEVEL SECURITY</code> + a <code>farmer_id = auth.uid()</code> policy to fields, conversations, farmers, advisories, crop_recommendations, disease_risk_alerts, irrigation_advices, feedback_entries, bug_reports, audit_log. Start with <code>conversations</code> (newest, zero policies). This is the only blocker with no workaround.</p>
+        </div>
+      </div>
+      <div class="action-item">
+        <div class="action-num">2</div>
+        <div class="action-text">
+          <strong>Add auth decorators to 3 frontend.py routes</strong>
+          <p>GET <code>/</code> (dashboard), GET <code>/field/&lt;field_id&gt;</code> (field detail), POST <code>/ui/feedback</code> — all in <code>src/agro_mirai/api/routes/frontend.py</code> lines 21, 31, 52. These serve farmer data with zero session check. 15-minute fix: add <code>@require_session_auth</code> or gate on the legacy <code>FARMER_ID</code> env check.</p>
+        </div>
+      </div>
+      <div class="action-item">
+        <div class="action-num">3</div>
+        <div class="action-text">
+          <strong>Extract shared HTTP retry helper from open_meteo.py + openweathermap.py</strong>
+          <p>Both files duplicate identical retry-loop + raise logic (DRY violation). Write one <code>fetch_with_retry(url, *, retries, timeout) → dict</code> helper in <code>src/agro_mirai/acquisition/http.py</code> and replace both call sites. Low risk, high payoff for the next acquisition source.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- RELEASE BLOCKERS -->
+    <section id="blockers">
+      <div class="section-header">
+        <span class="section-badge badge-block">Release Blockers</span>
+        <span class="section-title">Must fix before any new feature work</span>
+      </div>
+      <div class="finding-list">
+        <div class="finding-card is-crit">
+          <div class="finding-num">#B1</div>
+          <div class="finding-body">
+            <div class="finding-title">Supabase RLS missing on ALL tables — zero DB-layer isolation</div>
+            <div class="finding-desc">No <code>ENABLE ROW LEVEL SECURITY</code> or <code>CREATE POLICY</code> exists in any file under <code>supabase/migrations/</code>. Tables: fields, conversations, farmers, advisories, crop_recommendations, disease_risk_alerts, irrigation_advices, feedback_entries, bug_reports, audit_log. If the anon/authenticated role has table access or the service-role key is ever exposed, every tenant's data is readable and writable with no DB guard. The most recently added table — <code>conversations</code> in <code>20261015000000_conversations.sql</code> — has never had RLS added.</div>
+            <div class="finding-tags">
+              <span class="tag tag-security">SECURITY</span><span class="tag tag-contract">DATA ISOLATION</span>
+            </div>
+          </div>
+        </div>
+        <div class="finding-card is-crit">
+          <div class="finding-num">#B2</div>
+          <div class="finding-body">
+            <div class="finding-title">3 unauth routes in frontend.py expose farmer data</div>
+            <div class="finding-desc"><code>src/agro_mirai/api/routes/frontend.py</code> lines 21, 31, 52: GET <code>/</code> (dashboard), GET <code>/field/&lt;field_id&gt;</code>, POST <code>/ui/feedback</code>. Legacy single-farmer pattern (ADR 0003) but no session check. Any unauthenticated HTTP request to the server returns farmer data.</div>
+            <div class="finding-tags">
+              <span class="tag tag-security">SECURITY</span><span class="tag tag-backend">BACKEND</span>
+            </div>
+          </div>
+        </div>
+        <div class="finding-card is-high">
+          <div class="finding-num">#B3</div>
+          <div class="finding-body">
+            <div class="finding-title">Android: usesCleartextTraffic=true + allowBackup=true in release manifest</div>
+            <div class="finding-desc"><code>mobile/android/app/src/main/AndroidManifest.xml</code> line 24. HTTP traffic is unencrypted — acceptable only if all backend URLs are HTTPS in production. Confirm no dev-mode cleartext endpoint is reachable in release builds. Also: <code>allowBackup=true</code> can extract AsyncStorage/SQLite to any device the user's Google account restores to; verify <code>fullBackupContent</code> / <code>dataExtractionRules</code> exclude auth cookies and cached farmer data.</div>
+            <div class="finding-tags">
+              <span class="tag tag-security">SECURITY</span><span class="tag tag-mobile">MOBILE</span>
+            </div>
+          </div>
+        </div>
+        <div class="finding-card is-high">
+          <div class="finding-num">#B4</div>
+          <div class="finding-body">
+            <div class="finding-title">SYSTEM_ALERT_WINDOW permission — overlay risk</div>
+            <div class="finding-desc"><code>mobile/android/app/src/main/AndroidManifest.xml</code> line 14: <code>android.permission.SYSTEM_ALERT_WINDOW</code>. Allows drawing over other apps. Confirm whether any Expo module actually requires this. If not, remove it before next Play Store submission.</div>
+            <div class="finding-tags">
+              <span class="tag tag-security">SECURITY</span><span class="tag tag-mobile">MOBILE</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SPRINT 1 -->
+    <section id="sprint1">
+      <div class="section-header">
+        <span class="section-badge badge-sprint1">Sprint 1 Cleanup</span>
+        <span class="section-title">Top 10 — highest value refactors, ordered by impact</span>
+      </div>
+      <div class="finding-list">
+        <div class="finding-card is-high">
+          <div class="finding-num">S1·1</div>
+          <div class="finding-body">
+            <div class="finding-title">Split god-class SQLiteDataStore (1155 lines, 69 methods)</div>
+            <div class="finding-desc">Every interface change currently requires dual edits. Extract domain-grouped sub-stores: <code>FarmerStore</code>, <code>FieldStore</code>, <code>ConversationStore</code>, <code>AdvisoryStore</code>, <code>AuditStore</code>. The 72 raw SQL strings should move into per-domain query modules. DRY: repeated INSERT/SELECT patterns across entity types should share a parameterized helper. File: <code>src/agro_mirai/persistence/sqlite_store.py</code>.</div>
+            <div class="finding-tags"><span class="tag tag-backend">BACKEND</span><span class="tag tag-dry">DRY</span></div>
+          </div>
+        </div>
+        <div class="finding-card is-high">
+          <div class="finding-num">S1·2</div>
+          <div class="finding-body">
+            <div class="finding-title">Split god-class SupabaseDataStore (859 lines, 59 methods) + introduce shared DataStore interface</div>
+            <div class="finding-desc"><code>src/agro_mirai/persistence/supabase_store.py</code> mirrors SQLiteDataStore with the same 57 methods. Any new method must be added in two places. Define a <code>DataStore</code> ABC and extract domain sub-stores parallel to the SQLite split. This also eliminates the dual-edit penalty permanently.</div>
+            <div class="finding-tags"><span class="tag tag-backend">BACKEND</span><span class="tag tag-dry">DRY</span></div>
+          </div>
+        </div>
+        <div class="finding-card is-high">
+          <div class="finding-num">S1·3</div>
+          <div class="finding-body">
+            <div class="finding-title">Extract useDragToDismiss hook — PanResponder duplicated in 3 files</div>
+            <div class="finding-desc">Identical drag-to-dismiss boilerplate in <code>zoom.tsx</code>:38–67, <code>notifications.tsx</code>:94–106, <code>screens/Onboarding.tsx</code>:358–368. Extract <code>useDragToDismiss(translateY, onDismiss)</code> in <code>hooks.ts</code>. Any future change to the gesture (e.g. velocity threshold) currently needs 3 edits.</div>
+            <div class="finding-tags"><span class="tag tag-mobile">MOBILE</span><span class="tag tag-dry">DRY</span></div>
+          </div>
+        </div>
+        <div class="finding-card is-high">
+          <div class="finding-num">S1·4</div>
+          <div class="finding-body">
+            <div class="finding-title">Split Onboarding.tsx (794 lines) into focused components</div>
+            <div class="finding-desc">The most urgent screen split. Currently mixes OTP flow, language selection, swipe modal, and tour audio into one file. Extract: <code>OtpStep</code>, <code>LanguagePicker</code>, <code>TourAudioStep</code>, <code>SwipeDismissModal</code>. Other candidates in priority order: <code>DataTab.tsx</code> (634), <code>ScanTab.tsx</code> (582), <code>AdviceTab.tsx</code> (548), <code>FieldForm.tsx</code> (481).</div>
+            <div class="finding-tags"><span class="tag tag-mobile">MOBILE</span></div>
+          </div>
+        </div>
+        <div class="finding-card is-high">
+          <div class="finding-num">S1·5</div>
+          <div class="finding-body">
+            <div class="finding-title">Replace all hardcoded hex colors with C.* theme tokens in 6 mobile files</div>
+            <div class="finding-desc">25+ instances in <code>notifications.tsx</code>, 15+ in <code>components/VoiceMode.tsx</code> (plus a hardcoded <code>GREEN</code> constant), 8 in <code>components/PickGrid.tsx</code>, 30+ in <code>screens/ScanTab.tsx</code>, and instances in <code>toast.tsx</code> and <code>zoom.tsx</code>. <code>theme.ts</code> already defines <code>C.accent</code>, <code>C.bg</code>, <code>C.border</code>, <code>C.text</code>, <code>C.muted</code>, <code>C.danger</code> — use them. Dark mode will break otherwise.</div>
+            <div class="finding-tags"><span class="tag tag-mobile">MOBILE</span></div>
+          </div>
+        </div>
+        <div class="finding-card is-high">
+          <div class="finding-num">S1·6</div>
+          <div class="finding-body">
+            <div class="finding-title">Create shared HTTP retry helper, replace dual DRY violation</div>
+            <div class="finding-desc"><code>src/agro_mirai/acquisition/open_meteo.py</code> lines 222–237 and <code>openweathermap.py</code> lines 127–145 duplicate identical retry-loop + error-raise logic (nesting depth 5–6). Extract <code>fetch_with_retry()</code> to <code>src/agro_mirai/acquisition/http.py</code>.</div>
+            <div class="finding-tags"><span class="tag tag-backend">BACKEND</span><span class="tag tag-dry">DRY</span></div>
+          </div>
+        </div>
+        <div class="finding-card is-high">
+          <div class="finding-num">S1·7</div>
+          <div class="finding-body">
+            <div class="finding-title">Refactor create_app factory (157 lines) — single-responsibility violation</div>
+            <div class="finding-desc"><code>src/agro_mirai/api/app.py</code> line 140. The function mixes app factory, middleware wiring, blueprint registration, and error handlers. Extract: <code>register_blueprints(app)</code>, <code>register_middleware(app)</code>, <code>register_error_handlers(app)</code>, keeping <code>create_app</code> as a 20-line orchestrator.</div>
+            <div class="finding-tags"><span class="tag tag-backend">BACKEND</span></div>
+          </div>
+        </div>
+        <div class="finding-card is-high">
+          <div class="finding-num">S1·8</div>
+          <div class="finding-body">
+            <div class="finding-title">Fix saveConversationApi silently dropping lang field</div>
+            <div class="finding-desc"><code>mobile/src/conversations.ts</code> line 38: <code>saveConversationApi</code> payload is <code>{ field_id: fieldId, ...entry }</code> where <code>lang</code> is not explicitly included in the spread when called from <code>conversations.ts</code>. The POST <code>/v2/conversations</code> handler silently falls back to <code>'en'</code>, losing the farmer's actual language on all saved records. Explicit <code>lang</code> inclusion is a one-line fix.</div>
+            <div class="finding-tags"><span class="tag tag-mobile">MOBILE</span><span class="tag tag-contract">CONTRACT</span></div>
+          </div>
+        </div>
+        <div class="finding-card is-high">
+          <div class="finding-num">S1·9</div>
+          <div class="finding-body">
+            <div class="finding-title">Add PUBLIC marker comments to auth_v2.py intentional public routes</div>
+            <div class="finding-desc"><code>src/agro_mirai/api/routes/auth_v2.py</code> lines 69, 143, 189: POST <code>/request-otp</code>, POST <code>/verify-otp</code>, POST <code>/logout</code> are intentionally public but carry no <code># PUBLIC</code> comment. Future reviewers cannot distinguish deliberate public access from a missed decorator. Low effort, prevents future security regression.</div>
+            <div class="finding-tags"><span class="tag tag-security">SECURITY</span><span class="tag tag-backend">BACKEND</span></div>
+          </div>
+        </div>
+        <div class="finding-card is-high">
+          <div class="finding-num">S1·10</div>
+          <div class="finding-body">
+            <div class="finding-title">Convert all screen StyleSheets from inline objects to StyleSheet.create</div>
+            <div class="finding-desc">Only 3 files use <code>StyleSheet.create</code> (<code>ui.tsx</code>:151, <code>components/CoachTour.tsx</code>:137, <code>components/AnimatedSplashScreen.tsx</code>:93). All 9 screen files and <code>notifications.tsx</code> use inline style objects re-allocated on every render. Moving to <code>StyleSheet.create</code> outside render functions avoids object churn and enables native style flattening. Bundle with the S.* spacing token migration (370 raw pixel values).</div>
+            <div class="finding-tags"><span class="tag tag-mobile">MOBILE</span><span class="tag tag-perf">PERF</span></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SPRINT 2 -->
+    <section id="sprint2">
+      <div class="section-header">
+        <span class="section-badge badge-sprint2">Sprint 2 Backlog</span>
+        <span class="section-title">Medium priority — quality improvements</span>
+      </div>
+      <div class="finding-list">
+        <div class="finding-card is-med">
+          <div class="finding-num">S2·1</div>
+          <div class="finding-body">
+            <div class="finding-title">Add type hints to _indic_processor.py and explanation_service.py</div>
+            <div class="finding-desc"><code>src/agro_mirai/voice/_indic_processor.py</code> lines 212–285: four methods missing type hints on 3–5 args. <code>src/agro_mirai/models/explanation_service.py</code> lines 57–67: <code>__init__</code> and <code>_finish</code> missing hints on 3–9 args. Split <code>__init__</code>'s 100-line body into a config dataclass + init logic.</div>
+            <div class="finding-tags"><span class="tag tag-backend">BACKEND</span></div>
+          </div>
+        </div>
+        <div class="finding-card is-med">
+          <div class="finding-num">S2·2</div>
+          <div class="finding-body">
+            <div class="finding-title">Decompose 6 oversized backend functions (&gt;60 lines)</div>
+            <div class="finding-desc">
+              <code>feature_builder.py</code>:123 <code>build()</code> 81 lines; <code>_soil_features()</code>:254 88 lines.<br>
+              <code>voice_v2.py</code>:122 <code>post_voice_ask()</code> 81 lines (307-line file).<br>
+              <code>crop_recommendation_model.py</code>:131 <code>predict()</code> 81 lines.<br>
+              <code>disease_risk_scoring.py</code>:79 <code>score_disease_risk()</code> 67 lines.<br>
+              <code>soil_water_balance.py</code>:154 <code>run_balance()</code> 77 lines.<br>
+              <code>auth_v2.py</code>:71 <code>request_otp()</code> 70 lines.
+            </div>
+            <div class="finding-tags"><span class="tag tag-backend">BACKEND</span></div>
+          </div>
+        </div>
+        <div class="finding-card is-med">
+          <div class="finding-num">S2·3</div>
+          <div class="finding-body">
+            <div class="finding-title">Replace raw useEffect in MeTab.tsx with useLoad</div>
+            <div class="finding-desc"><code>screens/MeTab.tsx</code> line 75 calls <code>getReminderSettings(farmer.id)</code> via raw <code>useEffect</code>. HomeTab, DataTab, AdviceTab all use the <code>useLoad</code> hook for automatic cache/stale handling. Inconsistency will cause subtle staleness bugs as reminder settings grow.</div>
+            <div class="finding-tags"><span class="tag tag-mobile">MOBILE</span></div>
+          </div>
+        </div>
+        <div class="finding-card is-med">
+          <div class="finding-num">S2·4</div>
+          <div class="finding-body">
+            <div class="finding-title">Reduce nesting depth in earth_engine.py and acquisition modules</div>
+            <div class="finding-desc"><code>src/agro_mirai/acquisition/earth_engine.py</code>:173 <code>_fetch_live_once()</code> 58 lines with depth-5 nesting at lines 138, 159, 197–199, 211, 262. <code>open_meteo.py</code> depth 5–6 at lines 222–237 and 284–286 (retry loop inside conditional inside loop). Extract inner loops to helper functions to bring nesting below 4.</div>
+            <div class="finding-tags"><span class="tag tag-backend">BACKEND</span></div>
+          </div>
+        </div>
+        <div class="finding-card is-med">
+          <div class="finding-num">S2·5</div>
+          <div class="finding-body">
+            <div class="finding-title">Replace 370 raw pixel spacing values with S.* tokens in mobile screens</div>
+            <div class="finding-desc">Worst offenders: <code>screens/DataTab.tsx</code> (73 occurrences), <code>screens/ScanTab.tsx</code> (53), <code>screens/AdviceTab.tsx</code> (53), <code>screens/Onboarding.tsx</code> (50). <code>theme.ts</code> already defines <code>S.xs/S.sm/S.md/S.lg/S.xl</code>. Bundle with the StyleSheet.create migration (S1·10) into one PR per screen.</div>
+            <div class="finding-tags"><span class="tag tag-mobile">MOBILE</span></div>
+          </div>
+        </div>
+        <div class="finding-card is-med">
+          <div class="finding-num">S2·6</div>
+          <div class="finding-body">
+            <div class="finding-title">Scope get_field_by_id to farmer_id to prevent escalation risk</div>
+            <div class="finding-desc"><code>src/agro_mirai/persistence/supabase_store.py</code>: <code>get_field_by_id</code> (called at <code>admin.py</code> lines 134, 150) fetches a field by id alone with no <code>farmer_id</code> filter. Currently gated behind <code>@require_admin</code>, but if accidentally reused on a farmer-facing path, cross-tenant reads are possible. Add <code>farmer_id=None</code> param that filters when provided.</div>
+            <div class="finding-tags"><span class="tag tag-backend">BACKEND</span><span class="tag tag-contract">CONTRACT</span></div>
+          </div>
+        </div>
+        <div class="finding-card is-med">
+          <div class="finding-num">S2·7</div>
+          <div class="finding-body">
+            <div class="finding-title">Verify advisory field ownership scoping in value_v2.py</div>
+            <div class="finding-desc">Advisory routes in <code>advisory.py</code> enforce <code>@require_auth</code> and pass <code>g.farmer_id</code> to <code>compute_*</code> functions, but ownership is application-layer only. Verify each <code>compute_*</code> method in <code>value_v2.py</code> scopes all advisory store queries to <code>farmer_id</code>. If any query fetches by <code>field_id</code> alone, cross-tenant reads are possible.</div>
+            <div class="finding-tags"><span class="tag tag-contract">CONTRACT</span><span class="tag tag-security">SECURITY</span></div>
+          </div>
+        </div>
+        <div class="finding-card is-med">
+          <div class="finding-num">S2·8</div>
+          <div class="finding-body">
+            <div class="finding-title">Remove or block v1 shared-identity farmer routes</div>
+            <div class="finding-desc"><code>farms.py</code> (v1): GET <code>/farmers/me</code>, GET <code>/fields</code>, POST <code>/fields</code>, GET <code>/fields/&lt;id&gt;</code> use <code>@require_auth</code> backed by a single shared API_KEY/FARMER_ID. All callers share one farmer identity. This is a known legacy path per decisions/0017 but remains active. Plan removal after confirming no production traffic.</div>
+            <div class="finding-tags"><span class="tag tag-backend">BACKEND</span><span class="tag tag-contract">CONTRACT</span></div>
+          </div>
+        </div>
+        <div class="finding-card is-med">
+          <div class="finding-num">S2·9</div>
+          <div class="finding-body">
+            <div class="finding-title">Extract duplicate fetch wrapper pattern in api.ts (8+ repeated call sites)</div>
+            <div class="finding-desc"><code>mobile/src/api.ts</code>: <code>listFields</code>, <code>dataSummary</code>, <code>getDiseaseRiskFull</code>, <code>getRecommendation</code>, <code>getIrrigation</code>, <code>getAdvisories</code>, <code>translateTexts</code>:436, <code>fetchConversationsApi</code>:480 all repeat the same <code>{ timeout, auth }</code> options object pattern. Extract a typed <code>apiRequest&lt;T&gt;(path, opts?)</code> helper and standardize the 8+ call sites.</div>
+            <div class="finding-tags"><span class="tag tag-mobile">MOBILE</span><span class="tag tag-dry">DRY</span></div>
+          </div>
+        </div>
+        <div class="finding-card is-med">
+          <div class="finding-num">S2·10</div>
+          <div class="finding-body">
+            <div class="finding-title">Verify RECEIVE_BOOT_COMPLETED is actually used; remove if not</div>
+            <div class="finding-desc"><code>mobile/android/app/src/main/AndroidManifest.xml</code> line 10: <code>android.permission.RECEIVE_BOOT_COMPLETED</code> allows auto-start on boot. Low risk for an ag advisory app but adds unnecessary attack surface. Confirm it is used by notification scheduling; if not, remove it.</div>
+            <div class="finding-tags"><span class="tag tag-security">SECURITY</span><span class="tag tag-mobile">MOBILE</span></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- DEAD CODE -->
+    <section id="dead">
+      <div class="section-header">
+        <span class="section-badge badge-dead">Dead Code</span>
+        <span class="section-title">Safe to delete immediately</span>
+      </div>
+      <div style="overflow-x:auto; border-radius:8px; border:1px solid var(--border);">
+        <table class="dead-table">
+          <thead>
+            <tr>
+              <th>Location</th>
+              <th>What</th>
+              <th>Action</th>
+              <th>Safety</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>All 60+ .py files</code></td>
+              <td><code>from __future__ import annotations</code> — no-op on Python 3.12+ (the project's runtime)</td>
+              <td>Single <code>sed -i</code> or <code>ast-grep</code> pass across <code>src/</code></td>
+              <td><span class="safety safety-safe">SAFE</span></td>
+            </tr>
+            <tr>
+              <td><code>field_data_acquisition.py</code>:278</td>
+              <td>Commented-out prose block starting with <code># for it; soil gets a few seconds…</code></td>
+              <td>Delete comment block</td>
+              <td><span class="safety safety-safe">SAFE</span></td>
+            </tr>
+            <tr>
+              <td><code>api/leaf_gate.py</code>:86</td>
+              <td>Comment <code># Reject pure synthetic digital colors (e.g. hacker matrix green)</code> preceding unexplained threshold logic — may be a vestigial design note</td>
+              <td>Review threshold; keep comment only if it documents the value. Delete if purely decorative.</td>
+              <td><span class="safety safety-safe">SAFE</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p style="margin-top:10px; font-size:12px; color:var(--muted);">No dead exports were found in the mobile codebase — all public symbols are actively imported. <code>screens/FirstField.tsx</code> is still live via <code>mobile/App.tsx</code>:77 (not dead — note for future directory reorganization only).</p>
+    </section>
+
+    <!-- AGENT SUMMARIES -->
+    <section id="backend">
+      <div class="section-header">
+        <span class="section-badge" style="background:var(--accent-light);color:var(--accent);">Agent</span>
+        <span class="section-title">Backend Code Explorer — Summary</span>
+      </div>
+      <div class="finding-card is-ok" style="border-left-color:var(--accent)">
+        <div class="finding-num">✓</div>
+        <div class="finding-body">
+          <div class="finding-desc">No critical bugs. Primary concerns: two god-classes (SQLiteDataStore 1155 lines/69 methods, SupabaseDataStore 859 lines/59 methods); create_app at 157 lines; six functions exceeding 80 lines in feature_builder, voice, and model layers; duplicate HTTP retry+error-raise in open_meteo.py and openweathermap.py; 72 SQL statements with no shared helpers; <code>from __future__ import annotations</code> is a no-op dead import in all 60+ files. No TODO/FIXME comments. No unused non-annotations imports.</div>
+        </div>
+      </div>
+    </section>
+
+    <section id="mobile">
+      <div class="section-header">
+        <span class="section-badge" style="background:var(--accent-light);color:var(--accent);">Agent</span>
+        <span class="section-title">Mobile Code Explorer — Summary</span>
+      </div>
+      <div class="finding-card is-ok" style="border-left-color:var(--accent)">
+        <div class="finding-num">✓</div>
+        <div class="finding-body">
+          <div class="finding-desc">No critical bugs. Three high-severity: PanResponder drag-to-dismiss duplicated in zoom.tsx:38, notifications.tsx:94, Onboarding.tsx:358 (should be a shared hook); 7 screens exceed 200 lines with Onboarding.tsx at 794 lines most urgent; pervasive hardcoded hex colors across 6+ files violate theme.ts contract. Medium: 370 raw pixel spacing values, MeTab raw useEffect instead of useLoad, inline style objects on every render. No dead exports — all public symbols actively imported.</div>
+        </div>
+      </div>
+    </section>
+
+    <section id="security">
+      <div class="section-header">
+        <span class="section-badge" style="background:var(--accent-light);color:var(--accent);">Agent</span>
+        <span class="section-title">Security Audit — Summary</span>
+      </div>
+      <div class="finding-card is-ok" style="border-left-color:var(--accent)">
+        <div class="finding-num">✓</div>
+        <div class="finding-body">
+          <div class="finding-desc">Critical: frontend.py (legacy v1 web UI) has 3 routes with no auth decorator. High: usesCleartextTraffic=true and allowBackup=true in AndroidManifest, SYSTEM_ALERT_WINDOW permission. All v2 API routes (farms_v2, voice_v2, value_v2, admin) correctly use require_session_auth or require_admin. No hardcoded real secrets. No SQL injection. No sensitive keys in DEVICE_GLOBAL_KEYS. .env is gitignored.</div>
+        </div>
+      </div>
+    </section>
+
+    <section id="contract">
+      <div class="section-header">
+        <span class="section-badge" style="background:var(--accent-light);color:var(--accent);">Agent</span>
+        <span class="section-title">Contract Guardian — Summary</span>
+      </div>
+      <div class="finding-card is-ok" style="border-left-color:var(--accent)">
+        <div class="finding-num">✓</div>
+        <div class="finding-body">
+          <div class="finding-desc">Two hard breaches: no Supabase RLS on any table — zero row-level security policies. Four warnings: advisory ownership application-layer only; get_field_by_id lacks farmer_id filter; saveConversationApi silently drops lang; v1 shared-identity routes still active. All SQLite queries parameterized, no f-string SQL, all farmer and admin routes auth-gated, mobile/backend conversation API contract is exact match.</div>
+        </div>
+      </div>
+    </section>
+
+    <section id="tests">
+      <div class="section-header">
+        <span class="section-badge" style="background:var(--ok-bg);color:var(--ok);">Agent</span>
+        <span class="section-title">Test Suite — Summary</span>
+      </div>
+      <div class="finding-card is-ok">
+        <div class="finding-num">✓</div>
+        <div class="finding-body">
+          <div class="finding-title">GREEN — all checks pass</div>
+          <div class="finding-desc">Backend: 330 passed, 1 skipped, 1 warning (218s). Warning: TestOtpSender collection skipped due to <code>__init__</code> constructor in <code>tests/auth/test_otp_providers.py</code>:85. Mobile TypeScript: <code>npx tsc --noEmit</code> exited 0, no errors. Note: Ruff not installed in .venv — linter check skipped.</div>
+          <div class="finding-tags"><span class="tag tag-perf">330 PASSING</span><span class="tag" style="background:var(--warn-bg);color:var(--warn);">RUFF NOT INSTALLED</span></div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<script>
+// Smooth-scroll nav + active state
+document.querySelectorAll('.nav-item[href^="#"]').forEach(link => {
+  link.addEventListener('click', e => {
+    e.preventDefault();
+    const target = document.querySelector(link.getAttribute('href'));
+    if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    link.classList.add('active');
+  });
+});
+</script>

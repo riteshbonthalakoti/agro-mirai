@@ -3,8 +3,6 @@
 decisions/0017-multi-tenant-v2.md (superseded in part by this module's
 own ADR) for why this dashboard is no longer read-only-only.
 """
-from __future__ import annotations
-
 import dataclasses
 import json
 import uuid

@@ -1,6 +1,4 @@
 """Liveness endpoint — public, no auth."""
-from __future__ import annotations
-
 import threading
 import time
 

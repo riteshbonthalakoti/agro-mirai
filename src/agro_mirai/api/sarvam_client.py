@@ -13,8 +13,6 @@ timeout, non-200, malformed body) so callers can fall back. Keys are tried in
 order; a key that is rate-limited (429), rejected (401/403) or erroring (5xx)
 falls through to the next one.
 """
-from __future__ import annotations
-
 import base64
 import logging
 import os

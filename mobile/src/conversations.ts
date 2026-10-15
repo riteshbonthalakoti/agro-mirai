@@ -35,7 +35,8 @@ export async function saveConversation(fieldId: string, entry: { question: strin
   await cacheSet(key(fieldId), local.slice(0, MAX_SAVED));
 
   // Sync to database in background
-  saveConversationApi({ field_id: fieldId, ...entry })
+  const ts = Date.now();
+  saveConversationApi({ field_id: fieldId, question: entry.question, answer: entry.answer, lang: entry.lang, ts })
     .then((saved) => {
       if (saved && saved.id) {
         // Update local item with real DB id

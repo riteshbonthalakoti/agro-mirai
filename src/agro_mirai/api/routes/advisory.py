@@ -13,8 +13,6 @@ Module 23: the actual handler bodies moved to ``value_endpoints.py`` so
 drift — these routes are now thin wrappers differing from their ``/v2``
 counterparts only in the auth decorator and URL prefix.
 """
-from __future__ import annotations
-
 from flask import Blueprint, current_app, g, jsonify
 
 from agro_mirai.api import value_endpoints

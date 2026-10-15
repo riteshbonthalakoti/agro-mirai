@@ -1,6 +1,4 @@
 """``/farmers/me`` and ``/fields`` CRUD."""
-from __future__ import annotations
-
 import uuid
 from datetime import date, datetime, timezone
 

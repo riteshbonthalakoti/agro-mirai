@@ -14,10 +14,7 @@ is km/h. We pass ``wind_speed_unit=ms`` explicitly so ``wind_mps`` needs
 no conversion. There is deliberately no arithmetic unit conversion
 anywhere in this file; the only "conversion" is that request parameter.
 """
-from __future__ import annotations
-
 import logging
-import time
 from typing import Any
 
 import requests
@@ -31,6 +28,7 @@ from .base import (
     iso_from_minute,
     new_id,
 )
+from .utils import fetch_with_retry as _fetch_with_retry
 
 FORECAST_URL = "https://api.open-meteo.com/v1/forecast"
 ARCHIVE_URL = "https://archive-api.open-meteo.com/v1/archive"
@@ -214,30 +212,13 @@ class WeatherAdapter(Adapter):
     # -- transport ---------------------------------------------------------
     def _get_with_retry(self, url: str, params: dict[str, Any]) -> dict[str, Any]:
         """GET with one retry on a transient failure, then a typed raise."""
-        last_exc: Exception | None = None
-        for attempt in range(2):  # initial try + one retry
-            try:
-                resp = self._session.get(url, params=params, timeout=self.timeout_s)
-                if resp.status_code >= 500:
-                    raise SourceUnavailableError(
-                        f"Open-Meteo returned {resp.status_code}"
-                    )
-                if resp.status_code >= 400:
-                    # Client error (e.g. bad params) — not transient; don't retry.
-                    raise SourceResponseError(
-                        f"Open-Meteo returned {resp.status_code}: {resp.text[:200]}"
-                    )
-                return resp.json()
-            except SourceResponseError:
-                raise
-            except (requests.RequestException, SourceUnavailableError) as exc:
-                last_exc = exc
-                if attempt == 0:
-                    time.sleep(0.5)
-                    continue
-        raise SourceUnavailableError(
-            f"Open-Meteo unreachable after retry: {last_exc}"
-        ) from last_exc
+        return _fetch_with_retry(
+            url,
+            params=params,
+            session=self._session,
+            timeout=self.timeout_s,
+            source_name="Open-Meteo",
+        )
 
 
 def _num(value: Any) -> float:

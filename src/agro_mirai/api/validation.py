@@ -6,8 +6,6 @@ exception turning into a 500. Mirrors the constraints declared in
 ``specs/core/openapi.yaml`` for the relevant `*Create` schemas — kept in
 this one module so route handlers stay thin.
 """
-from __future__ import annotations
-
 from datetime import date
 
 from agro_mirai.api.errors import ApiError

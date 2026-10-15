@@ -13,8 +13,6 @@ Table values are approximate, from FAO-56 Table 22 (root depth, allowable
 depletion p) and USDA-NRCS available-water ranges mapped to Indian soil
 orders. They are starting points, not field measurements.
 """
-from __future__ import annotations
-
 from dataclasses import dataclass, field
 from datetime import date, timedelta
 

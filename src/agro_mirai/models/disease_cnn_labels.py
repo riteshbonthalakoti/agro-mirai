@@ -8,8 +8,6 @@ writeup. The CNN has no ground-truth severity data for each disease, so
 vs. not) and the model's own softmax confidence — documented here rather
 than invented silently, same honesty standard as ADR 0009/0016.
 """
-from __future__ import annotations
-
 # The 4 of AGRO MIRAI's 22 `crop_type` enum values (specs/core/enums.md)
 # that the trained PlantVillage classes actually cover. The other 34
 # PlantVillage classes (pepper, potato, tomato, blueberry, cherry, peach,

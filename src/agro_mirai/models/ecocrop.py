@@ -7,8 +7,6 @@ N/P/K numbers we never actually have for a field (SoilGrids gives total N
 and no P/K), so the live answers were basically random. Temperature, pH and
 soil type we do have, so those drive the score here.
 """
-from __future__ import annotations
-
 import json
 from dataclasses import dataclass
 from pathlib import Path

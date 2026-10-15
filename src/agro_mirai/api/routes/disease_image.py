@@ -16,8 +16,6 @@ share one implementation, including this route's Module 22/21 degrade-
 not-fail behaviour (422 on exhausted weather data, ``environmental_fallback``
 on an unreachable CNN service).
 """
-from __future__ import annotations
-
 from flask import Blueprint, current_app, g, jsonify, request
 
 from agro_mirai.api import value_endpoints

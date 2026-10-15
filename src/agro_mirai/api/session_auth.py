@@ -17,8 +17,6 @@ sent/accepted after that) and an explicit ``issued_at`` timestamp check
 here (``is_expired``), which is what makes expiry unit-testable without
 needing to forge or wait out an actual signed cookie.
 """
-from __future__ import annotations
-
 from datetime import datetime, timedelta, timezone
 from functools import wraps
 

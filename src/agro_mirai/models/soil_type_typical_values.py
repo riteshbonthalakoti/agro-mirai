@@ -18,8 +18,6 @@ measured value. Sources: ICAR-NBSS&LUP soil-order chemistry summaries
 and FAO/ICAR extension-bulletin ranges (same class of source already
 used for regional crop suitability, decisions/0016).
 """
-from __future__ import annotations
-
 # Keys match specs/core/enums.md's `soil_type` enum exactly.
 # (ph, nitrogen_mg_per_kg, phosphorus_mg_per_kg, potassium_mg_per_kg, organic_carbon_pct)
 SOIL_TYPE_TYPICAL_VALUES: dict[str, dict[str, float]] = {

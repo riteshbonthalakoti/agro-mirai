@@ -3,8 +3,6 @@
 Pure function over data the caller supplies; no ``DataStore`` calls,
 no network, no side effects.
 """
-from __future__ import annotations
-
 from dataclasses import dataclass
 from statistics import mean
 from typing import Sequence

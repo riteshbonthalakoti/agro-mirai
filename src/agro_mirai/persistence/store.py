@@ -7,8 +7,6 @@ Every module that needs to read or write domain records depends on this
 full; a parity test suite (``tests/persistence/contract/``) runs the same
 assertions against both.
 """
-from __future__ import annotations
-
 from datetime import datetime
 from typing import Protocol, runtime_checkable
 

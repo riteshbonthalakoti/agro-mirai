@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, ImageBackground, ScrollView, Text, TouchableOpacity, View, useWindowDimensions } from 'react-native';
+import { ActivityIndicator, ImageBackground, ScrollView, StyleSheet, Text, TouchableOpacity, View, useWindowDimensions } from 'react-native';
 import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 import * as Location from 'expo-location';
 import { ApiError, Field, createField, patchField, getRecommendation, getIrrigation, getDiseaseRiskFull, dataSummary } from '../api';
@@ -43,16 +43,16 @@ const STEPS = ['place', 'size', 'crop', 'planted', 'soil'] as const;
 function Q({ mode, n, title, hint, children }: { mode: 'page' | 'steps'; n: number; title: string; hint?: string; children: React.ReactNode }) {
   return (
     <View style={{ marginTop: mode === 'page' ? S.xl : S.lg }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+      <View style={fs.qRow}>
         {mode === 'page' ? (
-          <View style={{ width: 30, height: 30, borderRadius: 15, backgroundColor: C.accent, alignItems: 'center', justifyContent: 'center', marginRight: S.sm }}>
-            <Text style={{ color: '#fff', fontWeight: '800', fontSize: 15 }}>{n}</Text>
+          <View style={fs.qStepBadge}>
+            <Text style={fs.qStepBadgeText}>{n}</Text>
           </View>
         ) : null}
         <Text style={{ flex: 1, fontSize: mode === 'page' ? 20 : 26, lineHeight: mode === 'page' ? 26 : 33, fontWeight: '800', color: C.text }}>{title}</Text>
       </View>
-      {hint ? <Text style={{ fontSize: 15, lineHeight: 22, color: C.muted, marginTop: S.xs }}>{hint}</Text> : null}
-      <View style={{ marginTop: S.md }}>{children}</View>
+      {hint ? <Text style={fs.qHint}>{hint}</Text> : null}
+      <View style={fs.qChildren}>{children}</View>
     </View>
   );
 }
@@ -236,7 +236,7 @@ export function FieldForm({ initial, onDone, onCancel }: { initial?: Field; onDo
         <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: hasLocation ? '#2D6A4F' : '#F3F4F6', alignItems: 'center', justifyContent: 'center', marginRight: S.md }}>
           {locating ? <ActivityIndicator size="small" color={hasLocation ? '#FFFFFF' : '#2D6A4F'} /> : <Icon name={hasLocation ? 'check' : 'location'} size={22} color={hasLocation ? '#FFFFFF' : '#4B5563'} />}
         </View>
-        <View style={{ flex: 1 }}>
+        <View style={fs.flex1}>
           <Text style={{ fontSize: 18, fontWeight: '800', color: C.text }}>
             {locating ? t('locating') : hasLocation ? (placeName || (geocoding ? t('lookingUpPlace') : t('locationFound'))) : t('findMyLocation')}
           </Text>
@@ -245,17 +245,17 @@ export function FieldForm({ initial, onDone, onCancel }: { initial?: Field; onDo
       </TouchableOpacity>
 
       {hasLocation ? (
-        <View style={{ marginTop: S.md, padding: S.md, backgroundColor: '#F1F7EE', borderRadius: 16, borderWidth: 1.5, borderColor: '#C4DFC0' }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+        <View style={fs.locationFoundBox}>
+          <View style={fs.locationFoundHeader}>
+            <View style={fs.locationFoundHeaderLeft}>
               <Text style={{ fontSize: 16 }}>📍</Text>
               <Text style={{ fontSize: 14, fontWeight: '800', color: '#1B4332' }}>Exact Location Pin</Text>
             </View>
-            <View style={{ backgroundColor: '#2E7D32', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10 }}>
+            <View style={fs.pinnedBadge}>
               <Text style={{ fontSize: 11, fontWeight: '700', color: '#fff' }}>PINNED</Text>
             </View>
           </View>
-          <Text style={{ fontSize: 13, color: '#2D6A4F', fontWeight: '600' }}>
+          <Text style={fs.coordsText}>
             {`${parseFloat(lat).toFixed(5)}°N, ${parseFloat(lon).toFixed(5)}°E`}
           </Text>
           {placeName ? (
@@ -266,11 +266,11 @@ export function FieldForm({ initial, onDone, onCancel }: { initial?: Field; onDo
         </View>
       ) : null}
 
-      <View style={{ marginTop: S.md }}>
-        <Text style={{ fontSize: 14, fontWeight: '700', color: C.text, marginBottom: 6 }}>
+      <View style={fs.coordsSection}>
+        <Text style={fs.coordsLabel}>
           {t('enterCoords')} (Latitude / Longitude)
         </Text>
-        <View style={{ flexDirection: 'row', gap: S.sm }}>
+        <View style={fs.coordsRow}>
           <Input style={[bigInput, { flex: 1 }]} value={lat} onChangeText={setLat} onEndEditing={onCoordsBlur} placeholder={t('latitude')} keyboardType="numbers-and-punctuation" />
           <Input style={[bigInput, { flex: 1 }]} value={lon} onChangeText={setLon} onEndEditing={onCoordsBlur} placeholder={t('longitude')} keyboardType="numbers-and-punctuation" />
         </View>
@@ -280,12 +280,12 @@ export function FieldForm({ initial, onDone, onCancel }: { initial?: Field; onDo
 
   const sizeQ = (
     <Q mode={mode} n={2} title={t('qSize')}>
-      <Text style={{ fontSize: 16, fontWeight: '700', color: C.text, marginBottom: S.sm }}>{t('fieldName')}</Text>
+      <Text style={fs.sizeLabel}>{t('fieldName')}</Text>
       <Input value={name} onChangeText={setName} placeholder={t('fieldNameHint')} style={bigInput} />
-      <Text style={{ fontSize: 16, fontWeight: '700', color: C.text, marginTop: S.lg, marginBottom: S.sm }}>{t('areaQ')}</Text>
-      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+      <Text style={fs.areaLabel}>{t('areaQ')}</Text>
+      <View style={fs.areaRow}>
         <Input value={area} onChangeText={setArea} keyboardType="decimal-pad" placeholder="0" style={[bigInput, { width: 120, marginRight: S.md, textAlign: 'center' }]} />
-        <View style={{ flex: 1, flexDirection: 'row', flexWrap: 'wrap' }}>
+        <View style={fs.unitRow}>
           {(['gunta', 'acre', 'ha'] as Unit[]).map((u) => pill(
             t(u === 'acre' ? 'unitAcre' : u === 'gunta' ? 'unitGunta' : 'unitHectare'), unit === u,
             () => {
@@ -315,22 +315,22 @@ export function FieldForm({ initial, onDone, onCancel }: { initial?: Field; onDo
       <Input value={cropQ} onChangeText={setCropQ} placeholder={t('searchCrop')} style={[bigInput, { marginBottom: S.md }]} />
       <PickGrid prefix="crop" items={cropItems} selected={crop} onSelect={setCrop} columns={3} />
       {!cropQ.trim() ? (
-        <TouchableOpacity onPress={() => setAllCrops(!allCrops)} style={{ minHeight: 48, justifyContent: 'center', alignItems: 'center' }}>
-          <Text style={{ color: C.accent, fontWeight: '800', fontSize: 16 }}>{allCrops ? t('showFewerCrops') : t('showAllCrops')}</Text>
+        <TouchableOpacity onPress={() => setAllCrops(!allCrops)} style={fs.showMoreBtn}>
+          <Text style={fs.showMoreText}>{allCrops ? t('showFewerCrops') : t('showAllCrops')}</Text>
         </TouchableOpacity>
       ) : null}
-      <View style={{ flexDirection: 'row', marginTop: S.xs }}>{pill(t('nothingPlanted'), crop === null, () => setCrop(null), 'none')}</View>
+      <View style={fs.noPillRow}>{pill(t('nothingPlanted'), crop === null, () => setCrop(null), 'none')}</View>
     </Q>
   );
 
   const plantedQ = (
     <Q mode={mode} n={4} title={t('sownOn')} hint={t('sownOnHint')}>
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
+      <View style={fs.plantedRow}>
         {PLANTED.map((p) => pill(t(p.key), quick === p.k, () => { setQuick(p.k); setSown(daysAgo(p.days)); }, p.k))}
       </View>
-      <Text style={{ fontSize: 15, color: C.muted, marginTop: S.xs, marginBottom: S.sm }}>{t('orExactDate')}</Text>
+      <Text style={fs.orExactDateText}>{t('orExactDate')}</Text>
       <DateField value={sown} onChange={(d) => { setSown(d); setQuick(null); }} locale={lang} maxDate={new Date()} doneLabel={t('save')} todayLabel={t('today')} />
-      <Text style={{ fontSize: 15, color: C.accent, fontWeight: '700', marginTop: S.sm }}>
+      <Text style={fs.plantedAroundText}>
         {t('plantedAround').replace('{d}', new Date(sown + 'T00:00:00').toLocaleDateString(lang, { day: 'numeric', month: 'short', year: 'numeric' }))}
       </Text>
     </Q>
@@ -359,14 +359,14 @@ export function FieldForm({ initial, onDone, onCancel }: { initial?: Field; onDo
         </Defs>
         <Rect x="0" y="0" width={w} height={heroH} fill="url(#hs)" />
       </Svg>
-      <View style={{ flex: 1, paddingTop: 44, paddingHorizontal: S.lg, justifyContent: 'space-between', paddingBottom: S.md }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+      <View style={fs.heroContent}>
+        <View style={fs.heroHeaderRow}>
           {onCancel || mode === 'steps' ? (
-            <TouchableOpacity onPress={mode === 'steps' ? back : onCancel} disabled={busy} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }} style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.22)', alignItems: 'center', justifyContent: 'center', marginRight: S.md }}>
+            <TouchableOpacity onPress={mode === 'steps' ? back : onCancel} disabled={busy} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }} style={fs.heroBackBtn}>
               <Icon name="chevron-back" size={22} color="#fff" />
             </TouchableOpacity>
           ) : null}
-          <Text style={{ flex: 1, fontSize: 26, fontWeight: '800', color: '#fff' }}>{initial ? t('editField') : t('addField')}</Text>
+          <Text style={fs.heroTitle}>{initial ? t('editField') : t('addField')}</Text>
         </View>
         {mode === 'page' ? <Text style={{ fontSize: 16, lineHeight: 22, color: 'rgba(255,255,255,0.9)' }}>{t('fieldHeroSub')}</Text> : null}
       </View>
@@ -374,7 +374,7 @@ export function FieldForm({ initial, onDone, onCancel }: { initial?: Field; onDo
   );
 
   const modeSwitch = (
-    <View style={{ flexDirection: 'row', backgroundColor: '#E4EFD9', borderRadius: 22, padding: 3, alignSelf: 'flex-start', marginTop: S.md }}>
+    <View style={fs.modeSwitchRow}>
       {([['page', t('viewOnePage')], ['steps', t('viewSteps')]] as ['page' | 'steps', string][]).map(([m, label]) => (
         <TouchableOpacity key={m} onPress={() => chooseMode(m)} style={{ paddingVertical: 8, paddingHorizontal: 16, borderRadius: 19, backgroundColor: mode === m ? C.accent : 'transparent' }}>
           <Text style={{ fontSize: 14, fontWeight: '700', color: mode === m ? '#fff' : C.text }}>{label}</Text>
@@ -383,7 +383,7 @@ export function FieldForm({ initial, onDone, onCancel }: { initial?: Field; onDo
     </View>
   );
 
-  const errBox = err ? <View style={{ marginTop: S.md }}><Banner text={err} kind="error" /></View> : null;
+  const errBox = err ? <View style={fs.errBox}><Banner text={err} kind="error" /></View> : null;
 
   const primary = (label: string, onPress: () => void, kind: 'primary' | 'secondary' = 'primary', flex?: number) => (
     <TouchableOpacity
@@ -414,16 +414,16 @@ export function FieldForm({ initial, onDone, onCancel }: { initial?: Field; onDo
   if (!initial && (busy || savedField)) {
     const ready = !!savedField;
     return (
-      <View style={{ flex: 1, backgroundColor: C.bg }}>
+      <View style={fs.rootView}>
         {hero}
-        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: S.xl }}>
+        <View style={fs.readyCenter}>
           <View style={{ width: 88, height: 88, borderRadius: 44, backgroundColor: ready ? C.accent : '#E4EFD9', alignItems: 'center', justifyContent: 'center', marginBottom: S.lg }}>
             {ready ? <Icon name="check" size={44} color="#fff" /> : <ActivityIndicator size="large" color={C.accent} />}
           </View>
-          <Text style={{ fontSize: 22, fontWeight: '800', color: C.text, textAlign: 'center' }}>
+          <Text style={fs.readyTitle}>
             {ready ? t('fieldReadyTitle') : t('fieldAdded')}
           </Text>
-          <Text style={{ fontSize: 16, lineHeight: 23, color: C.muted, textAlign: 'center', marginTop: S.sm }}>
+          <Text style={fs.readySubtitle}>
             {ready ? t('fieldReadySub') : t('fetchingFieldData')}
           </Text>
         </View>
@@ -440,19 +440,19 @@ export function FieldForm({ initial, onDone, onCancel }: { initial?: Field; onDo
     const cur = [placeQ, sizeQ, cropQn, plantedQ, soilQ][step];
     const last = step === STEPS.length - 1;
     return (
-      <View style={{ flex: 1, backgroundColor: C.bg }}>
+      <View style={fs.rootView}>
         {hero}
-        <View style={{ flexDirection: 'row', gap: 6, paddingHorizontal: S.lg, marginTop: S.md }}>
+        <View style={fs.progressBarRow}>
           {STEPS.map((_, i) => <View key={i} style={{ flex: 1, height: 5, borderRadius: 3, backgroundColor: i <= step ? '#1B4332' : '#E5E7EB' }} />)}
         </View>
-        <Text style={{ paddingHorizontal: S.lg, marginTop: S.sm, fontSize: 13, color: C.muted, fontWeight: '600' }}>
+        <Text style={fs.stepCountText}>
           {t('stepOf').replace('{n}', String(step + 1)).replace('{m}', String(STEPS.length))}
         </Text>
         <ScrollView contentContainerStyle={{ paddingHorizontal: S.lg, paddingBottom: S.xl }} keyboardShouldPersistTaps="handled">
           {cur}
           {errBox}
         </ScrollView>
-        <View style={{ flexDirection: 'row', gap: S.md, padding: S.lg, paddingBottom: S.xl, borderTopWidth: 1, borderTopColor: '#E5E7EB', backgroundColor: C.bg }}>
+        <View style={fs.stepsNavBar}>
           {step > 0 || onCancel ? primary(t('wizBack'), back, 'secondary', 1) : null}
           {primary(last ? t('saveField') : t('wizNext'), next, 'primary', 2)}
         </View>
@@ -461,10 +461,10 @@ export function FieldForm({ initial, onDone, onCancel }: { initial?: Field; onDo
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor: C.bg }}>
+    <View style={fs.rootView}>
       <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: S.xl * 2 }}>
         {hero}
-        <View style={{ paddingHorizontal: S.lg }}>
+        <View style={fs.pageContent}>
           {modeSwitch}
           {placeQ}
           {sizeQ}
@@ -472,10 +472,64 @@ export function FieldForm({ initial, onDone, onCancel }: { initial?: Field; onDo
           {plantedQ}
           {soilQ}
           {errBox}
-          <View style={{ marginTop: S.xl }}>{primary(t('saveField'), submit)}</View>
-          {onCancel ? <View style={{ marginTop: S.md }}>{primary(t('cancel'), onCancel, 'secondary')}</View> : null}
+          <View style={fs.saveBtnWrapper}>{primary(t('saveField'), submit)}</View>
+          {onCancel ? <View style={fs.cancelBtnWrapper}>{primary(t('cancel'), onCancel, 'secondary')}</View> : null}
         </View>
       </ScrollView>
     </View>
   );
 }
+
+const fs = StyleSheet.create({
+  flex1: { flex: 1 },
+  rootView: { flex: 1, backgroundColor: C.bg },
+  // Q component
+  qRow: { flexDirection: 'row', alignItems: 'center' },
+  qStepBadge: { width: 30, height: 30, borderRadius: 15, backgroundColor: C.accent, alignItems: 'center', justifyContent: 'center', marginRight: S.sm },
+  qStepBadgeText: { color: '#fff', fontWeight: '800', fontSize: 15 },
+  qHint: { fontSize: 15, lineHeight: 22, color: C.muted, marginTop: S.xs },
+  qChildren: { marginTop: S.md },
+  // placeQ
+  locationFoundBox: { marginTop: S.md, padding: S.md, backgroundColor: '#F1F7EE', borderRadius: 16, borderWidth: 1.5, borderColor: '#C4DFC0' },
+  locationFoundHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 },
+  locationFoundHeaderLeft: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  pinnedBadge: { backgroundColor: '#2E7D32', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10 },
+  coordsText: { fontSize: 13, color: '#2D6A4F', fontWeight: '600' },
+  coordsSection: { marginTop: S.md },
+  coordsLabel: { fontSize: 14, fontWeight: '700', color: C.text, marginBottom: 6 },
+  coordsRow: { flexDirection: 'row', gap: S.sm },
+  // sizeQ
+  sizeLabel: { fontSize: 16, fontWeight: '700', color: C.text, marginBottom: S.sm },
+  areaLabel: { fontSize: 16, fontWeight: '700', color: C.text, marginTop: S.lg, marginBottom: S.sm },
+  areaRow: { flexDirection: 'row', alignItems: 'center' },
+  unitRow: { flex: 1, flexDirection: 'row', flexWrap: 'wrap' },
+  // cropQn
+  showMoreBtn: { minHeight: 48, justifyContent: 'center', alignItems: 'center' },
+  showMoreText: { color: C.accent, fontWeight: '800', fontSize: 16 },
+  noPillRow: { flexDirection: 'row', marginTop: S.xs },
+  // plantedQ
+  plantedRow: { flexDirection: 'row', flexWrap: 'wrap' },
+  orExactDateText: { fontSize: 15, color: C.muted, marginTop: S.xs, marginBottom: S.sm },
+  plantedAroundText: { fontSize: 15, color: C.accent, fontWeight: '700', marginTop: S.sm },
+  // hero
+  heroContent: { flex: 1, paddingTop: 44, paddingHorizontal: S.lg, justifyContent: 'space-between', paddingBottom: S.md },
+  heroHeaderRow: { flexDirection: 'row', alignItems: 'center' },
+  heroBackBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.22)', alignItems: 'center', justifyContent: 'center', marginRight: S.md },
+  heroTitle: { flex: 1, fontSize: 26, fontWeight: '800', color: '#fff' },
+  // modeSwitch
+  modeSwitchRow: { flexDirection: 'row', backgroundColor: '#E4EFD9', borderRadius: 22, padding: 3, alignSelf: 'flex-start', marginTop: S.md },
+  // errBox
+  errBox: { marginTop: S.md },
+  // loading/ready screen
+  readyCenter: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: S.xl },
+  readyTitle: { fontSize: 22, fontWeight: '800', color: C.text, textAlign: 'center' },
+  readySubtitle: { fontSize: 16, lineHeight: 23, color: C.muted, textAlign: 'center', marginTop: S.sm },
+  // steps mode
+  progressBarRow: { flexDirection: 'row', gap: 6, paddingHorizontal: S.lg, marginTop: S.md },
+  stepCountText: { paddingHorizontal: S.lg, marginTop: S.sm, fontSize: 13, color: C.muted, fontWeight: '600' },
+  stepsNavBar: { flexDirection: 'row', gap: S.md, padding: S.lg, paddingBottom: S.xl, borderTopWidth: 1, borderTopColor: '#E5E7EB', backgroundColor: C.bg },
+  // page mode
+  pageContent: { paddingHorizontal: S.lg },
+  saveBtnWrapper: { marginTop: S.xl },
+  cancelBtnWrapper: { marginTop: S.md },
+});

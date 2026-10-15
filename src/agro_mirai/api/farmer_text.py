@@ -11,8 +11,6 @@ Soil N/P/K numbers are never echoed: their units come from SoilGrids /
 soil-type fallbacks and are not comparable to what a farmer knows (kg/acre),
 so only the nutrient's name is mentioned.
 """
-from __future__ import annotations
-
 import re
 
 from agro_mirai.models.disease_risk_scoring import RISK_ACTION

@@ -11,8 +11,6 @@ are typical textbook infection conditions gathered from general agronomy
 sources, approximate and not fitted to this project's data (see
 decisions/0028). Crops not listed here keep the generic score.
 """
-from __future__ import annotations
-
 from dataclasses import dataclass
 
 from agro_mirai.processing.feature_builder import FeatureVector

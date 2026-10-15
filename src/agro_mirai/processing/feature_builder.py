@@ -7,8 +7,6 @@ caller via ``DataStore`` — this module never touches the store or the
 network), and an ``as_of: date`` anchor. No hidden state, no
 ``datetime.now()`` calls internally.
 """
-from __future__ import annotations
-
 from dataclasses import dataclass
 from datetime import date
 

@@ -5,8 +5,6 @@ session-authenticated ``/v2`` copy).
 Module 23: handler body moved to ``value_endpoints.submit_feedback`` so
 ``/v1`` and ``/v2`` share one implementation.
 """
-from __future__ import annotations
-
 from flask import Blueprint, current_app, g, jsonify, request
 
 from agro_mirai.api import value_endpoints

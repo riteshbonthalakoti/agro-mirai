@@ -8,8 +8,6 @@ data those JSON routes already expose read-only — no new write path.
 Genuinely no POST/PUT/DELETE route in this blueprint touches domain
 data; the only POSTs are login/logout, which only touch the session.
 """
-from __future__ import annotations
-
 import dataclasses
 
 from flask import Blueprint, current_app, flash, redirect, render_template, request, url_for

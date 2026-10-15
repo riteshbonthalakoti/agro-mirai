@@ -17,8 +17,6 @@ Module 03's acquisition adapters. Model is Flash-tier — the only tier
 covered by Gemini's free (no-card) quota as of this module's research
 (decisions/0024-realtime-voice-ai-research.md).
 """
-from __future__ import annotations
-
 import os
 
 import requests

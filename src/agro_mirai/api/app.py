@@ -5,8 +5,6 @@ in ``app.extensions``, not module-level globals) and registers every
 blueprint. Config is read from env vars — see ``.env.example`` for
 ``DATABASE_URL``, ``API_KEY``, ``FARMER_ID``.
 """
-from __future__ import annotations
-
 import logging
 import os
 from datetime import timedelta
@@ -137,6 +135,94 @@ def _random_secret_key() -> str:
     return secrets.token_hex(32)
 
 
+def _configure_middleware(app: Flask) -> None:
+    """Wire up CORS.
+
+    Proxy fix is applied earlier in create_app before config override so that
+    ``request.remote_addr`` is correct for the rate-limiter key function that
+    runs on every request; keeping it there avoids a subtle ordering issue.
+    CORS is applied here after blueprints need not be registered first —
+    flask-cors patches the app's after-request stack, not individual views.
+    """
+    # CORS — allow browser clients (Next.js landing page, React Native web
+    # build) to reach the /v2 API. CORS_ORIGINS env var is a comma-separated
+    # list of allowed origins (e.g. "https://agro-mirai.vercel.app"). Unset
+    # means no CORS headers are emitted — same-origin only, safe default for
+    # curl/mobile. supports_credentials=True so the session cookie is sent
+    # cross-origin; this requires an explicit origin list (not "*") in
+    # production.
+    #
+    # Dev-only exception: the Expo web build's dev-server origin changes
+    # with the runtime host (see mobile/src/config.ts's dynamic
+    # API_BASE_URL, itself the fix for this exact problem's IP side) --
+    # there is no fixed origin to list. Outside production, fall back to
+    # origins="*", which flask-cors (unlike a hand-rolled "Access-Control-
+    # Allow-Origin: *" header) correctly reflects the request's actual
+    # Origin rather than emitting a literal "*" when supports_credentials
+    # is True — the one combination browsers accept with credentialed
+    # requests. Never used when FLASK_ENV=production.
+    cors_origins_raw = os.environ.get("CORS_ORIGINS", "")
+    is_production = os.environ.get("FLASK_ENV") == "production"
+    if cors_origins_raw:
+        origins = [o.strip() for o in cors_origins_raw.split(",") if o.strip()]
+        CORS(app, origins=origins, supports_credentials=True, resources={r"/v2/*": {}})
+    elif not is_production:
+        CORS(app, origins="*", supports_credentials=True, resources={r"/v2/*": {}})
+
+
+def _register_routers(app: Flask, limiter: "Limiter") -> None:
+    """Import and register every blueprint; bind the secondary rate-limiters."""
+    from agro_mirai.api.routes.admin import admin_bp
+    from agro_mirai.api.routes.admin_ui import admin_ui_bp
+    from agro_mirai.api.routes.advisory import advisory_bp
+    from agro_mirai.api.routes.auth_v2 import auth_v2_bp
+    from agro_mirai.api.routes.disease_image import disease_image_bp
+    from agro_mirai.api.routes.farms import farms_bp
+    from agro_mirai.api.routes.farms_v2 import farms_v2_bp
+    from agro_mirai.api.routes.feedback import feedback_bp
+    from agro_mirai.api.routes.frontend import frontend_bp
+    from agro_mirai.api.routes.health import health_bp
+    from agro_mirai.api.routes.value_v2 import value_v2_bp
+    from agro_mirai.api.routes.voice_v2 import voice_v2_bp
+
+    limiter.exempt(health_bp)
+
+    app.register_blueprint(health_bp)
+    app.register_blueprint(farms_bp)
+    app.register_blueprint(advisory_bp)
+    app.register_blueprint(disease_image_bp)
+    app.register_blueprint(feedback_bp)
+    app.register_blueprint(frontend_bp)
+    app.register_blueprint(auth_v2_bp)
+    app.register_blueprint(farms_v2_bp)
+    app.register_blueprint(admin_bp)
+    app.register_blueprint(admin_ui_bp)
+    app.register_blueprint(value_v2_bp)
+    app.register_blueprint(voice_v2_bp)
+
+    # Module 27 — OTP-request-specific rate limit, on top of the general
+    # per-key limit above. The @otp_request_limiter.limit(...) decorator
+    # lives on the view function itself in routes/auth_v2.py (must be
+    # applied before blueprint registration, see login_rate_limit.py's
+    # docstring); this just binds that limiter to this app instance.
+    from agro_mirai.api.login_rate_limit import otp_request_limiter
+
+    otp_request_limiter.init_app(app)
+
+    # Module 23 — same pattern as login_limiter, for the two voice routes.
+    from agro_mirai.api.voice_rate_limit import voice_limiter
+
+    voice_limiter.init_app(app)
+
+
+def _register_error_handlers(app: Flask) -> None:
+    """Register error handlers and wire up structured request logging."""
+    register_error_handlers(app)
+    _configure_logging(app)
+    init_request_logging(app)
+    _configure_sentry(app)
+
+
 def create_app(config: dict | None = None) -> Flask:
     app = Flask(__name__)
 
@@ -220,77 +306,9 @@ def create_app(config: dict | None = None) -> Flask:
     app.extensions["disease_model"] = disease_model
     app.extensions["decision_engine"] = decision_engine
 
-    register_error_handlers(app)
-    _configure_logging(app)
-    init_request_logging(app)
-    _configure_sentry(app)
+    _register_error_handlers(app)
     limiter = _configure_rate_limit(app)
-
-    # CORS — allow browser clients (Next.js landing page, React Native web
-    # build) to reach the /v2 API. CORS_ORIGINS env var is a comma-separated
-    # list of allowed origins (e.g. "https://agro-mirai.vercel.app"). Unset
-    # means no CORS headers are emitted — same-origin only, safe default for
-    # curl/mobile. supports_credentials=True so the session cookie is sent
-    # cross-origin; this requires an explicit origin list (not "*") in
-    # production.
-    #
-    # Dev-only exception: the Expo web build's dev-server origin changes
-    # with the runtime host (see mobile/src/config.ts's dynamic
-    # API_BASE_URL, itself the fix for this exact problem's IP side) --
-    # there is no fixed origin to list. Outside production, fall back to
-    # origins="*", which flask-cors (unlike a hand-rolled "Access-Control-
-    # Allow-Origin: *" header) correctly reflects the request's actual
-    # Origin rather than emitting a literal "*" when supports_credentials
-    # is True — the one combination browsers accept with credentialed
-    # requests. Never used when FLASK_ENV=production.
-    cors_origins_raw = os.environ.get("CORS_ORIGINS", "")
-    is_production = os.environ.get("FLASK_ENV") == "production"
-    if cors_origins_raw:
-        origins = [o.strip() for o in cors_origins_raw.split(",") if o.strip()]
-        CORS(app, origins=origins, supports_credentials=True, resources={r"/v2/*": {}})
-    elif not is_production:
-        CORS(app, origins="*", supports_credentials=True, resources={r"/v2/*": {}})
-
-    from agro_mirai.api.routes.admin import admin_bp
-    from agro_mirai.api.routes.admin_ui import admin_ui_bp
-    from agro_mirai.api.routes.advisory import advisory_bp
-    from agro_mirai.api.routes.auth_v2 import auth_v2_bp
-    from agro_mirai.api.routes.disease_image import disease_image_bp
-    from agro_mirai.api.routes.farms import farms_bp
-    from agro_mirai.api.routes.farms_v2 import farms_v2_bp
-    from agro_mirai.api.routes.feedback import feedback_bp
-    from agro_mirai.api.routes.frontend import frontend_bp
-    from agro_mirai.api.routes.health import health_bp
-    from agro_mirai.api.routes.value_v2 import value_v2_bp
-    from agro_mirai.api.routes.voice_v2 import voice_v2_bp
-
-    limiter.exempt(health_bp)
-
-    app.register_blueprint(health_bp)
-    app.register_blueprint(farms_bp)
-    app.register_blueprint(advisory_bp)
-    app.register_blueprint(disease_image_bp)
-    app.register_blueprint(feedback_bp)
-    app.register_blueprint(frontend_bp)
-    app.register_blueprint(auth_v2_bp)
-    app.register_blueprint(farms_v2_bp)
-    app.register_blueprint(admin_bp)
-    app.register_blueprint(admin_ui_bp)
-    app.register_blueprint(value_v2_bp)
-    app.register_blueprint(voice_v2_bp)
-
-    # Module 27 — OTP-request-specific rate limit, on top of the general
-    # per-key limit above. The @otp_request_limiter.limit(...) decorator
-    # lives on the view function itself in routes/auth_v2.py (must be
-    # applied before blueprint registration, see login_rate_limit.py's
-    # docstring); this just binds that limiter to this app instance.
-    from agro_mirai.api.login_rate_limit import otp_request_limiter
-
-    otp_request_limiter.init_app(app)
-
-    # Module 23 — same pattern as login_limiter, for the two voice routes.
-    from agro_mirai.api.voice_rate_limit import voice_limiter
-
-    voice_limiter.init_app(app)
+    _configure_middleware(app)
+    _register_routers(app, limiter)
 
     return app
