@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Animated, Easing, Image, ImageBackground, KeyboardAvoidingView, Modal, Platform, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Animated, Easing, Image, ImageBackground, KeyboardAvoidingView, Modal, PanResponder, Platform, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
 import { requestRecordingPermissionsAsync } from 'expo-audio';
@@ -346,24 +346,84 @@ const PRIVACY: [string, string][] = [
 function LegalModal({ kind, onClose, lang }: { kind: 'terms' | 'privacy' | null; onClose: () => void; lang: Lang }) {
   const t = makeT(lang);
   const rows = kind === 'privacy' ? PRIVACY : TERMS;
+  const panY = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (kind !== null) {
+      panY.setValue(0);
+    }
+  }, [kind, panY]);
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: (_, gestureState) => gestureState.dy > 5,
+      onPanResponderMove: (_, gestureState) => {
+        if (gestureState.dy > 0) panY.setValue(gestureState.dy);
+      },
+      onPanResponderRelease: (_, gestureState) => {
+        if (gestureState.dy > 100) {
+          onClose();
+        } else {
+          Animated.spring(panY, { toValue: 0, useNativeDriver: true, bounciness: 4 }).start();
+        }
+      },
+    })
+  ).current;
+
   return (
-    <Modal visible={kind !== null} animationType="slide" transparent onRequestClose={onClose}>
-      <View style={{ flex: 1, backgroundColor: 'rgba(16,24,16,0.5)', justifyContent: 'flex-end' }}>
-        <View style={{ backgroundColor: C.bg, borderTopLeftRadius: 20, borderTopRightRadius: 20, maxHeight: '85%', padding: S.lg }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: S.md }}>
-            <Text style={{ flex: 1, fontSize: 20, fontWeight: '700', color: C.text }}>{kind === 'privacy' ? t('privacyLabel') : t('termsLabel')}</Text>
-            <TouchableOpacity onPress={onClose}><Text style={{ color: C.accent, fontWeight: '700' }}>{t('close')}</Text></TouchableOpacity>
+    <Modal visible={kind !== null} animationType="fade" transparent onRequestClose={onClose}>
+      <View style={{ flex: 1, backgroundColor: 'rgba(15, 23, 42, 0.45)', justifyContent: 'flex-end' }}>
+        <TouchableOpacity style={{ flex: 1 }} activeOpacity={1} onPress={onClose} />
+        <Animated.View
+          style={{
+            transform: [{ translateY: panY }],
+            backgroundColor: '#FFFFFF',
+            borderTopLeftRadius: 24,
+            borderTopRightRadius: 24,
+            maxHeight: '82%',
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: -4 },
+            shadowOpacity: 0.12,
+            shadowRadius: 16,
+            elevation: 12,
+          }}
+        >
+          {/* Drag Handle */}
+          <View {...panResponder.panHandlers} style={{ paddingTop: 12, paddingBottom: 10, alignItems: 'center' }}>
+            <View style={{ width: 44, height: 5, borderRadius: 2.5, backgroundColor: '#D1D5DB' }} />
           </View>
-          <ScrollView>
+
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingBottom: 14, borderBottomWidth: 1, borderColor: '#F3F4F6' }}>
+            <View>
+              <Text style={{ fontSize: 20, fontWeight: '800', color: '#111827' }}>
+                {kind === 'privacy' ? t('privacyLabel') : t('termsLabel')}
+              </Text>
+              <Text style={{ fontSize: 13, color: '#6B7280', marginTop: 2 }}>
+                Agro Mirai • Transparency & Trust
+              </Text>
+            </View>
+            <TouchableOpacity
+              onPress={onClose}
+              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+              style={{ width: 34, height: 34, borderRadius: 17, backgroundColor: '#F3F4F6', alignItems: 'center', justifyContent: 'center' }}
+            >
+              <Icon name="close" size={18} color="#4B5563" />
+            </TouchableOpacity>
+          </View>
+
+          <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 36 }}>
             {rows.map(([h, b]) => (
-              <View key={h} style={{ marginBottom: S.lg }}>
-                <Text style={{ fontWeight: '700', color: C.text, fontSize: 15 }}>{h}</Text>
-                <Text style={{ color: C.muted, fontSize: 14, lineHeight: 21, marginTop: 2 }}>{b}</Text>
+              <View key={h} style={{ marginBottom: 16, backgroundColor: '#F9FAFB', borderRadius: 14, borderWidth: 1, borderColor: '#F3F4F6', padding: 14 }}>
+                <Text style={{ fontWeight: '700', color: '#111827', fontSize: 15, marginBottom: 4 }}>{h}</Text>
+                <Text style={{ color: '#4B5563', fontSize: 14, lineHeight: 21 }}>{b}</Text>
               </View>
             ))}
-            <Text style={{ color: C.muted, fontSize: 11, marginBottom: S.lg }}>Draft text (English) - to be reviewed before public release.</Text>
+            <Text style={{ color: '#9CA3AF', fontSize: 12, textAlign: 'center', marginTop: 8 }}>
+              Official Agro Mirai Policy • Updated October 2026
+            </Text>
           </ScrollView>
-        </View>
+        </Animated.View>
       </View>
     </Modal>
   );
@@ -547,13 +607,20 @@ export function AuthScreen({ lang, onLoggedIn, notice, onChangeLanguage, onCance
       disabled={disabled || b}
       activeOpacity={0.8}
       style={{
-        minHeight: 56, borderRadius: 14, alignItems: 'center', justifyContent: 'center', paddingHorizontal: S.lg,
-        backgroundColor: kind === 'primary' ? C.accent : '#fff', borderWidth: 2, borderColor: C.accent,
-        opacity: disabled ? 0.45 : 1, marginTop: S.lg,
+        minHeight: 52,
+        borderRadius: 12,
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingHorizontal: S.lg,
+        backgroundColor: kind === 'primary' ? '#1B4332' : '#FFFFFF',
+        borderWidth: kind === 'primary' ? 0 : 1,
+        borderColor: '#E5E7EB',
+        opacity: disabled ? 0.45 : 1,
+        marginTop: S.md,
       }}
     >
-      {b ? <ActivityIndicator color={kind === 'primary' ? '#fff' : C.accent} size="large" />
-        : <Text style={{ fontSize: 19, fontWeight: '700', color: kind === 'primary' ? '#fff' : C.accent }}>{label}</Text>}
+      {b ? <ActivityIndicator color={kind === 'primary' ? '#FFFFFF' : '#1B4332'} size="small" />
+        : <Text style={{ fontSize: 16, fontWeight: '700', color: kind === 'primary' ? '#FFFFFF' : '#374151' }}>{label}</Text>}
     </TouchableOpacity>
   );
   const bigInput = { fontSize: 22, fontWeight: '600' as const, minHeight: 56, borderWidth: 1.5, borderColor: '#B9C9B4', borderRadius: 14, backgroundColor: '#fff', paddingHorizontal: S.lg, color: C.text };
@@ -582,11 +649,11 @@ export function AuthScreen({ lang, onLoggedIn, notice, onChangeLanguage, onCance
           <TouchableOpacity
             onPress={() => { feedback.tap(); onChangeLanguage(); }}
             accessibilityLabel={t('changeLanguage')}
-            style={{ alignSelf: 'flex-end', flexDirection: 'row', alignItems: 'center', minHeight: 44, borderWidth: 1.5, borderColor: '#B9C9B4', borderRadius: 22, paddingHorizontal: 16, backgroundColor: '#fff' }}
+            style={{ alignSelf: 'flex-end', flexDirection: 'row', alignItems: 'center', minHeight: 38, borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 19, paddingHorizontal: 14, backgroundColor: '#FFFFFF' }}
           >
-            <Text style={{ fontSize: 17, marginRight: 8 }}>🌐</Text>
-            <Text style={{ color: C.text, fontWeight: '700', fontSize: 16 }}>{LANGS.find((l) => l.code === lang)?.native}</Text>
-            <Text style={{ color: C.muted, fontSize: 16 }}>  ▾</Text>
+            <Text style={{ fontSize: 15, marginRight: 6 }}>🌐</Text>
+            <Text style={{ color: '#374151', fontWeight: '600', fontSize: 14 }}>{LANGS.find((l) => l.code === lang)?.native}</Text>
+            <Text style={{ color: '#9CA3AF', fontSize: 13, marginLeft: 4 }}>▾</Text>
           </TouchableOpacity>
         ) : null}
 
@@ -611,11 +678,11 @@ export function AuthScreen({ lang, onLoggedIn, notice, onChangeLanguage, onCance
                 flexDirection: 'row',
                 alignItems: 'center',
                 backgroundColor: '#FFFFFF',
-                borderRadius: 16,
+                borderRadius: 14,
                 borderWidth: 1.5,
-                borderColor: phone.length > 0 ? C.accent : '#D1D5DB',
+                borderColor: phone.length > 0 ? '#1B4332' : '#E5E7EB',
                 paddingHorizontal: 16,
-                minHeight: 58,
+                minHeight: 56,
                 shadowColor: '#000',
                 shadowOffset: { width: 0, height: 1 },
                 shadowOpacity: 0.05,
@@ -623,15 +690,26 @@ export function AuthScreen({ lang, onLoggedIn, notice, onChangeLanguage, onCance
                 elevation: 1,
               }}
             >
-              <View style={{ flexDirection: 'row', alignItems: 'center', marginRight: 14 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginRight: 12 }}>
                 <Text style={{ fontSize: 18, fontWeight: '700', color: '#1F2937' }}>+91</Text>
-                <View style={{ width: 1.5, height: 24, backgroundColor: '#E5E7EB', marginLeft: 12 }} />
+                <View style={{ width: 1.5, height: 22, backgroundColor: '#E5E7EB', marginLeft: 12 }} />
               </View>
               <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }}>
-                <Text style={{ fontSize: 22, fontWeight: '700', color: phone ? '#111827' : '#9CA3AF', letterSpacing: 2 }}>
-                  {phone ? phone.replace(/(\d{5})(\d)/, '$1 $2') : t('phoneHint')}
-                </Text>
-                {phone.length < 10 ? <BlinkingCursor /> : null}
+                {phone.length === 0 ? (
+                  <>
+                    <BlinkingCursor />
+                    <Text style={{ fontSize: 20, fontWeight: '500', color: '#9CA3AF', letterSpacing: 2, marginLeft: 2 }}>
+                      {t('phoneHint')}
+                    </Text>
+                  </>
+                ) : (
+                  <>
+                    <Text style={{ fontSize: 22, fontWeight: '700', color: '#111827', letterSpacing: 2 }}>
+                      {phone.replace(/(\d{5})(\d)/, '$1 $2')}
+                    </Text>
+                    {phone.length < 10 ? <BlinkingCursor /> : null}
+                  </>
+                )}
               </View>
               {phone.length > 0 ? (
                 <TouchableOpacity onPress={() => setPhone('')} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }} style={{ padding: 4 }}>

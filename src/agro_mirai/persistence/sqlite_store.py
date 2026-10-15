@@ -20,6 +20,7 @@ from agro_mirai.persistence.models import (
     Advisory,
     AuditLogEntry,
     BugReport,
+    Conversation,
     CropRecommendation,
     DiseaseRiskAlert,
     Farmer,
@@ -40,6 +41,7 @@ PHONE_UNIQUE_MIGRATION_PATH = ROOT / "migrations" / "sqlite" / "005_phone_unique
 FARMER_PHOTO_MIGRATION_PATH = ROOT / "migrations" / "sqlite" / "006_farmer_photo.sql"
 BUG_REPORTS_MIGRATION_PATH = ROOT / "migrations" / "sqlite" / "009_bug_reports.sql"
 ADMIN_WRITE_MIGRATION_PATH = ROOT / "migrations" / "sqlite" / "010_admin_write_actions.sql"
+CONVERSATIONS_MIGRATION_PATH = ROOT / "migrations" / "sqlite" / "011_conversations.sql"
 
 
 # --------------------------------------------------------------------------
@@ -100,6 +102,14 @@ class SQLiteDataStore:
         self._apply_farmer_photo_migration()
         self._apply_bug_reports_migration()
         self._apply_admin_write_migration()
+        self._apply_conversations_migration()
+
+    def _apply_conversations_migration(self) -> None:
+        """Module 57: Ask AI conversation history persistence in SQLite."""
+        sql = CONVERSATIONS_MIGRATION_PATH.read_text(encoding="utf-8")
+        conn = self._conn
+        conn.executescript(sql)
+        conn.commit()
 
     def _apply_bug_reports_migration(self) -> None:
         """Mobile bug-report flow: brand new table, CREATE TABLE/INDEX IF
@@ -1139,6 +1149,70 @@ class SQLiteDataStore:
             )
             for r in rows
         ]
+
+    # --- Conversations / Questions ---
+    def save_conversation(self, farmer_id: str, conversation: Conversation) -> Conversation:
+        self._conn.execute(
+            """
+            INSERT INTO conversations
+                (id, farmer_id, field_id, question, answer, language, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                conversation.id,
+                farmer_id,
+                conversation.field_id,
+                conversation.question,
+                conversation.answer,
+                conversation.language,
+                _dt_to_text(conversation.created_at),
+            ),
+        )
+        self._conn.commit()
+        return conversation
+
+    def list_conversations(
+        self, farmer_id: str, field_id: str | None = None, limit: int = 50
+    ) -> list[Conversation]:
+        if field_id:
+            rows = self._conn.execute(
+                """
+                SELECT * FROM conversations
+                WHERE farmer_id = ? AND field_id = ?
+                ORDER BY created_at DESC LIMIT ?
+                """,
+                (farmer_id, field_id, limit),
+            ).fetchall()
+        else:
+            rows = self._conn.execute(
+                """
+                SELECT * FROM conversations
+                WHERE farmer_id = ?
+                ORDER BY created_at DESC LIMIT ?
+                """,
+                (farmer_id, limit),
+            ).fetchall()
+
+        return [
+            Conversation(
+                id=r["id"],
+                farmer_id=r["farmer_id"],
+                field_id=r["field_id"],
+                question=r["question"],
+                answer=r["answer"],
+                language=r["language"],
+                created_at=_text_to_dt(r["created_at"]),
+            )
+            for r in rows
+        ]
+
+    def delete_conversation(self, farmer_id: str, conversation_id: str) -> bool:
+        cursor = self._conn.execute(
+            "DELETE FROM conversations WHERE id = ? AND farmer_id = ?",
+            (conversation_id, farmer_id),
+        )
+        self._conn.commit()
+        return cursor.rowcount > 0
 
     # --- Health ---
     def ping(self) -> bool:

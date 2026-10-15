@@ -16,6 +16,7 @@ from agro_mirai.persistence.models import (
     Advisory,
     AuditLogEntry,
     BugReport,
+    Conversation,
     CropRecommendation,
     DiseaseRiskAlert,
     Farmer,
@@ -218,6 +219,19 @@ class DataStore(Protocol):
     def list_bug_reports_for_farmer(
         self, farmer_id: str, limit: int = 200
     ) -> list[BugReport]: ...
+
+    # --- Conversations / Questions ---
+    def save_conversation(
+        self, farmer_id: str, conversation: Conversation
+    ) -> Conversation: ...
+
+    def list_conversations(
+        self, farmer_id: str, field_id: str | None = None, limit: int = 50
+    ) -> list[Conversation]: ...
+
+    def delete_conversation(
+        self, farmer_id: str, conversation_id: str
+    ) -> bool: ...
 
     # --- Health ---
     def ping(self) -> bool: ...

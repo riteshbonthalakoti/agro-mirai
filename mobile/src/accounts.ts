@@ -29,6 +29,7 @@ export type SavedAccount = {
   name: string;
   phone: string;
   lastActiveAt: number;
+  photo_url?: string | null;
   sessionExpired?: boolean;
 };
 
@@ -124,8 +125,8 @@ export async function addOrSwitch(farmer: Farmer, token: string): Promise<void> 
   await setToken(farmer.id, token);
   const now = Date.now();
   const next = existing
-    ? list.map((a) => (a.id === farmer.id ? { ...a, name: farmer.name, phone: farmer.phone || a.phone, lastActiveAt: now, sessionExpired: false } : a))
-    : [...list, { id: farmer.id, name: farmer.name, phone: farmer.phone || '', lastActiveAt: now }];
+    ? list.map((a) => (a.id === farmer.id ? { ...a, name: farmer.name, phone: farmer.phone || a.phone, photo_url: farmer.photo_url !== undefined ? farmer.photo_url : a.photo_url, lastActiveAt: now, sessionExpired: false } : a))
+    : [...list, { id: farmer.id, name: farmer.name, phone: farmer.phone || '', photo_url: farmer.photo_url, lastActiveAt: now }];
   await writeList(next);
   await AsyncStorage.setItem(ACTIVE_KEY, farmer.id);
 
@@ -134,6 +135,12 @@ export async function addOrSwitch(farmer: Farmer, token: string): Promise<void> 
   activeToken = token;
   if (existing) emitAccountSwitched(previousId, farmer.id);
   else emitAccountSignedIn(farmer.id);
+}
+
+export async function updateAccountProfile(id: string, updates: Partial<SavedAccount>): Promise<void> {
+  const list = await readList();
+  const next = list.map((a) => (a.id === id ? { ...a, ...updates } : a));
+  await writeList(next);
 }
 
 // Switches to an already-saved account, no OTP. Caller reloads that account's farmer/fields.

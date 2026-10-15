@@ -183,3 +183,17 @@ class AuditLogEntry:
     created_at: datetime
     before_json: str | None = None
     after_json: str | None = None
+
+
+@dataclass
+class Conversation:
+    """A farmer's voice/text question and answer (Module 57). Stored per-farmer
+    and optional field_id so conversation history is never lost."""
+
+    id: str
+    farmer_id: str
+    question: str
+    answer: str
+    language: str
+    created_at: datetime
+    field_id: str | None = None

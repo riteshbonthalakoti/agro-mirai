@@ -1,5 +1,5 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
-import { Animated, AppState, Image, Modal, Platform, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { Animated, AppState, Image, Modal, PanResponder, Platform, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import Constants from 'expo-constants';
 import { cacheGet, cacheSet } from './storage';
 import { feedback } from './feedback';
@@ -45,9 +45,12 @@ const CHANNEL = 'alerts';
 const DAILY_ID = 'daily-advice';
 
 Notifications?.setNotificationHandler({
-  // Real Android notification even while the app is open (heads-up banner + shade + sound).
+  // When inside the app, update the badge and list silently -- never display annoying heads-up banners over the UI
   handleNotification: async () => ({
-    shouldShowBanner: true, shouldShowList: true, shouldPlaySound: true, shouldSetBadge: false,
+    shouldShowBanner: false,
+    shouldShowList: true,
+    shouldPlaySound: false,
+    shouldSetBadge: true,
   }),
 });
 
@@ -82,17 +85,56 @@ export function NotificationsProvider({ children, t }: { children: React.ReactNo
   const [banner, setBanner] = useState<Notif | null>(null);
   const [inbox, setInbox] = useState(false);
   const anim = useRef(new Animated.Value(0)).current;
+  const panY = useRef(new Animated.Value(0)).current;
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const seen = useRef<Set<string>>(new Set());
+
+  const panResponder = useMemo(
+    () =>
+      PanResponder.create({
+        onStartShouldSetPanResponder: () => true,
+        onMoveShouldSetPanResponder: (_, gestureState) => gestureState.dy > 5,
+        onPanResponderMove: (_, gestureState) => {
+          if (gestureState.dy > 0) {
+            panY.setValue(gestureState.dy);
+          }
+        },
+        onPanResponderRelease: (_, gestureState) => {
+          if (gestureState.dy > 60 || gestureState.vy > 0.5) {
+            Animated.timing(panY, {
+              toValue: 400,
+              duration: 200,
+              useNativeDriver: true,
+            }).start(() => {
+              setInbox(false);
+              panY.setValue(0);
+            });
+          } else {
+            Animated.spring(panY, {
+              toValue: 0,
+              useNativeDriver: true,
+              friction: 8,
+            }).start();
+          }
+        },
+      }),
+    [panY],
+  );
 
   useEffect(() => {
     setupNotificationChannel();
     cacheGet<Notif[]>(INBOX_KEY).then((v) => {
-      if (Array.isArray(v)) { setItems(v); v.forEach((n) => seen.current.add(n.id)); }
+      if (Array.isArray(v)) {
+        setItems(v);
+        v.forEach((n) => seen.current.add(n.id));
+      }
     });
   }, []);
 
-  const persist = (next: Notif[]) => { cacheSet(INBOX_KEY, next); return next; };
+  const persist = (next: Notif[]) => {
+    cacheSet(INBOX_KEY, next);
+    return next;
+  };
 
   const showBanner = useCallback((n: Notif) => {
     if (timer.current) clearTimeout(timer.current);
@@ -101,7 +143,7 @@ export function NotificationsProvider({ children, t }: { children: React.ReactNo
     Animated.spring(anim, { toValue: 1, useNativeDriver: true, friction: 8 }).start();
     timer.current = setTimeout(() => {
       Animated.timing(anim, { toValue: 0, duration: 220, useNativeDriver: true }).start(() => setBanner(null));
-    }, 5000);
+    }, 4500);
   }, [anim]);
 
   const notify = useCallback((n: { id?: string; title: string; body: string; severity?: string }) => {
@@ -110,18 +152,18 @@ export function NotificationsProvider({ children, t }: { children: React.ReactNo
     seen.current.add(id);
     const item: Notif = { id, title: n.title, body: n.body, severity: n.severity, ts: Date.now(), read: false };
     setItems((cur) => persist([item, ...cur].slice(0, MAX_ITEMS)));
-    if (Notifications) {
-      // always a real system notification; the inbox above keeps the history
-      Notifications.scheduleNotificationAsync({
-        identifier: id,
-        content: { title: n.title, body: n.body, color: '#2E7D32', data: { id, severity: n.severity } },
-        trigger: Platform.OS === 'android' ? { channelId: CHANNEL } as any : null,
-      }).catch(() => {});
-    } else if (AppState.currentState === 'active') {
-      showBanner(item); // Expo Go: no OS layer, use the in-app banner
-      feedback.notify(); // the OS plays its own sound and vibration for a real notification
+
+    // Only fire system OS status-bar notifications when the app is in the background or killed
+    if (AppState.currentState !== 'active') {
+      if (Notifications) {
+        Notifications.scheduleNotificationAsync({
+          identifier: id,
+          content: { title: n.title, body: n.body, color: '#2E7D32', data: { id, severity: n.severity } },
+          trigger: Platform.OS === 'android' ? ({ channelId: CHANNEL } as any) : null,
+        }).catch(() => {});
+      }
     }
-  }, [showBanner]);
+  }, []);
 
   const setDailyReminder = useCallback((title: string, body: string, fieldId?: string, accountId?: string, timeMinutes?: number) => {
     if (!Notifications) return;
@@ -171,17 +213,31 @@ export function NotificationsProvider({ children, t }: { children: React.ReactNo
     if (!Notifications) return;
     const got = Notifications.addNotificationReceivedListener((e) => {
       const c = e.request.content;
-      if (c.title) notify({ id: (c.data as any)?.id, title: c.title, body: c.body || '', severity: (c.data as any)?.severity });
+      const id = (c.data as any)?.id || `${Date.now()}`;
+      if (seen.current.has(id)) return;
+      seen.current.add(id);
+      if (c.title) {
+        const item: Notif = {
+          id,
+          title: c.title,
+          body: c.body || '',
+          severity: (c.data as any)?.severity,
+          ts: Date.now(),
+          read: false,
+        };
+        setItems((cur) => persist([item, ...cur.filter((x) => x.id !== id)].slice(0, MAX_ITEMS)));
+      }
     });
     const tap = Notifications.addNotificationResponseReceivedListener(() => setInbox(true));
     return () => { got.remove(); tap.remove(); };
-  }, [notify]);
+  }, []);
 
   const openInbox = useCallback(() => {
     feedback.tap();
+    panY.setValue(0);
     setInbox(true);
     setItems((cur) => persist(cur.map((n) => ({ ...n, read: true }))));
-  }, []);
+  }, [panY]);
 
   const value = useMemo<NotifCtx>(
     () => ({ items, unread: items.filter((n) => !n.read).length, notify, openInbox, setDailyReminder, clearScheduledNotifications }),
@@ -194,21 +250,21 @@ export function NotificationsProvider({ children, t }: { children: React.ReactNo
       {banner ? (
         <Animated.View
           style={{
-            position: 'absolute', top: 44, left: S.md, right: S.md, opacity: anim,
-            transform: [{ translateY: anim.interpolate({ inputRange: [0, 1], outputRange: [-24, 0] }) }],
+            position: 'absolute', top: 48, left: S.md, right: S.md, opacity: anim,
+            transform: [{ translateY: anim.interpolate({ inputRange: [0, 1], outputRange: [-20, 0] }) }],
           }}
         >
           <TouchableOpacity activeOpacity={0.9} onPress={() => { setBanner(null); openInbox(); }}>
             <View style={{
-              flexDirection: 'row', alignItems: 'center', backgroundColor: C.bg, borderRadius: 14, padding: S.md,
-              borderWidth: 1, borderColor: C.border, borderLeftWidth: 5, borderLeftColor: levelColor(banner.severity) || C.accent,
-              elevation: 10, shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 10, shadowOffset: { width: 0, height: 4 },
+              flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFFFFF', borderRadius: 16, padding: S.md,
+              borderWidth: 1, borderColor: '#E5E7EB', borderLeftWidth: 4, borderLeftColor: levelColor(banner.severity) || C.accent,
+              elevation: 4, shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 8, shadowOffset: { width: 0, height: 2 },
             }}>
-              <Image source={require('../assets/logo-mark.png')} style={{ width: 36, height: 36, marginRight: S.md }} resizeMode="contain" />
+              <Image source={require('../assets/logo-mark.png')} style={{ width: 32, height: 32, marginRight: S.md }} resizeMode="contain" />
               <View style={{ flex: 1 }}>
-                <Text style={{ fontSize: 11, color: C.muted, letterSpacing: 0.5 }}>AGRO MIRAI</Text>
-                <Text style={{ fontSize: 15, fontWeight: '700', color: C.text }} numberOfLines={1}>{banner.title}</Text>
-                <Text style={{ fontSize: 13, color: C.muted }} numberOfLines={2}>{banner.body}</Text>
+                <Text style={{ fontSize: 11, fontWeight: '700', color: '#6B7280', letterSpacing: 0.5 }}>AGRO MIRAI</Text>
+                <Text style={{ fontSize: 14, fontWeight: '700', color: '#111827' }} numberOfLines={1}>{banner.title}</Text>
+                <Text style={{ fontSize: 13, color: '#4B5563', marginTop: 1 }} numberOfLines={2}>{banner.body}</Text>
               </View>
             </View>
           </TouchableOpacity>
@@ -216,25 +272,41 @@ export function NotificationsProvider({ children, t }: { children: React.ReactNo
       ) : null}
 
       <Modal visible={inbox} animationType="slide" transparent onRequestClose={() => setInbox(false)}>
-        <View style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'transparent' }}>
+        <View style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.35)' }}>
           <TouchableOpacity activeOpacity={1} onPress={() => setInbox(false)} style={{ flex: 1 }} />
-          <View style={{
-            backgroundColor: '#FFFFFF',
-            borderTopLeftRadius: 24,
-            borderTopRightRadius: 24,
-            maxHeight: '75%',
-            padding: S.lg,
-            borderTopWidth: 1.5,
-            borderLeftWidth: 1,
-            borderRightWidth: 1,
-            borderColor: '#E2DEC8',
-            elevation: 8,
-          }}>
-            {/* Grab handle */}
-            <View style={{ width: 38, height: 4, borderRadius: 2, backgroundColor: '#D4DDD0', alignSelf: 'center', marginBottom: S.md }} />
-            
-            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: S.md }}>
-              <Text style={{ flex: 1, fontSize: 20, fontWeight: '800', color: C.text }}>{t('notifTitle')}</Text>
+          <Animated.View
+            style={{
+              transform: [{ translateY: panY }],
+              backgroundColor: '#FFFFFF',
+              borderTopLeftRadius: 24,
+              borderTopRightRadius: 24,
+              maxHeight: '78%',
+              paddingHorizontal: S.lg,
+              paddingTop: S.sm,
+              paddingBottom: S.xl,
+              borderTopWidth: 1,
+              borderColor: '#E5E7EB',
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: -3 },
+              shadowOpacity: 0.1,
+              shadowRadius: 10,
+              elevation: 12,
+            }}
+          >
+            {/* Grab handle with PanResponder for drag-to-dismiss */}
+            <View {...panResponder.panHandlers} style={{ paddingVertical: 10, alignItems: 'center', width: '100%' }}>
+              <View style={{ width: 44, height: 5, borderRadius: 2.5, backgroundColor: '#D1D5DB' }} />
+            </View>
+
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: S.md, paddingTop: 4 }}>
+              <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <Text style={{ fontSize: 20, fontWeight: '800', color: '#111827' }}>{t('notifTitle')}</Text>
+                {items.length > 0 ? (
+                  <View style={{ backgroundColor: '#F3F4F6', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10 }}>
+                    <Text style={{ fontSize: 12, fontWeight: '700', color: '#4B5563' }}>{items.length}</Text>
+                  </View>
+                ) : null}
+              </View>
               {items.length ? (
                 <TouchableOpacity
                   onPress={() => {
@@ -242,42 +314,59 @@ export function NotificationsProvider({ children, t }: { children: React.ReactNo
                     setItems(persist([]));
                     Notifications?.dismissAllNotificationsAsync().catch(() => {});
                   }}
-                  style={{ marginRight: S.lg, paddingVertical: 4, paddingHorizontal: 8 }}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  style={{ marginRight: S.md, paddingVertical: 4, paddingHorizontal: 8 }}
                 >
-                  <Text style={{ color: C.muted, fontWeight: '600', fontSize: 13 }}>{t('notifClear')}</Text>
+                  <Text style={{ color: '#6B7280', fontWeight: '600', fontSize: 13 }}>{t('notifClear')}</Text>
                 </TouchableOpacity>
               ) : null}
-              <TouchableOpacity onPress={() => setInbox(false)} style={{ paddingVertical: 4, paddingHorizontal: 8 }}>
-                <Text style={{ color: C.accent, fontWeight: '700', fontSize: 14 }}>{t('close')}</Text>
+              <TouchableOpacity
+                onPress={() => setInbox(false)}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: '#F3F4F6', alignItems: 'center', justifyContent: 'center' }}
+              >
+                <Icon name="close" size={16} color="#4B5563" />
               </TouchableOpacity>
             </View>
 
-            <ScrollView showsVerticalScrollIndicator={false}>
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: S.lg }}>
               {items.length === 0 ? (
-                <View style={{ alignItems: 'center', paddingVertical: S.xl }}>
-                  <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: '#F0F5EC', alignItems: 'center', justifyContent: 'center', marginBottom: S.sm }}>
-                    <Icon name="bell" size={24} color={C.muted} />
+                <View style={{ alignItems: 'center', paddingVertical: S.xl * 1.5 }}>
+                  <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: '#F3F4F6', alignItems: 'center', justifyContent: 'center', marginBottom: S.sm }}>
+                    <Icon name="bell" size={26} color="#9CA3AF" />
                   </View>
-                  <Text style={{ color: C.muted, fontSize: 14, fontWeight: '600' }}>{t('notifEmpty')}</Text>
+                  <Text style={{ color: '#4B5563', fontSize: 15, fontWeight: '600' }}>{t('notifEmpty')}</Text>
                 </View>
-              ) : items.map((n) => (
-                <View key={n.id} style={{
-                  borderLeftWidth: 4,
-                  borderLeftColor: levelColor(n.severity) || C.accent,
-                  backgroundColor: '#F8F6EE',
-                  borderWidth: 1,
-                  borderColor: '#EAE6D6',
-                  borderRadius: 12,
-                  padding: S.md,
-                  marginBottom: S.sm,
-                }}>
-                  <Text style={{ fontWeight: '700', color: C.text, fontSize: 15 }}>{n.title}</Text>
-                  <Text style={{ color: C.muted, marginTop: 3, fontSize: 13, lineHeight: 18 }}>{n.body}</Text>
-                  <Text style={{ color: '#8C826A', fontSize: 11, marginTop: 6, fontWeight: '500' }}>{new Date(n.ts).toLocaleString()}</Text>
-                </View>
-              ))}
+              ) : (
+                items.map((n) => (
+                  <View
+                    key={n.id}
+                    style={{
+                      borderLeftWidth: 4,
+                      borderLeftColor: levelColor(n.severity) || '#2D6A4F',
+                      backgroundColor: '#FAFAF9',
+                      borderWidth: 1,
+                      borderColor: '#E5E7EB',
+                      borderRadius: 14,
+                      padding: S.md,
+                      marginBottom: S.sm,
+                    }}
+                  >
+                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 3 }}>
+                      <Text style={{ fontWeight: '700', color: '#111827', fontSize: 15, flex: 1 }}>{n.title}</Text>
+                      {n.severity ? (
+                        <View style={{ backgroundColor: `${levelColor(n.severity)}18`, paddingHorizontal: 6, paddingVertical: 1.5, borderRadius: 6, marginLeft: 6 }}>
+                          <Text style={{ fontSize: 10, fontWeight: '800', color: levelColor(n.severity), textTransform: 'uppercase' }}>{n.severity}</Text>
+                        </View>
+                      ) : null}
+                    </View>
+                    <Text style={{ color: '#4B5563', fontSize: 13.5, lineHeight: 19 }}>{n.body}</Text>
+                    <Text style={{ color: '#9CA3AF', fontSize: 11, marginTop: 6, fontWeight: '500' }}>{new Date(n.ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} · {new Date(n.ts).toLocaleDateString()}</Text>
+                  </View>
+                ))
+              )}
             </ScrollView>
-          </View>
+          </Animated.View>
         </View>
       </Modal>
     </Ctx.Provider>

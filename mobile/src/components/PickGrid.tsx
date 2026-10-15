@@ -28,25 +28,26 @@ export function PickGrid({ prefix, items, selected, onSelect, columns = 2 }: {
             accessibilityRole="button"
             accessibilityState={{ selected: on }}
             style={{
-              width: cardW, borderRadius: 16, overflow: 'hidden', backgroundColor: '#fff',
-              borderWidth: on ? 3 : 1, borderColor: on ? C.accent : C.border,
+              width: cardW, borderRadius: 14, overflow: 'hidden', backgroundColor: '#FFFFFF',
+              borderWidth: on ? 1.5 : 1, borderColor: on ? '#2D6A4F' : '#E5E7EB',
+              shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: on ? 0.08 : 0.03, shadowRadius: 3, elevation: on ? 2 : 1,
             }}
           >
-            <View style={{ width: '100%', height: cardW * (columns > 2 ? 0.85 : 0.7), backgroundColor: it.tint || '#EEF4E8', alignItems: 'center', justifyContent: 'center' }}>
+            <View style={{ width: '100%', height: cardW * (columns > 2 ? 0.85 : 0.7), backgroundColor: it.tint || '#F9FAFB', alignItems: 'center', justifyContent: 'center' }}>
               {img ? (
                 <Image source={img} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
               ) : (
-                <Icon name={it.icon || 'leaf'} size={columns > 2 ? 30 : 38} color={C.accent} />
+                <Icon name={it.icon || 'leaf'} size={columns > 2 ? 26 : 32} color="#2D6A4F" />
               )}
               {on ? (
-                <View style={{ position: 'absolute', top: 6, right: 6, width: 26, height: 26, borderRadius: 13, backgroundColor: C.accent, alignItems: 'center', justifyContent: 'center' }}>
-                  <Icon name="check" size={16} color="#fff" />
+                <View style={{ position: 'absolute', top: 6, right: 6, width: 22, height: 22, borderRadius: 11, backgroundColor: '#2D6A4F', alignItems: 'center', justifyContent: 'center' }}>
+                  <Icon name="check" size={13} color="#fff" />
                 </View>
               ) : null}
             </View>
-            <View style={{ padding: S.sm, minHeight: it.desc ? 66 : 40 }}>
-              <Text style={{ fontSize: columns > 2 ? 14 : 16, fontWeight: '700', color: C.text }} numberOfLines={2}>{it.label}</Text>
-              {it.desc ? <Text style={{ fontSize: 12.5, lineHeight: 17, color: C.muted, marginTop: 2 }} numberOfLines={3}>{it.desc}</Text> : null}
+            <View style={{ padding: S.sm, minHeight: it.desc ? 60 : 38 }}>
+              <Text style={{ fontSize: columns > 2 ? 13 : 15, fontWeight: on ? '700' : '600', color: on ? '#1B4332' : '#1F2937' }} numberOfLines={2}>{it.label}</Text>
+              {it.desc ? <Text style={{ fontSize: 11.5, lineHeight: 16, color: '#6B7280', marginTop: 2 }} numberOfLines={3}>{it.desc}</Text> : null}
             </View>
           </TouchableOpacity>
         );

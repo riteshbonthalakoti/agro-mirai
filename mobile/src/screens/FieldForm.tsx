@@ -79,14 +79,13 @@ export function FieldForm({ initial, onDone, onCancel }: { initial?: Field; onDo
   const [err, setErr] = useState('');
   const [placeName, setPlaceName] = useState<string | null>(null);
   const [geocoding, setGeocoding] = useState(false);
-  const [showCoords, setShowCoords] = useState(false);
   const [allCrops, setAllCrops] = useState(false);
   const [cropQ, setCropQ] = useState('');
-  const [mode, setMode] = useState<'page' | 'steps'>('page');
+  const [mode, setMode] = useState<'page' | 'steps'>('steps');
   const [step, setStep] = useState(0);
   const [savedField, setSavedField] = useState<Field | null>(null);
 
-  useEffect(() => { cacheGet<'page' | 'steps'>('fieldFormMode').then((m) => m && setMode(m)); }, []);
+  useEffect(() => { cacheGet<'page' | 'steps'>('fieldFormMode').then((m) => m ? setMode(m) : setMode('steps')); }, []);
   const chooseMode = (m: 'page' | 'steps') => { feedback.select(); setMode(m); setStep(0); setErr(''); cacheSet('fieldFormMode', m); };
 
   const lookupPlace = async (latN: number, lonN: number) => {
@@ -204,14 +203,25 @@ export function FieldForm({ initial, onDone, onCancel }: { initial?: Field; onDo
   const back = () => { setErr(''); if (step > 0) setStep(step - 1); else onCancel?.(); };
 
   // ------------------------------------------------------------------ pieces
-  const bigInput = { fontSize: 20, fontWeight: '600' as const, minHeight: 56, borderWidth: 1.5, borderColor: '#B9C9B4', borderRadius: 14, backgroundColor: '#fff', paddingHorizontal: S.lg, color: C.text };
+  const bigInput = { fontSize: 16, fontWeight: '600' as const, minHeight: 52, borderWidth: 1, borderColor: '#D1D5DB', borderRadius: 12, backgroundColor: '#FFFFFF', paddingHorizontal: S.md, color: C.text };
   const pill = (label: string, on: boolean, onPress: () => void, key?: string) => (
     <TouchableOpacity
       key={key ?? label}
       onPress={() => { feedback.select(); onPress(); }}
-      style={{ minHeight: 46, paddingHorizontal: 16, borderRadius: 23, borderWidth: on ? 2 : 1.5, borderColor: on ? C.accent : '#B9C9B4', backgroundColor: on ? '#E8F3E8' : '#fff', alignItems: 'center', justifyContent: 'center', marginRight: S.sm, marginBottom: S.sm }}
+      style={{
+        minHeight: 38,
+        paddingHorizontal: 14,
+        borderRadius: 19,
+        borderWidth: 1,
+        borderColor: on ? '#2D6A4F' : '#E5E7EB',
+        backgroundColor: on ? '#F0FDF4' : '#FFFFFF',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginRight: S.sm,
+        marginBottom: S.sm,
+      }}
     >
-      <Text style={{ fontSize: 16, fontWeight: on ? '800' : '600', color: on ? C.accent : C.text }}>{label}</Text>
+      <Text style={{ fontSize: 14, fontWeight: on ? '700' : '500', color: on ? '#1B4332' : '#4B5563' }}>{label}</Text>
     </TouchableOpacity>
   );
 
@@ -221,10 +231,10 @@ export function FieldForm({ initial, onDone, onCancel }: { initial?: Field; onDo
         onPress={useMyLocation}
         disabled={locating}
         activeOpacity={0.85}
-        style={{ minHeight: 84, borderRadius: 18, borderWidth: hasLocation ? 2 : 1.5, borderColor: hasLocation ? C.accent : '#B9C9B4', backgroundColor: hasLocation ? '#E8F3E8' : '#fff', flexDirection: 'row', alignItems: 'center', padding: S.md }}
+        style={{ minHeight: 76, borderRadius: 14, borderWidth: 1, borderColor: hasLocation ? '#2D6A4F' : '#E5E7EB', backgroundColor: hasLocation ? '#F0FDF4' : '#FFFFFF', flexDirection: 'row', alignItems: 'center', padding: S.md }}
       >
-        <View style={{ width: 52, height: 52, borderRadius: 26, backgroundColor: hasLocation ? C.accent : '#E4EFD9', alignItems: 'center', justifyContent: 'center', marginRight: S.md }}>
-          {locating ? <ActivityIndicator size="small" color={C.accent} /> : <Icon name={hasLocation ? 'check' : 'location'} size={26} color={hasLocation ? '#fff' : C.accent} />}
+        <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: hasLocation ? '#2D6A4F' : '#F3F4F6', alignItems: 'center', justifyContent: 'center', marginRight: S.md }}>
+          {locating ? <ActivityIndicator size="small" color={hasLocation ? '#FFFFFF' : '#2D6A4F'} /> : <Icon name={hasLocation ? 'check' : 'location'} size={22} color={hasLocation ? '#FFFFFF' : '#4B5563'} />}
         </View>
         <View style={{ flex: 1 }}>
           <Text style={{ fontSize: 18, fontWeight: '800', color: C.text }}>
@@ -380,9 +390,20 @@ export function FieldForm({ initial, onDone, onCancel }: { initial?: Field; onDo
       onPress={() => { feedback.tap(); onPress(); }}
       disabled={busy}
       activeOpacity={0.85}
-      style={{ flex, minHeight: 58, borderRadius: 16, backgroundColor: kind === 'primary' ? C.accent : '#fff', borderWidth: 2, borderColor: C.accent, alignItems: 'center', justifyContent: 'center', paddingHorizontal: S.lg, opacity: busy ? 0.6 : 1 }}
+      style={{
+        flex,
+        minHeight: 52,
+        borderRadius: 12,
+        backgroundColor: kind === 'primary' ? '#1B4332' : '#FFFFFF',
+        borderWidth: kind === 'primary' ? 0 : 1,
+        borderColor: '#E5E7EB',
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingHorizontal: S.lg,
+        opacity: busy ? 0.6 : 1,
+      }}
     >
-      <Text style={{ fontSize: 19, fontWeight: '800', color: kind === 'primary' ? '#fff' : C.accent }}>{label}</Text>
+      <Text style={{ fontSize: 16, fontWeight: '700', color: kind === 'primary' ? '#FFFFFF' : '#374151' }}>{label}</Text>
     </TouchableOpacity>
   );
 
@@ -422,17 +443,16 @@ export function FieldForm({ initial, onDone, onCancel }: { initial?: Field; onDo
       <View style={{ flex: 1, backgroundColor: C.bg }}>
         {hero}
         <View style={{ flexDirection: 'row', gap: 6, paddingHorizontal: S.lg, marginTop: S.md }}>
-          {STEPS.map((_, i) => <View key={i} style={{ flex: 1, height: 6, borderRadius: 3, backgroundColor: i <= step ? C.accent : C.border }} />)}
+          {STEPS.map((_, i) => <View key={i} style={{ flex: 1, height: 5, borderRadius: 3, backgroundColor: i <= step ? '#1B4332' : '#E5E7EB' }} />)}
         </View>
-        <Text style={{ paddingHorizontal: S.lg, marginTop: S.sm, fontSize: 14, color: C.muted, fontWeight: '600' }}>
+        <Text style={{ paddingHorizontal: S.lg, marginTop: S.sm, fontSize: 13, color: C.muted, fontWeight: '600' }}>
           {t('stepOf').replace('{n}', String(step + 1)).replace('{m}', String(STEPS.length))}
         </Text>
         <ScrollView contentContainerStyle={{ paddingHorizontal: S.lg, paddingBottom: S.xl }} keyboardShouldPersistTaps="handled">
           {cur}
           {errBox}
-          <View style={{ marginTop: S.lg }}>{modeSwitch}</View>
         </ScrollView>
-        <View style={{ flexDirection: 'row', gap: S.md, padding: S.lg, paddingBottom: S.xl, borderTopWidth: 1, borderTopColor: C.border, backgroundColor: C.bg }}>
+        <View style={{ flexDirection: 'row', gap: S.md, padding: S.lg, paddingBottom: S.xl, borderTopWidth: 1, borderTopColor: '#E5E7EB', backgroundColor: C.bg }}>
           {step > 0 || onCancel ? primary(t('wizBack'), back, 'secondary', 1) : null}
           {primary(last ? t('saveField') : t('wizNext'), next, 'primary', 2)}
         </View>

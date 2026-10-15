@@ -421,6 +421,16 @@ function RootInner({ lang, setLang }: { lang: Lang; setLang: (l: Lang) => void }
     setActiveAccountId(accounts.getActiveAccountId());
   }, []);
 
+  // Keep saved account entry synced dynamically whenever active farmer's photo or name changes
+  useEffect(() => {
+    if (farmer) {
+      accounts.updateAccountProfile(farmer.id, {
+        name: farmer.name,
+        photo_url: farmer.photo_url,
+      }).then(refreshAccountsList);
+    }
+  }, [farmer?.name, farmer?.photo_url, refreshAccountsList]);
+
   const t = useMemo(() => makeT(lang), [lang]);
   const field = fields.find((f) => f.id === fieldId) ?? fields[0] ?? null;
 

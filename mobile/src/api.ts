@@ -475,4 +475,19 @@ export const askByVoice = async (audioUri: string, mime: string, expectedLang: s
   }
 };
 
+export type ConversationItem = { id: string; field_id?: string; question: string; answer: string; lang: string; ts: number };
+
+export const fetchConversationsApi = async (fieldId?: string): Promise<ConversationItem[]> => {
+  const query = fieldId ? `?field_id=${encodeURIComponent(fieldId)}` : '';
+  const res = await request<{ conversations: ConversationItem[] }>(`/v2/conversations${query}`, { method: 'GET' });
+  return res.conversations || [];
+};
+
+export const saveConversationApi = async (entry: { field_id?: string; question: string; answer: string; lang: string }): Promise<ConversationItem> => {
+  return request<ConversationItem>('/v2/conversations', {
+    method: 'POST',
+    body: JSON.stringify(entry),
+  });
+};
+
 export { API_BASE_URL };

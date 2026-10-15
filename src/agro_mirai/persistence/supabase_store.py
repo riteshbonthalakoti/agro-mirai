@@ -23,6 +23,7 @@ from agro_mirai.persistence.models import (
     Advisory,
     AuditLogEntry,
     BugReport,
+    Conversation,
     CropRecommendation,
     DiseaseRiskAlert,
     Farmer,
@@ -859,6 +860,60 @@ class SupabaseDataStore:
             )
             for r in res.data
         ]
+
+    # --- Conversations / Questions ---
+    def save_conversation(self, farmer_id: str, conversation: Conversation) -> Conversation:
+        if not _is_uuid(farmer_id):
+            raise NotFoundError(f"farmer {farmer_id} not found")
+        payload = {
+            "id": conversation.id,
+            "farmer_id": farmer_id,
+            "field_id": conversation.field_id if conversation.field_id and _is_uuid(conversation.field_id) else None,
+            "question": conversation.question,
+            "answer": conversation.answer,
+            "language": conversation.language,
+            "created_at": _dt(conversation.created_at),
+        }
+        try:
+            self._client.table("conversations").insert(payload).execute()
+        except Exception as e:
+            raise ConflictError(str(e)) from e
+        return conversation
+
+    def list_conversations(
+        self, farmer_id: str, field_id: str | None = None, limit: int = 50
+    ) -> list[Conversation]:
+        if not _is_uuid(farmer_id):
+            return []
+        query = self._client.table("conversations").select("*").eq("farmer_id", farmer_id)
+        if field_id and _is_uuid(field_id):
+            query = query.eq("field_id", field_id)
+        res = query.order("created_at", desc=True).limit(limit).execute()
+        return [self._row_to_conversation(r) for r in res.data]
+
+    def delete_conversation(self, farmer_id: str, conversation_id: str) -> bool:
+        if not _is_uuid(farmer_id) or not _is_uuid(conversation_id):
+            return False
+        res = (
+            self._client.table("conversations")
+            .delete()
+            .eq("id", conversation_id)
+            .eq("farmer_id", farmer_id)
+            .execute()
+        )
+        return len(res.data) > 0
+
+    @staticmethod
+    def _row_to_conversation(row: dict) -> Conversation:
+        return Conversation(
+            id=row["id"],
+            farmer_id=row["farmer_id"],
+            field_id=row.get("field_id"),
+            question=row["question"],
+            answer=row["answer"],
+            language=row["language"],
+            created_at=_parse_dt(row["created_at"]),
+        )
 
     # --- Health ---
     def ping(self) -> bool:

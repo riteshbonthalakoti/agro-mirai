@@ -49,11 +49,12 @@ export function AnimatedSplashScreen({ onFinish, serverWaking = false }: Animate
     return () => cancelAnimationFrame(id);
   }, []);
 
-  // Fallback safety timer matching ~3.1s duration to guarantee clean transition
+  // Cut off playback at ~2.2s -- before the video author's dark closing fade-out
+  // begins -- so the transition directly into the app background is completely seamless.
   useEffect(() => {
     const timer = setTimeout(() => {
       triggerFinish();
-    }, 3600);
+    }, 2250);
     return () => clearTimeout(timer);
   }, [triggerFinish]);
 
@@ -62,25 +63,15 @@ export function AnimatedSplashScreen({ onFinish, serverWaking = false }: Animate
     p.play();
   });
 
-  // Ignore finish/error events that fire before the animation could have played
-  // (Expo Go can emit them instantly); the 3.2s timer above is the guaranteed exit.
-  const startedAt = useRef(Date.now()).current;
-  const MIN_SHOW_MS = 2800;
-  const finishIfElapsed = () => {
-    if (Date.now() - startedAt >= MIN_SHOW_MS) triggerFinish();
-  };
-
   useEffect(() => {
-    const endSub = player.addListener('playToEnd', finishIfElapsed);
     const statusSub = player.addListener('statusChange', ({ status }) => {
       if (status === 'readyToPlay') setVideoLoaded(true);
       if (status === 'error') {
         console.warn('Splash video playback error');
-        finishIfElapsed();
+        triggerFinish();
       }
     });
     return () => {
-      endSub.remove();
       statusSub.remove();
     };
   }, [player, triggerFinish]);

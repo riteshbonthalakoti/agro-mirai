@@ -3,7 +3,7 @@ import { getActiveAccountId } from './accounts';
 
 const P = 'agro:v2:';
 // Device preferences, not farmer data -- shared across every account on this phone.
-const DEVICE_GLOBAL_KEYS = new Set(['lang', 'permsAsked', 'permsV2', 'tourSeen']);
+const DEVICE_GLOBAL_KEYS = new Set(['lang', 'permsAsked', 'permsV2', 'tourSeen', 'inbox', 'dailyDigestSentOn']);
 
 function fullKey(key: string): string {
   if (DEVICE_GLOBAL_KEYS.has(key)) return P + key;

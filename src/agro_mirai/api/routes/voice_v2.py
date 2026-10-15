@@ -164,9 +164,32 @@ def post_voice_ask():
     answer_audio = synthesize_answer_audio(answer_text, language)
     audio_b64 = base64.b64encode(answer_audio).decode("ascii") if answer_audio is not None else None
 
+    # Persist the question and answer to the backend database
+    import uuid
+    from datetime import datetime, timezone
+    from agro_mirai.persistence.models import Conversation
+
+    conv_id = str(uuid.uuid4())
+    field_id = request.form.get("field_id") or None
+    try:
+        conv = Conversation(
+            id=conv_id,
+            farmer_id=g.farmer_id,
+            field_id=field_id,
+            question=question_text,
+            answer=answer_text,
+            language=language,
+            created_at=datetime.now(timezone.utc),
+        )
+        store.save_conversation(g.farmer_id, conv)
+    except Exception as e:
+        import logging
+        logging.getLogger("agro_mirai.api.voice_v2").warning("failed to save conversation: %s", e)
+
     return (
         jsonify(
             {
+                "id": conv_id,
                 "question_text": question_text,
                 "detected_lang": detected_lang,
                 "answer_text": answer_text,
@@ -207,3 +230,78 @@ def post_translate():
         else:
             out.append(tr)
     return jsonify({"texts": out, "translated": ok and target != "en"}), 200
+
+
+@voice_v2_bp.get("/conversations")
+@require_session_auth
+def get_conversations():
+    """Module 57: Retrieve farmer's question & answer history from DB."""
+    store = current_app.extensions["data_store"]
+    field_id = request.args.get("field_id")
+    convs = store.list_conversations(g.farmer_id, field_id=field_id, limit=50)
+    return (
+        jsonify(
+            {
+                "conversations": [
+                    {
+                        "id": c.id,
+                        "field_id": c.field_id,
+                        "question": c.question,
+                        "answer": c.answer,
+                        "lang": c.language,
+                        "ts": int(c.created_at.timestamp() * 1000),
+                    }
+                    for c in convs
+                ]
+            }
+        ),
+        200,
+    )
+
+
+@voice_v2_bp.post("/conversations")
+@require_session_auth
+def post_conversation():
+    """Module 57: Save a question & answer into DB so it persists across devices."""
+    import uuid
+    from datetime import datetime, timezone
+    from agro_mirai.persistence.models import Conversation
+
+    store = current_app.extensions["data_store"]
+    body = request.get_json(silent=True) or {}
+    question = body.get("question", "").strip()
+    answer = body.get("answer", "").strip()
+    if not question or not answer:
+        raise ApiError(400, "BAD_REQUEST", "question and answer are required")
+    lang = body.get("lang") or body.get("language") or "en"
+    field_id = body.get("field_id")
+    conv_id = body.get("id") or str(uuid.uuid4())
+    ts = body.get("ts")
+    created_at = (
+        datetime.fromtimestamp(ts / 1000, tz=timezone.utc)
+        if ts
+        else datetime.now(timezone.utc)
+    )
+    conv = Conversation(
+        id=conv_id,
+        farmer_id=g.farmer_id,
+        field_id=field_id,
+        question=question,
+        answer=answer,
+        language=lang,
+        created_at=created_at,
+    )
+    store.save_conversation(g.farmer_id, conv)
+    return (
+        jsonify(
+            {
+                "id": conv.id,
+                "field_id": conv.field_id,
+                "question": conv.question,
+                "answer": conv.answer,
+                "lang": conv.language,
+                "ts": int(conv.created_at.timestamp() * 1000),
+            }
+        ),
+        201,
+    )

@@ -203,7 +203,7 @@ def build_otp_sender(env: "os._Environ[str] | dict[str, str] | None" = None) -> 
                 "OTP_PROVIDER=sms_gateway requires SMS_GATEWAY_USER and SMS_GATEWAY_PASS"
             )
         return (
-            SmsGatewaySender(username=username, password=password, app_hash=env.get("SMS_APP_HASH", "M+MVX6Au1Vp uVyEdq3/+28")),
+            SmsGatewaySender(username=username, password=password, app_hash=env.get("SMS_APP_HASH", "M+MVX6Au1Vp")),
             {},
         )
 

@@ -327,9 +327,13 @@ export function MeTab({ initialScreenContext, onConsumeScreenContext }: { initia
               const avColor2 = avatarColor(a.id);
               return (
                 <View key={a.id} style={{ flexDirection: 'row', alignItems: 'center', borderRadius: 14, borderWidth: 1.5, borderColor: active ? C.accent : '#E3E8DC', backgroundColor: active ? '#F3F9F1' : '#fff', padding: S.md, marginBottom: S.sm }}>
-                  <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: avColor2, alignItems: 'center', justifyContent: 'center', marginRight: S.md }}>
-                    <Text style={{ fontSize: 15, fontWeight: '800', color: '#fff' }}>{initials(a.name)}</Text>
-                  </View>
+                  {a.photo_url ? (
+                    <Image source={{ uri: a.photo_url }} style={{ width: 40, height: 40, borderRadius: 20, marginRight: S.md }} />
+                  ) : (
+                    <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: avColor2, alignItems: 'center', justifyContent: 'center', marginRight: S.md }}>
+                      <Text style={{ fontSize: 15, fontWeight: '800', color: '#fff' }}>{initials(a.name)}</Text>
+                    </View>
+                  )}
                   <TouchableOpacity
                     onPress={() => !active && switchAccount(a.id)}
                     disabled={active}

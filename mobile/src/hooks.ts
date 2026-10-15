@@ -5,43 +5,54 @@ import { cacheGet, cacheGetWithTime, cacheSet } from './storage';
 
 export type Load<T> = { data: T | null; error: ApiError | null; loading: boolean; fromCache: boolean; lastUpdatedAt: number | null; reload: () => void };
 
+// In-memory cache for instant 0ms tab switching without flashing skeletons or buffering
+const MEM_CACHE = new Map<string, { value: any; cachedAt: number }>();
+
 export function useLoad<T>(cacheKey: string | null, fn: () => Promise<T>, deps: unknown[]): Load<T> {
-  const [data, setData] = useState<T | null>(null);
+  const cachedMem = cacheKey ? (MEM_CACHE.get(cacheKey) as { value: T; cachedAt: number } | undefined) : undefined;
+  const [data, setData] = useState<T | null>(cachedMem ? cachedMem.value : null);
   const [error, setError] = useState<ApiError | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [fromCache, setFromCache] = useState(false);
-  const [lastUpdatedAt, setLastUpdatedAt] = useState<number | null>(null);
+  const [loading, setLoading] = useState(!cachedMem);
+  const [fromCache, setFromCache] = useState(!!cachedMem);
+  const [lastUpdatedAt, setLastUpdatedAt] = useState<number | null>(cachedMem ? cachedMem.cachedAt : null);
   const [tick, setTick] = useState(0);
   const fnRef = useRef(fn);
   fnRef.current = fn;
+  const dataRef = useRef(data);
+  dataRef.current = data;
 
   useEffect(() => {
     let alive = true;
     (async () => {
-      setLoading(true);
-      setError(null);
-      setData(null);
-      setFromCache(false);
-      setLastUpdatedAt(null);
-      if (cacheKey) {
+      // If we don't have data in memory yet, read from persistent storage
+      if (!dataRef.current && cacheKey) {
+        setLoading(true);
         const cached = await cacheGetWithTime<T>(cacheKey);
         if (alive && cached) {
+          MEM_CACHE.set(cacheKey, cached);
           setData(cached.value);
           setFromCache(true);
           setLastUpdatedAt(cached.cachedAt);
+          setLoading(false);
         }
       }
+
+      // Fetch latest data silently in the background without clearing the screen
       try {
         const fresh = await fnRef.current();
         if (!alive) return;
+        if (cacheKey) {
+          MEM_CACHE.set(cacheKey, { value: fresh, cachedAt: Date.now() });
+          await cacheSet(cacheKey, fresh);
+        }
         setData(fresh);
         setFromCache(false);
-        if (cacheKey) {
-          await cacheSet(cacheKey, fresh);
-          if (alive) setLastUpdatedAt(Date.now());
-        }
+        setLastUpdatedAt(Date.now());
+        setError(null);
       } catch (e) {
-        if (alive) setError(e instanceof ApiError ? e : new ApiError(0, String(e)));
+        if (alive && !dataRef.current) {
+          setError(e instanceof ApiError ? e : new ApiError(0, String(e)));
+        }
       } finally {
         if (alive) setLoading(false);
       }
