@@ -73,9 +73,6 @@ function Why({ text }: { text?: string | null }) {
 function HeroHeader({ name, crop, greeting, lat, lon }: {
   name: string; crop: string | null; greeting: string; lat?: number; lon?: number;
 }) {
-  const coordText = lat !== undefined && lon !== undefined
-    ? `${Math.abs(lat).toFixed(4)}°${lat >= 0 ? 'N' : 'S'}, ${Math.abs(lon).toFixed(4)}°${lon >= 0 ? 'E' : 'W'}`
-    : null;
   return (
     <View style={{ backgroundColor: H.heroBg, borderRadius: 28, overflow: 'hidden', marginBottom: S.md }}>
       <View style={{ position: 'absolute', right: -40, top: -40, width: 180, height: 180, borderRadius: 90, backgroundColor: 'rgba(255,255,255,0.06)' }} />
@@ -87,12 +84,6 @@ function HeroHeader({ name, crop, greeting, lat, lon }: {
           {crop ? (
             <View style={{ alignSelf: 'flex-start', backgroundColor: 'rgba(255,255,255,0.18)', borderRadius: 20, paddingHorizontal: S.md, paddingVertical: 4 }}>
               <Text style={{ fontSize: 13, fontWeight: '700', color: H.heroAccent }}>{crop}</Text>
-            </View>
-          ) : null}
-          {coordText ? (
-            <View style={{ alignSelf: 'flex-start', backgroundColor: 'rgba(255,255,255,0.12)', borderRadius: 20, paddingHorizontal: 12, paddingVertical: 4, flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-              <Text style={{ fontSize: 12 }}>📍</Text>
-              <Text style={{ fontSize: 12, fontWeight: '600', color: '#DCE7D6' }}>{coordText}</Text>
             </View>
           ) : null}
         </View>
@@ -188,7 +179,7 @@ export function HomeTab() {
     return () => loop.stop();
   }, [pulseAnim]);
 
-  const { setDailyReminder } = useNotifications();
+  const { setDailyReminder, notify } = useNotifications();
   useEffect(() => {
     // tomorrow's daily notification carries the latest advice, even if the app is closed by then
     if (today?.text) {
@@ -201,6 +192,18 @@ export function HomeTab() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [today?.text, lang, id]);
+
+  useEffect(() => {
+    if (!d || (d.risk_level !== 'high' && d.risk_level !== 'severe')) return;
+    const eventId = `disease-risk-${id}-${d.risk_level}-${new Date().toDateString()}`;
+    notify({
+      id: eventId,
+      title: t('notifDiseaseTitle'),
+      body: d.disease_translated || d.disease || t('todayCheckLeaves'),
+      severity: d.risk_level,
+    });
+  }, [d?.risk_level, id, notify, t]);
+
   // the server's crop-specific advice is English: translate it (cached), fall back to the generic line
   const diseaseAdvice = useTranslated([d?.recommended_action], lang);
   const firstLoad = busy && !c && !i && !d;
