@@ -43,34 +43,39 @@ class SmsRetrieverModule : Module() {
       stopListening(context)
 
       val client = SmsRetriever.getClient(context)
-      client.startSmsRetriever()
-
       val filter = IntentFilter(SmsRetriever.SMS_RETRIEVED_ACTION)
-      val newReceiver = object : BroadcastReceiver() {
-        override fun onReceive(ctx: Context, intent: Intent) {
-          if (intent.action != SmsRetriever.SMS_RETRIEVED_ACTION) return
-          val extras = intent.extras ?: return
-          val status = extras.get(SmsRetriever.EXTRA_STATUS) as? Status ?: return
-          when (status.statusCode) {
-            CommonStatusCodes.SUCCESS -> {
-              val message = extras.getString(SmsRetriever.EXTRA_SMS_MESSAGE)
-              stopListening(context)
-              promise.resolve(message)
-            }
-            CommonStatusCodes.TIMEOUT -> {
-              stopListening(context)
-              promise.reject("ERR_SMS_RETRIEVER_TIMEOUT", "Timed out waiting for the OTP SMS", null)
+
+      client.startSmsRetriever()
+        .addOnSuccessListener {
+          val newReceiver = object : BroadcastReceiver() {
+            override fun onReceive(ctx: Context, intent: Intent) {
+              if (intent.action != SmsRetriever.SMS_RETRIEVED_ACTION) return
+              val extras = intent.extras ?: return
+              val status = extras.get(SmsRetriever.EXTRA_STATUS) as? Status ?: return
+              when (status.statusCode) {
+                CommonStatusCodes.SUCCESS -> {
+                  val message = extras.getString(SmsRetriever.EXTRA_SMS_MESSAGE)
+                  stopListening(context)
+                  promise.resolve(message)
+                }
+                CommonStatusCodes.TIMEOUT -> {
+                  stopListening(context)
+                  promise.reject("ERR_SMS_RETRIEVER_TIMEOUT", "Timed out waiting for the OTP SMS", null)
+                }
+              }
             }
           }
+          receiver = newReceiver
+          ContextCompat.registerReceiver(
+            context,
+            newReceiver,
+            filter,
+            ContextCompat.RECEIVER_EXPORTED
+          )
         }
-      }
-      receiver = newReceiver
-      ContextCompat.registerReceiver(
-        context,
-        newReceiver,
-        filter,
-        ContextCompat.RECEIVER_EXPORTED
-      )
+        .addOnFailureListener { e ->
+          promise.reject("ERR_SMS_RETRIEVER_START", "SMS Retriever failed to start: ${e.message}", null)
+        }
     }
 
     AsyncFunction("stopSmsRetriever") {
