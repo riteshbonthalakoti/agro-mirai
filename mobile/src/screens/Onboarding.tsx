@@ -479,24 +479,28 @@ export function AuthScreen({ lang, onLoggedIn, notice, onChangeLanguage, onCance
   // Module 56: auto-fill the code from the SMS itself (Android SMS
   // Retriever API) so the farmer never has to copy/type it -- manual entry
   // below still works if this times out or isn't available (iOS, no Play
-  // Services). Re-arms on every fresh code (otpRequestSeq bumps on each
-  // request-otp call, including a resend).
+  // Services). Cleanup on unmount or step change.
+  const smsRetrieverCancelRef = useRef<(() => void) | null>(null);
   useEffect(() => {
-    if (step !== 'otp' || otpRequestSeq === 0) return;
-    let cancelled = false;
-    startSmsRetriever().then((body) => {
-      if (cancelled || !body) return;
-      const code = extractOtpCode(body);
-      if (code) setOtp(code);
-    });
     return () => {
-      cancelled = true;
-      stopSmsRetriever();
+      smsRetrieverCancelRef.current?.();
+      smsRetrieverCancelRef.current = null;
     };
-  }, [step, otpRequestSeq]);
+  }, [step]);
 
   const requestWithName = async (theName: string) => {
     setBusy(true);
+    // Start SMS Retriever BEFORE the network call so the BroadcastReceiver is
+    // already registered by the time the SMS arrives (avoids a race where a
+    // fast gateway delivers the OTP before the receiver is up).
+    smsRetrieverCancelRef.current?.();
+    let retrieverCancelled = false;
+    smsRetrieverCancelRef.current = () => { retrieverCancelled = true; stopSmsRetriever(); };
+    startSmsRetriever().then((body) => {
+      if (retrieverCancelled || !body) return;
+      const code = extractOtpCode(body);
+      if (code) setOtp(code);
+    });
     try {
       const r = await requestOtp(normalizePhone(phone), theName, lang);
       setIsNew(r.is_new_farmer);
