@@ -64,8 +64,6 @@ def _rate_limit_key() -> str:
     bucket; falls back to remote address for unauthenticated requests so
     they still share a (coarser) limit instead of bypassing it entirely.
     """
-    from flask import request
-
     header = request.headers.get("Authorization", "")
     if header.startswith("Bearer "):
         return header[len("Bearer "):].strip()
