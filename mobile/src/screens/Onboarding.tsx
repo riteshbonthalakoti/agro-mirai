@@ -28,11 +28,13 @@ function PhoneKey({
   sub,
   onPress,
   danger,
+  confirm,
 }: {
   label: string;
   sub?: string;
   onPress: () => void;
   danger?: boolean;
+  confirm?: boolean;
 }) {
   const scaleAnim = useRef(new Animated.Value(1)).current;
   const handlePressIn = () =>
@@ -51,9 +53,9 @@ function PhoneKey({
       <Animated.View
         style={{
           transform: [{ scale: scaleAnim }],
-          backgroundColor: danger ? '#FEE2E2' : '#FFFFFF',
+          backgroundColor: confirm ? '#1B4332' : danger ? '#FEE2E2' : '#FFFFFF',
           borderRadius: 14,
-          borderWidth: 1,
+          borderWidth: confirm ? 0 : 1,
           borderColor: danger ? '#FECACA' : '#E5E7EB',
           alignItems: 'center',
           justifyContent: 'center',
@@ -66,7 +68,7 @@ function PhoneKey({
           elevation: 1,
         }}
       >
-        <Text style={{ fontSize: 22, fontWeight: '700', color: danger ? '#DC2626' : '#111827' }}>{label}</Text>
+        <Text style={{ fontSize: 22, fontWeight: '700', color: confirm ? '#FFFFFF' : danger ? '#DC2626' : '#111827' }}>{label}</Text>
         {sub ? <Text style={{ fontSize: 9, fontWeight: '600', color: '#6B7280', letterSpacing: 0.8, marginTop: 1 }}>{sub}</Text> : null}
       </Animated.View>
     </TouchableOpacity>
@@ -78,8 +80,8 @@ function BlinkingCursor() {
   useEffect(() => {
     const loop = Animated.loop(
       Animated.sequence([
-        Animated.timing(op, { toValue: 0, duration: 450, useNativeDriver: true }),
-        Animated.timing(op, { toValue: 1, duration: 450, useNativeDriver: true }),
+        Animated.timing(op, { toValue: 0, duration: 1000, useNativeDriver: true }),
+        Animated.timing(op, { toValue: 1, duration: 1000, useNativeDriver: true }),
       ]),
     );
     loop.start();
@@ -104,9 +106,11 @@ const KEYPAD_LETTERS: Record<string, string> = {
 function PhoneKeyboard({
   value,
   onChange,
+  onSubmit,
 }: {
   value: string;
   onChange: (v: string) => void;
+  onSubmit?: () => void;
 }) {
   const tap = (digit: string) => {
     if (value.length >= 10) return;
@@ -139,9 +143,9 @@ function PhoneKeyboard({
         </View>
       ))}
       <View style={{ flexDirection: 'row' }}>
-        <View style={{ flex: 1, marginHorizontal: 5, marginVertical: 4 }} />
+        <PhoneKey label="✓" onPress={() => onSubmit?.()} confirm />
         <PhoneKey label="0" sub={KEYPAD_LETTERS['0']} onPress={() => tap('0')} />
-        <PhoneKey label="⌫" onPress={del} danger />
+        <PhoneKey label="⌫" onPress={del} />
       </View>
     </View>
   );
@@ -703,7 +707,6 @@ export function AuthScreen({ lang, onLoggedIn, notice, onChangeLanguage, onCance
               ) : null}
             </View>
             <BigBtn label={t('sendOtp')} onPress={submitPhone} busy={busy} disabled={phone.length < 10 || cooldown > 0} />
-            <Text style={{ fontSize: 14, color: '#6B7280', textAlign: 'center', marginTop: S.md }}>🔒  {t('authTrust')}</Text>
           </>
         ) : step === 'name' ? (
           <>
@@ -752,7 +755,7 @@ export function AuthScreen({ lang, onLoggedIn, notice, onChangeLanguage, onCance
         </Text>
       </ScrollView>
       {step === 'phone' ? (
-        <PhoneKeyboard value={phone} onChange={(v) => setPhone(v)} />
+        <PhoneKeyboard value={phone} onChange={(v) => setPhone(v)} onSubmit={submitPhone} />
       ) : null}
       <LegalModal kind={legal} onClose={() => setLegal(null)} lang={lang} />
     </KeyboardAvoidingView>
