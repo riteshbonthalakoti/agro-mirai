@@ -105,8 +105,12 @@ export function NotificationsProvider({ children, t }: { children: React.ReactNo
     setupNotificationChannel();
     cacheGet<Notif[]>(INBOX_KEY).then((v) => {
       if (Array.isArray(v)) {
-        setItems(v);
         v.forEach((n) => seen.current.add(n.id));
+        setItems((cur) => {
+          const merged = new Map(v.map((n) => [n.id, n]));
+          cur.forEach((n) => { if (!merged.has(n.id)) merged.set(n.id, n); });
+          return Array.from(merged.values()).slice(0, MAX_ITEMS);
+        });
       }
     });
   }, []);
@@ -133,17 +137,16 @@ export function NotificationsProvider({ children, t }: { children: React.ReactNo
     const item: Notif = { id, title: n.title, body: n.body, severity: n.severity, ts: Date.now(), read: false };
     setItems((cur) => persist([item, ...cur].slice(0, MAX_ITEMS)));
 
-    // Only fire system OS status-bar notifications when the app is in the background or killed
-    if (AppState.currentState !== 'active') {
-      if (Notifications) {
-        Notifications.scheduleNotificationAsync({
-          identifier: id,
-          content: { title: n.title, body: n.body, color: C.accent, data: { id, severity: n.severity } },
-          trigger: Platform.OS === 'android' ? ({ channelId: CHANNEL } as any) : null,
-        }).catch(() => {});
-      }
+    if (AppState.currentState === 'active') {
+      showBanner(item);
+    } else if (Notifications) {
+      Notifications.scheduleNotificationAsync({
+        identifier: id,
+        content: { title: n.title, body: n.body, color: C.accent, data: { id, severity: n.severity } },
+        trigger: Platform.OS === 'android' ? ({ channelId: CHANNEL } as any) : null,
+      }).catch(() => {});
     }
-  }, []);
+  }, [showBanner]);
 
   const setDailyReminder = useCallback((title: string, body: string, fieldId?: string, accountId?: string, timeMinutes?: number) => {
     if (!Notifications) return;
