@@ -24,6 +24,17 @@ FIXTURES_DIR = ROOT / "specs" / "domains" / "fixtures"
 API_KEY = "frontend-integration-test-key"
 
 
+from datetime import datetime, timezone  # noqa: E402
+
+
+def _inject_session(client, farmer_id: str, role: str = "farmer") -> None:
+    """Write a valid session directly into the test client cookie jar."""
+    with client.session_transaction() as sess:
+        sess["farmer_id"] = farmer_id
+        sess["role"] = role
+        sess["issued_at"] = datetime.now(timezone.utc).isoformat()
+
+
 @pytest.fixture
 def seeded_app(tmp_path):
     db_path = str(tmp_path / "frontend_integration.db")
@@ -47,7 +58,10 @@ def seeded_app(tmp_path):
 @pytest.fixture
 def client(seeded_app):
     application, _ = seeded_app
-    return application.test_client()
+    farmer_id = application.config["FARMER_ID"]
+    c = application.test_client()
+    _inject_session(c, farmer_id)
+    return c
 
 
 def test_dashboard_renders_farmer_and_fields(client):
@@ -61,6 +75,7 @@ def test_field_detail_renders_real_advisory_data(seeded_app):
     GET /fields/{id}/advisories actually returns."""
     application, field_id = seeded_app
     client = application.test_client()
+    _inject_session(client, application.config["FARMER_ID"])
 
     api_resp = client.get(
         f"/fields/{field_id}/advisories",
@@ -89,6 +104,7 @@ def test_feedback_form_posts_and_entry_is_retrievable(seeded_app):
     entry is retrievable via DataStore afterward."""
     application, field_id = seeded_app
     client = application.test_client()
+    _inject_session(client, application.config["FARMER_ID"])
 
     api_resp = client.get(
         f"/fields/{field_id}/advisories",
@@ -119,6 +135,7 @@ def test_feedback_form_posts_and_entry_is_retrievable(seeded_app):
 def test_feedback_form_rejects_invalid_rating(seeded_app):
     application, field_id = seeded_app
     client = application.test_client()
+    _inject_session(client, application.config["FARMER_ID"])
 
     api_resp = client.get(
         f"/fields/{field_id}/advisories",
