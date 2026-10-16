@@ -51,12 +51,15 @@ export function AnimatedSplashScreen({ onFinish, serverWaking = false }: Animate
 
   // Cut off playback at ~2.2s -- before the video author's dark closing fade-out
   // begins -- so the transition directly into the app background is completely seamless.
+  // Timer starts only after the video is ready to play so decode latency (300-500ms)
+  // does not eat into the animation window.
   useEffect(() => {
+    if (!videoLoaded) return;
     const timer = setTimeout(() => {
       triggerFinish();
     }, 2250);
     return () => clearTimeout(timer);
-  }, [triggerFinish]);
+  }, [videoLoaded, triggerFinish]);
 
   const player = useVideoPlayer(require('../../assets/AGR-MIRAI-LOGO-ANIMATION.mp4'), (p) => {
     p.loop = false;
