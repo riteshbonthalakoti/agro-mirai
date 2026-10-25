@@ -45,7 +45,14 @@ cd mobile/android && ./gradlew assembleRelease
 - Delete dead code only after confirming 0 usages via Grep
 
 ## Active Modules
-- Module 50: Admin dashboard (not started)
-- Module 51: Offline/error/bug-reporting (not started)
-- Module 52: (pending — notifications depend on this merge)
-- Module 53: Notifications (root cause fixed, some items blocked on M52)
+(status as of 2026-10-25 audit — verified against `main`, not carried from older notes)
+- Module 50: Admin dashboard — in progress on `worktree-admin-dashboard-v2`, 200 commits
+  ahead of `main`, not yet merged.
+- Module 51: Offline/error/bug-reporting — mostly merged into `main` already (bug-report
+  routes/persistence/MeTab UI present); its worktree still has 2 unpushed commits and
+  uncommitted local edits (landing page / OTA update work, stray `apk-build*.log` files)
+  that are unrelated leftovers, not this module's own unmerged work.
+- Module 52: Accounts — merged into `main`. No longer a blocker for anything.
+- Module 53: Notifications — root cause fixed and merged into `main`. Only remaining
+  item is the real-device walkthrough, still pending manual test (see
+  docs/MODULE_53_SESSION_HANDOFF.md).
