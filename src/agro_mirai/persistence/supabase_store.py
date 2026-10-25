@@ -474,6 +474,7 @@ class SupabaseDataStore:
             "season": recommendation.season,
             "out_of_region": recommendation.out_of_region,
             "regional_alternative": recommendation.regional_alternative,
+            "source": recommendation.source,
         }
         try:
             self._client.table("crop_recommendations").upsert(payload).execute()
@@ -514,6 +515,7 @@ class SupabaseDataStore:
             season=row.get("season"),
             out_of_region=row.get("out_of_region"),
             regional_alternative=row.get("regional_alternative"),
+            source=row.get("source"),
         )
 
     # --- IrrigationAdvice ---
@@ -622,6 +624,7 @@ class SupabaseDataStore:
             "body": advisory.body,
             "severity": advisory.severity,
             "source_refs": advisory.source_refs or [],
+            "source": advisory.source,
         }
         try:
             self._client.table("advisories").upsert(payload).execute()
@@ -666,6 +669,7 @@ class SupabaseDataStore:
             body=row["body"],
             severity=row["severity"],
             source_refs=row.get("source_refs") or [],
+            source=row.get("source"),
         )
 
     # --- FeedbackEntry ---
