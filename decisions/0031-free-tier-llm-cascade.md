@@ -13,16 +13,19 @@ to weather in `acquisition/weather_fallbacks.py` and to voice in `sarvam_client.
 Each of the three use cases now tries a free-tier LLM tier first, falling back to the existing model
 unchanged if the LLM tier is unavailable, times out, or returns something unusable:
 
-- **Disease detection**: new vision-LLM tier (`gemini_client.ask_gemini_vision`) → existing CNN
+- **Disease detection**: new plant-disease-API tier (`api/plant_disease_client.py`, Kindwise
+  Crop.Health) → new vision-LLM tier (`gemini_client.ask_gemini_vision`) → existing CNN
   (`cnn_client.py`) → existing rule-based `DiseaseRiskModel` (unchanged, still the final fallback).
-  Wired in `models/image_or_environmental_disease.py`.
+  Wired in `models/image_or_environmental_disease.py`. The plant-disease-API tier runs on one-time
+  signup credits rather than a renewing quota, so it's expected to stop contributing once those are
+  used up — the cascade continues correctly through the tiers below it either way.
 - **Crop recommendation**: new LLM tier (`api/crop_llm.py`) → existing EcoCrop rule ranking
   (`models/crop_recommendation_model.py`, unchanged).
 - **Advisory**: new LLM tier (`api/advisory_llm.py`) → existing `DecisionEngine` compositor
   (unchanged, still the only path that runs the crop/irrigation/disease sub-models).
 
-Every result carries a `source` field recording which tier served it (`"vision_llm"`/`"cnn"`/
-`"environmental_fallback"`, `"llm"`/`"ecocrop_rules"`, `"llm"`/`"rule_based"` — see
+Every result carries a `source` field recording which tier served it (`"plant_disease_api"`/
+`"vision_llm"`/`"cnn"`/`"environmental_fallback"`, `"llm"`/`"ecocrop_rules"`, `"llm"`/`"rule_based"` — see
 `specs/core/enums.md`). `api/key_pool.py` is a new shared, provider-agnostic module that round-robins
 up to 9 keys per provider and cools down any key that returns a 429, reused by all three cascades.
 
