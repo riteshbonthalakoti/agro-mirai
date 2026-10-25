@@ -150,10 +150,20 @@ flowchart TD
 
 ---
 
-## 4. Mobile Companion App & Distribution (v2.2.2)
+## 4. Mobile Companion App & Distribution
 
-- **Distribution Channel**: Direct Vercel Edge CDN download at [`https://agromirai.vercel.app/app-release.apk`](https://agromirai.vercel.app/app-release.apk).
-- **Public Portal**: Download instructions, package size, and checksum at [`https://agromirai.vercel.app/download`](https://agromirai.vercel.app/download).
+> Updated 2026-10-25: the landing page (`web/landing/index.html`) serves
+> **v2.7.0** from Vercel Blob storage, confirmed reachable (HTTP 200) at
+> `https://2kdes6vd5ci4xgwk.public.blob.vercel-storage.com/agro-mirai-v2.7.0.apk`.
+> This replaced the GitHub Releases link in commit `2286fe9`. The app's own
+> version strings (`mobile/app.json`, `mobile/android/app/build.gradle`)
+> are still `2.4.0` / `versionCode 18` — three point releases (2.5.0,
+> 2.6.0, 2.7.0) shipped without bumping those, so the in-app About screen
+> under-reports the actual build. Not fixed here since bumping it is a
+> release-process call, not a bug fix.
+
+- **Distribution Channel**: Vercel Blob CDN (see above), linked from `/download` on the landing page.
+- **Public Portal**: Download instructions, package size, and checksum at `web/landing/index.html`'s `/download` section.
 - **Network Resilience**: `no-transform` header in `vercel.json` blocks intermediate ISP proxy compression, preventing 99% download stalls.
 - **Native Verification**: Google Play Services SMS Retriever integration auto-fills codes formatted as `<#> Your AGRO MIRAI verification code is: 123456`.
 - **Field Navigation**: MapLibre GL map layer with dynamic device GPS auto-centering and blue pulse beacon.
