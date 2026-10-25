@@ -11,13 +11,18 @@ lives in exactly one place — see ``decisions/0019-deployment-architecture.md``
 and ``decisions/0018-disease-cnn.md``'s "additive, not integrated into
 DecisionEngine yet" section, which this module closes.
 
-AI cascade restructure (scratch/restructure-plan.md): added a vision-LLM
-tier ahead of the CNN call, for the same reliability reason the weather
-acquisition layer already tries several sources before falling back
-(``acquisition/weather_fallbacks.py``) -- a second, independent read on
-the image before relying on a single model. The vision tier is tried
-first; the CNN call (and, below that, the rule-based model) is the
-existing fallback chain, unchanged.
+AI cascade restructure (scratch/restructure-plan.md): added a dedicated
+plant-disease-API tier and a vision-LLM tier ahead of the CNN call, for
+the same reliability reason the weather acquisition layer already tries
+several sources before falling back (``acquisition/weather_fallbacks.py``)
+-- independent reads on the image before relying on a single model. The
+plant-disease-API tier is tried first, then the vision-LLM tier; the CNN
+call (and, below that, the rule-based model) is the existing fallback
+chain, unchanged. The plant-disease-API tier runs on one-time signup
+credits rather than a renewing quota, so it is expected to stop
+contributing once those credits are used up -- that's normal long-run
+behavior for this tier, not a fault condition, and the cascade continues
+to work correctly (via the two tiers below it) either way.
 """
 import dataclasses
 import logging
@@ -80,6 +85,54 @@ def _try_vision_llm_tier(image_bytes: bytes, field_id: str) -> DiseaseRiskAlert 
         return None
 
 
+def _try_plant_disease_api_tier(image_bytes: bytes, field_id: str) -> DiseaseRiskAlert | None:
+    """New tier 1: ask Kindwise Crop.Health for a direct disease
+    identification. Returns ``None`` on any failure (no/exhausted key,
+    network error, malformed response) so the caller falls through to
+    the vision-LLM tier -- never raises."""
+    from agro_mirai.api.plant_disease_client import identify_disease  # noqa: PLC0415
+
+    try:
+        result = identify_disease(image_bytes, field_id)
+    except Exception as exc:  # belt-and-suspenders: a tier must never raise
+        logger.warning("Plant disease API tier field=%s: unexpected error: %s", field_id, exc)
+        return None
+    if result is None:
+        return None
+
+    from datetime import datetime, timezone
+    import uuid
+
+    try:
+        return DiseaseRiskAlert(
+            id=str(uuid.uuid4()),
+            field_id=field_id,
+            created_at=datetime.now(timezone.utc),
+            disease=str(result["disease"]),
+            risk_level=_risk_level_from_confidence(result["confidence"]),
+            confidence=float(result["confidence"]),
+            recommended_action=None,
+            source="plant_disease_api",
+        )
+    except (KeyError, TypeError, ValueError) as exc:
+        logger.warning("Plant disease API tier field=%s: malformed result: %s", field_id, exc)
+        return None
+
+
+def _risk_level_from_confidence(confidence: float) -> str:
+    """Kindwise returns an identification confidence, not a risk level --
+    map it onto this project's four-point scale the same way a human
+    would read "how sure is the model", since there's no second number
+    to derive severity from."""
+    if confidence >= 0.85:
+        return "severe"
+    if confidence >= 0.6:
+        return "high"
+    if confidence >= 0.35:
+        return "moderate"
+    return "low"
+
+
 def resolve_disease_alert(
     disease_model,
     features: FeatureVector,
@@ -92,9 +145,10 @@ def resolve_disease_alert(
 
     - No ``image_bytes``: calls the rule-based ``disease_model`` directly,
       tagged ``source="environmental"``.
-    - ``image_bytes`` given: tries the vision-LLM tier first
-      (``source="vision_llm"`` on success), then the CNN service call
-      (via ``cnn_caller``, defaults to
+    - ``image_bytes`` given: tries the plant-disease-API tier first
+      (``source="plant_disease_api"`` on success), then the vision-LLM
+      tier (``source="vision_llm"``), then the CNN service call (via
+      ``cnn_caller``, defaults to
       ``agro_mirai.api.cnn_client.call_cnn_service``, ``source="cnn"`` on
       success), falling back to the rule-based model
       (``source="environmental_fallback"``) if every image tier fails —
@@ -104,9 +158,14 @@ def resolve_disease_alert(
         alert = disease_model.predict(features)
         return dataclasses.replace(alert, source="environmental")
 
+    plant_api_alert = _try_plant_disease_api_tier(image_bytes, field_id)
+    if plant_api_alert is not None:
+        logger.info("disease_cascade field=%s tier=1 provider=plant_disease_api", field_id)
+        return plant_api_alert
+
     vision_alert = _try_vision_llm_tier(image_bytes, field_id)
     if vision_alert is not None:
-        logger.info("disease_cascade field=%s tier=1 provider=vision_llm", field_id)
+        logger.info("disease_cascade field=%s tier=2 provider=vision_llm", field_id)
         return vision_alert
 
     if cnn_caller is None:
@@ -119,13 +178,13 @@ def resolve_disease_alert(
     if cnn_result is not None:
         try:
             alert = _alert_from_cnn_json(cnn_result)
-            logger.info("disease_cascade field=%s tier=2 provider=cnn", field_id)
+            logger.info("disease_cascade field=%s tier=3 provider=cnn", field_id)
             return alert
         except (KeyError, TypeError, ValueError):
             pass  # malformed response from the service — fall through to fallback
 
     alert = disease_model.predict(features)
-    logger.info("disease_cascade field=%s tier=3 provider=rule_based", field_id)
+    logger.info("disease_cascade field=%s tier=4 provider=rule_based", field_id)
     return dataclasses.replace(alert, source="environmental_fallback")
 
 
