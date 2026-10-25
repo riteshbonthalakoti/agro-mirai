@@ -131,7 +131,43 @@ class CropRecommendationModel:
     ) -> CropRecommendation:
         """``keep_current``: the farmer already grows a crop and wants advice for
         it, not a switch. Falls back to the normal pick if no current crop is set
-        or it is not one of the 22 we know."""
+        or it is not one of the 22 we know.
+
+        AI cascade restructure: when not asked to keep the current crop,
+        tries the LLM tier first (``source="llm"``), falling back to the
+        rule-based ranking below (``source="ecocrop_rules"``) if the LLM
+        tier is unavailable or its reply can't be trusted. ``keep_current``
+        always uses the rule-based path -- "is my own crop a good fit"
+        is exactly what the deterministic EcoCrop fit check answers, and an
+        LLM has no advantage there."""
+        if not keep_current:
+            import logging
+
+            from agro_mirai.api.crop_llm import llm_recommend_crop
+
+            try:
+                llm_result = llm_recommend_crop(features, top_k=top_k)
+            except Exception as exc:  # a tier must never raise
+                logging.getLogger(__name__).warning(
+                    "Crop LLM tier field=%s: unexpected error: %s", features.field_id, exc
+                )
+                llm_result = None
+            if llm_result is not None:
+                logging.getLogger(__name__).info(
+                    "crop_cascade field=%s tier=1 provider=llm", features.field_id
+                )
+                return llm_result
+
+        return self._predict_rule_based(features, top_k=top_k, keep_current=keep_current)
+
+    def _predict_rule_based(
+        self, features: FeatureVector, top_k: int = 3, keep_current: bool = False
+    ) -> CropRecommendation:
+        import logging
+
+        logging.getLogger(__name__).info(
+            "crop_cascade field=%s tier=2 provider=ecocrop_rules", features.field_id
+        )
         temp, regional, fits = self._rank(features)
         best = fits[0]
         keeping = None
@@ -206,4 +242,5 @@ class CropRecommendationModel:
             season=features.season,
             out_of_region=fit.out_of_region,
             regional_alternative=fit.regional_alternative,
+            source="ecocrop_rules",
         )
