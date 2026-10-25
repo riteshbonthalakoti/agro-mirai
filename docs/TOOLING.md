@@ -232,7 +232,7 @@ Supabase migration push (deliberately kept manual, see below):
 
 | Secret | Value | Source |
 |---|---|---|
-| `VERCEL_TOKEN` | a Vercel access token | **Currently a short-lived OAuth session token pulled from the local CLI's own auth store on 2026-09-28, expires 2026-09-28 ~06:58 UTC — replace with a real personal access token from https://vercel.com/account/tokens before then**, or every deploy after expiry will fail with a 403. |
+| `VERCEL_TOKEN` | a Vercel access token | Set on GitHub at 2026-09-28T19:12:30Z — after the original short-lived session token's ~06:58 UTC expiry noted below, so this looks like a replacement, but nobody confirmed it's a real long-lived PAT rather than another short-lived one. **Not verified during the 2026-10-25 audit** (no Vercel dashboard/API access from this session) — if landing/admin deploys start failing with 403, rotate it at https://vercel.com/account/tokens. |
 | `VERCEL_ORG_ID` | `team_qa5DQgHjCoaK4byyXuslEOov` | `web/admin/.vercel/project.json` / `web/landing/.vercel/project.json` (same team for both) |
 | `VERCEL_ADMIN_PROJECT_ID` | `prj_gfZvgbYyLwLvWWItQZqQHgg0SjTt` | `web/admin/.vercel/project.json` |
 | `VERCEL_LANDING_PROJECT_ID` | `prj_3NJk8iRVRFFrMJ9mHt7X4QubVQrK` | `web/landing/.vercel/project.json` |
@@ -249,3 +249,31 @@ durable Supabase access token from this machine's CLI auth store hit
 the same dead end as Vercel's did (session-scoped, not a real PAT), and
 a fresh PAT generation step wasn't completed in this session. Add it
 the same way `VERCEL_TOKEN` was added, once a token exists.
+
+## Env var audit (2026-10-25)
+
+Grepped every `os.environ.get(...)` in `src/` against `.env.example`. These
+are read by the code but have no entry (no placeholder, no comment) in
+`.env.example` — all are optional/internal and the app degrades without
+them, so this is a documentation gap, not a bug:
+
+- `TRUST_PROXY` (api/app.py) — set behind a reverse proxy that sets
+  `X-Forwarded-*`.
+- `BEARER_TOKEN_LIFETIME_DAYS` (api/app.py) — overrides the default /v1
+  bearer-token lifetime.
+- `RENDER_API_KEY`, `RENDER_SERVICE_ID`, `RENDER_OWNER_ID` (api/render_logs.py)
+  — power the admin dashboard's "pull OTP from Render logs" fallback (see
+  NEXT_TEAM_HANDOVER.md Task 1); unset just disables that admin feature.
+- `CNN_SERVICE_TOKEN` (api/cnn_client.py) — bearer auth for the CNN
+  microservice, alongside the documented `CNN_SERVICE_URL`.
+- `DISEASE_DEMO_BOOST` (models/disease_risk_model.py) — demo-only risk-score
+  nudge.
+- `AGRO_WEATHER_REFRESH` (api/features.py) — weather cache refresh interval
+  override.
+- `VOICE_SERVICE_HEAVY_URL` (api/voice_client.py) — routes the two heavy
+  voice calls to a separate instance from `VOICE_SERVICE_URL`.
+- `SARVAM_API_KEY` singular (api/sarvam_client.py) — an alternate to the
+  documented `SARVAM_API_KEY_1..3` rotation; same purpose, just not
+  mentioned in the `.env.example` comment block.
+
+Everything else grepped matched a documented entry.
