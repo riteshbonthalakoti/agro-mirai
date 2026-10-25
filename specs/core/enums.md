@@ -121,13 +121,42 @@ why a `role` field was chosen over a separate `AdminUser` entity).
 
 ## `disease_alert_source`
 
-Module 21. Which path produced a given `DiseaseRiskAlert`.
+Module 21 (extended by the AI cascade restructure, see
+`scratch/restructure-plan.md` / `decisions/`). Which path produced a given
+`DiseaseRiskAlert`.
 
+- `vision_llm` — a vision-capable LLM read the photo directly, ahead of
+  the CNN tier (cascade restructure, new tier 1)
 - `cnn` — `ImageDiseaseRiskModel` via `POST /fields/{field_id}/disease-risk/image`
+  (tier 2, when the vision tier is unavailable or its reply is unusable)
 - `environmental` — the rule-based `DiseaseRiskModel`, called directly
-- `environmental_fallback` — an image was submitted but the CNN inference
-  service was unreachable/timed out/errored, so the rule-based model was
-  used instead (the hard fallback requirement — never a 500)
+  (no image submitted at all)
+- `environmental_fallback` — an image was submitted but every image tier
+  (vision LLM and CNN) was unreachable/timed out/errored/unusable, so the
+  rule-based model was used instead (the hard fallback requirement —
+  never a 500)
+
+## `crop_recommendation_source`
+
+AI cascade restructure. Which path produced a given `CropRecommendation`.
+
+- `llm` — a free-tier LLM synthesized the recommendation from live
+  weather/soil/NDVI/location data (new tier 1)
+- `ecocrop_rules` — the existing FAO EcoCrop rule-based ranking (fallback,
+  used when the LLM tier is unavailable or its reply is unusable; also the
+  value for any record predating this restructure, where the field is
+  simply absent)
+
+## `advisory_source`
+
+AI cascade restructure. Which path produced a given `Advisory`.
+
+- `llm` — a free-tier LLM synthesized the advisory from live field data
+  (new tier 1)
+- `rule_based` — the existing `DecisionEngine` compositor (fallback, used
+  when the LLM tier is unavailable or its reply is unusable; also the
+  value for any record predating this restructure, where the field is
+  simply absent)
 
 ## `field_data_acquisition_status`
 

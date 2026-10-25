@@ -162,6 +162,14 @@ entities:
         note: >
           Highest-confidence regionally-plausible crop from alternatives,
           populated only when out_of_region is true and one exists.
+      source:
+        type: string
+        required: false
+        enum: crop_recommendation_source
+        note: >
+          AI cascade restructure, additive field. "llm" = a free-tier LLM
+          tier; "ecocrop_rules" = the existing rule-based ranking (used as
+          fallback, or on any record predating this field).
 
   IrrigationAdvice:
     description: |
@@ -194,14 +202,17 @@ entities:
         required: false
         enum: disease_alert_source
         note: |
-          Module 21 additive field. "cnn" = ImageDiseaseRiskModel via the
-          POST /fields/{field_id}/disease-risk/image endpoint;
+          Module 21 additive field, extended by the AI cascade restructure.
+          "vision_llm" = a vision LLM read the photo directly (new tier 1);
+          "cnn" = ImageDiseaseRiskModel via the
+          POST /fields/{field_id}/disease-risk/image endpoint (tier 2);
           "environmental" = the rule-based DiseaseRiskModel called
-          directly; "environmental_fallback" = an image was submitted but
-          the CNN inference service was unreachable/timed out/errored, so
-          this alert was computed from the field's current FeatureVector
-          instead per the hard fallback requirement (never a 500). Absent
-          on any DiseaseRiskAlert produced before this module.
+          directly (no image given); "environmental_fallback" = an image
+          was submitted but every image tier was unreachable/timed out/
+          errored/unusable, so this alert was computed from the field's
+          current FeatureVector instead per the hard fallback requirement
+          (never a 500). Absent on any DiseaseRiskAlert produced before
+          Module 21.
 
   Advisory:
     description: |
@@ -226,6 +237,14 @@ entities:
         item: { type: uuid }
         required: false
         note: "IDs of upstream CropRecommendation/IrrigationAdvice/DiseaseRiskAlert"
+      source:
+        type: string
+        required: false
+        enum: advisory_source
+        note: >
+          AI cascade restructure, additive field. "llm" = a free-tier LLM
+          tier; "rule_based" = the existing DecisionEngine compositor
+          (used as fallback, or on any record predating this field).
 
   FeedbackEntry:
     description: |
