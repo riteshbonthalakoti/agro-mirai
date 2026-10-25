@@ -99,6 +99,7 @@ class CropRecommendation:
     season: str | None = None
     out_of_region: bool | None = None
     regional_alternative: str | None = None
+    source: str | None = None  # AI cascade restructure: "llm" | "ecocrop_rules"
 
 
 @dataclass
@@ -137,6 +138,7 @@ class Advisory:
     body: str
     severity: str
     source_refs: list[str] = field(default_factory=list)
+    source: str | None = None  # AI cascade restructure: "llm" | "rule_based"
 
 
 @dataclass
