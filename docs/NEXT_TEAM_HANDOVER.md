@@ -2,7 +2,11 @@
 
 > **Target Audience:** Engineering team taking over development, maintenance, and deployment of the AGRO MIRAI ecosystem.  
 > **Repository:** `riteshbonthalakoti/agro-mirai`  
-> **Current Version:** `v2.2.2` (Android `versionCode: 17`)  
+> **Current Version documented below:** `v2.2.2` (Android `versionCode: 17`) — **stale as of 2026-10-25.**
+> The live APK is now v2.7.0 (served from Vercel Blob, not the Edge CDN path described in Task 4
+> below), and the in-app build strings are at 2.4.0 (`versionCode 18`) — see `docs/INDEX.md`
+> section 4 for current numbers. The architecture/task write-ups below are otherwise still
+> accurate; only the version/distribution specifics in Task 1 and Task 4 have moved on.
 > **Last Updated:** October 2026
 
 ---
