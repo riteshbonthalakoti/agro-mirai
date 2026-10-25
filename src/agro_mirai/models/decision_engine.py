@@ -53,7 +53,39 @@ class DecisionEngine:
         service failure — never raises, matches the hard fallback
         requirement. Existing callers that don't pass an image are
         unaffected: behavior is identical to before this parameter
-        existed."""
+        existed.
+
+        AI cascade restructure (scratch/restructure-plan.md): tries a new
+        LLM tier first (``source="llm"``), falling back to the full
+        rule-based compositor below (``source="rule_based"``) if the LLM
+        tier is unavailable or its reply can't be trusted. The rule-based
+        path is unchanged -- still the authority of record, and the only
+        path that runs the crop/irrigation/disease sub-models and their
+        own cascades (see ``crop_recommendation_model.py`` and
+        ``image_or_environmental_disease.py``)."""
+        import logging
+
+        from agro_mirai.api.advisory_llm import llm_recommend_advisory
+
+        try:
+            llm_result = llm_recommend_advisory(features)
+        except Exception as exc:  # a tier must never raise
+            logging.getLogger(__name__).warning(
+                "Advisory LLM tier field=%s: unexpected error: %s", features.field_id, exc
+            )
+            llm_result = None
+        if llm_result is not None:
+            logging.getLogger(__name__).info(
+                "advisory_cascade field=%s tier=1 provider=llm", features.field_id
+            )
+            return llm_result
+
+        logging.getLogger(__name__).info(
+            "advisory_cascade field=%s tier=2 provider=rule_based", features.field_id
+        )
+        return self._recommend_rule_based(field, features, image_bytes=image_bytes)
+
+    def _recommend_rule_based(self, field, features: FeatureVector, image_bytes: bytes | None = None) -> Advisory:
         crop = self._crop_model.predict(features)
         irrigation = self._irrigation_model.predict(features)
 
@@ -90,4 +122,5 @@ class DecisionEngine:
             body=body,
             severity=severity,
             source_refs=[crop.id, irrigation.id, disease.id],
+            source="rule_based",
         )
