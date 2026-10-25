@@ -16,7 +16,7 @@ from agro_mirai.api.audit import write_audit_log
 from agro_mirai.api.errors import ApiError
 from agro_mirai.api.render_logs import find_latest_otp, seconds_old
 from agro_mirai.api.routes.auth_v2 import _normalize_phone
-from agro_mirai.api.serializers import farmer_to_public_json, to_json
+from agro_mirai.api.serializers import drop_unset_source, farmer_to_public_json, to_json
 from agro_mirai.api.session_auth import require_admin
 from agro_mirai.auth.otp import otp_store
 from agro_mirai.auth.validation import validate_phone
@@ -245,7 +245,7 @@ def list_advisories():
     items = []
     for field, advisories in _per_field(store, store.list_advisories_for_field, 50):
         for a in advisories:
-            items.append({**to_json(a), "farmer_id": field.farmer_id, "field_name": field.name})
+            items.append({**drop_unset_source(to_json(a)), "farmer_id": field.farmer_id, "field_name": field.name})
     items.sort(key=lambda i: i["created_at"], reverse=True)
     return jsonify({"items": items}), 200
 

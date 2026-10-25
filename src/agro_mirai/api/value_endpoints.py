@@ -28,7 +28,7 @@ from agro_mirai.api.farmer_text import in_karnataka, plain_advisory, plain_irrig
 from agro_mirai.api.features import build_features_for_field
 from agro_mirai.api.image_validation import validate_image_upload
 from agro_mirai.api.leaf_gate import looks_like_plant_photo
-from agro_mirai.api.serializers import to_json
+from agro_mirai.api.serializers import drop_unset_source, to_json
 from agro_mirai.api.validation import validate_feedback_create
 from agro_mirai.api.voice_client import translate_text
 from agro_mirai.models.image_or_environmental_disease import resolve_disease_alert
@@ -131,7 +131,7 @@ def compute_recommendation(
         except Exception:  # noqa: BLE001 - explanation is additive, never blocks the pick
             pass
     saved = store.save_crop_recommendation(farmer_id, recommendation)
-    out = to_json(saved)
+    out = drop_unset_source(to_json(saved))
     # The "not commonly grown in your region" check is a hard-coded
     # Bellary/Karnataka list (decisions/0016): meaningless for fields elsewhere.
     local = in_karnataka(field.latitude, field.longitude)
@@ -231,7 +231,7 @@ def compute_disease_risk(store, ext: dict, farmer_id: str, field_id: str, target
 
     alerts = store.list_disease_risk_alerts(farmer_id, field_id)
     return {
-        "items": [_with_disease_translation(to_json(a), target_lang) for a in alerts],
+        "items": [_with_disease_translation(drop_unset_source(to_json(a)), target_lang) for a in alerts],
         "details": _details(ext["disease_model"], features),
     }
 
@@ -250,7 +250,7 @@ def compute_advisories(store, ext: dict, farmer_id: str, field_id: str, generate
     local = in_karnataka(field.latitude, field.longitude)
     items = []
     for a in advisories:
-        item = to_json(a)
+        item = drop_unset_source(to_json(a))
         item["body_plain"] = plain_advisory(a.body, drop_regional_caveat=not local)
         items.append(item)
     return {"items": items}
@@ -286,7 +286,7 @@ def compute_disease_risk_image(
             alert = dataclasses.replace(alert, recommended_action=(alert.recommended_action or "") + note)
 
     saved = store.save_disease_risk_alert(farmer_id, alert)
-    return _with_disease_translation(to_json(saved), target_lang)
+    return _with_disease_translation(drop_unset_source(to_json(saved)), target_lang)
 
 
 def submit_feedback(store, farmer_id: str, body) -> dict:
