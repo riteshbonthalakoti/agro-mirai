@@ -40,6 +40,7 @@ FARMER_PHOTO_MIGRATION_PATH = ROOT / "migrations" / "sqlite" / "006_farmer_photo
 BUG_REPORTS_MIGRATION_PATH = ROOT / "migrations" / "sqlite" / "009_bug_reports.sql"
 ADMIN_WRITE_MIGRATION_PATH = ROOT / "migrations" / "sqlite" / "010_admin_write_actions.sql"
 CONVERSATIONS_MIGRATION_PATH = ROOT / "migrations" / "sqlite" / "011_conversations.sql"
+CASCADE_SOURCE_MIGRATION_PATH = ROOT / "migrations" / "sqlite" / "012_cascade_source.sql"
 
 
 # --------------------------------------------------------------------------
@@ -101,6 +102,24 @@ class SQLiteDataStore:
         self._apply_bug_reports_migration()
         self._apply_admin_write_migration()
         self._apply_conversations_migration()
+        self._apply_cascade_source_migration()
+
+    def _apply_cascade_source_migration(self) -> None:
+        """AI cascade restructure: same ADD-COLUMN-tolerating pattern as
+        _apply_auth_migration -- see
+        migrations/sqlite/012_cascade_source.sql's header."""
+        sql = CASCADE_SOURCE_MIGRATION_PATH.read_text(encoding="utf-8")
+        conn = self._conn
+        for statement in sql.split(";"):
+            statement = statement.strip()
+            if not statement:
+                continue
+            try:
+                conn.execute(statement)
+            except sqlite3.OperationalError as e:
+                if "duplicate column name" not in str(e):
+                    raise
+        conn.commit()
 
     def _apply_conversations_migration(self) -> None:
         """Module 57: Ask AI conversation history persistence in SQLite."""
@@ -694,8 +713,8 @@ class SQLiteDataStore:
             self._conn.execute(
                 """
                 INSERT INTO crop_recommendations (id, field_id, created_at, recommended_crop, confidence,
-                    alternatives, rationale, season, out_of_region, regional_alternative)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    alternatives, rationale, season, out_of_region, regional_alternative, source)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     recommendation.id,
@@ -708,6 +727,7 @@ class SQLiteDataStore:
                     recommendation.season,
                     recommendation.out_of_region,
                     recommendation.regional_alternative,
+                    recommendation.source,
                 ),
             )
             self._conn.commit()
@@ -752,6 +772,7 @@ class SQLiteDataStore:
             season=row["season"],
             out_of_region=bool(row["out_of_region"]) if row["out_of_region"] is not None else None,
             regional_alternative=row["regional_alternative"],
+            source=row["source"] if "source" in row.keys() else None,
         )
 
     # --- IrrigationAdvice ---
@@ -897,8 +918,8 @@ class SQLiteDataStore:
         try:
             self._conn.execute(
                 """
-                INSERT INTO advisories (id, field_id, created_at, language, title, body, severity, source_refs)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO advisories (id, field_id, created_at, language, title, body, severity, source_refs, source)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     advisory.id,
@@ -909,6 +930,7 @@ class SQLiteDataStore:
                     advisory.body,
                     advisory.severity,
                     json.dumps(advisory.source_refs) if advisory.source_refs else None,
+                    advisory.source,
                 ),
             )
             self._conn.commit()
@@ -960,6 +982,7 @@ class SQLiteDataStore:
             body=row["body"],
             severity=row["severity"],
             source_refs=json.loads(row["source_refs"]) if row["source_refs"] else [],
+            source=row["source"] if "source" in row.keys() else None,
         )
 
     # --- FeedbackEntry ---
