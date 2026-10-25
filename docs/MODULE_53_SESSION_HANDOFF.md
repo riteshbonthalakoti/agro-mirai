@@ -2,6 +2,12 @@
 
 Branch: `mod-53-notifications`, rebased on main (Module 52 merged, PR #1).
 
+> Update 2026-10-25: confirmed Module 52 (`worktree-module-52-accounts`) and this
+> branch's notification fixes (banner-on-foreground, merge-not-overwrite dedup) are
+> both merged into `main` — verified by reading the actual files, not just this doc.
+> The only item still outstanding is the real-device walkthrough below, which stays
+> **pending manual test** — no commit or log in this repo shows it was ever run.
+
 ## Done
 - Root cause: sign-out never cancelled the OS-scheduled daily reminder. Fixed.
 - Reschedule on account switch/sign-in, using the switched-to account's field and language.
