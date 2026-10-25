@@ -1,6 +1,8 @@
-"""Vision-LLM tier added to resolve_disease_alert (AI cascade restructure):
-mocked at agro_mirai.api.gemini_client.ask_gemini_vision -- no live Gemini
-key or quota used. CNN/environmental tiers below it are unchanged and
+"""Plant-disease-API and vision-LLM tiers added to resolve_disease_alert
+(AI cascade restructure): mocked at
+agro_mirai.api.plant_disease_client.identify_disease and
+agro_mirai.api.gemini_client.ask_gemini_vision -- no live Kindwise/Gemini
+key or quota used. CNN/environmental tiers below them are unchanged and
 already covered by tests/api/test_disease_image_route.py."""
 import json
 from unittest.mock import MagicMock
@@ -28,7 +30,73 @@ def _features():
     )
 
 
+def test_plant_disease_api_success_short_circuits_vision_and_cnn(monkeypatch):
+    monkeypatch.setattr(
+        "agro_mirai.api.plant_disease_client.identify_disease",
+        lambda *a, **k: {"disease": "leaf curl", "confidence": 0.9},
+    )
+    vision = MagicMock()
+    monkeypatch.setattr("agro_mirai.api.gemini_client.ask_gemini_vision", vision)
+    disease_model = MagicMock()
+    cnn_caller = MagicMock(return_value=None)
+
+    alert = resolve_disease_alert(disease_model, _features(), "f1", image_bytes=b"img", cnn_caller=cnn_caller)
+
+    assert alert.source == "plant_disease_api"
+    assert alert.disease == "leaf curl"
+    assert alert.risk_level == "severe"  # confidence 0.9 maps to the top band
+    vision.assert_not_called()
+    cnn_caller.assert_not_called()
+    disease_model.predict.assert_not_called()
+
+
+def test_plant_disease_api_exhausted_credits_falls_through_to_vision(monkeypatch):
+    """Simulates the real long-run failure mode: one-time trial credits
+    used up, every key in the pool exhausted/cooling down -- the client
+    returns None exactly like an unconfigured tier, and the cascade must
+    still reach the vision-LLM tier, not get stuck."""
+    monkeypatch.setattr(
+        "agro_mirai.api.plant_disease_client.identify_disease", lambda *a, **k: None
+    )
+    reply = json.dumps({
+        "crop": "cotton", "disease": "rust", "risk_level": "moderate",
+        "confidence": 0.6, "recommended_action": "monitor",
+    })
+    monkeypatch.setattr(
+        "agro_mirai.api.gemini_client.ask_gemini_vision", lambda *a, **k: reply
+    )
+    disease_model = MagicMock()
+    cnn_caller = MagicMock(return_value=None)
+
+    alert = resolve_disease_alert(disease_model, _features(), "f1", image_bytes=b"img", cnn_caller=cnn_caller)
+
+    assert alert.source == "vision_llm"
+    cnn_caller.assert_not_called()
+
+
+def test_plant_disease_api_and_vision_both_fail_falls_through_to_cnn(monkeypatch):
+    monkeypatch.setattr(
+        "agro_mirai.api.plant_disease_client.identify_disease", lambda *a, **k: None
+    )
+    monkeypatch.setattr(
+        "agro_mirai.api.gemini_client.ask_gemini_vision", lambda *a, **k: None
+    )
+    disease_model = MagicMock()
+    cnn_caller = MagicMock(return_value={
+        "id": "x", "field_id": "f1", "created_at": "2026-01-01T00:00:00Z",
+        "disease": "rust", "risk_level": "moderate", "confidence": 0.5,
+    })
+
+    alert = resolve_disease_alert(disease_model, _features(), "f1", image_bytes=b"img", cnn_caller=cnn_caller)
+
+    assert alert.source == "cnn"
+    cnn_caller.assert_called_once()
+
+
 def test_vision_llm_success_short_circuits_cnn(monkeypatch):
+    monkeypatch.setattr(
+        "agro_mirai.api.plant_disease_client.identify_disease", lambda *a, **k: None
+    )
     reply = json.dumps({
         "crop": "cotton", "disease": "leaf curl", "risk_level": "high",
         "confidence": 0.8, "recommended_action": "apply fungicide",
