@@ -73,7 +73,12 @@ def identify_disease(image_bytes: bytes, field_id: str) -> dict | None | str:
             _pool.mark_rate_limited(key)
             continue  # one retry with the next key in the pool
 
-        if resp.status_code != 200:
+        if not 200 <= resp.status_code < 300:
+            # Kindwise answers a successful identification with 201 (resource
+            # created), not 200 -- found live (field test, 2026-10-26): a
+            # strict == 200 check here silently treated every real success as
+            # a failure, so this tier never actually contributed despite a
+            # working key.
             logger.warning(
                 "Kindwise Crop.Health field=%s: status %s", field_id, resp.status_code
             )
