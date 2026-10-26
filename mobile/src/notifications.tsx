@@ -1,5 +1,5 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
-import { Animated, AppState, Image, Modal, PanResponder, Platform, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { Animated, AppState, Image, PanResponder, Platform, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import Constants from 'expo-constants';
 import { cacheGet, cacheSet } from './storage';
 import { useDragToDismiss } from './hooks';
@@ -90,7 +90,7 @@ export function NotificationsProvider({ children, t }: { children: React.ReactNo
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const seen = useRef<Set<string>>(new Set());
 
-  const panResponder = useDragToDismiss(panY, () => {
+  const closeInbox = useCallback(() => {
     Animated.timing(panY, {
       toValue: 400,
       duration: 200,
@@ -99,7 +99,9 @@ export function NotificationsProvider({ children, t }: { children: React.ReactNo
       setInbox(false);
       panY.setValue(0);
     });
-  }, 60);
+  }, [panY]);
+
+  const panResponder = useDragToDismiss(panY, closeInbox, 60);
 
   useEffect(() => {
     setupNotificationChannel();
@@ -217,8 +219,13 @@ export function NotificationsProvider({ children, t }: { children: React.ReactNo
 
   const openInbox = useCallback(() => {
     feedback.tap();
-    panY.setValue(0);
+    panY.setValue(400); // start below the screen -- this drives both the sheet's
+    // slide-up and the scrim's fade-in (interpolated below), same as the native
+    // Modal's old "slide" transition, but inline in the existing view tree so
+    // there's no second native Window to flash an opaque background before the
+    // transparent overlay paints.
     setInbox(true);
+    Animated.timing(panY, { toValue: 0, duration: 220, useNativeDriver: true }).start();
     setItems((cur) => persist(cur.map((n) => ({ ...n, read: true }))));
   }, [panY]);
 
@@ -254,9 +261,17 @@ export function NotificationsProvider({ children, t }: { children: React.ReactNo
         </Animated.View>
       ) : null}
 
-      <Modal visible={inbox} animationType="slide" transparent onRequestClose={() => setInbox(false)}>
-        <View style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.35)' }}>
-          <TouchableOpacity activeOpacity={1} onPress={() => setInbox(false)} style={{ flex: 1 }} />
+      {inbox ? (
+        <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, justifyContent: 'flex-end' }}>
+          <Animated.View
+            pointerEvents="none"
+            style={{
+              position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+              backgroundColor: '#000',
+              opacity: panY.interpolate({ inputRange: [0, 400], outputRange: [0.35, 0], extrapolate: 'clamp' }),
+            }}
+          />
+          <TouchableOpacity activeOpacity={1} onPress={closeInbox} style={{ flex: 1 }} />
           <Animated.View
             style={{
               transform: [{ translateY: panY }],
@@ -304,7 +319,7 @@ export function NotificationsProvider({ children, t }: { children: React.ReactNo
                 </TouchableOpacity>
               ) : null}
               <TouchableOpacity
-                onPress={() => setInbox(false)}
+                onPress={closeInbox}
                 hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                 style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: C.surface, alignItems: 'center', justifyContent: 'center' }}
               >
@@ -351,7 +366,7 @@ export function NotificationsProvider({ children, t }: { children: React.ReactNo
             </ScrollView>
           </Animated.View>
         </View>
-      </Modal>
+      ) : null}
     </Ctx.Provider>
   );
 }
