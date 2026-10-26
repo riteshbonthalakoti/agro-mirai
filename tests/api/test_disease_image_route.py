@@ -154,6 +154,55 @@ def test_non_leaf_photo_rejected_with_422_not_diagnosed(monkeypatch):
     assert not leaf_gate.looks_like_plant_photo(buf.getvalue())
 
 
+def test_gemini_precheck_rejects_what_the_pixel_gate_missed(client, monkeypatch):
+    """Field finding (2026-10-26): the pixel gate is a coarse heuristic a
+    real-world non-leaf photo with enough green/texture can pass. This
+    confirms the second, Gemini-backed check rejects it -- 422, cascade
+    never reached -- when the pixel gate alone would have let it through."""
+    _patch_features(monkeypatch)
+    monkeypatch.setattr(value_endpoints, "gemini_is_plant_precheck", lambda image_bytes: False)
+    cnn_called = []
+    monkeypatch.setattr(
+        "agro_mirai.api.cnn_client.call_cnn_service", lambda *a, **k: cnn_called.append(1)
+    )
+
+    resp = client.post(
+        f"/fields/{FIELD_ID}/disease-risk/image",
+        data={"image": (io.BytesIO(_png_bytes()), "leaf.png")},
+        content_type="multipart/form-data",
+        headers=_auth_headers(),
+    )
+
+    assert resp.status_code == 422
+    assert resp.get_json()["error"]["code"] == "NOT_A_LEAF"
+    assert cnn_called == []
+
+
+def test_gemini_precheck_inconclusive_does_not_block_upload(client, monkeypatch):
+    """`None` (unreachable/unconfigured/malformed reply) must never be
+    treated as a rejection -- the pixel gate already accepted this photo,
+    and the cascade below must still get a chance to run."""
+    _patch_features(monkeypatch)
+    monkeypatch.setattr(value_endpoints, "gemini_is_plant_precheck", lambda image_bytes: None)
+    monkeypatch.setattr(
+        "agro_mirai.api.cnn_client.call_cnn_service",
+        lambda *a, **k: {
+            "id": "cnn-alert-2", "field_id": FIELD_ID, "created_at": "2026-09-01T00:00:00Z",
+            "disease": "Apple Scab", "risk_level": "moderate", "confidence": 0.81,
+        },
+    )
+
+    resp = client.post(
+        f"/fields/{FIELD_ID}/disease-risk/image",
+        data={"image": (io.BytesIO(_png_bytes()), "leaf.png")},
+        content_type="multipart/form-data",
+        headers=_auth_headers(),
+    )
+
+    assert resp.status_code == 200
+    assert resp.get_json()["source"] == "cnn"
+
+
 def test_cnn_client_sends_service_token_when_configured(monkeypatch):
     from unittest.mock import MagicMock
 

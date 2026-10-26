@@ -105,3 +105,26 @@ def test_falls_back_to_single_legacy_key_when_no_pool(monkeypatch):
     calls = _patch_post(monkeypatch, _resp(body=body))
     assert gemini.ask_gemini_vision(b"img", "diagnose") == "ok"
     assert calls[0][1]["headers"]["X-goog-api-key"] == "legacy-key"
+
+
+def test_is_plant_precheck_true(keys, monkeypatch):
+    body = {"candidates": [{"content": {"parts": [{"text": '{"is_plant": true}'}]}}]}
+    _patch_post(monkeypatch, _resp(body=body))
+    assert gemini.gemini_is_plant_precheck(b"img") is True
+
+
+def test_is_plant_precheck_false(keys, monkeypatch):
+    body = {"candidates": [{"content": {"parts": [{"text": '{"is_plant": false}'}]}}]}
+    _patch_post(monkeypatch, _resp(body=body))
+    assert gemini.gemini_is_plant_precheck(b"img") is False
+
+
+def test_is_plant_precheck_unreachable_returns_none_not_rejection(keys, monkeypatch):
+    _patch_post(monkeypatch, requests.ConnectionError("boom"))
+    assert gemini.gemini_is_plant_precheck(b"img") is None
+
+
+def test_is_plant_precheck_malformed_reply_returns_none(keys, monkeypatch):
+    body = {"candidates": [{"content": {"parts": [{"text": "not json"}]}}]}
+    _patch_post(monkeypatch, _resp(body=body))
+    assert gemini.gemini_is_plant_precheck(b"img") is None

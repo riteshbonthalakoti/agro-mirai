@@ -27,6 +27,7 @@ from agro_mirai.api.errors import ApiError
 from agro_mirai.api.farmer_text import in_karnataka, plain_advisory, plain_irrigation
 from agro_mirai.api.features import build_features_for_field
 from agro_mirai.api.image_validation import validate_image_upload
+from agro_mirai.api.gemini_client import gemini_is_plant_precheck
 from agro_mirai.api.leaf_gate import looks_like_plant_photo
 from agro_mirai.api.serializers import drop_unset_source, to_json
 from agro_mirai.api.validation import validate_feedback_create
@@ -263,6 +264,18 @@ def compute_disease_risk_image(
     image_bytes = validate_image_upload(file_storage)
     if not looks_like_plant_photo(image_bytes):
         # Module 39: never let the closed-set CNN "diagnose" a bed sheet.
+        raise ApiError(
+            422,
+            "NOT_A_LEAF",
+            "This photo does not look like a plant leaf. Take a close, well-lit photo of one leaf.",
+        )
+    # Field finding (2026-10-26): the pixel gate above is a coarse colour/
+    # texture heuristic that a real-world non-leaf photo with enough green/
+    # texture can slip past. A second, AI-backed opinion from Gemini
+    # catches what the heuristic can't -- but only when it gives a clear
+    # verdict; `None` (unreachable/unconfigured/malformed reply) must never
+    # block an upload the pixel gate already accepted.
+    if gemini_is_plant_precheck(image_bytes) is False:
         raise ApiError(
             422,
             "NOT_A_LEAF",

@@ -174,6 +174,41 @@ def ask_gemini_vision(image_bytes: bytes, prompt: str, mime_type: str = "image/j
     return _extract_text(body) if body is not None else None
 
 
+_IS_PLANT_PROMPT = (
+    "Does this photo show a crop leaf or plant (not a person, random object, "
+    "screen, document, or other non-plant scene)? Respond with ONLY this "
+    'JSON, no other text: {"is_plant": true} or {"is_plant": false}.'
+)
+
+
+def gemini_is_plant_precheck(image_bytes: bytes) -> bool | None:
+    """Field finding (2026-10-26): the pixel-based pre-check
+    (``leaf_gate.looks_like_plant_photo``) is a coarse colour/texture
+    heuristic that real-world non-leaf photos with enough green/texture
+    can slip past -- it was never meant to be the only line of defense,
+    just a free, instant filter for the obvious cases. This is a second,
+    AI-backed opinion: a small, fast, dedicated Gemini call asking only
+    "is this a plant", separate from the full cascade's own vision-LLM
+    disease-analysis call (``image_or_environmental_disease._try_vision_llm_tier``)
+    so a confident "not a plant" verdict can reject the upload immediately,
+    before even trying the disease tiers, rather than letting a wrong
+    guess through.
+
+    Returns ``True``/``False`` on a clear verdict, or ``None`` when Gemini
+    is unreachable/unconfigured/gives a malformed reply -- callers must
+    treat ``None`` as "couldn't check" and fall back to the pixel gate's
+    own verdict, never as a rejection. Never raises."""
+    text = ask_gemini_vision(image_bytes, _IS_PLANT_PROMPT)
+    if text is None:
+        return None
+    try:
+        data = json_module.loads(text)
+        verdict = data["is_plant"]
+        return bool(verdict) if isinstance(verdict, bool) else None
+    except (json_module.JSONDecodeError, KeyError, TypeError):
+        return None
+
+
 def ask_gemini_structured(prompt: str, timeout: float = _CASCADE_TIMEOUT_S) -> dict | None:
     """Text-only call for the advisory/crop-recommendation cascades' new
     LLM tier. Asks Gemini for JSON output (``response_mime_type``) and
