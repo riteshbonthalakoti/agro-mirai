@@ -8,6 +8,7 @@ import { CameraView, useCameraPermissions } from 'expo-camera';
 import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
 import { File as ExpoFile, Paths } from 'expo-file-system';
 import { Icon, IconName } from '../../icons';
+import { splitAdvice } from '../adviceParsing';
 import { AuthBackdrop } from '../components/AuthBackdrop';
 import { feedback } from '../feedback';
 import { ApiError, DiseaseAlert, getDiseaseRisk, isOnline, scanLeaf } from '../api';
@@ -186,21 +187,6 @@ function AnalyzingView({ uri, onCancel }: { uri: string; onCancel: () => void })
 }
 
 // ----------------------------------------------------------------- result
-/** The server sends one English paragraph: what to do, then optionally "Other possibilities: ..." and
- *  "Note: ...". Split it so each part gets its own place on screen. */
-function splitAdvice(raw: string): { steps: string[]; others: string[]; note: string } {
-  const steps: string[] = [];
-  let others: string[] = [];
-  let note = '';
-  for (const part of raw.split(/\.\s+/)) {
-    const s = part.trim().replace(/\.$/, '');
-    if (!s) continue;
-    if (note || s.startsWith('Note:')) note = `${note ? `${note}. ` : ''}${s.replace(/^Note:\s*/, '')}`;
-    else if (s.startsWith('Other possibilities:')) others = s.replace('Other possibilities:', '').split(';').map((x) => x.trim()).filter(Boolean);
-    else s.split(';').forEach((x) => { const y = x.trim(); if (y) steps.push(y.charAt(0).toUpperCase() + y.slice(1)); });
-  }
-  return { steps, others, note };
-}
 
 function ResultView({ result, uri, onRetake, onDone, onZoom }: { result: DiseaseAlert; uri: string; onRetake: () => void; onDone: () => void; onZoom: (u: string) => void }) {
   const { t, lang } = useApp();
