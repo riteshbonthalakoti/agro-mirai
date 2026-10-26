@@ -36,21 +36,35 @@ logger = logging.getLogger(__name__)
 CnnCaller = Callable[[bytes, str], dict | None]
 
 _VISION_PROMPT = (
-    "You are looking at a photo of a crop leaf or plant. Identify the crop "
-    "and any visible disease. Respond with ONLY a JSON object, no other "
-    "text, matching exactly this shape: "
-    '{"crop": "<crop name or null>", "disease": "<disease name, or '
+    "Look at this photo. First decide: does it actually show a crop leaf "
+    "or plant? If NOT (people, objects, flowers unrelated to the farmer's "
+    "crop, blurry/unusable images, anything that isn't a plant leaf), "
+    'respond with ONLY this JSON: {"is_plant": false}. '
+    "If it DOES show a crop leaf or plant, identify the crop and any "
+    "visible disease and respond with ONLY a JSON object, no other text, "
+    "matching exactly this shape: "
+    '{"is_plant": true, "crop": "<crop name or null>", "disease": "<disease name, or '
     '\\"healthy\\" if none visible>", "risk_level": "<low|moderate|high|severe>", '
     '"confidence": <0.0-1.0>, "recommended_action": "<one short sentence>"}'
 )
 
+# Sentinel returned by a tier when it positively determined the photo is
+# not a plant/leaf at all -- distinct from `None`, which means "this tier
+# couldn't help, try the next one" (unconfigured, network error, malformed
+# reply). A NOT_A_PLANT verdict short-circuits straight to a clean
+# "no plant detected" alert instead of falling through to the rule-based
+# model, which would otherwise confidently "diagnose" a photo of a flower
+# or a person using only weather data, having never looked at the image.
+NOT_A_PLANT = object()
 
-def _try_vision_llm_tier(image_bytes: bytes, field_id: str) -> DiseaseRiskAlert | None:
+
+def _try_vision_llm_tier(image_bytes: bytes, field_id: str) -> DiseaseRiskAlert | None | object:
     """New tier 1: ask a vision LLM to read the photo directly. Returns
     ``None`` on any failure (no key configured, network error, non-JSON
     reply, missing required fields) so the caller falls through to the
     existing CNN tier -- never raises, matches every other tier's
-    never-raise contract in this cascade."""
+    never-raise contract in this cascade. Returns ``NOT_A_PLANT`` when the
+    model positively determines the photo isn't a crop leaf/plant at all."""
     from agro_mirai.api.gemini_client import ask_gemini_vision  # noqa: PLC0415
 
     try:
@@ -67,6 +81,8 @@ def _try_vision_llm_tier(image_bytes: bytes, field_id: str) -> DiseaseRiskAlert 
 
     try:
         data = json.loads(text)
+        if data.get("is_plant") is False:
+            return NOT_A_PLANT
         risk_level = data["risk_level"]
         if risk_level not in ("low", "moderate", "high", "severe"):
             raise ValueError(f"unexpected risk_level: {risk_level!r}")
@@ -85,18 +101,21 @@ def _try_vision_llm_tier(image_bytes: bytes, field_id: str) -> DiseaseRiskAlert 
         return None
 
 
-def _try_plant_disease_api_tier(image_bytes: bytes, field_id: str) -> DiseaseRiskAlert | None:
+def _try_plant_disease_api_tier(image_bytes: bytes, field_id: str) -> DiseaseRiskAlert | None | object:
     """New tier 1: ask Kindwise Crop.Health for a direct disease
     identification. Returns ``None`` on any failure (no/exhausted key,
     network error, malformed response) so the caller falls through to
-    the vision-LLM tier -- never raises."""
-    from agro_mirai.api.plant_disease_client import identify_disease  # noqa: PLC0415
+    the vision-LLM tier -- never raises. Returns ``NOT_A_PLANT`` when
+    Kindwise is confident the photo isn't a plant at all."""
+    from agro_mirai.api.plant_disease_client import _NOT_A_PLANT, identify_disease  # noqa: PLC0415
 
     try:
         result = identify_disease(image_bytes, field_id)
     except Exception as exc:  # belt-and-suspenders: a tier must never raise
         logger.warning("Plant disease API tier field=%s: unexpected error: %s", field_id, exc)
         return None
+    if result == _NOT_A_PLANT:
+        return NOT_A_PLANT
     if result is None:
         return None
 
@@ -159,11 +178,17 @@ def resolve_disease_alert(
         return dataclasses.replace(alert, source="environmental")
 
     plant_api_alert = _try_plant_disease_api_tier(image_bytes, field_id)
+    if plant_api_alert is NOT_A_PLANT:
+        logger.info("disease_cascade field=%s tier=1 provider=plant_disease_api verdict=not_a_plant", field_id)
+        return _not_a_plant_alert(field_id, source="plant_disease_api")
     if plant_api_alert is not None:
         logger.info("disease_cascade field=%s tier=1 provider=plant_disease_api", field_id)
         return plant_api_alert
 
     vision_alert = _try_vision_llm_tier(image_bytes, field_id)
+    if vision_alert is NOT_A_PLANT:
+        logger.info("disease_cascade field=%s tier=2 provider=vision_llm verdict=not_a_plant", field_id)
+        return _not_a_plant_alert(field_id, source="vision_llm")
     if vision_alert is not None:
         logger.info("disease_cascade field=%s tier=2 provider=vision_llm", field_id)
         return vision_alert
@@ -186,6 +211,26 @@ def resolve_disease_alert(
     alert = disease_model.predict(features)
     logger.info("disease_cascade field=%s tier=4 provider=rule_based", field_id)
     return dataclasses.replace(alert, source="environmental_fallback")
+
+
+def _not_a_plant_alert(field_id: str, source: str) -> DiseaseRiskAlert:
+    """Builds a clean "no plant detected" alert when a tier positively
+    determined the photo isn't a crop leaf -- fits the existing
+    `DiseaseRiskAlert` shape (no API contract change) rather than
+    inventing a new response type, same as every other tier."""
+    from datetime import datetime, timezone
+    import uuid
+
+    return DiseaseRiskAlert(
+        id=str(uuid.uuid4()),
+        field_id=field_id,
+        created_at=datetime.now(timezone.utc),
+        disease="not identified — no plant detected in photo",
+        risk_level="low",
+        confidence=0.0,
+        recommended_action="Retake the photo: fill the frame with a single leaf, in daylight, no shadow.",
+        source=f"{source}_not_a_plant",
+    )
 
 
 def _alert_from_cnn_json(data: dict) -> DiseaseRiskAlert:

@@ -93,6 +93,50 @@ def test_plant_disease_api_and_vision_both_fail_falls_through_to_cnn(monkeypatch
     cnn_caller.assert_called_once()
 
 
+def test_plant_disease_api_not_a_plant_short_circuits_to_clean_alert(monkeypatch):
+    """Kindwise's own is_plant classifier rejecting the photo must not
+    fall through to vision/CNN/rule-based -- those would either also
+    guess at a non-plant photo or (the rule-based model) confidently
+    "diagnose" it from weather data alone, having never looked at the
+    image. A positive not-a-plant verdict short-circuits straight to a
+    clean alert instead."""
+    monkeypatch.setattr(
+        "agro_mirai.api.plant_disease_client.identify_disease",
+        lambda *a, **k: "__not_a_plant__",
+    )
+    vision = MagicMock()
+    monkeypatch.setattr("agro_mirai.api.gemini_client.ask_gemini_vision", vision)
+    disease_model = MagicMock()
+    cnn_caller = MagicMock(return_value=None)
+
+    alert = resolve_disease_alert(disease_model, _features(), "f1", image_bytes=b"img", cnn_caller=cnn_caller)
+
+    assert alert.source == "plant_disease_api_not_a_plant"
+    assert alert.confidence == 0.0
+    vision.assert_not_called()
+    cnn_caller.assert_not_called()
+    disease_model.predict.assert_not_called()
+
+
+def test_vision_llm_not_a_plant_short_circuits_to_clean_alert(monkeypatch):
+    monkeypatch.setattr(
+        "agro_mirai.api.plant_disease_client.identify_disease", lambda *a, **k: None
+    )
+    reply = json.dumps({"is_plant": False})
+    monkeypatch.setattr(
+        "agro_mirai.api.gemini_client.ask_gemini_vision", lambda *a, **k: reply
+    )
+    disease_model = MagicMock()
+    cnn_caller = MagicMock(return_value=None)
+
+    alert = resolve_disease_alert(disease_model, _features(), "f1", image_bytes=b"img", cnn_caller=cnn_caller)
+
+    assert alert.source == "vision_llm_not_a_plant"
+    assert alert.confidence == 0.0
+    cnn_caller.assert_not_called()
+    disease_model.predict.assert_not_called()
+
+
 def test_vision_llm_success_short_circuits_cnn(monkeypatch):
     monkeypatch.setattr(
         "agro_mirai.api.plant_disease_client.identify_disease", lambda *a, **k: None
