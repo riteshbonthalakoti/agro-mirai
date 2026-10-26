@@ -337,7 +337,12 @@ export function ScanTab() {
       .then((items) => {
         if (!alive) return;
         const fromServer: HistoryItem[] = items
-          .filter((a) => a.source === 'cnn')
+          // Any source that's a real look at the photo belongs in history --
+          // only the weather-only guess and the not-a-plant rejections don't
+          // (same list ScanTab's own analyze() already excludes from phase
+          // 'result'). This used to hardcode 'cnn' only, so the new
+          // gemini_simple source silently vanished from Recent Scans.
+          .filter((a) => a.source && !/_not_a_plant$|^environmental(_fallback)?$/.test(a.source))
           .sort((a, b) => (a.created_at < b.created_at ? 1 : -1))
           .slice(0, 30)
           .map((a) => ({

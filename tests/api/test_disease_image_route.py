@@ -77,24 +77,22 @@ def test_oversized_image_rejected_400(client, monkeypatch):
     assert "size limit" in resp.get_json()["error"]["message"]
 
 
-def test_cnn_service_success_path(client, monkeypatch):
+def test_gemini_analyze_success_path(client, monkeypatch):
+    """Simplified pipeline (2026-10-26, user-directed): gate passed, one
+    Gemini call does the diagnosis -- no CNN/plant-disease-API/rule-based
+    cascade involved at all."""
     _patch_features(monkeypatch)
-
-    def fake_call(image_bytes, field_id):
-        return {
-            "id": "cnn-alert-1",
-            "field_id": field_id,
-            "created_at": "2026-09-01T00:00:00Z",
-            "disease": "Apple Scab",
-            "risk_level": "moderate",
+    monkeypatch.setattr(
+        value_endpoints,
+        "gemini_analyze_leaf",
+        lambda image_bytes: {
+            "plant_name": "Tomato",
+            "has_disease": True,
+            "disease_name": "Early Blight",
             "confidence": 0.81,
-            "window_start_at": "2026-09-01T00:00:00Z",
-            "window_end_at": "2026-09-06T00:00:00Z",
-            "recommended_action": "Scout within 5 days.",
-        }
-
-    monkeypatch.setattr(
-        "agro_mirai.api.cnn_client.call_cnn_service", fake_call
+            "description": "Dark concentric spots on lower leaves.",
+            "recommended_action": "Remove affected leaves and apply fungicide.",
+        },
     )
     resp = client.post(
         f"/fields/{FIELD_ID}/disease-risk/image",
@@ -104,18 +102,24 @@ def test_cnn_service_success_path(client, monkeypatch):
     )
     assert resp.status_code == 200
     body = resp.get_json()
-    assert body["source"] == "cnn"
-    assert body["disease"] == "Apple Scab"
+    assert body["source"] == "gemini_simple"
+    assert body["disease"] == "Tomato: Early Blight"
+    assert body["risk_level"] == "high"
 
 
-def test_cnn_service_unreachable_falls_back_never_500(client, monkeypatch):
+def test_gemini_analyze_healthy_is_low_risk(client, monkeypatch):
     _patch_features(monkeypatch)
-
-    def fake_call(image_bytes, field_id):
-        return None  # unreachable/timeout/error
-
     monkeypatch.setattr(
-        "agro_mirai.api.cnn_client.call_cnn_service", fake_call
+        value_endpoints,
+        "gemini_analyze_leaf",
+        lambda image_bytes: {
+            "plant_name": "Banana",
+            "has_disease": False,
+            "disease_name": "healthy",
+            "confidence": 0.9,
+            "description": "No visible disease.",
+            "recommended_action": "Keep monitoring.",
+        },
     )
     resp = client.post(
         f"/fields/{FIELD_ID}/disease-risk/image",
@@ -124,10 +128,22 @@ def test_cnn_service_unreachable_falls_back_never_500(client, monkeypatch):
         headers=_auth_headers(),
     )
     assert resp.status_code == 200
-    body = resp.get_json()
-    assert body["source"] == "environmental_fallback"
-    # the rule-based DISEASE_MODEL mock from conftest.py's `app` fixture
-    assert body["disease"] == "fungal_generic"
+    assert resp.get_json()["risk_level"] == "low"
+
+
+def test_gemini_analyze_unavailable_returns_503_not_a_fake_diagnosis(client, monkeypatch):
+    """No fallback for this flow by design -- Gemini unreachable/malformed
+    means a clean service-unavailable response, never a guessed diagnosis."""
+    _patch_features(monkeypatch)
+    monkeypatch.setattr(value_endpoints, "gemini_analyze_leaf", lambda image_bytes: None)
+    resp = client.post(
+        f"/fields/{FIELD_ID}/disease-risk/image",
+        data={"image": (io.BytesIO(_png_bytes()), "leaf.png")},
+        content_type="multipart/form-data",
+        headers=_auth_headers(),
+    )
+    assert resp.status_code == 503
+    assert resp.get_json()["error"]["code"] == "ANALYSIS_UNAVAILABLE"
 
 
 def test_unknown_field_404(app, monkeypatch):
@@ -181,14 +197,15 @@ def test_gemini_precheck_rejects_what_the_pixel_gate_missed(client, monkeypatch)
 def test_gemini_precheck_inconclusive_does_not_block_upload(client, monkeypatch):
     """`None` (unreachable/unconfigured/malformed reply) must never be
     treated as a rejection -- the pixel gate already accepted this photo,
-    and the cascade below must still get a chance to run."""
+    and the analyze step below must still get a chance to run."""
     _patch_features(monkeypatch)
     monkeypatch.setattr(value_endpoints, "gemini_is_plant_precheck", lambda image_bytes: None)
     monkeypatch.setattr(
-        "agro_mirai.api.cnn_client.call_cnn_service",
-        lambda *a, **k: {
-            "id": "cnn-alert-2", "field_id": FIELD_ID, "created_at": "2026-09-01T00:00:00Z",
-            "disease": "Apple Scab", "risk_level": "moderate", "confidence": 0.81,
+        value_endpoints,
+        "gemini_analyze_leaf",
+        lambda image_bytes: {
+            "plant_name": "Apple", "has_disease": True, "disease_name": "Apple Scab",
+            "confidence": 0.81, "description": "", "recommended_action": "",
         },
     )
 
@@ -200,7 +217,7 @@ def test_gemini_precheck_inconclusive_does_not_block_upload(client, monkeypatch)
     )
 
     assert resp.status_code == 200
-    assert resp.get_json()["source"] == "cnn"
+    assert resp.get_json()["source"] == "gemini_simple"
 
 
 def test_cnn_client_sends_service_token_when_configured(monkeypatch):

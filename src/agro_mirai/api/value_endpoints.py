@@ -27,13 +27,12 @@ from agro_mirai.api.errors import ApiError
 from agro_mirai.api.farmer_text import in_karnataka, plain_advisory, plain_irrigation
 from agro_mirai.api.features import build_features_for_field
 from agro_mirai.api.image_validation import validate_image_upload
-from agro_mirai.api.gemini_client import gemini_is_plant_precheck
+from agro_mirai.api.gemini_client import gemini_analyze_leaf, gemini_is_plant_precheck
 from agro_mirai.api.leaf_gate import looks_like_plant_photo
 from agro_mirai.api.serializers import drop_unset_source, to_json
 from agro_mirai.api.validation import validate_feedback_create
 from agro_mirai.api.voice_client import translate_text
-from agro_mirai.models.image_or_environmental_disease import resolve_disease_alert
-from agro_mirai.persistence.models import BugReport, FeedbackEntry
+from agro_mirai.persistence.models import BugReport, DiseaseRiskAlert, FeedbackEntry
 from agro_mirai.voice.interface import V1_LANGUAGES
 
 _BUG_REPORT_CATEGORIES = {
@@ -282,21 +281,41 @@ def compute_disease_risk_image(
             "This photo does not look like a plant leaf. Take a close, well-lit photo of one leaf.",
         )
 
-    try:
-        features = build_features_for_field(store, farmer_id, field)
-    except ValueError as exc:
-        raise ApiError(422, "NO_WEATHER_DATA", str(exc)) from None
+    # Simplified pipeline (2026-10-26, user-directed): gate already passed
+    # above (pixel heuristic + strict Gemini is-a-leaf check) -- skip the
+    # plant-disease-API/CNN/rule-based cascade entirely for this flow, one
+    # Gemini call does the diagnosis. No weather data needed since there's
+    # no environmental fallback path to feed.
+    result = gemini_analyze_leaf(image_bytes)
+    if result is None:
+        raise ApiError(
+            503,
+            "ANALYSIS_UNAVAILABLE",
+            "Could not analyze this photo right now. Please try again.",
+        )
 
-    disease_model = ext["disease_model"]
-    alert = resolve_disease_alert(
-        disease_model, features, field_id, image_bytes=image_bytes, crop_type=field.current_crop
+    confidence = result["confidence"]
+    if not result["has_disease"]:
+        risk_level = "low"
+    elif confidence >= 0.85:
+        risk_level = "severe"
+    elif confidence >= 0.6:
+        risk_level = "high"
+    elif confidence >= 0.35:
+        risk_level = "moderate"
+    else:
+        risk_level = "low"
+
+    alert = DiseaseRiskAlert(
+        id=str(uuid.uuid4()),
+        field_id=field_id,
+        created_at=datetime.now(timezone.utc),
+        disease=f"{result['plant_name']}: {result['disease_name']}",
+        risk_level=risk_level,
+        confidence=confidence,
+        recommended_action=result["recommended_action"] or result["description"] or None,
+        source="gemini_simple",
     )
-    if alert.source == "cnn":
-        from agro_mirai.models.disease_cnn_labels import photo_coverage_note
-
-        note = photo_coverage_note(field.current_crop, alert.disease or "")
-        if note:
-            alert = dataclasses.replace(alert, recommended_action=(alert.recommended_action or "") + note)
 
     saved = store.save_disease_risk_alert(farmer_id, alert)
     return _with_disease_translation(drop_unset_source(to_json(saved)), target_lang)

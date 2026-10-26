@@ -216,11 +216,34 @@ def test_disease_risk_repeated_polling_does_not_spam_duplicate_alerts(client):
     assert len(first["items"]) == len(second["items"]) == len(third["items"])
 
 
-def test_disease_risk_image_falls_back_to_environmental_never_500(client):
-    # cnn_client.call_cnn_service is monkeypatched to return None (no CNN
-    # service configured) — this is the exact Module 21/22 hard-fallback
-    # contract, verified on the /v2 copy specifically.
+def test_disease_risk_image_gemini_unavailable_returns_503(client):
+    # Simplified pipeline (2026-10-26, user-directed): no CNN/rule-based
+    # fallback for this flow anymore -- Gemini unreachable (no key in test
+    # env) means a clean 503, never a guessed diagnosis, verified on the
+    # /v2 copy specifically.
     _register_and_login(client, "+919000000004")
+    field_id = _create_field(client)
+    resp = client.post(
+        f"/v2/fields/{field_id}/disease-risk/image",
+        data={"image": (io.BytesIO(_png_bytes()), "leaf.png")},
+        content_type="multipart/form-data",
+    )
+    assert resp.status_code == 503
+    assert resp.get_json()["error"]["code"] == "ANALYSIS_UNAVAILABLE"
+
+
+def test_disease_risk_image_gemini_success_path(client, monkeypatch):
+    from agro_mirai.api import value_endpoints
+
+    monkeypatch.setattr(
+        value_endpoints,
+        "gemini_analyze_leaf",
+        lambda image_bytes: {
+            "plant_name": "Tomato", "has_disease": True, "disease_name": "Early Blight",
+            "confidence": 0.81, "description": "", "recommended_action": "",
+        },
+    )
+    _register_and_login(client, "+919000000014")
     field_id = _create_field(client)
     resp = client.post(
         f"/v2/fields/{field_id}/disease-risk/image",
@@ -229,7 +252,8 @@ def test_disease_risk_image_falls_back_to_environmental_never_500(client):
     )
     assert resp.status_code == 200
     body = resp.get_json()
-    assert body["source"] == "environmental_fallback"
+    assert body["source"] == "gemini_simple"
+    assert body["disease"] == "Tomato: Early Blight"
 
 
 def test_advisories_success(client):

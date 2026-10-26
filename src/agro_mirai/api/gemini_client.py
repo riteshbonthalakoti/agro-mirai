@@ -175,9 +175,16 @@ def ask_gemini_vision(image_bytes: bytes, prompt: str, mime_type: str = "image/j
 
 
 _IS_PLANT_PROMPT = (
-    "Does this photo show a crop leaf or plant (not a person, random object, "
-    "screen, document, or other non-plant scene)? Respond with ONLY this "
-    'JSON, no other text: {"is_plant": true} or {"is_plant": false}.'
+    "Look at this image. Decide ONLY: is this a close-up photo of a real "
+    "plant/crop leaf -- visible leaf shape, veins, edges, natural texture?\n\n"
+    "REJECT (is_plant: false) for: plain/solid/uniform colored surface or "
+    "background (including green), blurry/unrecognizable, non-plant object, "
+    "person, screen, document, multiple unrelated items, or anything without "
+    "clear leaf structure.\n\n"
+    "Only accept (is_plant: true) if you can clearly see an actual single "
+    "leaf's shape and surface detail.\n\n"
+    'Respond with ONLY this JSON, nothing else: {"is_plant": true} or '
+    '{"is_plant": false}'
 )
 
 
@@ -206,6 +213,46 @@ def gemini_is_plant_precheck(image_bytes: bytes) -> bool | None:
         verdict = data["is_plant"]
         return bool(verdict) if isinstance(verdict, bool) else None
     except (json_module.JSONDecodeError, KeyError, TypeError):
+        return None
+
+
+_ANALYZE_LEAF_PROMPT = (
+    "This image passed a leaf-detection check. Analyze it as a plant "
+    "pathologist.\n\n"
+    "Respond with ONLY this JSON, nothing else:\n"
+    '{"plant_name": "<your best guess at the plant/crop species, even if '
+    'uncertain -- never say unknown, always name your closest guess>", '
+    '"has_disease": true|false, "disease_name": "<name if has_disease else '
+    '\\"healthy\\">", "confidence": <0.0-1.0>, "description": "<one short '
+    'sentence on what you see>", "recommended_action": "<one short '
+    'actionable sentence>"}'
+)
+
+
+def gemini_analyze_leaf(image_bytes: bytes) -> dict | None:
+    """Simplified single-call pipeline (2026-10-26, user-directed: skip the
+    plant-disease-API/CNN/rule-based cascade entirely for this flow -- gate
+    then analyze, Gemini only). Called ONLY after ``gemini_is_plant_precheck``
+    (or the equivalent strict gate) has already confirmed the photo is a
+    leaf -- this prompt assumes that and only asks for the diagnosis.
+
+    Returns a dict with plant_name/has_disease/disease_name/confidence/
+    description/recommended_action, or ``None`` on any failure (no key,
+    network error, malformed JSON, missing fields). Never raises."""
+    text = ask_gemini_vision(image_bytes, _ANALYZE_LEAF_PROMPT)
+    if text is None:
+        return None
+    try:
+        data = json_module.loads(text)
+        return {
+            "plant_name": str(data["plant_name"]),
+            "has_disease": bool(data["has_disease"]),
+            "disease_name": str(data["disease_name"]),
+            "confidence": float(data["confidence"]),
+            "description": str(data.get("description") or ""),
+            "recommended_action": str(data.get("recommended_action") or ""),
+        }
+    except (json_module.JSONDecodeError, KeyError, TypeError, ValueError):
         return None
 
 
