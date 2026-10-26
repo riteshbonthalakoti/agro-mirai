@@ -437,11 +437,29 @@ export function ScanTab() {
     await analyze(prepared);
   };
 
-  const openCamera = () => { setNotice(''); setCameraOpen(true); };
+  const openCamera = () => {
+  setNotice('');
+  // Field finding (2026-10-26): "Scan another leaf"/"Retake" only opened the
+  // camera, it never cleared the previous attempt's `result`/`phase`. If the
+  // next photo's request then failed in a way that didn't reach the catch
+  // block's own phase update (a race on `runId`, or any other edge case),
+  // the OLD result kept rendering underneath once the camera closed -- a
+  // stale diagnosis shown for a brand-new, rejected photo. Reset to a clean
+  // slate the moment a new attempt starts, not only when one finishes.
+  setResult(null);
+  setPhase('home');
+  setCameraOpen(true);
+};
 
   const pickGallery = async () => {
     setCameraOpen(false);
     setNotice('');
+    // Same reset as openCamera, and for the same reason: if the picker is
+    // cancelled or throws before process()/analyze() ever runs, nothing
+    // else here clears a previous attempt's stale result/phase -- closing
+    // the camera overlay would just reveal it again, unchanged.
+    setResult(null);
+    setPhase('home');
     try {
       const r = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 1 });
       if (!r.canceled && r.assets?.[0]?.uri) await process(r.assets[0].uri);
