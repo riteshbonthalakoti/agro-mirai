@@ -369,10 +369,21 @@ export function ScanTab() {
       if (!f.exists || !f.size) throw new ApiError(-1, t('scanErrorFile'));
       const r = await scanLeaf(field.id, f as unknown as Blob, lang);
       if (id !== runId.current) return; // cancelled while waiting
-      if (r.source !== 'cnn') {
-        // The photo model was unreachable and the server answered with a
-        // weather-based estimate. That says nothing about THIS leaf, so it is
-        // not shown as a diagnosis and not added to scan history.
+      if (r.source === 'plant_disease_api_not_a_plant' || r.source === 'vision_llm_not_a_plant') {
+        // A tier positively identified the photo as not a plant/leaf at
+        // all -- same clean retake-the-photo screen as the backend's own
+        // pre-upload NOT_A_LEAF rejection, not a diagnosis.
+        setPhase('notLeaf');
+        return;
+      }
+      if (r.source === 'environmental_fallback') {
+        // Every tier that actually looks at the photo (plant-disease API,
+        // vision LLM, CNN) was unreachable and the server answered with a
+        // weather-based estimate instead. That says nothing about THIS
+        // leaf, so it is not shown as a diagnosis and not added to scan
+        // history. (AI cascade restructure: 'cnn' is no longer the only
+        // source that means "a real look at this photo" -- the
+        // plant-disease-API and vision-LLM tiers do too.)
         setErrKind('unavailable');
         setPhase('error');
         return;
