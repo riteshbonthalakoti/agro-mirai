@@ -48,7 +48,7 @@ function resolveApiBaseUrl(): string {
   return PRODUCTION_API_BASE_URL;
 }
 
-const PRODUCTION_API_BASE_URL = 'https://agro-mirai.onrender.com';
+const PRODUCTION_API_BASE_URL = 'https://agro-mirai-xi27.onrender.com';
 
 
 export const API_BASE_URL = resolveApiBaseUrl();
