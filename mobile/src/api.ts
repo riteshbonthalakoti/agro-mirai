@@ -49,7 +49,16 @@ export async function wakeServer(onSlow?: () => void): Promise<void> {
       const timer = setTimeout(() => controller.abort(), 30000);
       try {
         const res = await fetch(`${API_BASE_URL}/health`, { signal: controller.signal });
-        if (res.ok) return;
+        if (res.ok) {
+          // This bypasses request()/fetchWithTimeout (its own retry loop needs
+          // to swallow failures silently), so it must flip `online` back on
+          // success itself -- otherwise a stale `online = false` from an
+          // earlier failed request (e.g. one aborted by a force-stop, or a
+          // timeout during a free-tier cold start) never clears, and the app
+          // keeps reporting "offline" forever even once the server answers.
+          setOnline(true);
+          return;
+        }
       } catch {
         // asleep / unreachable: try again
       } finally {
