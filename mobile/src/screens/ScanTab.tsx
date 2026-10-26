@@ -11,7 +11,7 @@ import { Icon, IconName } from '../../icons';
 import { splitAdvice } from '../adviceParsing';
 import { AuthBackdrop } from '../components/AuthBackdrop';
 import { feedback } from '../feedback';
-import { ApiError, DiseaseAlert, getDiseaseRisk, isOnline, scanLeaf } from '../api';
+import { ApiError, DiseaseAlert, getDiseaseRisk, scanLeaf } from '../api';
 import { diseaseAction, fmtDate, levelLabel, useApp } from '../ctx';
 import { errorText, useTranslated } from '../hooks';
 import { SkeletonCard } from '../skeleton';
@@ -343,11 +343,14 @@ export function ScanTab() {
     setResult(null);
     setPhase('analyzing');
     try {
-      if (!isOnline()) {
-        // Skip the request entirely -- uploading a photo offline would just
-        // hang until it times out. Fail honestly and immediately instead.
-        throw new ApiError(0, 'offline');
-      }
+      // Field finding (2026-10-26): `isOnline()` is a sticky flag that only
+      // flips back to true on the NEXT successful request anywhere in the
+      // app -- a single earlier timeout/abort (a slow Render cold start, the
+      // app being force-stopped mid-request) can leave it stuck false with
+      // nothing to self-correct it, permanently blocking every scan even
+      // though the network is actually fine. Trust the real request instead
+      // of a cached guess; the existing network-error handling in the catch
+      // block below already covers genuine offline/timeout failures.
       // Read the local file through expo-file-system's File (a Blob) instead
       // of fetch(file://): on Android fetch() can "succeed" with a 14-byte
       // "File not found" body that then uploads as the image (Module 34).

@@ -6,7 +6,7 @@ import { dialog } from '../dialog';
 import { IconName } from '../../icons';
 import Constants from 'expo-constants';
 import * as ImagePicker from 'expo-image-picker';
-import { ApiError, deleteField, isOnline, patchMe, sendBugReport } from '../api';
+import { ApiError, deleteField, patchMe, sendBugReport } from '../api';
 import { cropLabel, useApp } from '../ctx';
 import { classifyError } from '../errors';
 import { getRecentErrors, logError } from '../errorLog';
@@ -183,7 +183,12 @@ export function MeTab({ initialScreenContext, onConsumeScreenContext }: { initia
   const sendBug = async () => {
     setBugNote('');
     if (!bugCat && !bugMsg.trim()) return setBugNote(t('bugReportNeedInfo'));
-    if (!isOnline()) return setBugNote(t('noInternetWrite'));
+    // Field finding (2026-10-26): `isOnline()` is a sticky flag that only
+    // flips back to true on the NEXT successful request anywhere in the
+    // app -- a single earlier timeout/abort can leave it stuck false with
+    // nothing to self-correct it, permanently blocking submission even
+    // though the network is actually fine. Trust the real request instead;
+    // the catch block below already handles a genuine offline/timeout.
     setBugBusy(true);
     try {
       const recent = await getRecentErrors(5);
