@@ -56,7 +56,7 @@ class MainErrorBoundary extends React.Component<{ t: (k: Key) => string; childre
     return this.props.children;
   }
 }
-import { ApiError, Farmer, Field, getMe, listFields, logout, logoutWithToken, patchMe, setUnauthorizedHandler, subscribeNet, isOnline, wakeServer, getAdvisories } from './src/api';
+import { ApiError, Farmer, Field, getMe, listFields, logout, logoutWithToken, patchMe, setUnauthorizedHandler, wakeServer, getAdvisories } from './src/api';
 import { AppCtx, Ctx, cropLabel, makeT } from './src/ctx';
 import { Key, Lang, LANGS } from './src/i18n';
 import { logError } from './src/errorLog';
@@ -77,7 +77,7 @@ import { ScanTab } from './src/screens/ScanTab';
 import { FirstField } from './src/screens/FirstField';
 import { cacheGet, cacheSet, clearFarmerCache } from './src/storage';
 import { C, S } from './src/theme';
-import { Banner, Btn } from './src/ui';
+import { Btn } from './src/ui';
 import { Icon, IconName } from './icons';
 import { ToastProvider } from './src/toast';
 import { AnimatedSplashScreen } from './src/components/AnimatedSplashScreen';
@@ -407,7 +407,6 @@ function RootInner({ lang, setLang }: { lang: Lang; setLang: (l: Lang) => void }
   const [tab, setTab] = useState<Tab>('home');
   const [bugReportContext, setBugReportContext] = useState<string | null>(null);
   const [form, setForm] = useState<{ edit?: Field } | null>(null);
-  const [online, setOnline] = useState(isOnline());
   const [authNotice, setAuthNotice] = useState('');
   const [bootError, setBootError] = useState('');
   const [waking, setWaking] = useState(false);
@@ -433,8 +432,6 @@ function RootInner({ lang, setLang }: { lang: Lang; setLang: (l: Lang) => void }
 
   const t = useMemo(() => makeT(lang), [lang]);
   const field = fields.find((f) => f.id === fieldId) ?? fields[0] ?? null;
-
-  useEffect(() => subscribeNet(setOnline), []);
 
   // Reschedule notifications when signing in or switching accounts
   useEffect(() => {
@@ -819,7 +816,6 @@ function RootInner({ lang, setLang }: { lang: Lang; setLang: (l: Lang) => void }
     <AppCtx.Provider value={ctx}>
       <MainErrorBoundary t={t}>
       <View style={{ flex: 1 }}>
-        {!online ? <Banner text={t('offlineBanner')} /> : null}
         {form ? (
           <FieldForm initial={form.edit} onDone={finishForm} onCancel={fields.length ? () => setForm(null) : undefined} />
         ) : fields.length === 0 ? (
