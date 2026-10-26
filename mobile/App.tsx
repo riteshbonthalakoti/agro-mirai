@@ -166,6 +166,14 @@ type Tab = 'home' | 'data' | 'advice' | 'scan' | 'me';
 
 function AnimatedTabPane({ active, children }: { active: boolean; children: React.ReactNode }) {
   const anim = useRef(new Animated.Value(active ? 1 : 0)).current;
+  // Keeps a tab mounted forever once it's first opened, instead of
+  // unmounting it (`return null`) the moment it's not active. Unmounting
+  // threw away every screen's own already-fetched state, so switching
+  // back to a tab remounted it from scratch and its loading spinner
+  // flashed again even though nothing had actually changed. Tracked in a
+  // ref (not state) so first-activation doesn't trigger an extra render.
+  const everActive = useRef(active);
+  if (active) everActive.current = true;
 
   useEffect(() => {
     if (active) {
@@ -179,22 +187,27 @@ function AnimatedTabPane({ active, children }: { active: boolean; children: Reac
     }
   }, [active, anim]);
 
-  if (!active) return null;
+  if (!everActive.current) return null; // never opened -- nothing to keep alive yet
 
   return (
     <Animated.View
-      style={{
-        flex: 1,
-        opacity: anim,
-        transform: [
-          {
-            translateY: anim.interpolate({
-              inputRange: [0, 1],
-              outputRange: [6, 0],
-            }),
-          },
-        ],
-      }}
+      pointerEvents={active ? 'auto' : 'none'}
+      style={
+        active
+          ? {
+              flex: 1,
+              opacity: anim,
+              transform: [
+                {
+                  translateY: anim.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [6, 0],
+                  }),
+                },
+              ],
+            }
+          : { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, opacity: 0 }
+      }
     >
       {children}
     </Animated.View>
