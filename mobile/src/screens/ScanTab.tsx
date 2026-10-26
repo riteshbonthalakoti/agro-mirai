@@ -192,6 +192,7 @@ function ResultView({ result, uri, onRetake, onDone, onZoom }: { result: Disease
   const { t, lang } = useApp();
   const { width } = useWindowDimensions();
   const size = width - S.lg * 2;
+  const [photoFailed, setPhotoFailed] = useState(false);
   const unsure = /^Not sure/i.test(result.disease);
   const bestGuess = result.disease.replace(/^Not sure\.\s*Best guess:\s*/i, '');
   const { steps, others, note } = splitAdvice(result.recommended_action || '');
@@ -202,9 +203,25 @@ function ResultView({ result, uri, onRetake, onDone, onZoom }: { result: Disease
 
   return (
     <View>
-      <TouchableOpacity onPress={() => onZoom(uri)} activeOpacity={0.9}>
-        <Image source={{ uri }} style={{ width: size, height: size * 0.62, borderRadius: 16, marginBottom: S.md }} resizeMode="cover" />
-      </TouchableOpacity>
+      {photoFailed ? (
+        // The source image (a temp/picker URI) failed to load -- found live
+        // (2026-10-26): with no error handling here, a broken Image source
+        // rendered as a solid black box instead of degrading gracefully, the
+        // same honest fallback ScanDetailModal already uses for a scan whose
+        // local photo is gone.
+        <View style={{ width: size, height: size * 0.62, borderRadius: 16, marginBottom: S.md, backgroundColor: C.surface, alignItems: 'center', justifyContent: 'center' }}>
+          <Muted>{t('scanPhotoNotOnDevice')}</Muted>
+        </View>
+      ) : (
+        <TouchableOpacity onPress={() => onZoom(uri)} activeOpacity={0.9}>
+          <Image
+            source={{ uri }}
+            style={{ width: size, height: size * 0.62, borderRadius: 16, marginBottom: S.md }}
+            resizeMode="cover"
+            onError={() => setPhotoFailed(true)}
+          />
+        </TouchableOpacity>
+      )}
 
       <View style={{ backgroundColor: unsure ? '#FFF6E0' : C.bg, borderWidth: 1, borderColor: unsure ? '#F0DCA8' : C.border, borderRadius: 16, padding: S.lg }}>
         {unsure ? (
