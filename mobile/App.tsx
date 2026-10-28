@@ -543,11 +543,18 @@ function RootInner({ lang, setLang }: { lang: Lang; setLang: (l: Lang) => void }
       } catch (e) {
         const ae = e as ApiError;
         if (ae.status === 401) {
-          // Not signed in (fresh install, cleared data, or ended session):
-          // after the splash, ask for the language, then permissions (first time only), then sign-in.
+          // Field finding (2026-10-28): this branch treated "session
+          // genuinely expired" exactly like "fresh install", always routing
+          // to the language picker regardless of whether a language was
+          // already saved -- a farmer whose token simply expired got shoved
+          // through the entire first-launch flow (language, then
+          // permissions) again instead of straight to sign-in, which looked
+          // exactly like the app had forgotten everything. Mirror the other
+          // 401-adjacent branch below: a device with a saved language has
+          // been through onboarding before, so go straight to 'auth'.
           const bootId = accounts.getActiveAccountId();
           if (bootId) await clearFarmerCache(bootId);
-          setPendingPhase('lang');
+          setPendingPhase(isLang(saved) ? 'auth' : 'lang');
           return;
         }
         const cachedFarmer = await cacheGet<Farmer>('farmer');
