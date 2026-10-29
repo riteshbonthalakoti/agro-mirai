@@ -400,7 +400,13 @@ export const getAdvisories = async (id: string, generate = false): Promise<Advis
 export const scanLeaf = async (id: string, file: Blob, lang: string): Promise<DiseaseAlert> => {
   const form = new FormData();
   form.append('image', file as any, 'leaf.jpg');
-  const res = await request<DiseaseAlert>(`/v2/fields/${id}/disease-risk/image?language=${lang}`, { method: 'POST', body: form }, { timeout: 35000 });
+  // 60s, not 35s: the backend now retries every configured Gemini key on a
+  // transient failure (overload/timeout/network error) across two cascading
+  // calls (leaf precheck + analysis), which can legitimately take longer
+  // than a single quick call -- 35s was cutting that off before the server
+  // had exhausted its own retries and could return either a real result or
+  // an honest unavailable error.
+  const res = await request<DiseaseAlert>(`/v2/fields/${id}/disease-risk/image?language=${lang}`, { method: 'POST', body: form }, { timeout: 60000 });
   return res;
 };
 export const sendFeedback = (data: { advisory_id: string; rating: number; helpful: boolean; comment?: string }) =>

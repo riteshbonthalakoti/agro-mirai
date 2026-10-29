@@ -202,7 +202,7 @@ export function FieldMapScreen({ onClose }: { onClose: () => void }) {
             the exact lat/lon (Module 60 field finding: the old flat dot
             didn't read as "this exact point" the way a pin's point does). */}
         <Marker
-          {...({ anchor: 'bottom', coordinate: [fieldLon, fieldLat] } as any)}
+          {...({ anchor: 'bottom', lngLat: [fieldLon, fieldLat] } as any)}
         >
           <View style={styles.markerContainer}>
             <View style={styles.fieldLabel}>
@@ -215,7 +215,7 @@ export function FieldMapScreen({ onClose }: { onClose: () => void }) {
         {/* User live phone location marker */}
         {userLocation && (
           <Marker
-            {...({ anchor: 'center', coordinate: [userLocation.lon, userLocation.lat] } as any)}
+            {...({ anchor: 'center', lngLat: [userLocation.lon, userLocation.lat] } as any)}
           >
             <View style={styles.markerContainer}>
               <View style={styles.phoneLabelBubble}>
