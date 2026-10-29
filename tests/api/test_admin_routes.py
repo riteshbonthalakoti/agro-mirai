@@ -33,6 +33,8 @@ def test_admin_routes_expose_exactly_the_documented_write_methods():
         "/v2/admin/farmers/<farmer_id>": {"PATCH", "DELETE"},
         "/v2/admin/fields/<field_id>": {"PATCH", "DELETE"},
         "/v2/admin/bug-reports/<bug_report_id>": {"PATCH", "DELETE"},
+        "/v2/admin/admins": {"GET", "POST"},
+        "/v2/admin/admins/<farmer_id>": {"DELETE"},
     }
     methods_by_path: dict[str, set[str]] = {}
     for rule in app.url_map.iter_rules():

@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>AGRO MIRAI — Admin</title>
   <meta name="robots" content="noindex, nofollow">
+  <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
       theme: {
@@ -20,7 +21,6 @@
       }
     }
   </script>
-  <script src="https://cdn.tailwindcss.com"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.x.x/dist/chart.umd.min.js"></script>
   <link rel="stylesheet" href="style.css">
@@ -58,6 +58,94 @@
           <span x-text="loginBusy ? 'Signing in…' : 'Sign in'"></span>
         </button>
       </form>
+      <button type="button" @click="forgot.show = true; forgot.step = 'email'; forgot.error = ''"
+              class="text-xs text-slate-500 hover:text-accent mt-4 block mx-auto">Forgot password?</button>
+    </div>
+  </div>
+
+  <!-- FORGOT PASSWORD MODAL -->
+  <div x-show="forgot.show" x-cloak
+       class="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4">
+    <div class="w-full max-w-sm bg-white rounded-2xl shadow-xl p-6" @click.outside="forgot.show = false">
+      <div class="font-bold text-lg mb-4" x-text="forgot.step === 'email' ? 'Reset password' : 'Enter the code we emailed you'"></div>
+
+      <template x-if="forgot.step === 'email'">
+        <form @submit.prevent="sendResetCode()">
+          <label class="block mb-4">
+            <span class="text-sm text-slate-600 font-medium">Admin email</span>
+            <input x-model="forgot.email" type="email" required class="input-field mt-1">
+          </label>
+          <div x-show="forgot.error" x-text="forgot.error" class="text-red-600 text-sm mb-3 bg-red-50 rounded-lg px-3 py-2"></div>
+          <button type="submit" :disabled="forgot.busy" class="btn-primary w-full py-2.5 text-sm">
+            <span x-text="forgot.busy ? 'Sending…' : 'Send code'"></span>
+          </button>
+        </form>
+      </template>
+
+      <template x-if="forgot.step === 'code'">
+        <form @submit.prevent="submitResetCode()">
+          <p class="text-xs text-slate-500 mb-3">If that email has admin access, a 6-digit code was sent to it.</p>
+          <label class="block mb-3">
+            <span class="text-sm text-slate-600 font-medium">Code</span>
+            <input x-model="forgot.code" type="text" inputmode="numeric" required class="input-field mt-1">
+          </label>
+          <label class="block mb-4">
+            <span class="text-sm text-slate-600 font-medium">New password</span>
+            <input x-model="forgot.newPassword" type="password" required minlength="8" class="input-field mt-1">
+          </label>
+          <div x-show="forgot.error" x-text="forgot.error" class="text-red-600 text-sm mb-3 bg-red-50 rounded-lg px-3 py-2"></div>
+          <div x-show="forgot.success" x-text="forgot.success" class="text-accent text-sm mb-3 bg-green-50 rounded-lg px-3 py-2"></div>
+          <button type="submit" :disabled="forgot.busy" class="btn-primary w-full py-2.5 text-sm">
+            <span x-text="forgot.busy ? 'Resetting…' : 'Reset password'"></span>
+          </button>
+        </form>
+      </template>
+
+      <button type="button" @click="forgot.show = false" class="text-xs text-slate-500 hover:text-accent mt-4 block mx-auto">Cancel</button>
+    </div>
+  </div>
+
+  <!-- ADMINS VIEW -->
+  <div x-show="view === 'admins'" x-data="adminsPage()" x-init="load()" class="p-6 max-w-2xl">
+    <div class="flex items-center justify-between mb-5">
+      <h1 class="text-xl font-bold">Admins</h1>
+      <button @click="showAdd = true" class="btn-primary px-4 py-2 text-sm">+ Add admin</button>
+    </div>
+
+    <div x-show="showAdd" class="bg-white rounded-xl shadow p-5 mb-5">
+      <form @submit.prevent="create()">
+        <label class="block mb-3">
+          <span class="text-sm text-slate-600 font-medium">Name</span>
+          <input x-model="newAdmin.name" type="text" class="input-field mt-1">
+        </label>
+        <label class="block mb-3">
+          <span class="text-sm text-slate-600 font-medium">Email</span>
+          <input x-model="newAdmin.email" type="email" required class="input-field mt-1">
+        </label>
+        <label class="block mb-4">
+          <span class="text-sm text-slate-600 font-medium">Password</span>
+          <input x-model="newAdmin.password" type="password" required minlength="8" class="input-field mt-1">
+        </label>
+        <div x-show="error" x-text="error" class="text-red-600 text-sm mb-3 bg-red-50 rounded-lg px-3 py-2"></div>
+        <div class="flex gap-2">
+          <button type="submit" :disabled="busy" class="btn-primary px-4 py-2 text-sm">
+            <span x-text="busy ? 'Creating…' : 'Create admin'"></span>
+          </button>
+          <button type="button" @click="showAdd = false" class="px-4 py-2 text-sm text-slate-500">Cancel</button>
+        </div>
+      </form>
+    </div>
+
+    <div class="bg-white rounded-xl shadow divide-y">
+      <template x-for="a in admins" :key="a.id">
+        <div class="flex items-center justify-between px-5 py-3">
+          <div>
+            <div class="font-medium text-sm" x-text="a.name"></div>
+            <div class="text-xs text-slate-500" x-text="a.email"></div>
+          </div>
+          <button @click="revoke(a)" class="text-xs text-red-600 hover:underline">Revoke</button>
+        </div>
+      </template>
     </div>
   </div>
 

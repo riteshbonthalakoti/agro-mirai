@@ -85,6 +85,7 @@ function adminApp() {
     loginPassword: '',
     loginBusy: false,
     loginError: '',
+    forgot: { show: false, step: 'email', email: '', code: '', newPassword: '', busy: false, error: '', success: '' },
     toast: { show: false, msg: '', type: 'info', _timer: null },
     confirm: { show: false, expected: '', typed: '', onConfirm: null },
     drawer: { show: false, title: '', bodyHtml: '', save: null, saving: false, error: '' },
@@ -96,6 +97,7 @@ function adminApp() {
       { view: 'bugs',     hash: 'bugs',    icon: '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>', label: 'Bug Reports' },
       { view: 'audit',    hash: 'audit',   icon: '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/></svg>', label: 'Audit Log' },
       { view: 'otps',     hash: 'otps',    icon: '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/></svg>', label: 'OTP Lookup' },
+      { view: 'admins',   hash: 'admins',  icon: '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.121 17.804A13.937 13.937 0 0112 16c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0zm6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>', label: 'Admins' },
     ],
 
     init() {
@@ -163,7 +165,7 @@ function adminApp() {
       var h = (location.hash || '').replace(/^#\/?/, '');
       var seg = h.split('/')[0];
       var map = { '': 'overview', farmers: 'farmers', fields: 'fields',
-                  bugs: 'bugs', audit: 'audit', otps: 'otps' };
+                  bugs: 'bugs', audit: 'audit', otps: 'otps', admins: 'admins' };
       this.view = map[seg] || 'overview';
       if (this.view === 'bugs') this.unreadBugs = 0;
     },
@@ -204,6 +206,38 @@ function adminApp() {
         })
         .catch(function (e) { self.loginError = e.message || 'Sign in failed'; })
         .finally(function () { self.loginBusy = false; });
+    },
+
+    sendResetCode() {
+      var self = this;
+      self.forgot.busy = true;
+      self.forgot.error = '';
+      var body = new URLSearchParams({ email: self.forgot.email });
+      fetch('/admin/forgot-password', { method: 'POST', body: body, credentials: 'same-origin' })
+        .then(function (r) { return r.json(); })
+        .then(function () { self.forgot.step = 'code'; })
+        .catch(function () { self.forgot.error = 'Something went wrong. Try again.'; })
+        .finally(function () { self.forgot.busy = false; });
+    },
+
+    submitResetCode() {
+      var self = this;
+      self.forgot.busy = true;
+      self.forgot.error = '';
+      self.forgot.success = '';
+      var body = new URLSearchParams({
+        email: self.forgot.email, code: self.forgot.code, new_password: self.forgot.newPassword,
+      });
+      fetch('/admin/reset-password', { method: 'POST', body: body, credentials: 'same-origin' })
+        .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); })
+        .then(function (res) {
+          if (!res.ok) throw new Error(res.d.error || 'Reset failed');
+          self.forgot.success = 'Password reset. You can sign in now.';
+          self.forgot.code = '';
+          self.forgot.newPassword = '';
+        })
+        .catch(function (e) { self.forgot.error = e.message; })
+        .finally(function () { self.forgot.busy = false; });
     },
 
     logout() {
@@ -737,6 +771,60 @@ function otpLookupPage() {
   };
 }
 
+// ── adminsPage ───────────────────────────────────────────────────────────────
+
+function adminsPage() {
+  return {
+    admins: [],
+    showAdd: false,
+    busy: false,
+    error: '',
+    newAdmin: { name: '', email: '', password: '' },
+
+    load() {
+      var self = this;
+      api('/v2/admin/admins').then(function (r) {
+        self.admins = r.items;
+      }).catch(function (e) {
+        if (retryAfterAuth(e, function () { self.load(); })) return;
+        window.dispatchEvent(new CustomEvent('admin-toast', { detail: { msg: e.message, type: 'error' } }));
+      });
+    },
+
+    create() {
+      var self = this;
+      self.busy = true;
+      self.error = '';
+      apiJSON('/v2/admin/admins', 'POST', self.newAdmin)
+        .then(function () {
+          self.showAdd = false;
+          self.newAdmin = { name: '', email: '', password: '' };
+          self.load();
+          window.dispatchEvent(new CustomEvent('admin-toast', { detail: { msg: 'Admin created', type: 'success' } }));
+        })
+        .catch(function (e) { self.error = e.message; })
+        .finally(function () { self.busy = false; });
+    },
+
+    revoke(a) {
+      var self = this;
+      window.dispatchEvent(new CustomEvent('admin-confirm', {
+        detail: {
+          expected: a.email,
+          onConfirm: function () {
+            return api('/v2/admin/admins/' + a.id, { method: 'DELETE' }).then(function () {
+              self.load();
+              window.dispatchEvent(new CustomEvent('admin-toast', { detail: { msg: 'Admin access revoked', type: 'success' } }));
+            }).catch(function (e) {
+              window.dispatchEvent(new CustomEvent('admin-toast', { detail: { msg: e.message, type: 'error' } }));
+            });
+          },
+        },
+      }));
+    },
+  };
+}
+
 // ── Alpine registration ───────────────────────────────────────────────────────
 
 document.addEventListener('alpine:init', function () {
@@ -748,4 +836,5 @@ document.addEventListener('alpine:init', function () {
   Alpine.data('bugReportsPage',   bugReportsPage);
   Alpine.data('auditLogPage',     auditLogPage);
   Alpine.data('otpLookupPage',    otpLookupPage);
+  Alpine.data('adminsPage',       adminsPage);
 });

@@ -277,10 +277,17 @@ def create_app(config: dict | None = None) -> Flask:
     # In dev (no FLASK_SECRET_KEY set), these still apply but the cookie
     # is only sent over HTTP, which is fine for localhost.
     app.config["SESSION_COOKIE_HTTPONLY"] = True
-    app.config["SESSION_COOKIE_SAMESITE"] = os.environ.get(
-        "SESSION_COOKIE_SAMESITE", "None"
+    _samesite = os.environ.get("SESSION_COOKIE_SAMESITE", "None")
+    app.config["SESSION_COOKIE_SAMESITE"] = _samesite
+    # SameSite=None is rejected outright by browsers unless Secure is also
+    # set (RFC 6265bis) -- gating Secure on FLASK_ENV alone left the two
+    # out of sync whenever FLASK_ENV wasn't exactly "production" (e.g. on
+    # Render, where it isn't set), silently dropping the cookie in every
+    # real browser while curl/requests (which don't enforce this) made it
+    # look like login was succeeding.
+    app.config["SESSION_COOKIE_SECURE"] = (
+        _samesite == "None" or os.environ.get("FLASK_ENV") == "production"
     )
-    app.config["SESSION_COOKIE_SECURE"] = os.environ.get("FLASK_ENV") == "production"
     if config:
         app.config.update(config)
 

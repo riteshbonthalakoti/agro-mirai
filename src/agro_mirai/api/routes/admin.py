@@ -121,6 +121,66 @@ def delete_farmer(farmer_id):
     return jsonify({"deleted": True}), 200
 
 
+@admin_bp.get("/admins")
+@require_admin
+def list_admins():
+    store = current_app.extensions["data_store"]
+    admins = [f for f in store.list_all_farmers() if f.role == "admin"]
+    return jsonify({"items": [farmer_to_public_json(f) for f in admins]}), 200
+
+
+@admin_bp.post("/admins")
+@require_admin
+def create_admin():
+    import uuid
+    from datetime import datetime, timezone
+
+    from agro_mirai.auth.password import hash_password
+    from agro_mirai.persistence.models import Farmer
+
+    body = request.get_json(silent=True) or {}
+    email = (body.get("email") or "").strip().lower()
+    password = body.get("password") or ""
+    name = (body.get("name") or "").strip() or email.split("@")[0]
+    if not email or "@" not in email:
+        raise ApiError(400, "INVALID_INPUT", "A valid email is required")
+    if len(password) < 8:
+        raise ApiError(400, "INVALID_INPUT", "Password must be at least 8 characters")
+    store = current_app.extensions["data_store"]
+    if store.get_farmer_by_email(email) is not None:
+        raise ApiError(409, "CONFLICT", "An account with this email already exists")
+    now = datetime.now(timezone.utc)
+    farmer = Farmer(
+        id=str(uuid.uuid4()),
+        created_at=now,
+        updated_at=now,
+        name=name,
+        preferred_language="en",
+        email=email,
+        password_hash=hash_password(password),
+        role="admin",
+    )
+    saved = store.save_farmer(farmer)
+    write_audit_log(store, g.farmer_id, "admin.create", "farmer", saved.id, None, saved)
+    return jsonify(farmer_to_public_json(saved)), 201
+
+
+@admin_bp.delete("/admins/<farmer_id>")
+@require_admin
+def revoke_admin(farmer_id):
+    store = current_app.extensions["data_store"]
+    farmer = store.get_farmer(farmer_id)
+    if farmer is None or farmer.role != "admin":
+        raise ApiError(404, "NOT_FOUND", "Admin not found")
+    if farmer_id == g.farmer_id:
+        raise ApiError(400, "INVALID_INPUT", "Cannot revoke your own admin access")
+    before = farmer
+    updated = dataclasses.replace(farmer, role="farmer")
+    saved = store.save_farmer(updated)
+    write_audit_log(store, g.farmer_id, "admin.revoke", "farmer", farmer_id, before, saved)
+    return jsonify({"revoked": True}), 200
+
+
 _FIELD_PATCHABLE = {"name", "latitude", "longitude", "area_ha", "elevation_m",
                      "soil_type", "current_crop", "sown_on"}
 

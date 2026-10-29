@@ -10,13 +10,14 @@ data; the only POSTs are login/logout, which only touch the session.
 """
 import dataclasses
 
-from flask import Blueprint, current_app, flash, redirect, render_template, request, url_for
+from flask import Blueprint, current_app, flash, jsonify, redirect, render_template, request, url_for
 
 from agro_mirai.api.errors import ApiError
 from agro_mirai.api.routes.admin import build_overview
 from agro_mirai.api.serializers import farmer_to_public_json, to_json
 from agro_mirai.api.session_auth import clear_session, issue_session, require_admin
-from agro_mirai.auth.password import verify_password
+from agro_mirai.auth.email_otp import send_reset_otp, verify_reset_otp
+from agro_mirai.auth.password import hash_password, verify_password
 from agro_mirai.feedback.aggregator import FeedbackAggregator
 
 admin_ui_bp = Blueprint("admin_ui", __name__, url_prefix="/admin")
@@ -47,6 +48,38 @@ def login():
 def logout():
     clear_session()
     return redirect(url_for("admin_ui.login_form"))
+
+
+@admin_ui_bp.post("/forgot-password")
+def forgot_password():
+    """Always responds the same way regardless of whether `email` belongs
+    to an admin account -- never reveals which emails have admin access.
+    If it does, Supabase Auth emails a one-time code the caller then
+    submits to /admin/reset-password."""
+    email = (request.form.get("email") or "").strip().lower()
+    store = current_app.extensions["data_store"]
+    farmer = store.get_farmer_by_email(email) if email else None
+    if farmer is not None and farmer.role == "admin":
+        send_reset_otp(email)
+    return jsonify({"sent": True})
+
+
+@admin_ui_bp.post("/reset-password")
+def reset_password():
+    email = (request.form.get("email") or "").strip().lower()
+    code = (request.form.get("code") or "").strip()
+    new_password = request.form.get("new_password") or ""
+    if len(new_password) < 8:
+        return jsonify({"error": "Password must be at least 8 characters"}), 400
+    store = current_app.extensions["data_store"]
+    farmer = store.get_farmer_by_email(email) if email else None
+    if farmer is None or farmer.role != "admin":
+        return jsonify({"error": "Invalid code"}), 400
+    if not verify_reset_otp(email, code):
+        return jsonify({"error": "Invalid or expired code"}), 400
+    farmer.password_hash = hash_password(new_password)
+    store.save_farmer(farmer)
+    return jsonify({"reset": True})
 
 
 @admin_ui_bp.errorhandler(ApiError)
