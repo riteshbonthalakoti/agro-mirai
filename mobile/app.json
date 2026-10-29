@@ -56,6 +56,7 @@
       ],
       "expo-asset",
       "expo-secure-store",
+      "./plugins/withExcludeCacheFromBackup",
       "./plugins/withCleartextTraffic",
       "./plugins/withPinnedJdk",
       "./plugins/withReleaseSigning",

@@ -96,24 +96,6 @@ function Header() {
   const ctx = React.useContext(AppCtx);
   if (!ctx || !ctx.field) return null;
   const { field, fields, selectField, lang } = ctx;
-  const { unread, openInbox } = useNotifications();
-  const bellAnim = useRef(new Animated.Value(0)).current;
-
-  const handleBellPress = () => {
-    Animated.sequence([
-      Animated.timing(bellAnim, { toValue: 1, duration: 70, useNativeDriver: true }),
-      Animated.timing(bellAnim, { toValue: -1, duration: 70, useNativeDriver: true }),
-      Animated.timing(bellAnim, { toValue: 0.6, duration: 60, useNativeDriver: true }),
-      Animated.timing(bellAnim, { toValue: -0.6, duration: 60, useNativeDriver: true }),
-      Animated.timing(bellAnim, { toValue: 0, duration: 50, useNativeDriver: true }),
-    ]).start();
-    openInbox();
-  };
-
-  const bellRotate = bellAnim.interpolate({
-    inputRange: [-1, 0, 1],
-    outputRange: ['-20deg', '0deg', '20deg'],
-  });
 
   return (
     <View style={{ paddingHorizontal: S.lg, paddingTop: S.sm, paddingBottom: S.sm, backgroundColor: C.bg, borderBottomWidth: 1, borderBottomColor: C.border }}>
@@ -125,18 +107,7 @@ function Header() {
           <Text style={{ fontSize: 19, fontWeight: '800', color: C.text }} numberOfLines={1}>{field.name}</Text>
           {field.current_crop ? <Text style={{ fontSize: 13, color: C.muted, marginTop: 1 }} numberOfLines={1}>{cropLabel(lang, field.current_crop)}</Text> : null}
         </View>
-        <View style={{ width: 48, alignItems: 'flex-end' }}>
-          <TouchableOpacity onPress={handleBellPress} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} style={{ padding: 4 }}>
-            <Animated.View style={{ transform: [{ rotate: bellRotate }] }}>
-              <Icon name="bell" size={26} color={C.text} />
-              {unread > 0 ? (
-                <View style={{ position: 'absolute', top: 0, right: 0, minWidth: 16, height: 16, borderRadius: 8, backgroundColor: C.danger, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 3 }}>
-                  <Text style={{ color: '#fff', fontSize: 10, fontWeight: '700' }}>{unread > 9 ? '9+' : unread}</Text>
-                </View>
-              ) : null}
-            </Animated.View>
-          </TouchableOpacity>
-        </View>
+        <View style={{ width: 48 }} />
       </View>
       {fields.length > 1 ? (
         // one scrollable row: with several fields the chips used to wrap into many rows and push the content off screen
@@ -386,7 +357,7 @@ export default function App() {
 function Root() {
   const [lang, setLang] = useState<Lang>('en');
   return (
-    <NotificationsProvider t={makeT(lang)}>
+    <NotificationsProvider>
       <RootInner lang={lang} setLang={setLang} />
     </NotificationsProvider>
   );
