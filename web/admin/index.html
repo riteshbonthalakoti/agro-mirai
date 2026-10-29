@@ -19,7 +19,7 @@
        style="background:radial-gradient(circle at 20% 20%, #17301F 0%, #0F2017 55%, #0A1710 100%)">
     <div class="w-full max-w-sm">
       <div class="flex flex-col items-center gap-2 mb-6">
-        <div class="w-12 h-12 rounded-2xl flex items-center justify-center overflow-hidden" style="background:#1F4430;box-shadow:0 8px 20px rgba(0,0,0,.35)"><img src="logo-mark.png" alt="" class="w-8 h-8 object-contain"></div>
+        <img src="logo-mark.png" alt="AGRO MIRAI" class="w-14 h-14 rounded-2xl" style="filter:drop-shadow(0 8px 20px rgba(0,0,0,.35))">
         <div class="text-white font-bold text-lg tracking-wide">AGRO MIRAI</div>
         <div class="text-xs" style="color:#74C69D">Admin Dashboard</div>
       </div>
@@ -83,9 +83,12 @@
           </label>
           <div x-show="forgot.error" x-text="forgot.error" class="text-sm mb-3 rounded-lg px-3 py-2" style="background:var(--danger-soft);color:var(--danger)"></div>
           <div x-show="forgot.success" x-text="forgot.success" class="text-sm mb-3 rounded-lg px-3 py-2" style="background:var(--accent-soft);color:var(--accent-ink)"></div>
-          <button type="submit" :disabled="forgot.busy" class="btn-primary w-full py-2.5">
+          <button x-show="!forgot.success" type="submit" :disabled="forgot.busy" class="btn-primary w-full py-2.5">
             <span x-text="forgot.busy ? 'Resetting…' : 'Reset password'"></span>
           </button>
+          <button x-show="forgot.success" type="button"
+                  @click="forgot.show = false; loginEmail = forgot.email; loginPassword = ''"
+                  class="btn-primary w-full py-2.5">Go to sign in</button>
         </form>
       </template>
 
@@ -101,7 +104,7 @@
       <button @click="mobileNavOpen = true" class="text-white p-1 -ml-1" aria-label="Open menu">
         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
       </button>
-      <div class="w-7 h-7 rounded-lg flex items-center justify-center flex-none overflow-hidden" style="background:#1F4430"><img src="logo-mark.png" alt="" class="w-5 h-5 object-contain"></div>
+      <img src="logo-mark.png" alt="" class="w-8 h-8 flex-none rounded-lg">
       <div class="text-white text-sm font-bold tracking-wide">AGRO MIRAI</div>
     </div>
 
@@ -116,9 +119,7 @@
       <div class="px-5 py-5" style="border-bottom:1px solid rgba(255,255,255,.08)">
         <div class="flex items-center justify-between">
           <div class="flex items-center gap-3">
-            <div class="w-9 h-9 rounded-xl flex items-center justify-center overflow-hidden" style="background:#1F4430">
-              <img src="logo-mark.png" alt="" class="w-6 h-6 object-contain">
-            </div>
+            <img src="logo-mark.png" alt="" class="w-10 h-10 rounded-xl">
             <div>
               <div class="text-white text-sm font-bold tracking-wide">AGRO MIRAI</div>
               <div class="text-xs" style="color:#74C69D">Admin Control</div>

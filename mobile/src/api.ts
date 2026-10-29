@@ -113,7 +113,7 @@ async function request<T>(
 const json = (method: string, data: unknown): RequestInit => ({ method, body: JSON.stringify(data) });
 
 // ---- types (mirror specs/core/openapi.yaml) --------------------------------
-export type Farmer = { id: string; name: string; phone?: string | null; preferred_language: string; photo_url?: string | null };
+export type Farmer = { id: string; name: string; phone?: string | null; preferred_language: string; photo_url?: string | null; district?: string | null; state?: string | null };
 export type Field = {
   id: string; name: string; latitude: number; longitude: number; area_ha: number;
   soil_type?: string | null; current_crop?: string | null; sown_on?: string | null;
@@ -187,7 +187,7 @@ export const logoutWithToken = (token: string) =>
 
 // ---- farmer / fields ---------------------------------------------------------
 export const getMe = () => request<Farmer>('/v2/farmers/me', {}, { timeout: 8000 });
-export const patchMe = (data: Partial<Pick<Farmer, 'name' | 'preferred_language' | 'photo_url'>>) =>
+export const patchMe = (data: Partial<Pick<Farmer, 'name' | 'preferred_language' | 'photo_url' | 'district' | 'state'>>) =>
   request<Farmer>('/v2/farmers/me', json('PATCH', data));
 export const listFields = () => request<{ items: Field[] }>('/v2/fields', {}, { timeout: 10000 }).then((r) => r.items);
 export const createField = (data: Record<string, unknown>) =>

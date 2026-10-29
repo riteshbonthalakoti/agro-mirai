@@ -51,15 +51,17 @@ def get_me():
 def update_me():
     """Allow farmers to update their display name and preferred language.
 
-    Only ``name`` and ``preferred_language`` are mutable post-registration
-    (email and password changes are out of scope for v1 — noted in ADR 0017's
-    known limitations). At least one key must be present.
+    ``district``/``state`` are also mutable here (silently, from on-device
+    location — see mobile App.tsx's auto-detect effect) alongside the
+    manually-entered ``name``/``preferred_language`` (email and password
+    changes are out of scope for v1 — noted in ADR 0017's known
+    limitations). At least one key must be present.
     """
     body = request.get_json(silent=True)
     if not isinstance(body, dict):
         raise ApiError(400, "BAD_REQUEST", "Request body must be a JSON object")
 
-    allowed_keys = {"name", "preferred_language", "photo_url"}
+    allowed_keys = {"name", "preferred_language", "photo_url", "district", "state"}
     unknown = set(body) - allowed_keys
     if unknown:
         raise ApiError(400, "BAD_REQUEST", f"Unknown fields: {', '.join(sorted(unknown))}")
@@ -74,6 +76,8 @@ def update_me():
     new_name = body.get("name", farmer.name)
     new_lang = body.get("preferred_language", farmer.preferred_language)
     new_photo_url = body.get("photo_url", farmer.photo_url)
+    new_district = (body.get("district") or "").strip() or farmer.district if "district" in body else farmer.district
+    new_state = (body.get("state") or "").strip() or farmer.state if "state" in body else farmer.state
 
     if "name" in body:
         try:
@@ -99,8 +103,8 @@ def update_me():
         # wiped the farmer's phone number -- breaking their ability to log
         # back in via OTP (login is phone-based). Carry them over.
         phone=farmer.phone,
-        district=farmer.district,
-        state=farmer.state,
+        district=new_district,
+        state=new_state,
         email=farmer.email,
         password_hash=farmer.password_hash,
         role=farmer.role,

@@ -2,6 +2,7 @@ import React, { Component, useCallback, useEffect, useMemo, useRef, useState } f
 import { ActivityIndicator, Animated, Easing, Image, Modal, Platform, ScrollView, StatusBar, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import * as SplashScreen from 'expo-splash-screen';
+import * as Location from 'expo-location';
 
 // Keeps Android's native cold-start splash (app.json's expo-splash-screen
 // config: our logo-mark on the same cream background the JS splash uses)
@@ -403,6 +404,41 @@ function RootInner({ lang, setLang }: { lang: Lang; setLang: (l: Lang) => void }
 
   const t = useMemo(() => makeT(lang), [lang]);
   const field = fields.find((f) => f.id === fieldId) ?? fields[0] ?? null;
+
+  // Auto-fill district/state from on-device GPS once per farmer per app
+  // session, instead of asking them to type it in -- silent best-effort:
+  // if location permission was already denied, requestForegroundPermissionsAsync
+  // resolves 'denied' without re-prompting, so this never nags. Guarded by
+  // districtDetectAttempted so a slow/failed attempt isn't retried on every
+  // re-render, and skipped entirely once the farmer already has a district
+  // (e.g. set by an admin) so it never overwrites that.
+  const districtDetectAttempted = useRef<string | null>(null);
+  useEffect(() => {
+    if (!farmer || farmer.district || districtDetectAttempted.current === farmer.id) return;
+    districtDetectAttempted.current = farmer.id;
+    (async () => {
+      try {
+        const perm = await Location.requestForegroundPermissionsAsync();
+        if (perm.status !== 'granted') return;
+        const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+        const [hit] = await Location.reverseGeocodeAsync({
+          latitude: loc.coords.latitude,
+          longitude: loc.coords.longitude,
+        });
+        const district = hit?.subregion || hit?.district || hit?.city;
+        const state = hit?.region;
+        if (!district && !state) return;
+        const updated = await patchMe({
+          ...(district ? { district } : {}),
+          ...(state ? { state } : {}),
+        });
+        setFarmer(updated);
+      } catch {
+        // Best-effort only -- no permission, no GPS fix, or offline is fine;
+        // the farmer can still be set manually later from the admin dashboard.
+      }
+    })();
+  }, [farmer?.id, farmer?.district]);
 
   // Reschedule notifications when signing in or switching accounts
   useEffect(() => {
