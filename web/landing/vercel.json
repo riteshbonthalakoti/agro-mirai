@@ -2,6 +2,12 @@
   "cleanUrls": true,
   "headers": [
     {
+      "source": "/admin/(.*)",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-store" }
+      ]
+    },
+    {
       "source": "/(.*)\\.apk",
       "headers": [
         { "key": "Content-Type", "value": "application/vnd.android.package-archive" },
@@ -19,7 +25,9 @@
     { "source": "/download", "destination": "/download.html" },
     { "source": "/admin/", "destination": "https://agromirai-admin.vercel.app/index.html" },
     { "source": "/admin/style.css", "destination": "https://agromirai-admin.vercel.app/style.css" },
+    { "source": "/admin/tailwind.generated.css", "destination": "https://agromirai-admin.vercel.app/tailwind.generated.css" },
     { "source": "/admin/admin.js", "destination": "https://agromirai-admin.vercel.app/admin.js" },
+    { "source": "/admin/logo-mark.png", "destination": "https://agromirai-admin.vercel.app/logo-mark.png" },
     { "source": "/admin/favicon.ico", "destination": "https://agromirai-admin.vercel.app/favicon.ico" },
     { "source": "/admin/:path*", "destination": "https://agro-mirai-xi27.onrender.com/admin/:path*" },
     { "source": "/v2/:path*", "destination": "https://agro-mirai-xi27.onrender.com/v2/:path*" }
