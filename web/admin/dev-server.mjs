@@ -10,7 +10,7 @@ const root = path.dirname(fileURLToPath(import.meta.url));
 const backend = new URL(process.env.BACKEND_URL || "http://localhost:5000");
 const port = Number(process.env.PORT || 3100);
 const types = { ".html": "text/html", ".css": "text/css", ".js": "text/javascript", ".ico": "image/x-icon" };
-const served = ["index.html", "style.css", "admin.js", "favicon.ico"];
+const served = ["index.html", "style.css", "tailwind.generated.css", "admin.js", "favicon.ico"];
 
 http.createServer((req, res) => {
   if (/^\/(admin|v2|health)(\/|$|\?)/.test(req.url)) {

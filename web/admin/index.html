@@ -5,22 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>AGRO MIRAI — Admin</title>
   <meta name="robots" content="noindex, nofollow">
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script>
-    tailwind.config = {
-      theme: {
-        extend: {
-          colors: {
-            sidebar: '#0F2017',
-            'sidebar-hover': '#17301F',
-            accent: '#2D6A4F',
-            'accent-light': '#52B788',
-            cream: '#F7F5EF',
-          }
-        }
-      }
-    }
-  </script>
+  <link rel="stylesheet" href="tailwind.generated.css">
   <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.x.x/dist/chart.umd.min.js"></script>
   <link rel="stylesheet" href="style.css">
@@ -109,25 +94,45 @@
   </div>
 
   <!-- APP SHELL -->
-  <div x-show="authed" x-cloak class="flex h-screen overflow-hidden">
+  <div x-show="authed" x-cloak x-data="{ mobileNavOpen: false }" class="flex h-screen overflow-hidden relative">
+
+    <!-- Mobile top bar -->
+    <div class="md:hidden fixed top-0 inset-x-0 z-30 flex items-center gap-3 px-4 py-3" style="background:var(--sidebar)">
+      <button @click="mobileNavOpen = true" class="text-white p-1 -ml-1" aria-label="Open menu">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+      </button>
+      <div class="w-7 h-7 rounded-lg flex items-center justify-center text-sm flex-none" style="background:#1F4430;color:#D8F3DC">🌿</div>
+      <div class="text-white text-sm font-bold tracking-wide">AGRO MIRAI</div>
+    </div>
+
+    <!-- Mobile backdrop -->
+    <div x-show="mobileNavOpen" x-cloak @click="mobileNavOpen = false"
+         class="md:hidden fixed inset-0 z-40" style="background:rgba(10,20,14,.55)"></div>
 
     <!-- Sidebar -->
-    <aside class="w-60 flex-none flex flex-col" style="background:var(--sidebar)">
+    <aside class="w-60 flex-none flex flex-col fixed md:static inset-y-0 left-0 z-50 transform transition-transform duration-200 md:translate-x-0"
+           :class="mobileNavOpen ? 'translate-x-0' : '-translate-x-full'"
+           style="background:var(--sidebar)">
       <div class="px-5 py-5" style="border-bottom:1px solid rgba(255,255,255,.08)">
-        <div class="flex items-center gap-3">
-          <div class="w-9 h-9 rounded-xl flex items-center justify-center font-bold text-lg" style="background:#1F4430;color:#D8F3DC">
-            🌿
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-3">
+            <div class="w-9 h-9 rounded-xl flex items-center justify-center font-bold text-lg" style="background:#1F4430;color:#D8F3DC">
+              🌿
+            </div>
+            <div>
+              <div class="text-white text-sm font-bold tracking-wide">AGRO MIRAI</div>
+              <div class="text-xs" style="color:#74C69D">Admin Control</div>
+            </div>
           </div>
-          <div>
-            <div class="text-white text-sm font-bold tracking-wide">AGRO MIRAI</div>
-            <div class="text-xs" style="color:#74C69D">Admin Control</div>
-          </div>
+          <button @click="mobileNavOpen = false" class="md:hidden text-white p-1" aria-label="Close menu">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+          </button>
         </div>
       </div>
       <nav class="flex-1 py-4 space-y-0.5 px-3 overflow-y-auto scrollbar-thin">
         <template x-for="item in navItems" :key="item.view">
           <a :href="'#/' + item.hash"
-             @click.prevent="navigate(item.view)"
+             @click.prevent="navigate(item.view); mobileNavOpen = false"
              class="nav-link flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer transition-all duration-150"
              :class="view === item.view
                ? 'text-white font-semibold shadow-sm'
@@ -155,7 +160,7 @@
     </aside>
 
     <!-- Content area -->
-    <main class="flex-1 overflow-y-auto scrollbar-thin" style="background:var(--canvas)">
+    <main class="flex-1 overflow-y-auto scrollbar-thin pt-14 md:pt-0" style="background:var(--canvas)">
 
       <!-- Toast -->
       <div x-show="toast.show" x-transition
@@ -195,7 +200,7 @@
            @click.self="drawer.show = false"
            @keydown.escape.window="drawer.show = false">
         <div class="bg-white w-full max-w-md h-full overflow-y-auto scrollbar-thin p-6" style="box-shadow:-12px 0 40px rgba(15,32,23,.18)">
-          <div class="flex items-center justify-between mb-6">
+          <div class="flex flex-wrap items-center justify-between gap-3 mb-6">
             <h3 class="font-bold text-base" style="color:var(--ink)" x-text="drawer.title"></h3>
             <button @click="drawer.show = false"
                     class="text-2xl leading-none transition-colors" style="color:var(--ink-faint)"
@@ -214,18 +219,18 @@
       </div>
 
       <!-- ===== OVERVIEW ===== -->
-      <div x-show="view === 'overview'" x-data="overviewPage()" x-init="load()" class="p-7">
+      <div x-show="view === 'overview'" x-data="overviewPage()" x-init="load()" class="p-4 md:p-7">
         <div class="mb-6">
           <h1 class="page-title">Overview</h1>
           <p class="page-sub">Live snapshot of farmers, fields, and recent activity.</p>
         </div>
-        <div x-show="ovLoading" class="grid grid-cols-2 lg:grid-cols-3 gap-4">
+        <div x-show="ovLoading" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           <div class="skeleton-row" x-show="true"></div>
           <div class="skeleton-row"></div>
           <div class="skeleton-row"></div>
         </div>
         <div x-show="!ovLoading">
-          <div class="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
             <template x-for="card in statCards" :key="card.label">
               <div class="stat-card">
                 <div class="stat-label" x-text="card.label"></div>
@@ -284,7 +289,7 @@
       </div>
 
       <!-- ===== FARMERS ===== -->
-      <div x-show="view === 'farmers'" x-data="farmersPage()" x-init="load()" class="p-7">
+      <div x-show="view === 'farmers'" x-data="farmersPage()" x-init="load()" class="p-4 md:p-7">
         <!-- Farmer detail sub-view -->
         <div x-show="detailId" x-data="farmerDetailPage()" x-init="$watch(() => detailId, id => id && load(id))">
           <div class="mb-4">
@@ -299,7 +304,7 @@
                     x-text="farmer && langName(farmer.preferred_language)"></span>
             </div>
             <div class="card p-5 mb-6">
-              <div class="grid grid-cols-2 gap-4 mb-4">
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
                 <label class="block">
                   <span class="text-xs font-semibold" style="color:var(--ink-soft)">Name</span>
                   <input x-model="fdEdit.name" class="input-field mt-1.5">
@@ -409,16 +414,16 @@
 
         <!-- Farmers list -->
         <div x-show="!detailId">
-          <div class="flex items-center justify-between mb-6">
+          <div class="flex flex-wrap items-center justify-between gap-3 mb-6">
             <div>
               <h1 class="page-title">Farmers</h1>
               <p class="page-sub"><span x-text="filteredFarmers.length"></span> of <span x-text="farmers.length"></span> shown</p>
             </div>
           </div>
-          <div class="flex gap-3 mb-4">
+          <div class="flex flex-wrap gap-3 mb-4">
             <input x-model="fq" type="search" placeholder="Search name, phone, district…"
-                   class="input-field" style="max-width:20rem">
-            <select x-model="fLang" class="input-field" style="width:10rem">
+                   class="input-field w-full sm:w-auto" style="max-width:20rem">
+            <select x-model="fLang" class="input-field w-full sm:w-auto" style="width:10rem">
               <option value="">All languages</option>
               <option value="en">English</option>
               <option value="kn">Kannada</option>
@@ -460,16 +465,16 @@
       </div>
 
       <!-- ===== FIELDS ===== -->
-      <div x-show="view === 'fields'" x-data="fieldsPage()" x-init="load()" class="p-7">
-        <div class="flex items-center justify-between mb-6">
+      <div x-show="view === 'fields'" x-data="fieldsPage()" x-init="load()" class="p-4 md:p-7">
+        <div class="flex flex-wrap items-center justify-between gap-3 mb-6">
           <div>
             <h1 class="page-title">Fields</h1>
             <p class="page-sub"><span x-text="filteredFields.length"></span> of <span x-text="fields.length"></span> shown</p>
           </div>
         </div>
-        <div class="flex gap-3 mb-4">
+        <div class="flex flex-wrap gap-3 mb-4">
           <input x-model="flq" type="search" placeholder="Search name, crop, farmer…"
-                 class="input-field" style="max-width:20rem">
+                 class="input-field w-full sm:w-auto" style="max-width:20rem">
         </div>
         <div class="card overflow-x-auto">
           <table class="data-table">
@@ -505,7 +510,7 @@
 
       <!-- ===== BUG REPORTS ===== -->
       <div x-show="view === 'bugs'" x-data="bugReportsPage()" x-init="load()"
-           @view-changed.window="if($event.detail !== 'bugs') stopStream()" class="p-7">
+           @view-changed.window="if($event.detail !== 'bugs') stopStream()" class="p-4 md:p-7">
         <div class="flex items-center gap-3 mb-6">
           <div>
             <h1 class="page-title">Bug Reports</h1>
@@ -554,7 +559,7 @@
       </div>
 
       <!-- ===== AUDIT LOG ===== -->
-      <div x-show="view === 'audit'" x-data="auditLogPage()" x-init="load()" class="p-7">
+      <div x-show="view === 'audit'" x-data="auditLogPage()" x-init="load()" class="p-4 md:p-7">
         <div class="mb-6">
           <h1 class="page-title">Audit Log</h1>
           <p class="page-sub">Every create, edit, and delete made from this dashboard.</p>
@@ -597,7 +602,7 @@
       </div>
 
       <!-- ===== OTP Lookup ===== -->
-      <div x-show="view === 'otps'" x-data="otpLookupPage()" class="p-7 max-w-md">
+      <div x-show="view === 'otps'" x-data="otpLookupPage()" class="p-4 md:p-7 max-w-md">
         <div class="mb-5">
           <h1 class="page-title">OTP Lookup</h1>
           <p class="page-sub">Backup for when a real SMS doesn't arrive. Reads the code straight out of the server's own logs — nothing is stored separately.</p>
@@ -621,8 +626,8 @@
       </div>
 
       <!-- ===== ADMINS ===== -->
-      <div x-show="view === 'admins'" x-data="adminsPage()" x-init="load()" class="p-7 max-w-2xl">
-        <div class="flex items-center justify-between mb-6">
+      <div x-show="view === 'admins'" x-data="adminsPage()" x-init="load()" class="p-4 md:p-7 max-w-2xl">
+        <div class="flex flex-wrap items-center justify-between gap-3 mb-6">
           <div>
             <h1 class="page-title">Admins</h1>
             <p class="page-sub">Who can sign in to this dashboard.</p>
