@@ -62,6 +62,8 @@ function makeBarChart(id, labels, values, color) {
     },
     options: {
       indexAxis: 'y',
+      responsive: true,
+      maintainAspectRatio: false,
       plugins: { legend: { display: false } },
       scales: {
         x: { beginAtZero: true, ticks: { stepSize: 1 } },
