@@ -18,8 +18,20 @@ interface AnimatedSplashScreenProps {
 
 export function AnimatedSplashScreen({ onFinish, serverWaking = false }: AnimatedSplashScreenProps) {
   const fadeAnim = useRef(new Animated.Value(1)).current;
+  // Separate from fadeAnim (which only drives opacity, useNativeDriver: true):
+  // backgroundColor interpolation can't run on the native driver, so it needs
+  // its own Animated.Value. Crossfades the splash's own cream background to
+  // the real app's white (theme.ts C.bg) *before* the view becomes invisible,
+  // so whatever's revealed underneath on teardown is already color-matched
+  // instead of an abrupt cream-to-white cut.
+  const bgAnim = useRef(new Animated.Value(0)).current;
   const finishedRef = useRef(false);
   const [videoLoaded, setVideoLoaded] = useState(false);
+
+  const animatedBackgroundColor = bgAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['#F1EEE1', '#FFFFFF'],
+  });
 
   // Android's expo-video VideoView is backed by a Surface/TextureView;
   // tearing it down on unmount can show one real black frame if the next
@@ -31,9 +43,20 @@ export function AnimatedSplashScreen({ onFinish, serverWaking = false }: Animate
     if (finishedRef.current) return;
     finishedRef.current = true;
 
+    // Background crossfade runs first and slightly longer than the opacity
+    // fade, so the cream-to-white color shift is a soft blend the eye can
+    // follow rather than the hard color jump a same-timing fade produces --
+    // only this closing transition changed, the 2250ms video cutoff above
+    // did not move.
+    Animated.timing(bgAnim, {
+      toValue: 1,
+      duration: 320,
+      useNativeDriver: false,
+    }).start();
     Animated.timing(fadeAnim, {
       toValue: 0,
-      duration: 220,
+      duration: 320,
+      delay: 80,
       useNativeDriver: true,
     }).start(() => onFinish());
   }).current;
@@ -80,15 +103,18 @@ export function AnimatedSplashScreen({ onFinish, serverWaking = false }: Animate
   }, [player, triggerFinish]);
 
   return (
-    <AnimatedView style={[styles.container, { opacity: fadeAnim }]} pointerEvents="none">
-      <View style={styles.videoContainer}>
+    <AnimatedView
+      style={[styles.container, { opacity: fadeAnim, backgroundColor: animatedBackgroundColor }]}
+      pointerEvents="none"
+    >
+      <AnimatedView style={[styles.videoContainer, { backgroundColor: animatedBackgroundColor }]}>
         <VideoView
           player={player}
           style={styles.video}
           contentFit="contain"
           nativeControls={false}
         />
-      </View>
+      </AnimatedView>
     </AnimatedView>
   );
 }
