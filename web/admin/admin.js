@@ -12,7 +12,7 @@ function esc(s) {
 }
 
 function api(path, opts) {
-  return fetch(path, Object.assign({ credentials: 'same-origin' }, opts || {})).then(function (r) {
+  return fetch(path, Object.assign({ credentials: 'same-origin', cache: 'no-store' }, opts || {})).then(function (r) {
     if (r.status === 401) { var e = new Error('unauthorized'); e.code = 401; throw e; }
     if (!r.ok) return r.json().catch(function () { return {}; }).then(function (b) {
       throw new Error((b.error && b.error.message) || (path + ' → ' + r.status));

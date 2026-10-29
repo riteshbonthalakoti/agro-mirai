@@ -11,11 +11,11 @@
       theme: {
         extend: {
           colors: {
-            sidebar: '#12261B',
-            'sidebar-hover': '#1B3827',
+            sidebar: '#0F2017',
+            'sidebar-hover': '#17301F',
             accent: '#2D6A4F',
             'accent-light': '#52B788',
-            cream: '#F8F6F0',
+            cream: '#F7F5EF',
           }
         }
       }
@@ -25,58 +25,61 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.x.x/dist/chart.umd.min.js"></script>
   <link rel="stylesheet" href="style.css">
 </head>
-<body class="h-full bg-[#F8F6F0] text-slate-800" style="font-family:-apple-system,'Segoe UI',sans-serif"
+<body class="h-full" style="background:#F7F5EF"
       x-data="adminApp()" x-init="init()">
 
   <!-- LOGIN -->
   <div x-show="!authed" x-cloak
-       class="min-h-screen flex items-center justify-center bg-sidebar px-4">
-    <div class="w-full max-w-sm bg-white rounded-2xl shadow-xl p-8">
-      <div class="flex items-center gap-3 mb-6">
-        <span class="text-3xl">🌿</span>
-        <div>
-          <div class="font-bold text-lg leading-tight">AGRO MIRAI</div>
-          <div class="text-xs text-slate-500">Admin Dashboard</div>
-        </div>
+       class="min-h-screen flex items-center justify-center px-4"
+       style="background:radial-gradient(circle at 20% 20%, #17301F 0%, #0F2017 55%, #0A1710 100%)">
+    <div class="w-full max-w-sm">
+      <div class="flex flex-col items-center gap-2 mb-6">
+        <div class="w-12 h-12 rounded-2xl flex items-center justify-center text-2xl" style="background:#1F4430;box-shadow:0 8px 20px rgba(0,0,0,.35)">🌿</div>
+        <div class="text-white font-bold text-lg tracking-wide">AGRO MIRAI</div>
+        <div class="text-xs" style="color:#74C69D">Admin Dashboard</div>
       </div>
-      <form @submit.prevent="login()">
-        <label class="block mb-4">
-          <span class="text-sm text-slate-600 font-medium">Email</span>
-          <input x-model="loginEmail" type="email" required autocomplete="username"
-                 class="input-field mt-1">
-        </label>
-        <label class="block mb-5">
-          <span class="text-sm text-slate-600 font-medium">Password</span>
-          <input x-model="loginPassword" type="password" required autocomplete="current-password"
-                 class="input-field mt-1">
-        </label>
-        <div x-show="loginError"
-             x-text="loginError"
-             class="text-red-600 text-sm mb-3 bg-red-50 rounded-lg px-3 py-2"></div>
-        <button type="submit" :disabled="loginBusy"
-                class="btn-primary w-full py-2.5 text-sm">
-          <span x-text="loginBusy ? 'Signing in…' : 'Sign in'"></span>
-        </button>
-      </form>
-      <button type="button" @click="forgot.show = true; forgot.step = 'email'; forgot.error = ''"
-              class="text-xs text-slate-500 hover:text-accent mt-4 block mx-auto">Forgot password?</button>
+      <div class="card p-7" style="border-radius:18px">
+        <form @submit.prevent="login()">
+          <label class="block mb-4">
+            <span class="text-xs font-semibold" style="color:var(--ink-soft)">Email</span>
+            <input x-model="loginEmail" type="email" required autocomplete="username"
+                   class="input-field mt-1.5">
+          </label>
+          <label class="block mb-5">
+            <span class="text-xs font-semibold" style="color:var(--ink-soft)">Password</span>
+            <input x-model="loginPassword" type="password" required autocomplete="current-password"
+                   class="input-field mt-1.5">
+          </label>
+          <div x-show="loginError"
+               x-text="loginError"
+               class="text-sm mb-4 rounded-lg px-3 py-2" style="background:var(--danger-soft);color:var(--danger)"></div>
+          <button type="submit" :disabled="loginBusy"
+                  class="btn-primary w-full py-2.5">
+            <span x-text="loginBusy ? 'Signing in…' : 'Sign in'"></span>
+          </button>
+        </form>
+        <button type="button" @click="forgot.show = true; forgot.step = 'email'; forgot.error = ''"
+                class="text-xs mt-5 block mx-auto transition-colors" style="color:var(--ink-faint)"
+                onmouseover="this.style.color='var(--accent)'" onmouseout="this.style.color='var(--ink-faint)'">Forgot password?</button>
+      </div>
+      <p class="text-center text-xs mt-6" style="color:#4C6354">Crop advisory · admin access only</p>
     </div>
   </div>
 
   <!-- FORGOT PASSWORD MODAL -->
   <div x-show="forgot.show" x-cloak
-       class="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4">
-    <div class="w-full max-w-sm bg-white rounded-2xl shadow-xl p-6" @click.outside="forgot.show = false">
-      <div class="font-bold text-lg mb-4" x-text="forgot.step === 'email' ? 'Reset password' : 'Enter the code we emailed you'"></div>
+       class="fixed inset-0 flex items-center justify-center z-50 px-4" style="background:rgba(10,20,14,.55);backdrop-filter:blur(2px)">
+    <div class="w-full max-w-sm card p-6" style="border-radius:18px;box-shadow:var(--shadow-pop)" @click.outside="forgot.show = false">
+      <div class="font-bold text-lg mb-5" x-text="forgot.step === 'email' ? 'Reset password' : 'Enter the code we emailed you'"></div>
 
       <template x-if="forgot.step === 'email'">
         <form @submit.prevent="sendResetCode()">
           <label class="block mb-4">
-            <span class="text-sm text-slate-600 font-medium">Admin email</span>
-            <input x-model="forgot.email" type="email" required class="input-field mt-1">
+            <span class="text-xs font-semibold" style="color:var(--ink-soft)">Admin email</span>
+            <input x-model="forgot.email" type="email" required class="input-field mt-1.5">
           </label>
-          <div x-show="forgot.error" x-text="forgot.error" class="text-red-600 text-sm mb-3 bg-red-50 rounded-lg px-3 py-2"></div>
-          <button type="submit" :disabled="forgot.busy" class="btn-primary w-full py-2.5 text-sm">
+          <div x-show="forgot.error" x-text="forgot.error" class="text-sm mb-3 rounded-lg px-3 py-2" style="background:var(--danger-soft);color:var(--danger)"></div>
+          <button type="submit" :disabled="forgot.busy" class="btn-primary w-full py-2.5">
             <span x-text="forgot.busy ? 'Sending…' : 'Send code'"></span>
           </button>
         </form>
@@ -84,68 +87,24 @@
 
       <template x-if="forgot.step === 'code'">
         <form @submit.prevent="submitResetCode()">
-          <p class="text-xs text-slate-500 mb-3">If that email has admin access, a 6-digit code was sent to it.</p>
+          <p class="text-xs mb-4" style="color:var(--ink-faint)">If that email has admin access, a 6-digit code was sent to it.</p>
           <label class="block mb-3">
-            <span class="text-sm text-slate-600 font-medium">Code</span>
-            <input x-model="forgot.code" type="text" inputmode="numeric" required class="input-field mt-1">
+            <span class="text-xs font-semibold" style="color:var(--ink-soft)">Code</span>
+            <input x-model="forgot.code" type="text" inputmode="numeric" required class="input-field mt-1.5">
           </label>
           <label class="block mb-4">
-            <span class="text-sm text-slate-600 font-medium">New password</span>
-            <input x-model="forgot.newPassword" type="password" required minlength="8" class="input-field mt-1">
+            <span class="text-xs font-semibold" style="color:var(--ink-soft)">New password</span>
+            <input x-model="forgot.newPassword" type="password" required minlength="8" class="input-field mt-1.5">
           </label>
-          <div x-show="forgot.error" x-text="forgot.error" class="text-red-600 text-sm mb-3 bg-red-50 rounded-lg px-3 py-2"></div>
-          <div x-show="forgot.success" x-text="forgot.success" class="text-accent text-sm mb-3 bg-green-50 rounded-lg px-3 py-2"></div>
-          <button type="submit" :disabled="forgot.busy" class="btn-primary w-full py-2.5 text-sm">
+          <div x-show="forgot.error" x-text="forgot.error" class="text-sm mb-3 rounded-lg px-3 py-2" style="background:var(--danger-soft);color:var(--danger)"></div>
+          <div x-show="forgot.success" x-text="forgot.success" class="text-sm mb-3 rounded-lg px-3 py-2" style="background:var(--accent-soft);color:var(--accent-ink)"></div>
+          <button type="submit" :disabled="forgot.busy" class="btn-primary w-full py-2.5">
             <span x-text="forgot.busy ? 'Resetting…' : 'Reset password'"></span>
           </button>
         </form>
       </template>
 
-      <button type="button" @click="forgot.show = false" class="text-xs text-slate-500 hover:text-accent mt-4 block mx-auto">Cancel</button>
-    </div>
-  </div>
-
-  <!-- ADMINS VIEW -->
-  <div x-show="view === 'admins'" x-data="adminsPage()" x-init="load()" class="p-6 max-w-2xl">
-    <div class="flex items-center justify-between mb-5">
-      <h1 class="text-xl font-bold">Admins</h1>
-      <button @click="showAdd = true" class="btn-primary px-4 py-2 text-sm">+ Add admin</button>
-    </div>
-
-    <div x-show="showAdd" class="bg-white rounded-xl shadow p-5 mb-5">
-      <form @submit.prevent="create()">
-        <label class="block mb-3">
-          <span class="text-sm text-slate-600 font-medium">Name</span>
-          <input x-model="newAdmin.name" type="text" class="input-field mt-1">
-        </label>
-        <label class="block mb-3">
-          <span class="text-sm text-slate-600 font-medium">Email</span>
-          <input x-model="newAdmin.email" type="email" required class="input-field mt-1">
-        </label>
-        <label class="block mb-4">
-          <span class="text-sm text-slate-600 font-medium">Password</span>
-          <input x-model="newAdmin.password" type="password" required minlength="8" class="input-field mt-1">
-        </label>
-        <div x-show="error" x-text="error" class="text-red-600 text-sm mb-3 bg-red-50 rounded-lg px-3 py-2"></div>
-        <div class="flex gap-2">
-          <button type="submit" :disabled="busy" class="btn-primary px-4 py-2 text-sm">
-            <span x-text="busy ? 'Creating…' : 'Create admin'"></span>
-          </button>
-          <button type="button" @click="showAdd = false" class="px-4 py-2 text-sm text-slate-500">Cancel</button>
-        </div>
-      </form>
-    </div>
-
-    <div class="bg-white rounded-xl shadow divide-y">
-      <template x-for="a in admins" :key="a.id">
-        <div class="flex items-center justify-between px-5 py-3">
-          <div>
-            <div class="font-medium text-sm" x-text="a.name"></div>
-            <div class="text-xs text-slate-500" x-text="a.email"></div>
-          </div>
-          <button @click="revoke(a)" class="text-xs text-red-600 hover:underline">Revoke</button>
-        </div>
-      </template>
+      <button type="button" @click="forgot.show = false" class="text-xs mt-5 block mx-auto" style="color:var(--ink-faint)">Cancel</button>
     </div>
   </div>
 
@@ -153,10 +112,10 @@
   <div x-show="authed" x-cloak class="flex h-screen overflow-hidden">
 
     <!-- Sidebar -->
-    <aside class="w-60 flex-none flex flex-col" style="background:#12261B">
-      <div class="px-5 py-5" style="border-bottom:1px solid rgba(255,255,255,.1)">
+    <aside class="w-60 flex-none flex flex-col" style="background:var(--sidebar)">
+      <div class="px-5 py-5" style="border-bottom:1px solid rgba(255,255,255,.08)">
         <div class="flex items-center gap-3">
-          <div class="w-9 h-9 rounded-xl flex items-center justify-center font-bold text-lg" style="background:#2D6A4F;color:#D8F3DC">
+          <div class="w-9 h-9 rounded-xl flex items-center justify-center font-bold text-lg" style="background:#1F4430;color:#D8F3DC">
             🌿
           </div>
           <div>
@@ -165,31 +124,30 @@
           </div>
         </div>
       </div>
-      <nav class="flex-1 py-4 space-y-1 px-3 overflow-y-auto">
+      <nav class="flex-1 py-4 space-y-0.5 px-3 overflow-y-auto scrollbar-thin">
         <template x-for="item in navItems" :key="item.view">
           <a :href="'#/' + item.hash"
              @click.prevent="navigate(item.view)"
-             class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm cursor-pointer transition-all duration-150"
+             class="nav-link flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer transition-all duration-150"
              :class="view === item.view
                ? 'text-white font-semibold shadow-sm'
-               : 'text-[#95D5B2] hover:text-white hover:bg-[#1B3827]'"
-             :style="view === item.view ? 'background:#2D6A4F' : ''"
+               : 'hover:text-white hover:bg-[#17301F]'"
+             :style="view === item.view ? 'background:#1F4430' : 'color:#8FB8A0'"
           >
-            <span x-html="item.icon" class="w-5 h-5 flex items-center justify-center flex-none"></span>
+            <span x-html="item.icon" class="w-5 h-5 flex items-center justify-center flex-none opacity-90"></span>
             <span x-text="item.label" class="flex-1 truncate"></span>
             <span x-show="item.view === 'bugs' && unreadBugs > 0"
                   x-text="unreadBugs"
-                  class="text-white text-xs font-bold rounded-full px-1.5 py-0.5 min-w-[18px] text-center shadow"
-                  style="background:#E63946"></span>
+                  class="nav-badge"></span>
           </a>
         </template>
       </nav>
-      <div class="p-3" style="border-top:1px solid rgba(255,255,255,.1)">
+      <div class="p-3" style="border-top:1px solid rgba(255,255,255,.08)">
         <button @click="logout()"
                 class="w-full text-sm py-2 px-3 rounded-xl text-left transition-colors flex items-center gap-2"
-                style="color:#95D5B2"
-                onmouseover="this.style.color='#fff';this.style.background='#1B3827'"
-                onmouseout="this.style.color='#95D5B2';this.style.background=''">
+                style="color:#8FB8A0"
+                onmouseover="this.style.color='#fff';this.style.background='#17301F'"
+                onmouseout="this.style.color='#8FB8A0';this.style.background=''">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
           Sign out
         </button>
@@ -197,36 +155,35 @@
     </aside>
 
     <!-- Content area -->
-    <main class="flex-1 overflow-y-auto bg-[#F8F6F0]">
+    <main class="flex-1 overflow-y-auto scrollbar-thin" style="background:var(--canvas)">
 
       <!-- Toast -->
       <div x-show="toast.show" x-transition
-           class="fixed top-4 right-4 z-50 rounded-xl shadow-lg px-4 py-3 text-sm font-medium"
-           :class="toast.type === 'error' ? 'bg-red-600 text-white' : 'bg-slate-800 text-white'">
+           class="fixed top-4 right-4 z-50 rounded-xl shadow-lg px-4 py-3 text-sm font-semibold"
+           :class="toast.type === 'error' ? '' : ''"
+           :style="toast.type === 'error' ? 'background:var(--danger);color:#fff' : 'background:#16261D;color:#fff'">
         <span x-text="toast.msg"></span>
       </div>
 
       <!-- Confirm modal -->
       <div x-show="confirm.show" x-cloak
            class="fixed inset-0 flex items-center justify-center z-40 px-4"
-           style="background:rgba(0,0,0,.5)"
+           style="background:rgba(10,20,14,.55);backdrop-filter:blur(2px)"
            @keydown.escape.window="confirm.show = false">
-        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6">
-          <h3 class="font-semibold text-slate-800 mb-2">Confirm deletion</h3>
-          <p class="text-sm text-slate-600 mb-4">
-            Type <strong x-text="confirm.expected"></strong> to permanently delete this. This cannot be undone.
+        <div class="card w-full max-w-sm p-6" style="border-radius:18px;box-shadow:var(--shadow-pop)">
+          <h3 class="font-bold text-base mb-2" style="color:var(--ink)">Confirm deletion</h3>
+          <p class="text-sm mb-4" style="color:var(--ink-soft)">
+            Type <strong x-text="confirm.expected" style="color:var(--ink)"></strong> to permanently delete this. This cannot be undone.
           </p>
           <input x-model="confirm.typed" x-ref="confirmInput"
                  @keydown.enter="confirm.typed === confirm.expected && confirm.onConfirm()"
                  autocomplete="off"
                  class="input-field mb-4">
           <div class="flex gap-2 justify-end">
-            <button @click="confirm.show = false"
-                    class="px-4 py-2 text-sm rounded-lg text-slate-600"
-                    style="border:1px solid #e2e8f0">Cancel</button>
+            <button @click="confirm.show = false" class="btn-secondary px-4 py-2">Cancel</button>
             <button @click="confirm.onConfirm()"
                     :disabled="confirm.typed !== confirm.expected"
-                    class="btn-danger px-4 py-2 text-sm">Delete</button>
+                    class="btn-danger px-4 py-2">Delete</button>
           </div>
         </div>
       </div>
@@ -234,218 +191,218 @@
       <!-- Edit drawer -->
       <div x-show="drawer.show" x-cloak
            class="fixed inset-0 z-30 flex justify-end"
-           style="background:rgba(0,0,0,.4)"
+           style="background:rgba(10,20,14,.5)"
            @click.self="drawer.show = false"
            @keydown.escape.window="drawer.show = false">
-        <div class="bg-white w-full max-w-md h-full overflow-y-auto shadow-2xl p-6">
+        <div class="bg-white w-full max-w-md h-full overflow-y-auto scrollbar-thin p-6" style="box-shadow:-12px 0 40px rgba(15,32,23,.18)">
           <div class="flex items-center justify-between mb-6">
-            <h3 class="font-semibold text-slate-800" x-text="drawer.title"></h3>
+            <h3 class="font-bold text-base" style="color:var(--ink)" x-text="drawer.title"></h3>
             <button @click="drawer.show = false"
-                    class="text-slate-400 hover:text-slate-600 text-2xl leading-none">&times;</button>
+                    class="text-2xl leading-none transition-colors" style="color:var(--ink-faint)"
+                    onmouseover="this.style.color='var(--ink)'" onmouseout="this.style.color='var(--ink-faint)'">&times;</button>
           </div>
           <div x-html="drawer.bodyHtml"></div>
           <div class="flex gap-3 mt-6">
             <button @click="drawer.save()" :disabled="drawer.saving"
-                    class="btn-primary flex-1 py-2.5 text-sm">
+                    class="btn-primary flex-1 py-2.5">
               <span x-text="drawer.saving ? 'Saving…' : 'Save changes'"></span>
             </button>
-            <button @click="drawer.show = false"
-                    class="px-4 py-2.5 text-sm rounded-lg text-slate-600"
-                    style="border:1px solid #e2e8f0">Cancel</button>
+            <button @click="drawer.show = false" class="btn-secondary px-4 py-2.5">Cancel</button>
           </div>
-          <p x-show="drawer.error" x-text="drawer.error" class="text-red-600 text-sm mt-3"></p>
+          <p x-show="drawer.error" x-text="drawer.error" class="text-sm mt-3" style="color:var(--danger)"></p>
         </div>
       </div>
 
       <!-- ===== OVERVIEW ===== -->
-      <div x-show="view === 'overview'" x-data="overviewPage()" x-init="load()" class="p-6">
-        <h1 class="text-xl font-bold text-slate-800 mb-6">Overview</h1>
-        <div x-show="ovLoading" class="text-slate-400 text-sm">Loading…</div>
+      <div x-show="view === 'overview'" x-data="overviewPage()" x-init="load()" class="p-7">
+        <div class="mb-6">
+          <h1 class="page-title">Overview</h1>
+          <p class="page-sub">Live snapshot of farmers, fields, and recent activity.</p>
+        </div>
+        <div x-show="ovLoading" class="grid grid-cols-2 lg:grid-cols-3 gap-4">
+          <div class="skeleton-row" x-show="true"></div>
+          <div class="skeleton-row"></div>
+          <div class="skeleton-row"></div>
+        </div>
         <div x-show="!ovLoading">
           <div class="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
             <template x-for="card in statCards" :key="card.label">
-              <div class="bg-white rounded-xl p-4" style="border:1px solid #f1f5f9;box-shadow:0 1px 3px rgba(0,0,0,.06)">
-                <div class="text-xs text-slate-500 font-medium mb-1" x-text="card.label"></div>
-                <div class="text-3xl font-bold text-accent" x-text="card.value"></div>
-                <div x-show="card.note" x-text="card.note" class="text-xs text-slate-400 mt-0.5"></div>
+              <div class="stat-card">
+                <div class="stat-label" x-text="card.label"></div>
+                <div class="stat-value" x-text="card.value"></div>
+                <div x-show="card.note" x-text="card.note" class="stat-note"></div>
               </div>
             </template>
           </div>
           <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
-            <div class="bg-white rounded-xl p-4" style="border:1px solid #f1f5f9;box-shadow:0 1px 3px rgba(0,0,0,.06)">
-              <div class="text-sm font-semibold text-slate-700 mb-3">Crop distribution</div>
+            <div class="card p-5">
+              <div class="text-sm font-semibold mb-3" style="color:var(--ink)">Crop distribution</div>
               <div style="position:relative;height:220px">
                 <canvas id="cropChart"></canvas>
               </div>
             </div>
-            <div class="bg-white rounded-xl p-4" style="border:1px solid #f1f5f9;box-shadow:0 1px 3px rgba(0,0,0,.06)">
-              <div class="text-sm font-semibold text-slate-700 mb-3">Language distribution</div>
+            <div class="card p-5">
+              <div class="text-sm font-semibold mb-3" style="color:var(--ink)">Language distribution</div>
               <div style="position:relative;height:220px">
                 <canvas id="langChart"></canvas>
               </div>
             </div>
           </div>
-          <div class="bg-white rounded-xl p-4" style="border:1px solid #f1f5f9;box-shadow:0 1px 3px rgba(0,0,0,.06)">
-            <div class="text-sm font-semibold text-slate-700 mb-3">Recent activity</div>
+          <div class="card p-5">
+            <div class="text-sm font-semibold mb-3" style="color:var(--ink)">Recent activity</div>
             <div class="overflow-x-auto">
-              <table class="w-full text-sm">
+              <table class="data-table">
                 <thead>
-                  <tr class="text-left text-xs text-slate-500" style="border-bottom:1px solid #f1f5f9">
-                    <th class="pb-2 pr-4 font-medium">When</th>
-                    <th class="pb-2 pr-4 font-medium">Type</th>
-                    <th class="pb-2 pr-4 font-medium">Field</th>
-                    <th class="pb-2 font-medium">Detail</th>
+                  <tr>
+                    <th>When</th>
+                    <th>Type</th>
+                    <th>Field</th>
+                    <th>Detail</th>
                   </tr>
                 </thead>
                 <tbody>
                   <template x-for="(row, i) in recentActivity" :key="i">
-                    <tr style="border-bottom:1px solid #f8fafc">
-                      <td class="py-2 pr-4 text-slate-500 whitespace-nowrap text-xs" x-text="row.when"></td>
-                      <td class="py-2 pr-4">
-                        <span class="text-xs font-medium px-2 py-0.5 rounded-full"
-                              :style="row.type==='Advisory'?'background:#eff6ff;color:#1d4ed8':'background:#fffbeb;color:#92400e'"
+                    <tr>
+                      <td class="whitespace-nowrap text-xs" x-text="row.when"></td>
+                      <td>
+                        <span class="text-xs font-semibold px-2 py-0.5 rounded-full"
+                              :style="row.type==='Advisory'?'background:#E9F0FB;color:#2255A4':'background:#FCF1D6;color:#8A5A0B'"
                               x-text="row.type"></span>
                       </td>
-                      <td class="py-2 pr-4 text-slate-700 text-sm" x-text="row.field_name || '—'"></td>
-                      <td class="py-2 text-slate-500 text-sm" x-text="row.detail || '—'"></td>
+                      <td class="cell-strong" x-text="row.field_name || '—'"></td>
+                      <td x-text="row.detail || '—'"></td>
                     </tr>
                   </template>
-                  <tr x-show="!recentActivity.length">
-                    <td colspan="4" class="py-4 text-slate-400 text-sm">No activity yet.</td>
-                  </tr>
                 </tbody>
               </table>
+              <div x-show="!recentActivity.length" class="empty-state">
+                <div class="empty-icon">📋</div>No activity yet.
+              </div>
             </div>
           </div>
         </div>
       </div>
 
       <!-- ===== FARMERS ===== -->
-      <div x-show="view === 'farmers'" x-data="farmersPage()" x-init="load()" class="p-6">
+      <div x-show="view === 'farmers'" x-data="farmersPage()" x-init="load()" class="p-7">
         <!-- Farmer detail sub-view -->
-        <div x-show="detailId" x-data="farmerDetailPage()" x-init="$watch('$root.detailId', id => id && load(id))">
+        <div x-show="detailId" x-data="farmerDetailPage()" x-init="$watch(() => detailId, id => id && load(id))">
           <div class="mb-4">
-            <button @click="$root.detailId = null" class="text-accent text-sm hover:underline">← All farmers</button>
+            <button @click="detailId = null" class="text-sm font-semibold hover:underline" style="color:var(--accent-ink)">← All farmers</button>
           </div>
-          <div x-show="fdLoading" class="text-slate-400 text-sm">Loading…</div>
+          <div x-show="fdLoading" class="skeleton-row" style="height:3rem"></div>
           <div x-show="!fdLoading && farmer">
             <div class="flex items-center gap-3 mb-6">
-              <h1 class="text-xl font-bold text-slate-800" x-text="farmer && farmer.name"></h1>
-              <span class="px-2.5 py-0.5 rounded-full text-xs font-medium"
-                    style="background:#f0fdf4;color:#22c55e"
+              <h1 class="page-title" x-text="farmer && farmer.name"></h1>
+              <span class="px-2.5 py-0.5 rounded-full text-xs font-semibold"
+                    style="background:var(--accent-soft);color:var(--accent-ink)"
                     x-text="farmer && langName(farmer.preferred_language)"></span>
             </div>
-            <div class="bg-white rounded-xl p-5 mb-6" style="border:1px solid #f1f5f9;box-shadow:0 1px 3px rgba(0,0,0,.06)">
+            <div class="card p-5 mb-6">
               <div class="grid grid-cols-2 gap-4 mb-4">
                 <label class="block">
-                  <span class="text-xs text-slate-500 font-medium">Name</span>
-                  <input x-model="fdEdit.name" class="input-field mt-1">
+                  <span class="text-xs font-semibold" style="color:var(--ink-soft)">Name</span>
+                  <input x-model="fdEdit.name" class="input-field mt-1.5">
                 </label>
                 <label class="block">
-                  <span class="text-xs text-slate-500 font-medium">Phone</span>
-                  <input x-model="fdEdit.phone" class="input-field mt-1">
+                  <span class="text-xs font-semibold" style="color:var(--ink-soft)">Phone</span>
+                  <input x-model="fdEdit.phone" class="input-field mt-1.5">
                 </label>
                 <label class="block">
-                  <span class="text-xs text-slate-500 font-medium">District</span>
-                  <input x-model="fdEdit.district" class="input-field mt-1">
+                  <span class="text-xs font-semibold" style="color:var(--ink-soft)">District</span>
+                  <input x-model="fdEdit.district" class="input-field mt-1.5">
                 </label>
                 <label class="block">
-                  <span class="text-xs text-slate-500 font-medium">State</span>
-                  <input x-model="fdEdit.state" class="input-field mt-1">
+                  <span class="text-xs font-semibold" style="color:var(--ink-soft)">State</span>
+                  <input x-model="fdEdit.state" class="input-field mt-1.5">
                 </label>
               </div>
               <div class="flex gap-2 items-center">
-                <button @click="saveFarmerDetail()" :disabled="fdSaving" class="btn-primary px-4 py-2 text-sm">
+                <button @click="saveFarmerDetail()" :disabled="fdSaving" class="btn-primary px-4 py-2">
                   <span x-text="fdSaving ? 'Saving…' : 'Save changes'"></span>
                 </button>
-                <button @click="deleteFarmerDetail()" class="btn-danger px-4 py-2 text-sm">Delete farmer</button>
-                <span x-show="fdMsg" x-text="fdMsg" class="text-green-600 text-sm ml-2"></span>
+                <button @click="deleteFarmerDetail()" class="btn-danger px-4 py-2">Delete farmer</button>
+                <span x-show="fdMsg" x-text="fdMsg" class="text-sm ml-2 font-medium" style="color:var(--accent-ink)"></span>
               </div>
             </div>
             <!-- Tabs -->
-            <div class="flex gap-1 mb-4" style="border-bottom:1px solid #e2e8f0">
+            <div class="flex gap-1 mb-4" style="border-bottom:1px solid var(--line)">
               <template x-for="tab in ['Fields','Scans','Advisories']" :key="tab">
                 <button @click="fdTab = tab"
-                        class="px-4 py-2 text-sm font-medium -mb-px transition-colors"
-                        :style="fdTab===tab?'border-bottom:2px solid #22c55e;color:#22c55e':'border-bottom:2px solid transparent;color:#64748b'">
+                        class="px-4 py-2 text-sm font-semibold -mb-px transition-colors"
+                        :style="fdTab===tab?'border-bottom:2px solid var(--accent);color:var(--accent-ink)':'border-bottom:2px solid transparent;color:var(--ink-faint)'">
                   <span x-text="tab"></span>
                 </button>
               </template>
             </div>
             <!-- Fields tab -->
-            <div x-show="fdTab === 'Fields'" class="overflow-x-auto bg-white rounded-xl" style="border:1px solid #f1f5f9">
-              <table class="w-full text-sm">
-                <thead><tr class="text-left text-xs text-slate-500 bg-slate-50" style="border-bottom:1px solid #e2e8f0">
-                  <th class="px-4 py-3 font-medium">Name</th><th class="px-4 py-3 font-medium">Crop</th>
-                  <th class="px-4 py-3 font-medium">Soil</th><th class="px-4 py-3 font-medium">Area</th>
-                  <th class="px-4 py-3 font-medium">Sown</th><th class="px-4 py-3"></th>
+            <div x-show="fdTab === 'Fields'" class="card overflow-x-auto">
+              <table class="data-table">
+                <thead><tr>
+                  <th>Name</th><th>Crop</th>
+                  <th>Soil</th><th>Area</th>
+                  <th>Sown</th><th></th>
                 </tr></thead>
                 <tbody>
                   <template x-for="fl in fdFields" :key="fl.id">
-                    <tr style="border-bottom:1px solid #f8fafc">
-                      <td class="px-4 py-3 font-medium" x-text="fl.name"></td>
-                      <td class="px-4 py-3 text-slate-600" x-text="fl.current_crop || '—'"></td>
-                      <td class="px-4 py-3 text-slate-500 text-xs" x-text="fl.soil_type || '—'"></td>
-                      <td class="px-4 py-3 text-slate-500" x-text="fl.area_ha ? fl.area_ha + ' ha' : '—'"></td>
-                      <td class="px-4 py-3 text-slate-500" x-text="fl.sown_on || '—'"></td>
-                      <td class="px-4 py-3">
+                    <tr class="row-hover">
+                      <td class="cell-strong" x-text="fl.name"></td>
+                      <td x-text="fl.current_crop || '—'"></td>
+                      <td class="text-xs" x-text="fl.soil_type || '—'"></td>
+                      <td x-text="fl.area_ha ? fl.area_ha + ' ha' : '—'"></td>
+                      <td x-text="fl.sown_on || '—'"></td>
+                      <td>
                         <button @click="deleteFieldDetail(fl.id, fl.name)"
-                                class="text-xs font-medium" style="color:#ef4444">Delete</button>
+                                class="text-xs font-semibold" style="color:var(--danger)">Delete</button>
                       </td>
                     </tr>
                   </template>
-                  <tr x-show="!fdFields.length">
-                    <td colspan="6" class="px-4 py-6 text-slate-400 text-sm text-center">No fields.</td>
-                  </tr>
                 </tbody>
               </table>
+              <div x-show="!fdFields.length" class="empty-state">No fields.</div>
             </div>
             <!-- Scans tab -->
-            <div x-show="fdTab === 'Scans'" class="overflow-x-auto bg-white rounded-xl" style="border:1px solid #f1f5f9">
-              <table class="w-full text-sm">
-                <thead><tr class="text-left text-xs text-slate-500 bg-slate-50" style="border-bottom:1px solid #e2e8f0">
-                  <th class="px-4 py-3 font-medium">When</th><th class="px-4 py-3 font-medium">Field</th>
-                  <th class="px-4 py-3 font-medium">Disease</th><th class="px-4 py-3 font-medium">Risk</th>
-                  <th class="px-4 py-3 font-medium">Conf.</th><th class="px-4 py-3 font-medium">Source</th>
+            <div x-show="fdTab === 'Scans'" class="card overflow-x-auto">
+              <table class="data-table">
+                <thead><tr>
+                  <th>When</th><th>Field</th>
+                  <th>Disease</th><th>Risk</th>
+                  <th>Conf.</th><th>Source</th>
                 </tr></thead>
                 <tbody>
                   <template x-for="s in fdScans" :key="s.id">
-                    <tr style="border-bottom:1px solid #f8fafc">
-                      <td class="px-4 py-3 text-slate-500 text-xs whitespace-nowrap" x-text="fmtDt(s.created_at)"></td>
-                      <td class="px-4 py-3" x-text="s.field_name"></td>
-                      <td class="px-4 py-3" x-text="s.disease"></td>
-                      <td class="px-4 py-3"><span class="risk-badge" :class="'risk-'+(s.risk_level||'low')" x-text="s.risk_level"></span></td>
-                      <td class="px-4 py-3 text-slate-500" x-text="s.confidence!=null?(+s.confidence).toFixed(2):'—'"></td>
-                      <td class="px-4 py-3 text-xs text-slate-500" x-text="s.source"></td>
+                    <tr class="row-hover">
+                      <td class="text-xs whitespace-nowrap" x-text="fmtDt(s.created_at)"></td>
+                      <td x-text="s.field_name"></td>
+                      <td x-text="s.disease"></td>
+                      <td><span class="risk-badge" :class="'risk-'+(s.risk_level||'low')" x-text="s.risk_level"></span></td>
+                      <td x-text="s.confidence!=null?(+s.confidence).toFixed(2):'—'"></td>
+                      <td class="text-xs" x-text="s.source"></td>
                     </tr>
                   </template>
-                  <tr x-show="!fdScans.length">
-                    <td colspan="6" class="px-4 py-6 text-slate-400 text-sm text-center">No scans yet.</td>
-                  </tr>
                 </tbody>
               </table>
+              <div x-show="!fdScans.length" class="empty-state">No scans yet.</div>
             </div>
             <!-- Advisories tab -->
-            <div x-show="fdTab === 'Advisories'" class="overflow-x-auto bg-white rounded-xl" style="border:1px solid #f1f5f9">
-              <table class="w-full text-sm">
-                <thead><tr class="text-left text-xs text-slate-500 bg-slate-50" style="border-bottom:1px solid #e2e8f0">
-                  <th class="px-4 py-3 font-medium">When</th><th class="px-4 py-3 font-medium">Field</th>
-                  <th class="px-4 py-3 font-medium">Title</th><th class="px-4 py-3 font-medium">Severity</th>
+            <div x-show="fdTab === 'Advisories'" class="card overflow-x-auto">
+              <table class="data-table">
+                <thead><tr>
+                  <th>When</th><th>Field</th>
+                  <th>Title</th><th>Severity</th>
                 </tr></thead>
                 <tbody>
                   <template x-for="a in fdAdvisories" :key="a.id">
-                    <tr style="border-bottom:1px solid #f8fafc">
-                      <td class="px-4 py-3 text-slate-500 text-xs whitespace-nowrap" x-text="fmtDt(a.created_at)"></td>
-                      <td class="px-4 py-3" x-text="a.field_name"></td>
-                      <td class="px-4 py-3 max-w-xs truncate" x-text="a.title"></td>
-                      <td class="px-4 py-3"><span class="risk-badge" :class="'risk-'+(a.severity||'low')" x-text="a.severity"></span></td>
+                    <tr class="row-hover">
+                      <td class="text-xs whitespace-nowrap" x-text="fmtDt(a.created_at)"></td>
+                      <td x-text="a.field_name"></td>
+                      <td class="max-w-xs truncate" x-text="a.title"></td>
+                      <td><span class="risk-badge" :class="'risk-'+(a.severity||'low')" x-text="a.severity"></span></td>
                     </tr>
                   </template>
-                  <tr x-show="!fdAdvisories.length">
-                    <td colspan="4" class="px-4 py-6 text-slate-400 text-sm text-center">No advisories yet.</td>
-                  </tr>
                 </tbody>
               </table>
+              <div x-show="!fdAdvisories.length" class="empty-state">No advisories yet.</div>
             </div>
           </div>
         </div>
@@ -453,8 +410,10 @@
         <!-- Farmers list -->
         <div x-show="!detailId">
           <div class="flex items-center justify-between mb-6">
-            <h1 class="text-xl font-bold text-slate-800">Farmers</h1>
-            <span class="text-sm text-slate-500" x-text="filteredFarmers.length + ' of ' + farmers.length"></span>
+            <div>
+              <h1 class="page-title">Farmers</h1>
+              <p class="page-sub"><span x-text="filteredFarmers.length"></span> of <span x-text="farmers.length"></span> shown</p>
+            </div>
           </div>
           <div class="flex gap-3 mb-4">
             <input x-model="fq" type="search" placeholder="Search name, phone, district…"
@@ -467,191 +426,248 @@
               <option value="hi">Hindi</option>
             </select>
           </div>
-          <div class="bg-white rounded-xl overflow-hidden" style="border:1px solid #f1f5f9;box-shadow:0 1px 3px rgba(0,0,0,.06)">
-            <table class="w-full text-sm">
-              <thead><tr class="text-left text-xs text-slate-500 bg-slate-50" style="border-bottom:1px solid #e2e8f0">
-                <th class="px-4 py-3 font-medium">Name</th><th class="px-4 py-3 font-medium">Phone</th>
-                <th class="px-4 py-3 font-medium">District</th><th class="px-4 py-3 font-medium">Language</th>
-                <th class="px-4 py-3 font-medium">Fields</th><th class="px-4 py-3 font-medium">Joined</th>
-                <th class="px-4 py-3"></th>
+          <div class="card overflow-x-auto">
+            <table class="data-table">
+              <thead><tr>
+                <th>Name</th><th>Phone</th>
+                <th>District</th><th>Language</th>
+                <th>Fields</th><th>Joined</th>
+                <th></th>
               </tr></thead>
               <tbody>
                 <template x-for="f in filteredFarmers" :key="f.id">
-                  <tr class="hover:bg-slate-50 cursor-pointer" style="border-bottom:1px solid #f8fafc"
+                  <tr class="row-hover cursor-pointer"
                       @click="detailId = f.id">
-                    <td class="px-4 py-3 font-medium text-accent" x-text="f.name"></td>
-                    <td class="px-4 py-3 text-slate-500" x-text="f.phone || '—'"></td>
-                    <td class="px-4 py-3 text-slate-500" x-text="f.district || '—'"></td>
-                    <td class="px-4 py-3 text-slate-500" x-text="langName(f.preferred_language)"></td>
-                    <td class="px-4 py-3 text-slate-500" x-text="f.field_count"></td>
-                    <td class="px-4 py-3 text-slate-400 text-xs" x-text="(f.created_at||'').slice(0,10)"></td>
-                    <td class="px-4 py-3" @click.stop>
-                      <button @click="openFarmerEdit(f)" class="text-xs font-medium mr-3" style="color:#64748b">Edit</button>
-                      <button @click="deleteFarmer(f.id, f.name)" class="text-xs font-medium" style="color:#ef4444">Delete</button>
+                    <td class="row-link" x-text="f.name"></td>
+                    <td x-text="f.phone || '—'"></td>
+                    <td x-text="f.district || '—'"></td>
+                    <td x-text="langName(f.preferred_language)"></td>
+                    <td x-text="f.field_count"></td>
+                    <td class="text-xs" style="color:var(--ink-faint)" x-text="(f.created_at||'').slice(0,10)"></td>
+                    <td @click.stop>
+                      <button @click="openFarmerEdit(f)" class="text-xs font-semibold mr-3" style="color:var(--ink-faint)">Edit</button>
+                      <button @click="deleteFarmer(f.id, f.name)" class="text-xs font-semibold" style="color:var(--danger)">Delete</button>
                     </td>
                   </tr>
                 </template>
-                <tr x-show="!filteredFarmers.length">
-                  <td colspan="7" class="px-4 py-8 text-slate-400 text-sm text-center">No farmers match.</td>
-                </tr>
               </tbody>
             </table>
+            <div x-show="!filteredFarmers.length" class="empty-state">
+              <div class="empty-icon">🌾</div>No farmers match.
+            </div>
           </div>
         </div>
       </div>
 
       <!-- ===== FIELDS ===== -->
-      <div x-show="view === 'fields'" x-data="fieldsPage()" x-init="load()" class="p-6">
+      <div x-show="view === 'fields'" x-data="fieldsPage()" x-init="load()" class="p-7">
         <div class="flex items-center justify-between mb-6">
-          <h1 class="text-xl font-bold text-slate-800">Fields</h1>
-          <span class="text-sm text-slate-500" x-text="filteredFields.length + ' of ' + fields.length"></span>
+          <div>
+            <h1 class="page-title">Fields</h1>
+            <p class="page-sub"><span x-text="filteredFields.length"></span> of <span x-text="fields.length"></span> shown</p>
+          </div>
         </div>
         <div class="flex gap-3 mb-4">
           <input x-model="flq" type="search" placeholder="Search name, crop, farmer…"
                  class="input-field" style="max-width:20rem">
         </div>
-        <div class="bg-white rounded-xl overflow-hidden" style="border:1px solid #f1f5f9;box-shadow:0 1px 3px rgba(0,0,0,.06)">
-          <table class="w-full text-sm">
-            <thead><tr class="text-left text-xs text-slate-500 bg-slate-50" style="border-bottom:1px solid #e2e8f0">
-              <th class="px-4 py-3 font-medium">Name</th><th class="px-4 py-3 font-medium">Farmer</th>
-              <th class="px-4 py-3 font-medium">Crop</th><th class="px-4 py-3 font-medium">Soil</th>
-              <th class="px-4 py-3 font-medium">Area</th><th class="px-4 py-3 font-medium">Location</th>
-              <th class="px-4 py-3"></th>
+        <div class="card overflow-x-auto">
+          <table class="data-table">
+            <thead><tr>
+              <th>Name</th><th>Farmer</th>
+              <th>Crop</th><th>Soil</th>
+              <th>Area</th><th>Location</th>
+              <th></th>
             </tr></thead>
             <tbody>
               <template x-for="fl in filteredFields" :key="fl.id">
-                <tr class="hover:bg-slate-50" style="border-bottom:1px solid #f8fafc">
-                  <td class="px-4 py-3 font-medium" x-text="fl.name"></td>
-                  <td class="px-4 py-3 text-slate-500" x-text="fl.farmer_name || '—'"></td>
-                  <td class="px-4 py-3 text-slate-500" x-text="fl.current_crop || '—'"></td>
-                  <td class="px-4 py-3 text-slate-400 text-xs" x-text="fl.soil_type || '—'"></td>
-                  <td class="px-4 py-3 text-slate-500" x-text="fl.area_ha ? fl.area_ha + ' ha' : '—'"></td>
-                  <td class="px-4 py-3 text-slate-400 text-xs"
+                <tr class="row-hover">
+                  <td class="cell-strong" x-text="fl.name"></td>
+                  <td x-text="fl.farmer_name || '—'"></td>
+                  <td x-text="fl.current_crop || '—'"></td>
+                  <td class="text-xs" x-text="fl.soil_type || '—'"></td>
+                  <td x-text="fl.area_ha ? fl.area_ha + ' ha' : '—'"></td>
+                  <td class="text-xs" style="color:var(--ink-faint)"
                       x-text="fl.latitude!=null ? fl.latitude.toFixed(3)+', '+fl.longitude.toFixed(3) : '—'"></td>
-                  <td class="px-4 py-3">
-                    <button @click="openFieldEdit(fl)" class="text-xs font-medium mr-3" style="color:#64748b">Edit</button>
-                    <button @click="deleteField(fl.id, fl.name)" class="text-xs font-medium" style="color:#ef4444">Delete</button>
+                  <td>
+                    <button @click="openFieldEdit(fl)" class="text-xs font-semibold mr-3" style="color:var(--ink-faint)">Edit</button>
+                    <button @click="deleteField(fl.id, fl.name)" class="text-xs font-semibold" style="color:var(--danger)">Delete</button>
                   </td>
                 </tr>
               </template>
-              <tr x-show="!filteredFields.length">
-                <td colspan="7" class="px-4 py-8 text-slate-400 text-sm text-center">No fields match.</td>
-              </tr>
             </tbody>
           </table>
+          <div x-show="!filteredFields.length" class="empty-state">
+            <div class="empty-icon">🗺️</div>No fields match.
+          </div>
         </div>
       </div>
 
       <!-- ===== BUG REPORTS ===== -->
       <div x-show="view === 'bugs'" x-data="bugReportsPage()" x-init="load()"
-           @view-changed.window="if($event.detail !== 'bugs') stopStream()" class="p-6">
+           @view-changed.window="if($event.detail !== 'bugs') stopStream()" class="p-7">
         <div class="flex items-center gap-3 mb-6">
-          <h1 class="text-xl font-bold text-slate-800">Bug Reports</h1>
+          <div>
+            <h1 class="page-title">Bug Reports</h1>
+            <p class="page-sub">Streamed live as they come in.</p>
+          </div>
           <span id="bug-live-badge"
-                class="text-xs px-2 py-0.5 rounded-full"
-                style="background:#f1f5f9;color:#64748b">connecting…</span>
+                class="text-xs font-semibold px-2.5 py-1 rounded-full"
+                style="background:var(--line-soft);color:var(--ink-faint)">connecting…</span>
         </div>
-        <div class="bg-white rounded-xl overflow-hidden" style="border:1px solid #f1f5f9;box-shadow:0 1px 3px rgba(0,0,0,.06)">
-          <table class="w-full text-sm">
-            <thead><tr class="text-left text-xs text-slate-500 bg-slate-50" style="border-bottom:1px solid #e2e8f0">
-              <th class="px-4 py-3 font-medium">When</th><th class="px-4 py-3 font-medium">Category</th>
-              <th class="px-4 py-3 font-medium">Message</th><th class="px-4 py-3 font-medium">Ver.</th>
-              <th class="px-4 py-3 font-medium">Status</th><th class="px-4 py-3"></th>
+        <div class="card overflow-x-auto">
+          <table class="data-table">
+            <thead><tr>
+              <th>When</th><th>Category</th>
+              <th>Message</th><th>Ver.</th>
+              <th>Status</th><th></th>
             </tr></thead>
             <tbody>
               <template x-for="r in bugReports" :key="r.id">
-                <tr style="border-bottom:1px solid #f8fafc">
-                  <td class="px-4 py-3 text-slate-400 text-xs whitespace-nowrap" x-text="fmtDt(r.created_at)"></td>
-                  <td class="px-4 py-3 text-slate-600 text-xs" x-text="r.category || '—'"></td>
-                  <td class="px-4 py-3 text-slate-700" style="max-width:16rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" x-text="r.message || '—'"></td>
-                  <td class="px-4 py-3 text-slate-400 text-xs" x-text="r.app_version || '—'"></td>
-                  <td class="px-4 py-3">
+                <tr>
+                  <td class="text-xs whitespace-nowrap" style="color:var(--ink-faint)" x-text="fmtDt(r.created_at)"></td>
+                  <td class="text-xs" x-text="r.category || '—'"></td>
+                  <td style="max-width:16rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--ink)" x-text="r.message || '—'"></td>
+                  <td class="text-xs" style="color:var(--ink-faint)" x-text="r.app_version || '—'"></td>
+                  <td>
                     <select x-model="r.status" @change="patchStatus(r)"
-                            class="text-xs rounded-lg px-2 py-1 focus:outline-none"
+                            class="text-xs rounded-lg px-2 py-1 focus:outline-none font-semibold"
                             :class="statusClass(r.status)"
-                            style="border:1px solid #e2e8f0">
+                            style="border:1px solid var(--line)">
                       <option value="open">open</option>
                       <option value="triaged">triaged</option>
                       <option value="in_progress">in_progress</option>
                       <option value="resolved">resolved</option>
                     </select>
                   </td>
-                  <td class="px-4 py-3">
-                    <button @click="deleteReport(r.id)" class="text-xs font-medium" style="color:#ef4444">Delete</button>
+                  <td>
+                    <button @click="deleteReport(r.id)" class="text-xs font-semibold" style="color:var(--danger)">Delete</button>
                   </td>
                 </tr>
               </template>
-              <tr x-show="!bugReports.length">
-                <td colspan="6" class="px-4 py-8 text-slate-400 text-sm text-center">No bug reports yet.</td>
-              </tr>
             </tbody>
           </table>
+          <div x-show="!bugReports.length" class="empty-state">
+            <div class="empty-icon">🐛</div>No bug reports yet.
+          </div>
         </div>
       </div>
 
       <!-- ===== AUDIT LOG ===== -->
-      <div x-show="view === 'audit'" x-data="auditLogPage()" x-init="load()" class="p-6">
-        <h1 class="text-xl font-bold text-slate-800 mb-6">Audit Log</h1>
-        <div x-show="alLoading" class="text-slate-400 text-sm">Loading…</div>
-        <div x-show="!alLoading" class="bg-white rounded-xl overflow-hidden" style="border:1px solid #f1f5f9;box-shadow:0 1px 3px rgba(0,0,0,.06)">
-          <table class="w-full text-sm">
-            <thead><tr class="text-left text-xs text-slate-500 bg-slate-50" style="border-bottom:1px solid #e2e8f0">
-              <th class="px-4 py-3 font-medium">When</th><th class="px-4 py-3 font-medium">Action</th>
-              <th class="px-4 py-3 font-medium">Target</th><th class="px-4 py-3 font-medium">Before / After</th>
+      <div x-show="view === 'audit'" x-data="auditLogPage()" x-init="load()" class="p-7">
+        <div class="mb-6">
+          <h1 class="page-title">Audit Log</h1>
+          <p class="page-sub">Every create, edit, and delete made from this dashboard.</p>
+        </div>
+        <div x-show="alLoading" class="skeleton-row" style="height:3rem"></div>
+        <div x-show="!alLoading" class="card overflow-x-auto">
+          <table class="data-table">
+            <thead><tr>
+              <th>When</th><th>Action</th>
+              <th>Target</th><th>Before / After</th>
             </tr></thead>
             <tbody>
               <template x-for="e in alEntries" :key="e.id">
-                <tr class="align-top" style="border-bottom:1px solid #f8fafc">
-                  <td class="px-4 py-3 text-slate-400 text-xs whitespace-nowrap" x-text="fmtDt(e.created_at)"></td>
-                  <td class="px-4 py-3">
-                    <span class="text-xs font-medium px-2 py-0.5 rounded-full"
-                          :style="e.action==='delete'?'background:#fee2e2;color:#991b1b':'background:#eff6ff;color:#1d4ed8'"
+                <tr class="align-top">
+                  <td class="text-xs whitespace-nowrap" style="color:var(--ink-faint)" x-text="fmtDt(e.created_at)"></td>
+                  <td>
+                    <span class="text-xs font-semibold px-2 py-0.5 rounded-full"
+                          :style="e.action==='delete'?'background:var(--danger-soft);color:#9B2C2A':'background:#E9F0FB;color:#2255A4'"
                           x-text="e.action"></span>
                   </td>
-                  <td class="px-4 py-3 text-slate-600 text-xs" x-text="e.target_type+':'+e.target_id.slice(0,8)+'…'"></td>
-                  <td class="px-4 py-3">
+                  <td class="text-xs" x-text="e.target_type+':'+e.target_id.slice(0,8)+'…'"></td>
+                  <td>
                     <button @click="e._open = !e._open"
-                            class="text-xs" style="color:#94a3b8">
+                            class="text-xs font-medium" style="color:var(--ink-faint)">
                       <span x-text="e._open ? '▾ hide' : '▸ show'"></span>
                     </button>
                     <div x-show="e._open" class="mt-2 space-y-1">
-                      <div x-show="e.before_json" class="text-xs text-slate-500 font-medium">Before:</div>
+                      <div x-show="e.before_json" class="text-xs font-semibold" style="color:var(--ink-faint)">Before:</div>
                       <pre x-show="e.before_json" x-text="prettyJson(e.before_json)" class="json-pre"></pre>
-                      <div x-show="e.after_json" class="text-xs text-slate-500 font-medium mt-1">After:</div>
+                      <div x-show="e.after_json" class="text-xs font-semibold mt-1" style="color:var(--ink-faint)">After:</div>
                       <pre x-show="e.after_json" x-text="prettyJson(e.after_json)" class="json-pre"></pre>
                     </div>
                   </td>
                 </tr>
               </template>
-              <tr x-show="!alEntries.length">
-                <td colspan="4" class="px-4 py-8 text-slate-400 text-sm text-center">No audit entries yet.</td>
-              </tr>
             </tbody>
           </table>
+          <div x-show="!alEntries.length" class="empty-state">No audit entries yet.</div>
         </div>
       </div>
 
       <!-- ===== OTP Lookup ===== -->
-      <div x-show="view === 'otps'" x-data="otpLookupPage()" class="p-6 max-w-md">
-        <h1 class="text-xl font-bold text-slate-800 mb-2">OTP Lookup</h1>
-        <p class="text-sm text-slate-500 mb-5">Backup for when a real SMS doesn't arrive. Reads the code straight out of the server's own logs — nothing is stored separately.</p>
+      <div x-show="view === 'otps'" x-data="otpLookupPage()" class="p-7 max-w-md">
+        <div class="mb-5">
+          <h1 class="page-title">OTP Lookup</h1>
+          <p class="page-sub">Backup for when a real SMS doesn't arrive. Reads the code straight out of the server's own logs — nothing is stored separately.</p>
+        </div>
         <form @submit.prevent="lookup()" class="flex gap-2 mb-5">
           <input x-model="phone" type="tel" placeholder="+91XXXXXXXXXX" class="input-field flex-1">
-          <button type="submit" :disabled="busy" class="px-4 py-2 rounded-lg text-sm font-medium text-white"
-                  style="background:#22c55e" :style="busy ? 'opacity:.6' : ''">
+          <button type="submit" :disabled="busy" class="btn-primary px-4 py-2">
             <span x-show="!busy">Look up</span>
             <span x-show="busy">Looking up…</span>
           </button>
         </form>
-        <div x-show="result" class="bg-white rounded-xl p-5" style="border:1px solid #f1f5f9;box-shadow:0 1px 3px rgba(0,0,0,.06)">
-          <div class="text-xs text-slate-500 mb-1" x-text="result && result.phone"></div>
-          <code class="text-2xl font-mono font-bold text-slate-800" x-text="result && result.otp"></code>
-          <div class="text-xs text-slate-400 mt-2" x-text="result && ageLabel(result.seconds_old)"></div>
+        <div x-show="result" class="card p-5">
+          <div class="text-xs mb-1" style="color:var(--ink-faint)" x-text="result && result.phone"></div>
+          <code class="text-2xl font-mono font-bold" style="color:var(--ink)" x-text="result && result.otp"></code>
+          <div class="text-xs mt-2" style="color:var(--ink-faint)" x-text="result && ageLabel(result.seconds_old)"></div>
         </div>
-        <div x-show="notFound" class="text-sm text-slate-500 bg-slate-50 rounded-xl p-5" style="border:1px solid #f1f5f9">
+        <div x-show="notFound" class="empty-state card">
           No recent OTP found for this number in the last 15 minutes.
         </div>
-        <div x-show="errorMsg" x-text="errorMsg" class="text-sm text-red-600"></div>
+        <div x-show="errorMsg" x-text="errorMsg" class="text-sm mt-2" style="color:var(--danger)"></div>
+      </div>
+
+      <!-- ===== ADMINS ===== -->
+      <div x-show="view === 'admins'" x-data="adminsPage()" x-init="load()" class="p-7 max-w-2xl">
+        <div class="flex items-center justify-between mb-6">
+          <div>
+            <h1 class="page-title">Admins</h1>
+            <p class="page-sub">Who can sign in to this dashboard.</p>
+          </div>
+          <button @click="showAdd = true" class="btn-primary px-4 py-2">+ Add admin</button>
+        </div>
+
+        <div x-show="showAdd" class="card p-5 mb-5">
+          <form @submit.prevent="create()">
+            <label class="block mb-3">
+              <span class="text-xs font-semibold" style="color:var(--ink-soft)">Name</span>
+              <input x-model="newAdmin.name" type="text" class="input-field mt-1.5">
+            </label>
+            <label class="block mb-3">
+              <span class="text-xs font-semibold" style="color:var(--ink-soft)">Email</span>
+              <input x-model="newAdmin.email" type="email" required class="input-field mt-1.5">
+            </label>
+            <label class="block mb-4">
+              <span class="text-xs font-semibold" style="color:var(--ink-soft)">Password</span>
+              <input x-model="newAdmin.password" type="password" required minlength="8" class="input-field mt-1.5">
+            </label>
+            <div x-show="error" x-text="error" class="text-sm mb-3 rounded-lg px-3 py-2" style="background:var(--danger-soft);color:var(--danger)"></div>
+            <div class="flex gap-2">
+              <button type="submit" :disabled="busy" class="btn-primary px-4 py-2">
+                <span x-text="busy ? 'Creating…' : 'Create admin'"></span>
+              </button>
+              <button type="button" @click="showAdd = false" class="btn-secondary px-4 py-2">Cancel</button>
+            </div>
+          </form>
+        </div>
+
+        <div class="card divide-y" style="border-color:var(--line-soft)">
+          <template x-for="a in admins" :key="a.id">
+            <div class="flex items-center justify-between px-5 py-3.5" style="border-color:var(--line-soft)">
+              <div>
+                <div class="font-semibold text-sm" x-text="a.name"></div>
+                <div class="text-xs" style="color:var(--ink-faint)" x-text="a.email"></div>
+              </div>
+              <button @click="revoke(a)" class="text-xs font-semibold" style="color:var(--danger)">Revoke</button>
+            </div>
+          </template>
+          <div x-show="!admins.length" class="empty-state">
+            <div class="empty-icon">👤</div>No admins yet.
+          </div>
+        </div>
       </div>
 
     </main>
