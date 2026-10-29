@@ -398,45 +398,10 @@ export const getAdvisories = async (id: string, generate = false): Promise<Advis
 // `file` is an expo-file-system File (implements Blob) -- see ScanTab for why
 // fetch(file://) is not used.
 export const scanLeaf = async (id: string, file: Blob, lang: string): Promise<DiseaseAlert> => {
-  try {
-    const form = new FormData();
-    form.append('image', file as any, 'leaf.jpg');
-    const res = await request<DiseaseAlert>(`/v2/fields/${id}/disease-risk/image?language=${lang}`, { method: 'POST', body: form }, { timeout: 35000 });
-    if (res && res.disease) {
-      return { ...res, source: 'cnn' };
-    }
-    throw new Error('empty_scan');
-  } catch {
-    const isHindi = lang === 'hi';
-    const isTelugu = lang === 'te';
-    const isKannada = lang === 'kn';
-    const diseaseTitle = isKannada
-      ? 'ಟೊಮೇಟೊ ಆರಂಭಿಕ ಅಂಗಮಾರಿ ರೋಗ (Early Blight)'
-      : isTelugu
-      ? 'టమాటా ముందస్తు తెగులు (Early Blight)'
-      : isHindi
-      ? 'टमाटर अगेती झुलसा (Early Blight)'
-      : 'Tomato Early Blight (Alternaria solani)';
-    
-    const actions = isKannada
-      ? '1. ಸೋಂಕಿತ ಕೆಳಗಿನ ಎಲೆಗಳನ್ನು ಕತ್ತರಿಸಿ ತೆಗೆಯಿರಿ. 2. ಮುಂಜಾನೆ ಸಾವಯವ ತಾಮ್ರದ ಶಿಲೀಂಧ್ರನಾಶಕ ಅಥವಾ ಬೇವಿನ ಎಣ್ಣೆ ಸಿಂಪಡಿಸಿ. 3. ಹನಿ ನೀರಾವರಿ ಬಳಸಿ ಎಲೆಗಳು ಒದ್ದೆಯಾಗುವುದನ್ನು ತಪ್ಪಿಸಿ.'
-      : isTelugu
-      ? '1. సోకిన కింది ఆకులను కత్తిరించండి. 2. ఉదయాన్నే కాపర్ ఆక్సిక్లోరైడ్ లేదా వేప నూనె పిచికారీ చేయండి. 3. డ్రిప్ ఇరిగేషన్ వాడి ఆకులపై నీరు పడకుండా చూడండి.'
-      : isHindi
-      ? '1. संक्रमित निचली पत्तियों की छंटाई करें। 2. सुबह कॉपर ऑक्सीक्लोराइड या नीम तेल का छिड़काव करें। 3. ड्रिप सिंचाई का उपयोग करें ताकि पत्तियां गीली न रहें।'
-      : '1. Prune infected lower foliage with sterilized shears. 2. Apply copper oxychloride or organic neem spray in early morning. 3. Avoid overhead splashing; use drip irrigation to minimize leaf wetness.';
-
-    return {
-      id: `scan-${Date.now()}`,
-      disease: 'Tomato Early Blight (Alternaria solani)',
-      disease_translated: diseaseTitle,
-      risk_level: 'moderate',
-      confidence: 0.89,
-      recommended_action: actions,
-      source: 'cnn',
-      created_at: new Date().toISOString(),
-    };
-  }
+  const form = new FormData();
+  form.append('image', file as any, 'leaf.jpg');
+  const res = await request<DiseaseAlert>(`/v2/fields/${id}/disease-risk/image?language=${lang}`, { method: 'POST', body: form }, { timeout: 35000 });
+  return res;
 };
 export const sendFeedback = (data: { advisory_id: string; rating: number; helpful: boolean; comment?: string }) =>
   request<unknown>('/v2/feedback', json('POST', data));
