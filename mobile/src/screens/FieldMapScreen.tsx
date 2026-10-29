@@ -4,9 +4,14 @@ import Svg, { Path, Circle as SvgCircle } from 'react-native-svg';
 let Map: any = View;
 let Camera: any = View;
 let Marker: any = View;
-let ShapeSource: any = null;
-let FillLayer: any = null;
-let LineLayer: any = null;
+// Field finding (2026-10-29): this installed library version has no
+// ShapeSource/FillLayer/LineLayer exports at all (confirmed against the
+// actual package, not assumed) -- it uses GeoJSONSource + a single generic
+// Layer component (type: 'fill' | 'line', still accepting the same legacy
+// camelCase style props this file already uses). The old names silently
+// resolved to `undefined`, so the boundary circle never rendered.
+let GeoJSONSource: any = null;
+let Layer: any = null;
 let hasMapLibre = false;
 
 try {
@@ -15,9 +20,8 @@ try {
     Map = ML.Map || ML.MapView;
     Camera = ML.Camera;
     Marker = ML.Marker;
-    ShapeSource = ML.ShapeSource;
-    FillLayer = ML.FillLayer;
-    LineLayer = ML.LineLayer;
+    GeoJSONSource = ML.GeoJSONSource;
+    Layer = ML.Layer;
     hasMapLibre = true;
   }
 } catch {
@@ -191,11 +195,21 @@ export function FieldMapScreen({ onClose }: { onClose: () => void }) {
             centered on the exact pin -- an approximation (no surveyed
             polygon exists), same "center + radius" assumption any mapping
             tool uses when all it has is a point and an area. */}
-        {fieldBoundary && ShapeSource && FillLayer && LineLayer && (
-          <ShapeSource id="field-boundary-source" shape={fieldBoundary}>
-            <FillLayer id="field-boundary-fill" style={{ fillColor: C.accent, fillOpacity: 0.12 }} />
-            <LineLayer id="field-boundary-line" style={{ lineColor: C.accent, lineWidth: 2, lineOpacity: 0.7 }} />
-          </ShapeSource>
+        {fieldBoundary && GeoJSONSource && Layer && (
+          <GeoJSONSource id="field-boundary-source" data={fieldBoundary}>
+            <Layer
+              id="field-boundary-fill"
+              type="fill"
+              source="field-boundary-source"
+              style={{ fillColor: C.accent, fillOpacity: 0.12 }}
+            />
+            <Layer
+              id="field-boundary-line"
+              type="line"
+              source="field-boundary-source"
+              style={{ lineColor: C.accent, lineWidth: 2, lineOpacity: 0.7 }}
+            />
+          </GeoJSONSource>
         )}
 
         {/* Field location marker -- a classic red map pin, tip anchored to
