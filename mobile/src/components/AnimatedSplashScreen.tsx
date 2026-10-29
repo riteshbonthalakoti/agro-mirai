@@ -121,7 +121,19 @@ export function AnimatedSplashScreen({ onFinish, serverWaking = false }: Animate
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
+    // Absolute + all four edges, not flex:1 -- this is the actual bug behind
+    // the visible white strips at the very top/bottom of the splash. The
+    // app's real screens use SafeAreaView (edge-to-edge aware, paints its own
+    // background into the status/nav-bar inset regions); this component used
+    // a plain flex:1 View, which does not reliably claim those regions under
+    // edge-to-edge (AppTheme's transparent status/nav bar + no explicit
+    // android:windowBackground), leaving the system's default white showing
+    // through in exactly those strips for the whole 2.25s of playback.
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
     // Warm off-white background (#F4F1E4) matching the video background seamlessly
     backgroundColor: '#F1EEE1',
     alignItems: 'center',
