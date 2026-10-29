@@ -5,6 +5,7 @@ import { AuthBackdrop } from '../components/AuthBackdrop';
 import { dialog } from '../dialog';
 import { IconName } from '../../icons';
 import Constants from 'expo-constants';
+import * as ImageManipulator from 'expo-image-manipulator';
 import * as ImagePicker from 'expo-image-picker';
 import { ApiError, deleteField, patchMe, sendBugReport } from '../api';
 import { cropLabel, useApp } from '../ctx';
@@ -122,11 +123,23 @@ export function MeTab({ initialScreenContext, onConsumeScreenContext }: { initia
     setErr('');
     const p = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!p.granted) return setErr(t('galleryPerm'));
-    const r = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], allowsEditing: true, aspect: [1, 1], quality: 0.4, base64: true });
+    const r = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], allowsEditing: true, aspect: [1, 1], quality: 0.4, base64: false });
     const a = r.assets?.[0];
-    if (r.canceled || !a?.base64) return;
+    if (r.canceled || !a?.uri) return;
     try {
-      setFarmer(await patchMe({ photo_url: `data:${a.mimeType || 'image/jpeg'};base64,${a.base64}` }));
+      // Profile photos ride along on every /v2/farmers/me response as a base64
+      // data URI (there's no file-storage service), so an uncompressed gallery
+      // pick at full camera resolution bloats that response to a megabyte-plus
+      // and every tab/screen that re-fetches the farmer pays for it. The picker
+      // crops to a square but doesn't bound pixel dimensions -- resize down to
+      // a fixed small square here, independent of source resolution.
+      const resized = await ImageManipulator.manipulateAsync(
+        a.uri,
+        [{ resize: { width: 256, height: 256 } }],
+        { compress: 0.6, format: ImageManipulator.SaveFormat.JPEG, base64: true },
+      );
+      if (!resized.base64) return;
+      setFarmer(await patchMe({ photo_url: `data:image/jpeg;base64,${resized.base64}` }));
     } catch (e) {
       const { kind } = classifyError(e);
       if (kind === 'unknown') logError('MeTab.changePhoto', e);
