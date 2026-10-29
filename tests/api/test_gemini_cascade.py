@@ -92,8 +92,18 @@ def test_all_keys_rate_limited_returns_none(keys, monkeypatch):
 
 
 def test_network_error_returns_none(keys, monkeypatch):
-    _patch_post(monkeypatch, requests.ConnectionError("boom"))
+    # Field finding (2026-10-29): a network error on one key now retries the
+    # next pooled key instead of giving up immediately -- both configured
+    # keys (k1, k2) need to fail for the call to finally give up.
+    _patch_post(monkeypatch, requests.ConnectionError("boom"), requests.ConnectionError("boom"))
     assert gemini.ask_gemini_vision(b"img", "diagnose") is None
+
+
+def test_503_on_first_key_retries_second_key_and_succeeds(keys, monkeypatch):
+    body = {"candidates": [{"content": {"parts": [{"text": "ok"}]}}]}
+    calls = _patch_post(monkeypatch, _resp(status=503), _resp(body=body))
+    assert gemini.ask_gemini_vision(b"img", "diagnose") == "ok"
+    assert len(calls) == 2
 
 
 def test_falls_back_to_single_legacy_key_when_no_pool(monkeypatch):
@@ -120,7 +130,7 @@ def test_is_plant_precheck_false(keys, monkeypatch):
 
 
 def test_is_plant_precheck_unreachable_returns_none_not_rejection(keys, monkeypatch):
-    _patch_post(monkeypatch, requests.ConnectionError("boom"))
+    _patch_post(monkeypatch, requests.ConnectionError("boom"), requests.ConnectionError("boom"))
     assert gemini.gemini_is_plant_precheck(b"img") is None
 
 

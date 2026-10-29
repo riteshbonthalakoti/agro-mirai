@@ -29,6 +29,7 @@ from agro_mirai.api.features import build_features_for_field
 from agro_mirai.api.image_validation import validate_image_upload
 from agro_mirai.api.gemini_client import gemini_analyze_leaf, gemini_is_plant_precheck
 from agro_mirai.api.leaf_gate import looks_like_plant_photo
+from agro_mirai.api.plant_disease_client import identify_disease as kindwise_identify_disease
 from agro_mirai.api.serializers import drop_unset_source, to_json
 from agro_mirai.api.validation import validate_feedback_create
 from agro_mirai.api.voice_client import translate_text
@@ -287,35 +288,58 @@ def compute_disease_risk_image(
     # Gemini call does the diagnosis. No weather data needed since there's
     # no environmental fallback path to feed.
     result = gemini_analyze_leaf(image_bytes)
-    if result is None:
-        raise ApiError(
-            503,
-            "ANALYSIS_UNAVAILABLE",
-            "Could not analyze this photo right now. Please try again.",
+    if result is not None:
+        confidence = result["confidence"]
+        if not result["has_disease"]:
+            risk_level = "low"
+        elif confidence >= 0.85:
+            risk_level = "severe"
+        elif confidence >= 0.6:
+            risk_level = "high"
+        elif confidence >= 0.35:
+            risk_level = "moderate"
+        else:
+            risk_level = "low"
+
+        alert = DiseaseRiskAlert(
+            id=str(uuid.uuid4()),
+            field_id=field_id,
+            created_at=datetime.now(timezone.utc),
+            disease=f"{result['plant_name']}: {result['disease_name']}",
+            risk_level=risk_level,
+            confidence=confidence,
+            recommended_action=result["recommended_action"] or result["description"] or None,
+            source="gemini_simple",
         )
-
-    confidence = result["confidence"]
-    if not result["has_disease"]:
-        risk_level = "low"
-    elif confidence >= 0.85:
-        risk_level = "severe"
-    elif confidence >= 0.6:
-        risk_level = "high"
-    elif confidence >= 0.35:
-        risk_level = "moderate"
     else:
-        risk_level = "low"
-
-    alert = DiseaseRiskAlert(
-        id=str(uuid.uuid4()),
-        field_id=field_id,
-        created_at=datetime.now(timezone.utc),
-        disease=f"{result['plant_name']}: {result['disease_name']}",
-        risk_level=risk_level,
-        confidence=confidence,
-        recommended_action=result["recommended_action"] or result["description"] or None,
-        source="gemini_simple",
-    )
+        # Field finding (2026-10-29): every configured Gemini key failed
+        # (overloaded/timed out/rate-limited) -- rather than give up with a
+        # bare 503 while Kindwise's crop.health credits sit unused, try it
+        # as a genuine second real identification source. This is not the
+        # old rule-based/fabricated-diagnosis cascade (explicitly rejected
+        # earlier) -- it's a real API call with a real answer, or nothing.
+        # If Kindwise also has nothing (unconfigured, exhausted credits,
+        # network error, genuinely not a plant), fall through to the same
+        # honest 503 as before.
+        kindwise = kindwise_identify_disease(image_bytes, field_id)
+        if kindwise is None or kindwise == "__not_a_plant__":
+            raise ApiError(
+                503,
+                "ANALYSIS_UNAVAILABLE",
+                "Could not analyze this photo right now. Please try again.",
+            )
+        confidence = kindwise["confidence"]
+        risk_level = "high" if confidence >= 0.6 else "moderate" if confidence >= 0.35 else "low"
+        alert = DiseaseRiskAlert(
+            id=str(uuid.uuid4()),
+            field_id=field_id,
+            created_at=datetime.now(timezone.utc),
+            disease=kindwise["disease"],
+            risk_level=risk_level,
+            confidence=confidence,
+            recommended_action=None,
+            source="kindwise_fallback",
+        )
 
     saved = store.save_disease_risk_alert(farmer_id, alert)
     return _with_disease_translation(drop_unset_source(to_json(saved)), target_lang)

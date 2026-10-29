@@ -43,7 +43,12 @@ logger = logging.getLogger(__name__)
 DEFAULT_TIMEOUT_S = 20
 DEFAULT_MODEL = "gemini-flash-latest"
 _API_BASE = "https://generativelanguage.googleapis.com/v1beta/models"
-_CASCADE_TIMEOUT_S = 12
+# Lowered from 12s now that a failure on one key retries the next (field
+# finding 2026-10-29): with N configured keys this is tried up to N times
+# per call, and this project's two-stage scan (precheck + analyze) makes
+# two such calls -- worst case is N * timeout * 2, which must stay well
+# under the mobile client's own request timeout (api.ts scanLeaf).
+_CASCADE_TIMEOUT_S = 8
 
 
 def gemini_api_key() -> str | None:
@@ -113,27 +118,42 @@ def _cascade_keys() -> list[str]:
     return pooled or ([single] if single else [])
 
 
+_RETRYABLE_STATUSES = {429, 500, 502, 503, 504}
+
+
 def _post_generate_content(payload: dict, timeout: float) -> dict | None:
     """POSTs ``payload`` to Gemini's ``generateContent``, trying each
     available key in turn. A 429 marks that key as cooling down (pooled
     keys only -- the legacy single key has nowhere to cool down to) and
-    moves to the next key; any other failure (network error, non-200,
-    malformed body) returns ``None`` immediately without raising."""
+    moves to the next key. Field finding (2026-10-29): a transient
+    server-side failure -- 503 "model overloaded" being the one actually
+    observed live, same idea as 500/502/504 -- used to behave exactly like
+    a hard failure and gave up immediately, even with other configured
+    keys never even tried. Google's overload state isn't necessarily
+    per-key, but there's no reason to burn the whole call on one key's bad
+    luck when a sibling key might simply succeed; same for a timeout/
+    network error, which previously also gave up on the first key with no
+    retry at all. Only a non-retryable 4xx (bad request, auth failure,
+    etc.) or truly exhausting every key gives up for good."""
     url = f"{_API_BASE}/{gemini_model()}:generateContent"
-    for key in _cascade_keys():
+    keys = _cascade_keys()
+    for key in keys:
         try:
             resp = requests.post(
                 url, headers={"X-goog-api-key": key}, json=payload, timeout=timeout,
             )
         except requests.RequestException as exc:
-            logger.warning("Gemini cascade: network error: %s", exc)
-            return None
+            logger.warning("Gemini cascade: network error on this key: %s -- trying next key", exc)
+            continue
         if resp.status_code == 429:
             logger.warning("Gemini cascade: key rate-limited (429), trying next key")
             _pool.mark_rate_limited(key)
             continue
+        if resp.status_code in _RETRYABLE_STATUSES:
+            logger.warning("Gemini cascade: HTTP %s (retryable), trying next key", resp.status_code)
+            continue
         if resp.status_code != 200:
-            logger.warning("Gemini cascade: HTTP %s", resp.status_code)
+            logger.warning("Gemini cascade: HTTP %s (not retryable)", resp.status_code)
             return None
         _pool.mark_success(key)
         try:
@@ -141,7 +161,9 @@ def _post_generate_content(payload: dict, timeout: float) -> dict | None:
         except ValueError:
             logger.warning("Gemini cascade: 200 but body was not JSON")
             return None
-    return None  # no keys configured, or all keys rate-limited
+    if keys:
+        logger.warning("Gemini cascade: exhausted all %d key(s), every attempt failed", len(keys))
+    return None  # no keys configured, or every key failed/rate-limited
 
 
 def _extract_text(body: dict) -> str | None:
