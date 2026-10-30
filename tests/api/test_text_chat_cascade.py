@@ -99,3 +99,51 @@ def test_extract_chart_block_malformed_json_falls_back_to_plain_text():
     text, chart = chat.extract_chart_block(reply)
     assert chart is None
     assert "Here is some info" in text
+
+
+class _FakeField:
+    def __init__(self, id, name, current_crop):
+        self.id, self.name, self.current_crop = id, name, current_crop
+
+
+class _FakeAdvisory:
+    def __init__(self, body):
+        self.body = body
+
+
+def test_rule_based_fallback_no_fields():
+    store = MagicMock()
+    store.list_fields.return_value = []
+    assert "don't have any fields" in chat.rule_based_fallback_reply(store, "f1", "hi", "en")
+
+
+def test_rule_based_fallback_uses_latest_advisory():
+    store = MagicMock()
+    store.list_fields.return_value = [_FakeField("fld-1", "North Plot", "cotton")]
+    store.list_advisories_for_field.return_value = [_FakeAdvisory("Apply 12mm within 3 days.")]
+    reply = chat.rule_based_fallback_reply(store, "f1", "how is my field?", "en")
+    assert "North Plot" in reply
+    assert "12mm" in reply
+
+
+def test_rule_based_fallback_no_advisory_yet():
+    store = MagicMock()
+    store.list_fields.return_value = [_FakeField("fld-1", "North Plot", "cotton")]
+    store.list_advisories_for_field.return_value = []
+    reply = chat.rule_based_fallback_reply(store, "f1", "how is my field?", "en")
+    assert "North Plot" in reply
+    assert "don't have a recent advisory" in reply
+
+
+def test_rule_based_fallback_picks_field_named_in_message():
+    store = MagicMock()
+    store.list_fields.return_value = [
+        _FakeField("fld-1", "North Plot", "cotton"),
+        _FakeField("fld-2", "South Plot", "rice"),
+    ]
+    store.list_advisories_for_field.side_effect = lambda farmer_id, field_id, limit: (
+        [_FakeAdvisory("Rice advisory body")] if field_id == "fld-2" else [_FakeAdvisory("Cotton advisory body")]
+    )
+    reply = chat.rule_based_fallback_reply(store, "f1", "how is my South Plot doing?", "en")
+    assert "South Plot" in reply
+    assert "Rice advisory body" in reply

@@ -16,6 +16,7 @@ from agro_mirai.api.text_chat_client import (
     ask_chat,
     build_chat_system_prompt,
     extract_chart_block,
+    rule_based_fallback_reply,
 )
 from agro_mirai.api.voice_client import _LANGUAGE_NAMES, _build_grounded_context
 from agro_mirai.api.voice_rate_limit import voice_limiter
@@ -72,11 +73,12 @@ def post_chat():
     messages = [{"role": "system", "content": system_prompt}, *history, {"role": "user", "content": message}]
     reply = ask_chat(messages)
     if reply is None:
-        raise ApiError(
-            503,
-            "LLM_UNAVAILABLE",
-            "Chat assistant is unreachable right now; please try again shortly.",
-        )
+        # Module 58, user-directed: degrade to a deterministic, already-
+        # saved-advisory answer rather than a bare 503 -- the farmer still
+        # gets something useful even with both LLM providers exhausted.
+        _log.warning("chat cascade exhausted for farmer=%s, using rule-based fallback", g.farmer_id)
+        fallback_text = rule_based_fallback_reply(store, g.farmer_id, message, language)
+        return jsonify({"reply": fallback_text, "chart": None, "source": "rule_based"}), 200
 
     answer_text, chart = extract_chart_block(reply)
-    return jsonify({"reply": answer_text, "chart": chart}), 200
+    return jsonify({"reply": answer_text, "chart": chart, "source": "llm"}), 200

@@ -318,7 +318,7 @@ export const saveConversationApi = async (entry: { field_id?: string; question: 
 // ---- chat (floating assistant) ---------------------------------------------
 export type ChatHistoryItem = { role: 'user' | 'assistant'; content: string };
 export type ChatChart = { type: 'bar' | 'line'; title: string; labels: string[]; values: number[] };
-export type ChatResult = { reply: string; chart: ChatChart | null };
+export type ChatResult = { reply: string; chart: ChatChart | null; source?: 'llm' | 'rule_based' };
 
 export const sendChatMessage = (message: string, history: ChatHistoryItem[], language: string): Promise<ChatResult> =>
   request<ChatResult>('/v2/chat', json('POST', { message, history, language }), { timeout: 30000 });

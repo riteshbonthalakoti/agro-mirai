@@ -94,12 +94,29 @@ def test_chat_returns_chart_when_model_emits_one(client, monkeypatch):
     assert "rising" in body["reply"].lower()
 
 
-def test_chat_llm_unavailable_returns_503(client, monkeypatch):
+def test_chat_llm_unavailable_falls_back_to_rule_based_reply(client, monkeypatch):
+    """Module 58, user-directed: both LLM providers exhausted degrades to
+    a deterministic saved-advisory reply, never a bare 503."""
+    _register_and_login(client)
+    field_id = _create_field(client)
+    farmer_id = list(client.application.extensions["data_store"]._conn.execute("SELECT id FROM farmers").fetchall())[0][0]
+    _seed_advisory(client.application, farmer_id, field_id)
+    monkeypatch.setattr("agro_mirai.api.routes.chat_v2.ask_chat", lambda messages: None)
+
+    resp = _post_chat(client)
+    assert resp.status_code == 200
+    body = resp.get_json()
+    assert body["source"] == "rule_based"
+    assert "12mm" in body["reply"]
+    assert body["chart"] is None
+
+
+def test_chat_llm_unavailable_no_fields_still_returns_200(client, monkeypatch):
     _register_and_login(client)
     monkeypatch.setattr("agro_mirai.api.routes.chat_v2.ask_chat", lambda messages: None)
     resp = _post_chat(client)
-    assert resp.status_code == 503
-    assert resp.get_json()["error"]["code"] == "LLM_UNAVAILABLE"
+    assert resp.status_code == 200
+    assert resp.get_json()["source"] == "rule_based"
 
 
 def test_chat_empty_message_returns_400(client):

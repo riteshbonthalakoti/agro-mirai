@@ -44,7 +44,7 @@ _OPENROUTER_MODEL = "google/gemma-4-31b-it:free"
 _GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
 _GROQ_MODEL = "llama-3.1-8b-instant"
 
-_openrouter_pool = KeyPool("openrouter_chat", "OPENROUTER_CHAT_API_KEY", max_keys=3)
+_openrouter_pool = KeyPool("openrouter_chat", "OPENROUTER_CHAT_API_KEY", max_keys=4)
 _groq_pool = KeyPool("groq_chat", "GROQ_CHAT_API_KEY", max_keys=3)
 
 _RETRYABLE_STATUSES = {429, 500, 502, 503, 504}
@@ -146,6 +146,61 @@ def build_chat_system_prompt(context: str, language_name: str) -> str:
         f"5. Reply only in {language_name}.\n\n"
         f"{_CHART_INSTRUCTION}\n\nThis farmer's real field data:\n{context}"
     )
+
+
+_FALLBACK_TRANSLATIONS = {
+    # Minimal fixed phrases for the no-LLM rule-based fallback (below) --
+    # intentionally not run through the chat models, so this has to carry
+    # its own translations rather than depending on a live LLM call.
+    "en": {
+        "no_fields": "You don't have any fields registered yet. Add a field first so I can help you.",
+        "no_advisory": "I don't have a recent advisory for your '{field}' field yet. Check back after your next advisory.",
+        "with_advisory": "For your '{field}' field ({crop}): {body}",
+        "intro": "The assistant is busy right now, so here is your most recent saved advisory instead of a live answer.",
+    },
+    "kn": {
+        "no_fields": "ನಿಮ್ಮ ಬಳಿ ಇನ್ನೂ ಯಾವುದೇ ಹೊಲ ನೋಂದಣಿಯಾಗಿಲ್ಲ. ಸಹಾಯ ಮಾಡಲು ಮೊದಲು ಒಂದು ಹೊಲ ಸೇರಿಸಿ.",
+        "no_advisory": "ನಿಮ್ಮ '{field}' ಹೊಲಕ್ಕೆ ಇನ್ನೂ ಹೊಸ ಸಲಹೆ ಇಲ್ಲ. ಮುಂದಿನ ಸಲಹೆಯ ನಂತರ ಪರಿಶೀಲಿಸಿ.",
+        "with_advisory": "ನಿಮ್ಮ '{field}' ಹೊಲಕ್ಕೆ ({crop}): {body}",
+        "intro": "ಸಹಾಯಕ ಈಗ busy ಆಗಿದೆ, ಆದ್ದರಿಂದ ನಿಮ್ಮ ಇತ್ತೀಚಿನ ಉಳಿಸಿದ ಸಲಹೆ ಇಲ್ಲಿದೆ.",
+    },
+    "te": {
+        "no_fields": "మీకు ఇంకా ఏ పొలం నమోదు కాలేదు. సహాయం చేయడానికి ముందుగా ఒక పొలం జోడించండి.",
+        "no_advisory": "మీ '{field}' పొలానికి ఇంకా కొత్త సలహా లేదు. తర్వాతి సలహా తర్వాత తిరిగి చూడండి.",
+        "with_advisory": "మీ '{field}' పొలానికి ({crop}): {body}",
+        "intro": "సహాయకుడు ఇప్పుడు busy గా ఉన్నారు, కాబట్టి మీ తాజా సేవ్ చేసిన సలహా ఇక్కడ ఉంది.",
+    },
+    "hi": {
+        "no_fields": "आपके पास अभी कोई खेत दर्ज नहीं है। मदद के लिए पहले एक खेत जोड़ें।",
+        "no_advisory": "आपके '{field}' खेत के लिए अभी कोई नई सलाह नहीं है। अगली सलाह के बाद फिर देखें।",
+        "with_advisory": "आपके '{field}' खेत के लिए ({crop}): {body}",
+        "intro": "सहायक अभी व्यस्त है, इसलिए यह आपकी सबसे हाल की सेव की गई सलाह है।",
+    },
+}
+
+
+def rule_based_fallback_reply(store, farmer_id: str, message: str, language: str) -> str:
+    """Deterministic, no-LLM fallback for when every OpenRouter/Groq key is
+    exhausted (Module 58, user-directed): rather than a bare 503, hand the
+    farmer the most relevant already-saved advisory straight from the
+    DataStore. Picks the field the farmer's own message names (by name,
+    case-insensitively) when there is one, else the farmer's first field.
+    Never raises -- a missing field/advisory degrades to a plain, honest
+    message in the farmer's own language instead of a crash."""
+    phrases = _FALLBACK_TRANSLATIONS.get(language, _FALLBACK_TRANSLATIONS["en"])
+    fields = store.list_fields(farmer_id, limit=20)
+    if not fields:
+        return phrases["no_fields"]
+
+    lowered = message.lower()
+    field = next((f for f in fields if f.name and f.name.lower() in lowered), fields[0])
+
+    advisories = store.list_advisories_for_field(farmer_id, field.id, limit=1)
+    if not advisories:
+        return f"{phrases['intro']} {phrases['no_advisory'].format(field=field.name)}"
+
+    latest = advisories[0]
+    return f"{phrases['intro']} {phrases['with_advisory'].format(field=field.name, crop=field.current_crop or '?', body=latest.body)}"
 
 
 def extract_chart_block(reply: str) -> tuple[str, dict | None]:
