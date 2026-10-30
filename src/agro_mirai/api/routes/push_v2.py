@@ -40,5 +40,5 @@ def unregister_push_token():
     token = (body.get("token") or "").strip()
     if token:
         store = current_app.extensions["data_store"]
-        store.delete_push_token(token)
+        store.delete_push_token(g.farmer_id, token)
     return jsonify({"ok": True}), 200

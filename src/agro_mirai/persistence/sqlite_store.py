@@ -1308,8 +1308,13 @@ class SQLiteDataStore:
             for r in rows
         ]
 
-    def delete_push_token(self, token: str) -> None:
-        self._conn.execute("DELETE FROM push_tokens WHERE token = ?", (token,))
+    def delete_push_token(self, farmer_id: str, token: str) -> None:
+        # Scoped by farmer_id -- without this, any signed-in farmer could
+        # unregister any OTHER farmer's device just by supplying its token
+        # string (no ownership check at all otherwise).
+        self._conn.execute(
+            "DELETE FROM push_tokens WHERE token = ? AND farmer_id = ?", (token, farmer_id)
+        )
         self._conn.commit()
 
     def list_farmer_ids_with_push_tokens(self) -> list[str]:

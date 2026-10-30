@@ -953,8 +953,12 @@ class SupabaseDataStore:
             for r in res.data
         ]
 
-    def delete_push_token(self, token: str) -> None:
-        self._client.table("push_tokens").delete().eq("token", token).execute()
+    def delete_push_token(self, farmer_id: str, token: str) -> None:
+        # Scoped by farmer_id -- see sqlite_store's matching comment: without
+        # this, any signed-in farmer could unregister any other farmer's device.
+        if not _is_uuid(farmer_id):
+            return
+        self._client.table("push_tokens").delete().eq("token", token).eq("farmer_id", farmer_id).execute()
 
     def list_farmer_ids_with_push_tokens(self) -> list[str]:
         res = self._client.table("push_tokens").select("farmer_id").execute()
