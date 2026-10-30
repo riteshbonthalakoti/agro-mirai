@@ -37,13 +37,19 @@ _GATEWAY_URL = "https://api.sms-gate.app/3rdparty/v1/message"
 _GATEWAY_TIMEOUT_S = 10.0
 
 # One template per farmer-facing language (mobile/src/i18n.ts's four: en/kn/te/hi).
-# {code} is substituted in; keep each under ~130 chars so the hash suffix
-# (SMS_APP_HASH) still fits a single 160-char SMS segment.
+# {code} is substituted in. Google's SMS Retriever API hard-rejects (silently
+# -- no error, autofill just never fires) any message over 140 BYTES, not
+# chars -- the old templates' full sentences were fine in English (111
+# bytes with the hash) but blew way past 140 in hi/kn/te once UTF-8's 3
+# bytes/char for Devanagari/Kannada/Telugu is counted (up to 251 bytes),
+# which is why autofill silently never worked for non-English farmers even
+# after SMS_APP_HASH itself was fixed. Kept short enough in every language
+# to leave headroom for the 11-char hash suffix.
 _OTP_SMS_TEMPLATES = {
-    "en": "<#> {code} is your AGRO MIRAI login code. Valid for 5 minutes. Do not share this code with anyone.",
-    "hi": "<#> {code} आपका AGRO MIRAI लॉगिन कोड है। यह 5 मिनट तक मान्य है। इस कोड को किसी के साथ साझा न करें।",
-    "kn": "<#> {code} ಇದು ನಿಮ್ಮ AGRO MIRAI ಲಾಗಿನ್ ಕೋಡ್. 5 ನಿಮಿಷಗಳವರೆಗೆ ಮಾನ್ಯವಾಗಿರುತ್ತದೆ. ಯಾರೊಂದಿಗೂ ಹಂಚಿಕೊಳ್ಳಬೇಡಿ.",
-    "te": "<#> {code} మీ AGRO MIRAI లాగిన్ కోడ్. 5 నిమిషాల వరకు చెల్లుతుంది. ఎవరితోనూ పంచుకోవద్దు.",
+    "en": "<#> {code} is your AGRO MIRAI login code.",
+    "hi": "<#> {code} आपका AGRO MIRAI लॉगिन कोड है।",
+    "kn": "<#> {code} ಇದು ನಿಮ್ಮ AGRO MIRAI ಲಾಗಿನ್ ಕೋಡ್.",
+    "te": "<#> {code} మీ AGRO MIRAI లాగిన్ కోడ్.",
 }
 
 
@@ -201,7 +207,7 @@ def build_otp_sender(env: "os._Environ[str] | dict[str, str] | None" = None) -> 
                 "OTP_PROVIDER=sms_gateway requires SMS_GATEWAY_USER and SMS_GATEWAY_PASS"
             )
         return (
-            SmsGatewaySender(username=username, password=password, app_hash=env.get("SMS_APP_HASH", "M+MVX6Au1Vp")),
+            SmsGatewaySender(username=username, password=password, app_hash=env.get("SMS_APP_HASH")),
             {},
         )
 

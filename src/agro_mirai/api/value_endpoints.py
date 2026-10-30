@@ -31,6 +31,7 @@ from agro_mirai.api.features import build_features_for_field
 from agro_mirai.api.image_validation import validate_image_upload
 from agro_mirai.api.leaf_gate import looks_like_plant_photo
 from agro_mirai.api.plant_disease_client import identify_disease as kindwise_identify_disease
+from agro_mirai.models.regional_suitability import check_regional_fit
 from agro_mirai.api.vision_client import vision_analyze_leaf, vision_is_plant_precheck
 from agro_mirai.api.serializers import drop_unset_source, to_json
 from agro_mirai.api.validation import validate_feedback_create
@@ -141,6 +142,17 @@ def compute_recommendation(
     if not local:
         out["out_of_region"] = None
         out["regional_alternative"] = None
+    else:
+        # The regional-fit check only ran for the rule-based tier
+        # (CropRecommendationModel._predict_rule_based); the LLM tier
+        # (crop_llm.py) never computed it, so an LLM pick outside the
+        # known-grown-here set (e.g. banana) silently skipped the
+        # "not commonly grown in your region" flag. Recompute it here
+        # from whatever crop/alternatives actually got returned,
+        # regardless of which tier produced them.
+        fit = check_regional_fit(out["recommended_crop"], out.get("alternatives"))
+        out["out_of_region"] = fit.out_of_region
+        out["regional_alternative"] = fit.regional_alternative
     out["rationale_plain"] = plain_advisory(out.get("rationale") or "", drop_regional_caveat=not local) or None
     out["details"] = _details(ext["crop_model"], features, keep_current=keep_current)
     return out

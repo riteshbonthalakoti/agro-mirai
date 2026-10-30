@@ -189,7 +189,7 @@ export function HomeTab() {
     return () => loop.stop();
   }, [pulseAnim]);
 
-  const { setDailyReminder, notify } = useNotifications();
+  const { setDailyReminder } = useNotifications();
   useEffect(() => {
     // tomorrow's daily notification carries the latest advice, even if the app is closed by then
     if (today?.text) {
@@ -202,17 +202,6 @@ export function HomeTab() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [today?.text, lang, id]);
-
-  useEffect(() => {
-    if (!d || (d.risk_level !== 'high' && d.risk_level !== 'severe')) return;
-    const eventId = `disease-risk-${id}-${d.risk_level}-${new Date().toDateString()}`;
-    notify({
-      id: eventId,
-      title: t('notifDiseaseTitle'),
-      body: d.disease_translated || d.disease || t('todayCheckLeaves'),
-      severity: d.risk_level,
-    });
-  }, [d?.risk_level, id, notify, t]);
 
   // the server's crop-specific advice is English: translate it (cached), fall back to the generic line
   const diseaseAdvice = useTranslated([d?.recommended_action], lang);
