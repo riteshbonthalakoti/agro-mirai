@@ -1,5 +1,6 @@
 import { requireNativeModule } from 'expo-modules-core';
 import { Platform } from 'react-native';
+import { logError } from '../../src/errorLog';
 
 type SmsRetrieverNativeModule = {
   startSmsRetriever(): Promise<string | null>;
@@ -18,7 +19,12 @@ let NativeModule: SmsRetrieverNativeModule | null = null;
 if (Platform.OS === 'android') {
   try {
     NativeModule = requireNativeModule('SmsRetriever');
-  } catch {
+  } catch (e) {
+    // If this throws, BOTH startSmsRetriever and startSmsUserConsent below
+    // silently no-op forever -- logged so "neither OTP mechanism ever does
+    // anything" can be told apart from "both ran and failed independently"
+    // without needing a connected device to inspect.
+    logError('SmsRetriever.load', e);
     NativeModule = null;
   }
 }
@@ -30,10 +36,14 @@ if (Platform.OS === 'android') {
  * existing manual-entry path as the fallback, never block on this.
  */
 export async function startSmsRetriever(): Promise<string | null> {
-  if (!NativeModule) return null;
+  if (!NativeModule) {
+    logError('SmsRetriever.startSmsRetriever', 'native module not loaded');
+    return null;
+  }
   try {
     return await NativeModule.startSmsRetriever();
-  } catch {
+  } catch (e) {
+    logError('SmsRetriever.startSmsRetriever', e);
     return null;
   }
 }
@@ -50,10 +60,14 @@ export async function stopSmsRetriever(): Promise<void> {
  * Indian banking apps lean on because Retriever alone proved unreliable.
  */
 export async function startSmsUserConsent(): Promise<string | null> {
-  if (!NativeModule) return null;
+  if (!NativeModule) {
+    logError('SmsRetriever.startSmsUserConsent', 'native module not loaded');
+    return null;
+  }
   try {
     return await NativeModule.startSmsUserConsent();
-  } catch {
+  } catch (e) {
+    logError('SmsRetriever.startSmsUserConsent', e);
     return null;
   }
 }
