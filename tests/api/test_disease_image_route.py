@@ -82,6 +82,7 @@ def test_gemini_analyze_success_path(client, monkeypatch):
     Gemini call does the diagnosis -- no CNN/plant-disease-API/rule-based
     cascade involved at all."""
     _patch_features(monkeypatch)
+    monkeypatch.setattr(value_endpoints, "gemini_is_plant_precheck", lambda image_bytes: True)
     monkeypatch.setattr(
         value_endpoints,
         "gemini_analyze_leaf",
@@ -109,6 +110,7 @@ def test_gemini_analyze_success_path(client, monkeypatch):
 
 def test_gemini_analyze_healthy_is_low_risk(client, monkeypatch):
     _patch_features(monkeypatch)
+    monkeypatch.setattr(value_endpoints, "gemini_is_plant_precheck", lambda image_bytes: True)
     monkeypatch.setattr(
         value_endpoints,
         "gemini_analyze_leaf",
@@ -194,19 +196,21 @@ def test_gemini_precheck_rejects_what_the_pixel_gate_missed(client, monkeypatch)
     assert cnn_called == []
 
 
-def test_gemini_precheck_inconclusive_does_not_block_upload(client, monkeypatch):
-    """`None` (unreachable/unconfigured/malformed reply) must never be
-    treated as a rejection -- the pixel gate already accepted this photo,
-    and the analyze step below must still get a chance to run."""
+def test_gemini_precheck_inconclusive_rejects_with_503(client, monkeypatch):
+    """Field finding (2026-10-30, user-directed): `None` (unreachable/
+    unconfigured/malformed reply) used to pass through on the theory that
+    the pixel gate already accepted this photo -- but confirmed live, a
+    screenshot of green stock-photo thumbnails cleared the pixel gate too,
+    and with Gemini unreachable there was nothing left to catch it before a
+    doomed analyze call. `None` now rejects with the same honest
+    "try again" 503 as an unreachable analyze call, never a silent
+    pass-through -- the analyze step below must NOT be reached."""
     _patch_features(monkeypatch)
     monkeypatch.setattr(value_endpoints, "gemini_is_plant_precheck", lambda image_bytes: None)
     monkeypatch.setattr(
         value_endpoints,
         "gemini_analyze_leaf",
-        lambda image_bytes: {
-            "plant_name": "Apple", "has_disease": True, "disease_name": "Apple Scab",
-            "confidence": 0.81, "description": "", "recommended_action": "",
-        },
+        lambda image_bytes: (_ for _ in ()).throw(AssertionError("analyze must not run when precheck is inconclusive")),
     )
 
     resp = client.post(
@@ -216,8 +220,8 @@ def test_gemini_precheck_inconclusive_does_not_block_upload(client, monkeypatch)
         headers=_auth_headers(),
     )
 
-    assert resp.status_code == 200
-    assert resp.get_json()["source"] == "gemini_simple"
+    assert resp.status_code == 503
+    assert resp.get_json()["error"]["code"] == "ANALYSIS_UNAVAILABLE"
 
 
 def test_cnn_client_sends_service_token_when_configured(monkeypatch):

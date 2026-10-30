@@ -269,17 +269,33 @@ def compute_disease_risk_image(
             "NOT_A_LEAF",
             "This photo does not look like a plant leaf. Take a close, well-lit photo of one leaf.",
         )
-    # Field finding (2026-10-26): the pixel gate above is a coarse colour/
-    # texture heuristic that a real-world non-leaf photo with enough green/
-    # texture can slip past. A second, AI-backed opinion from Gemini
-    # catches what the heuristic can't -- but only when it gives a clear
-    # verdict; `None` (unreachable/unconfigured/malformed reply) must never
-    # block an upload the pixel gate already accepted.
-    if gemini_is_plant_precheck(image_bytes) is False:
+    # Field finding (2026-10-26, revised 2026-10-30): the pixel gate above is
+    # a coarse colour/texture heuristic that a real-world non-leaf photo with
+    # enough green/texture can slip past -- confirmed live with a screenshot
+    # of green stock-photo thumbnails (large gradient-green panels plus sharp
+    # text edges satisfied both the colour and "textured" checks). A second,
+    # AI-backed opinion from Gemini catches what the heuristic can't.
+    #
+    # `None` (unreachable/unconfigured/malformed reply) used to pass through
+    # rather than block an upload the pixel gate already accepted -- but a
+    # real farmer's genuinely unreachable Gemini and a junk image slipping
+    # the pixel gate look identical here, and letting it through just means
+    # paying for a doomed analyze call that times out anyway. Reject instead:
+    # user-directed decision (2026-10-30), since Gemini being down for
+    # everyone is the same scenario the strict-gate directive on this
+    # pipeline was written for in the first place.
+    plant_precheck = gemini_is_plant_precheck(image_bytes)
+    if plant_precheck is False:
         raise ApiError(
             422,
             "NOT_A_LEAF",
             "This photo does not look like a plant leaf. Take a close, well-lit photo of one leaf.",
+        )
+    if plant_precheck is None:
+        raise ApiError(
+            503,
+            "ANALYSIS_UNAVAILABLE",
+            "Could not verify this photo right now. Please try again.",
         )
 
     # Simplified pipeline (2026-10-26, user-directed): gate already passed

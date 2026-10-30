@@ -235,6 +235,7 @@ def test_disease_risk_image_gemini_unavailable_returns_503(client):
 def test_disease_risk_image_gemini_success_path(client, monkeypatch):
     from agro_mirai.api import value_endpoints
 
+    monkeypatch.setattr(value_endpoints, "gemini_is_plant_precheck", lambda image_bytes: True)
     monkeypatch.setattr(
         value_endpoints,
         "gemini_analyze_leaf",
