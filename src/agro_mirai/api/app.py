@@ -174,6 +174,7 @@ def _register_routers(app: Flask, limiter: "Limiter") -> None:
     from agro_mirai.api.routes.admin_ui import admin_ui_bp
     from agro_mirai.api.routes.advisory import advisory_bp
     from agro_mirai.api.routes.auth_v2 import auth_v2_bp
+    from agro_mirai.api.routes.chat_v2 import chat_v2_bp
     from agro_mirai.api.routes.disease_image import disease_image_bp
     from agro_mirai.api.routes.farms import farms_bp
     from agro_mirai.api.routes.farms_v2 import farms_v2_bp
@@ -197,6 +198,7 @@ def _register_routers(app: Flask, limiter: "Limiter") -> None:
     app.register_blueprint(admin_ui_bp)
     app.register_blueprint(value_v2_bp)
     app.register_blueprint(voice_v2_bp)
+    app.register_blueprint(chat_v2_bp)
 
     # Module 27 — OTP-request-specific rate limit, on top of the general
     # per-key limit above. The @otp_request_limiter.limit(...) decorator
@@ -269,6 +271,10 @@ def create_app(config: dict | None = None) -> Flask:
     # request, the most expensive voice route yet, so it gets the
     # tightest limit of the three.
     app.config["ASK_RATE_LIMIT"] = os.environ.get("ASK_RATE_LIMIT", "6 per minute")
+    # Module 58 — floating chat assistant: one OpenRouter/Groq text call
+    # per message, cheaper than the voice/ask cascade but still tighter
+    # than the general RATE_LIMIT above.
+    app.config["CHAT_RATE_LIMIT"] = os.environ.get("CHAT_RATE_LIMIT", "15 per minute")
     app.permanent_session_lifetime = timedelta(hours=24)
     # Session cookie hardening — safe defaults that work for both the
     # browser frontend and React Native mobile client.

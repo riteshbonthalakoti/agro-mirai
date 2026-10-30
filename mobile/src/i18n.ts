@@ -212,6 +212,12 @@ const en = {
   askUnavailable: 'Voice questions are unavailable right now (voice or AI service not reachable).',
   playAnswer: 'Play answer',
 
+  // chat
+  chatTitle: 'Ask AGRO MIRAI',
+  chatPlaceholder: 'Type a question about your field…',
+  chatEmptyHint: 'Ask about your field, crop, irrigation, or disease risk.',
+  chatUnavailable: 'The assistant is unreachable right now. Please try again shortly.',
+
   // scan
   scanTitle: 'Leaf disease scan',
   scanSub: 'Photograph a leaf to check for disease.',
@@ -669,6 +675,10 @@ const kn: Dict = {
   micPerm: 'ಮೈಕ್ರೋಫೋನ್ ಅನುಮತಿ ಬೇಕು.',
   askUnavailable: 'ಧ್ವನಿ ಪ್ರಶ್ನೆಗಳು ಈಗ ಲಭ್ಯವಿಲ್ಲ (ಧ್ವನಿ ಅಥವಾ AI ಸೇವೆ ತಲುಪುತ್ತಿಲ್ಲ).',
   playAnswer: 'ಉತ್ತರ ಪ್ಲೇ ಮಾಡಿ',
+  chatTitle: 'AGRO MIRAI ಅನ್ನು ಕೇಳಿ',
+  chatPlaceholder: 'ನಿಮ್ಮ ಹೊಲದ ಬಗ್ಗೆ ಪ್ರಶ್ನೆ ಟೈಪ್ ಮಾಡಿ…',
+  chatEmptyHint: 'ನಿಮ್ಮ ಹೊಲ, ಬೆಳೆ, ನೀರಾವರಿ ಅಥವಾ ರೋಗದ ಅಪಾಯದ ಬಗ್ಗೆ ಕೇಳಿ.',
+  chatUnavailable: 'ಸಹಾಯಕ ಈಗ ತಲುಪುತ್ತಿಲ್ಲ. ದಯವಿಟ್ಟು ಸ್ವಲ್ಪ ಸಮಯದ ನಂತರ ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.',
 
   scanTitle: 'ಎಲೆ ರೋಗ ಸ್ಕ್ಯಾನ್',
   scanSub: 'ರೋಗ ಪರಿಶೀಲಿಸಲು ಎಲೆಯ ಫೋಟೋ ತೆಗೆಯಿರಿ.',
@@ -1122,6 +1132,10 @@ const te: Dict = {
   micPerm: 'మైక్రోఫోన్ అనుమతి అవసరం.',
   askUnavailable: 'వాయిస్ ప్రశ్నలు ఇప్పుడు అందుబాటులో లేవు (వాయిస్ లేదా AI సేవ చేరడం లేదు).',
   playAnswer: 'సమాధానం ప్లే చేయండి',
+  chatTitle: 'AGRO MIRAI ని అడగండి',
+  chatPlaceholder: 'మీ పొలం గురించి ప్రశ్న టైప్ చేయండి…',
+  chatEmptyHint: 'మీ పొలం, పంట, నీటిపారుదల లేదా వ్యాధి ప్రమాదం గురించి అడగండి.',
+  chatUnavailable: 'సహాయకుడు ఇప్పుడు అందుబాటులో లేదు. దయచేసి కొద్ది సేపటి తర్వాత ప్రయత్నించండి.',
 
   scanTitle: 'ఆకు వ్యాధి స్కాన్',
   scanSub: 'వ్యాధి తెలుసుకోవడానికి ఆకు ఫోటో తీయండి.',
@@ -1575,6 +1589,10 @@ const hi: Dict = {
   micPerm: 'माइक्रोफोन की अनुमति ज़रूरी है।',
   askUnavailable: 'आवाज़ वाले सवाल अभी उपलब्ध नहीं (वॉइस या AI सेवा तक नहीं पहुंच पाए)।',
   playAnswer: 'जवाब चलाएं',
+  chatTitle: 'AGRO MIRAI से पूछें',
+  chatPlaceholder: 'अपने खेत के बारे में सवाल टाइप करें…',
+  chatEmptyHint: 'अपने खेत, फसल, सिंचाई या रोग जोखिम के बारे में पूछें।',
+  chatUnavailable: 'सहायक अभी उपलब्ध नहीं है। कृपया थोड़ी देर बाद फिर कोशिश करें।',
 
   scanTitle: 'पत्ती रोग स्कैन',
   scanSub: 'रोग जांचने के लिए पत्ती की फोटो लें।',

@@ -332,45 +332,20 @@ export const getIrrigation = async (id: string): Promise<Irrigation> => {
 
 // same call, but keeps the `details` object (trend, wet days) next to the items
 export const getDiseaseRiskFull = async (id: string, lang: string) => {
-  try {
-    const res = await request<{ items: DiseaseAlert[]; details?: DiseaseDetails | null }>(`/v2/fields/${id}/disease-risk?language=${lang}`, {}, { timeout: 4000 });
-    if (res && res.items && res.items.length > 0) return res;
-    throw new Error('empty_risk');
-  } catch {
-    const diseaseTitle = lang === 'kn'
-      ? 'ಟೊಮೇಟೊ ಆರಂಭಿಕ ಅಂಗಮಾರಿ ರೋಗ'
-      : lang === 'te'
-      ? 'టమాటా ముందస్తు తెగులు'
-      : lang === 'hi'
-      ? 'टमाटर अगेती झुलसा'
-      : 'Tomato Early Blight (Alternaria solani)';
-    return {
-      items: [
-        {
-          id: `dis-${id}`,
-          disease: 'Tomato Early Blight (Alternaria solani)',
-          disease_translated: diseaseTitle,
-          risk_level: 'low',
-          confidence: 0.91,
-          recommended_action: 'Foliage is largely healthy. Keep plant canopy aerated, prune lower leaves touching soil, and apply preventive neem oil spray.',
-          source: 'cnn',
-          created_at: new Date().toISOString(),
-        },
-      ],
-      details: {
-        method: 'mobilenet_v2_onnx',
-        crop_specific: true,
-        score: 0.22,
-        named_disease: 'Early Blight',
-        trend: 'steady' as const,
-        humid_days_last_7: 2,
-        wet_days_last_7: 1,
-        rain_forecast_3d_mm: 1.5,
-        rain_forecast_7d_mm: 8.0,
-        favourable_temp_c: [20, 30] as [number, number],
-      },
-    };
-  }
+  // Field finding (2026-10-30): this used to catch BOTH a real network/
+  // server failure AND a genuinely empty result (a field with no scans
+  // yet -- a completely normal, honest state) and paper over either one
+  // with the exact same hardcoded fake "Tomato Early Blight" entry. Home
+  // tab showed that fake diagnosis as if it were real, with zero
+  // connection to what was actually in the Scan tab's real history --
+  // the "not syncing" symptom was this literally being fabricated data,
+  // not a sync bug. Empty is now a real, valid result (HomeTab already
+  // has a proper "not computed yet" empty state for it); only a genuine
+  // request failure throws, and it throws the real error instead of
+  // masking it.
+  return request<{ items: DiseaseAlert[]; details?: DiseaseDetails | null }>(
+    `/v2/fields/${id}/disease-risk?language=${lang}`, {}, { timeout: 8000 },
+  );
 };
 
 export const getDiseaseRisk = (id: string, lang: string) =>
@@ -473,5 +448,13 @@ export const saveConversationApi = async (entry: { field_id?: string; question: 
     body: JSON.stringify(entry),
   });
 };
+
+// ---- chat (floating assistant) ---------------------------------------------
+export type ChatHistoryItem = { role: 'user' | 'assistant'; content: string };
+export type ChatChart = { type: 'bar' | 'line'; title: string; labels: string[]; values: number[] };
+export type ChatResult = { reply: string; chart: ChatChart | null };
+
+export const sendChatMessage = (message: string, history: ChatHistoryItem[], language: string): Promise<ChatResult> =>
+  request<ChatResult>('/v2/chat', json('POST', { message, history, language }), { timeout: 30000 });
 
 export { API_BASE_URL };

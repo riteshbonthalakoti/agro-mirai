@@ -63,6 +63,7 @@ import { Key, Lang, LANGS } from './src/i18n';
 import { logError } from './src/errorLog';
 import { applyDownloadedUpdate, checkForAppUpdate, AppUpdateInfo } from './src/updates';
 import { AdviceTab } from './src/screens/AdviceTab';
+import { ChatAssistant } from './src/components/ChatAssistant';
 import { DataTab } from './src/screens/DataTab';
 import { FieldForm } from './src/screens/FieldForm';
 import { HomeTab } from './src/screens/HomeTab';
@@ -864,6 +865,7 @@ function RootInner({ lang, setLang }: { lang: Lang; setLang: (l: Lang) => void }
                 />
               ))}
             </View>
+            <ChatAssistant />
           </>
         )}
         {tourPending && fields.length > 0 && !form ? (
