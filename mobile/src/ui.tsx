@@ -98,9 +98,16 @@ export function OtpBoxInput({
         keyboardType="number-pad"
         maxLength={length}
         autoFocus={autoFocus}
-        textContentType="oneTimeCode"
-        autoComplete="sms-otp"
-        // Full-size invisible overlay so Android Autofill detects a valid input
+        // The app has its own themed numeric keypad + SMS Retriever module
+        // for this screen now -- the system keyboard (and the OS autofill
+        // suggestion strip that "sms-otp"/"oneTimeCode" used to invite) must
+        // never appear on top of it. caretHidden avoids a stray system
+        // text caret flashing in this invisible overlay once focused.
+        showSoftInputOnFocus={false}
+        caretHidden
+        // Full-size invisible overlay: still focusable/editable (manual
+        // paste and our own keypad both write through it), just with no
+        // visible keyboard of its own.
         style={[{ ...StyleSheet.absoluteFill as any, opacity: 0.01 }]}
       />
     </TouchableOpacity>

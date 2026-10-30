@@ -103,17 +103,23 @@ const KEYPAD_LETTERS: Record<string, string> = {
   '0': '+',
 };
 
-function PhoneKeyboard({
+/** App-themed numeric keypad, shared by phone entry (maxLength=10, shows
+ *  the ABC/+ letter hints) and OTP entry (maxLength=6, plain digits) --
+ *  neither screen needs a confirm key: the caller hides this keypad and
+ *  shows its own Send/Verify button once `value` reaches `maxLength`. */
+function NumericKeyboard({
   value,
   onChange,
-  onSubmit,
+  maxLength,
+  showLetters = false,
 }: {
   value: string;
   onChange: (v: string) => void;
-  onSubmit?: () => void;
+  maxLength: number;
+  showLetters?: boolean;
 }) {
   const tap = (digit: string) => {
-    if (value.length >= 10) return;
+    if (value.length >= maxLength) return;
     onChange(value + digit);
   };
   const del = () => onChange(value.slice(0, -1));
@@ -138,13 +144,13 @@ function PhoneKeyboard({
       {rows.map((row) => (
         <View key={row.join('')} style={{ flexDirection: 'row' }}>
           {row.map((d) => (
-            <PhoneKey key={d} label={d} sub={KEYPAD_LETTERS[d]} onPress={() => tap(d)} />
+            <PhoneKey key={d} label={d} sub={showLetters ? KEYPAD_LETTERS[d] : undefined} onPress={() => tap(d)} />
           ))}
         </View>
       ))}
       <View style={{ flexDirection: 'row' }}>
-        <PhoneKey label="✓" onPress={() => onSubmit?.()} confirm />
-        <PhoneKey label="0" sub={KEYPAD_LETTERS['0']} onPress={() => tap('0')} />
+        <View style={{ flex: 1, marginHorizontal: 5 }} />
+        <PhoneKey label="0" sub={showLetters ? KEYPAD_LETTERS['0'] : undefined} onPress={() => tap('0')} />
         <PhoneKey label="⌫" onPress={del} />
       </View>
     </View>
@@ -489,6 +495,7 @@ export function AuthScreen({ lang, onLoggedIn, notice, onChangeLanguage, onCance
   }, [step]);
 
   const requestWithName = async (theName: string) => {
+    if (busy) return; // guards against a double-tap firing two OTP requests
     setBusy(true);
     // Start SMS Retriever BEFORE the network call so the BroadcastReceiver is
     // already registered by the time the SMS arrives (avoids a race where a
@@ -737,7 +744,9 @@ export function AuthScreen({ lang, onLoggedIn, notice, onChangeLanguage, onCance
             <Text style={{ fontSize: 22, fontWeight: '700', color: C.text, marginTop: 2 }}>{`+91 ${phone}`}</Text>
             <Text style={label}>{t('otpLabel')}</Text>
             <OtpBoxInput value={otp} onChangeText={setOtp} autoFocus />
-            <BigBtn label={t('verify')} onPress={verify} busy={busy} disabled={otp.length < 6} />
+            {otp.length >= 6 ? (
+              <BigBtn label={t('verify')} onPress={verify} busy={busy} disabled={otp.length < 6} />
+            ) : null}
             {/* resend sits right under the code box so the keyboard never hides it */}
             <TouchableOpacity
               onPress={() => requestWithName(isNew ? name.trim() : '')}
@@ -758,8 +767,11 @@ export function AuthScreen({ lang, onLoggedIn, notice, onChangeLanguage, onCance
           <Text style={{ color: C.accent, fontWeight: '700', textDecorationLine: 'underline' }} onPress={() => setLegal('privacy')}>{t('privacyLabel')}</Text>
         </Text>
       </ScrollView>
-      {step === 'phone' ? (
-        <PhoneKeyboard value={phone} onChange={(v) => setPhone(v)} onSubmit={submitPhone} />
+      {step === 'phone' && phone.length < 10 ? (
+        <NumericKeyboard value={phone} onChange={setPhone} maxLength={10} showLetters />
+      ) : null}
+      {step === 'otp' && !busy && otp.length < 6 ? (
+        <NumericKeyboard value={otp} onChange={setOtp} maxLength={6} />
       ) : null}
       <LegalModal kind={legal} onClose={() => setLegal(null)} lang={lang} />
     </KeyboardAvoidingView>

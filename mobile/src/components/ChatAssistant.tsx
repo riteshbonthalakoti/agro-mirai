@@ -36,6 +36,66 @@ function fromServer(m: ChatMessageItem): Msg {
   return { id: m.id, role: m.role, content: m.content, chart: m.chart, cards: m.cards };
 }
 
+/** Each bubble fades/slides in once on mount instead of snapping straight
+ * into the list -- the flat, no-transition append was what read as "stuck". */
+function AnimatedBubble({ fromUser, children }: { fromUser: boolean; children: React.ReactNode }) {
+  const anim = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    Animated.spring(anim, { toValue: 1, friction: 8, tension: 90, useNativeDriver: true }).start();
+  }, [anim]);
+  return (
+    <Animated.View
+      style={{
+        opacity: anim,
+        transform: [
+          { translateY: anim.interpolate({ inputRange: [0, 1], outputRange: [10, 0] }) },
+          { translateX: anim.interpolate({ inputRange: [0, 1], outputRange: [fromUser ? 14 : -14, 0] }) },
+        ],
+      }}
+    >
+      {children}
+    </Animated.View>
+  );
+}
+
+/** Three-dot "typing" indicator (bouncing, staggered) in place of a plain
+ * spinner while the assistant's reply is in flight -- reads as the
+ * assistant actively composing something, not a frozen loading state. */
+function TypingDots() {
+  const dots = useRef([0, 1, 2].map(() => new Animated.Value(0))).current;
+  useEffect(() => {
+    const loops = dots.map((d, i) =>
+      Animated.loop(
+        Animated.sequence([
+          Animated.delay(i * 140),
+          Animated.timing(d, { toValue: 1, duration: 280, easing: Easing.out(Easing.quad), useNativeDriver: true }),
+          Animated.timing(d, { toValue: 0, duration: 280, easing: Easing.in(Easing.quad), useNativeDriver: true }),
+          Animated.delay((2 - i) * 140),
+        ])
+      )
+    );
+    loops.forEach((l) => l.start());
+    return () => loops.forEach((l) => l.stop());
+  }, [dots]);
+  return (
+    <View style={{ flexDirection: 'row', alignSelf: 'flex-start', backgroundColor: C.surface, borderRadius: 16, paddingVertical: 12, paddingHorizontal: 16, gap: 4, marginBottom: S.sm }}>
+      {dots.map((d, i) => (
+        <Animated.View
+          key={i}
+          style={{
+            width: 7,
+            height: 7,
+            borderRadius: 4,
+            backgroundColor: C.muted,
+            transform: [{ translateY: d.interpolate({ inputRange: [0, 1], outputRange: [0, -5] }) }],
+            opacity: d.interpolate({ inputRange: [0, 1], outputRange: [0.5, 1] }),
+          }}
+        />
+      ))}
+    </View>
+  );
+}
+
 /** Past-sessions list -- lets the farmer pick up an earlier conversation
  * instead of only ever starting fresh (Module 58, user-directed: chat
  * history now persists server-side across app restarts/devices). */
@@ -187,7 +247,10 @@ function ChatPanel({ onClose, sheetHeight }: { onClose: () => void; sheetHeight:
             </TouchableOpacity>
           </View>
 
-          <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+          {/* Android had no avoidance at all here (behavior was undefined) --
+              the input box stayed pinned to the screen bottom under the
+              keyboard instead of rising above it. */}
+          <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
             {loadingThread ? (
               <ActivityIndicator style={{ marginTop: S.lg }} color={C.accent} />
             ) : (
@@ -201,28 +264,25 @@ function ChatPanel({ onClose, sheetHeight }: { onClose: () => void; sheetHeight:
                   <Text style={{ fontSize: 14, color: C.muted, textAlign: 'center', marginTop: S.lg }}>{tt('chatEmptyHint')}</Text>
                 ) : null}
                 {messages.map((m) => (
-                  <View
-                    key={m.id}
-                    style={{
-                      alignSelf: m.role === 'user' ? 'flex-end' : 'flex-start',
-                      maxWidth: '85%',
-                      backgroundColor: m.role === 'user' ? C.accent : C.surface,
-                      borderRadius: 16,
-                      paddingVertical: 10,
-                      paddingHorizontal: 14,
-                      marginBottom: S.sm,
-                    }}
-                  >
-                    <Text style={{ fontSize: 15, lineHeight: 21, color: m.role === 'user' ? C.accentText : C.text }}>{m.content}</Text>
-                    {m.chart ? <ChatChart chart={m.chart} /> : null}
-                    {m.cards?.map((c, i) => <ChatCardView key={i} card={c} />)}
-                  </View>
+                  <AnimatedBubble key={m.id} fromUser={m.role === 'user'}>
+                    <View
+                      style={{
+                        alignSelf: m.role === 'user' ? 'flex-end' : 'flex-start',
+                        maxWidth: '85%',
+                        backgroundColor: m.role === 'user' ? C.accent : C.surface,
+                        borderRadius: 16,
+                        paddingVertical: 10,
+                        paddingHorizontal: 14,
+                        marginBottom: S.sm,
+                      }}
+                    >
+                      <Text style={{ fontSize: 15, lineHeight: 21, color: m.role === 'user' ? C.accentText : C.text }}>{m.content}</Text>
+                      {m.chart ? <ChatChart chart={m.chart} /> : null}
+                      {m.cards?.map((c, i) => <ChatCardView key={i} card={c} />)}
+                    </View>
+                  </AnimatedBubble>
                 ))}
-                {sending ? (
-                  <View style={{ alignSelf: 'flex-start', marginBottom: S.sm }}>
-                    <ActivityIndicator size="small" color={C.accent} />
-                  </View>
-                ) : null}
+                {sending ? <TypingDots /> : null}
                 {err ? <Text style={{ fontSize: 13, color: C.danger, marginTop: S.xs }}>{err}</Text> : null}
               </ScrollView>
             )}

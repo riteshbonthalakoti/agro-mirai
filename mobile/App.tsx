@@ -97,39 +97,19 @@ import Constants from 'expo-constants';
 function Header() {
   const ctx = React.useContext(AppCtx);
   if (!ctx || !ctx.field) return null;
-  const { field, fields, selectField, lang } = ctx;
+  const { field } = ctx;
 
   return (
-    <View style={{ paddingHorizontal: S.lg, paddingTop: S.sm, paddingBottom: S.sm, backgroundColor: C.bg, borderBottomWidth: 1, borderBottomColor: C.border }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', minHeight: 48 }}>
-        <View style={{ width: 48, alignItems: 'flex-start' }}>
-          <Image source={require('./assets/logo-mark.png')} style={{ width: 40, height: 40 }} resizeMode="contain" />
+    <View style={{ paddingHorizontal: S.lg, paddingTop: 6, paddingBottom: 6, backgroundColor: C.bg, borderBottomWidth: 1, borderBottomColor: C.border }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', minHeight: 34 }}>
+        <View style={{ width: 32, alignItems: 'flex-start' }}>
+          <Image source={require('./assets/logo-mark.png')} style={{ width: 26, height: 26 }} resizeMode="contain" />
         </View>
         <View style={{ flex: 1, alignItems: 'center' }}>
-          <Text style={{ fontSize: 19, fontWeight: '800', color: C.text }} numberOfLines={1}>{field.name}</Text>
-          {field.current_crop ? <Text style={{ fontSize: 13, color: C.muted, marginTop: 1 }} numberOfLines={1}>{cropLabel(lang, field.current_crop)}</Text> : null}
+          <Text style={{ fontSize: 15, fontWeight: '700', color: C.text }} numberOfLines={1}>{field.name}</Text>
         </View>
-        <View style={{ width: 48 }} />
+        <View style={{ width: 32 }} />
       </View>
-      {fields.length > 1 ? (
-        // one scrollable row: with several fields the chips used to wrap into many rows and push the content off screen
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="handled" style={{ marginTop: S.xs }} contentContainerStyle={{ paddingRight: S.lg }}>
-          {fields.map((f) => (
-            <TouchableOpacity
-              key={f.id}
-              onPress={() => selectField(f.id)}
-              hitSlop={{ top: 6, bottom: 6, left: 2, right: 2 }}
-              style={{
-                borderWidth: 1, borderColor: f.id === field.id ? C.accent : C.border,
-                backgroundColor: f.id === field.id ? C.accent : 'transparent',
-                borderRadius: 16, paddingHorizontal: S.md, paddingVertical: 6, marginRight: S.sm,
-              }}
-            >
-              <Text style={{ fontSize: 13, color: f.id === field.id ? C.accentText : C.muted }}>{f.name}</Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-      ) : null}
     </View>
   );
 }
@@ -203,23 +183,23 @@ function TabBarButton({
       <TouchableOpacity
         onPress={onPress}
         activeOpacity={0.75}
-        style={{ paddingTop: 8, paddingBottom: 10, alignItems: 'center' }}
+        style={{ paddingTop: 5, paddingBottom: 6, alignItems: 'center' }}
       >
         <View
           style={{
-            height: 3,
-            width: 28,
+            height: 2,
+            width: 22,
             borderRadius: 2,
-            marginBottom: 6,
+            marginBottom: 4,
             backgroundColor: on ? C.accent : 'transparent',
           }}
         />
         <Animated.View style={{ alignItems: 'center', transform: [{ scale }] }}>
-          <Icon name={icon} size={24} color={on ? C.accent : C.muted} />
+          <Icon name={icon} size={20} color={on ? C.accent : C.muted} />
           <Text
             style={{
-              fontSize: 11,
-              marginTop: 3,
+              fontSize: 10,
+              marginTop: 2,
               fontWeight: on ? '700' : '500',
               color: on ? C.accent : C.muted,
             }}

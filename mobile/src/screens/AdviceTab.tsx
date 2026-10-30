@@ -387,7 +387,9 @@ function AskFab({ onClosed }: { onClosed?: () => void }) {
   }, [ring]);
   return (
     <>
-      <View pointerEvents="box-none" style={{ position: 'absolute', right: S.lg, bottom: S.lg, width: 76, height: 76, alignItems: 'center', justifyContent: 'center' }}>
+      {/* bottom: 150 clears the global ChatAssistant bubble (App.tsx, right: S.lg,
+          bottom: 76, 60px), which otherwise overlapped this button's own circle. */}
+      <View pointerEvents="box-none" style={{ position: 'absolute', right: S.lg, bottom: 150, width: 76, height: 76, alignItems: 'center', justifyContent: 'center' }}>
         <Animated.View pointerEvents="none" style={{ position: 'absolute', width: 68, height: 68, borderRadius: 34, backgroundColor: C.accent, opacity: ring.interpolate({ inputRange: [0, 1], outputRange: [0.35, 0] }), transform: [{ scale: ring.interpolate({ inputRange: [0, 1], outputRange: [1, 1.5] }) }] }} />
         <TouchableOpacity
           onPress={() => setOpen(true)}
