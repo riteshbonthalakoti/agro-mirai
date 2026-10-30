@@ -1,0 +1,29 @@
+name: Push Notification Sweep
+
+on:
+  schedule:
+    # Every 3 hours -- irrigation urgency doesn't change meaningfully faster
+    # than that, and this runs a real model prediction per field per farmer.
+    - cron: '0 */3 * * *'
+  workflow_dispatch:
+
+jobs:
+  sweep:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run the push sweep against production
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+          OPENWEATHER_API_KEY: ${{ secrets.OPENWEATHER_API_KEY }}
+        run: python tools/push_sweep.py --backend supabase

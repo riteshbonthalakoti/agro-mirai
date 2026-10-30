@@ -218,6 +218,22 @@ class ChatSession:
 
 
 @dataclass
+class PushToken:
+    """One Expo push token for one of a farmer's devices (Module 59). A
+    farmer can have several (multiple devices, or a reinstall that got a
+    new token) -- the token string itself is the dedup key, not farmer_id,
+    so a stale token from an old install never silently overwrites a
+    current one from a different device."""
+
+    id: str
+    farmer_id: str
+    token: str
+    created_at: datetime
+    updated_at: datetime
+    platform: str = "android"
+
+
+@dataclass
 class ChatMessage:
     """One turn in a ChatSession. ``chart``/``cards`` are the structured
     JSON blocks the chat route attaches (trend chart from the model,

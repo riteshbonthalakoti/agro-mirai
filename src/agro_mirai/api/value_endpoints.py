@@ -391,7 +391,34 @@ def compute_disease_risk_image(
 
     alert.photo_url = _photo_url_for_storage(image_bytes)
     saved = store.save_disease_risk_alert(farmer_id, alert)
+
+    if saved.risk_level in ("high", "severe"):
+        _push_disease_alert(store, farmer_id, field, saved)
+
     return _with_disease_translation(drop_unset_source(to_json(saved)), target_lang)
+
+
+def _push_disease_alert(store, farmer_id: str, field, alert: DiseaseRiskAlert) -> None:
+    """Fires the moment a scan comes back high/severe -- lands on every
+    signed-in device for this farmer (not just the one that took the
+    photo), which is the actual point of real push over the old local-
+    only notification: it reaches a second phone, or the same phone
+    hours later with the app fully closed. Never raises or blocks the
+    scan response if it fails (never-raise contract, same as every other
+    external-API client here)."""
+    from agro_mirai.api.push_client import send_push_to_farmer  # noqa: PLC0415 -- avoids a hard dependency for callers that never scan
+
+    severity_word = "Severe" if alert.risk_level == "severe" else "High"
+    title = f"⚠️ {severity_word} disease risk — {field.name}"
+    disease_name = alert.disease.split(":")[-1].strip() if ":" in (alert.disease or "") else (alert.disease or "a leaf disease")
+    body = f"Your scan found {disease_name}. Tap for what to do next."
+    send_push_to_farmer(
+        store,
+        farmer_id,
+        title,
+        body,
+        data={"accountId": farmer_id, "fieldId": field.id, "screen": "scan"},
+    )
 
 
 def submit_feedback(store, farmer_id: str, body) -> dict:

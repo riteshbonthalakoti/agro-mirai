@@ -28,6 +28,7 @@ from agro_mirai.persistence.models import (
     Field_,
     IrrigationAdvice,
     NDVIReading,
+    PushToken,
     SoilSample,
     WeatherReading,
 )
@@ -45,6 +46,7 @@ CONVERSATIONS_MIGRATION_PATH = ROOT / "migrations" / "sqlite" / "011_conversatio
 CASCADE_SOURCE_MIGRATION_PATH = ROOT / "migrations" / "sqlite" / "012_cascade_source.sql"
 DISEASE_ALERT_PHOTO_MIGRATION_PATH = ROOT / "migrations" / "sqlite" / "013_disease_alert_photo.sql"
 CHAT_SESSIONS_MIGRATION_PATH = ROOT / "migrations" / "sqlite" / "014_chat_sessions.sql"
+PUSH_TOKENS_MIGRATION_PATH = ROOT / "migrations" / "sqlite" / "015_push_tokens.sql"
 
 
 # --------------------------------------------------------------------------
@@ -109,6 +111,16 @@ class SQLiteDataStore:
         self._apply_cascade_source_migration()
         self._apply_disease_alert_photo_migration()
         self._apply_chat_sessions_migration()
+        self._apply_push_tokens_migration()
+
+    def _apply_push_tokens_migration(self) -> None:
+        """Module 59: Android push notifications -- brand new table, same
+        CREATE-TABLE-IF-NOT-EXISTS pattern as _apply_chat_sessions_migration.
+        See migrations/sqlite/015_push_tokens.sql."""
+        sql = PUSH_TOKENS_MIGRATION_PATH.read_text(encoding="utf-8")
+        conn = self._conn
+        conn.executescript(sql)
+        conn.commit()
 
     def _apply_chat_sessions_migration(self) -> None:
         """Module 58: floating chatbot persisted sessions/messages, brand
@@ -1271,6 +1283,39 @@ class SQLiteDataStore:
         return cursor.rowcount > 0
 
     # --- Chat sessions (Module 58, floating chatbot) ---
+    def save_push_token(self, farmer_id: str, token: PushToken) -> PushToken:
+        now = _dt_to_text(token.updated_at)
+        self._conn.execute(
+            """
+            INSERT INTO push_tokens (id, farmer_id, token, platform, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?)
+            ON CONFLICT(token) DO UPDATE SET farmer_id = excluded.farmer_id, updated_at = excluded.updated_at
+            """,
+            (token.id, farmer_id, token.token, token.platform, _dt_to_text(token.created_at), now),
+        )
+        self._conn.commit()
+        return token
+
+    def list_push_tokens(self, farmer_id: str) -> list[PushToken]:
+        rows = self._conn.execute(
+            "SELECT * FROM push_tokens WHERE farmer_id = ?", (farmer_id,)
+        ).fetchall()
+        return [
+            PushToken(
+                id=r["id"], farmer_id=r["farmer_id"], token=r["token"], platform=r["platform"],
+                created_at=_text_to_dt(r["created_at"]), updated_at=_text_to_dt(r["updated_at"]),
+            )
+            for r in rows
+        ]
+
+    def delete_push_token(self, token: str) -> None:
+        self._conn.execute("DELETE FROM push_tokens WHERE token = ?", (token,))
+        self._conn.commit()
+
+    def list_farmer_ids_with_push_tokens(self) -> list[str]:
+        rows = self._conn.execute("SELECT DISTINCT farmer_id FROM push_tokens").fetchall()
+        return [r["farmer_id"] for r in rows]
+
     def save_chat_session(self, farmer_id: str, session: ChatSession) -> ChatSession:
         self._conn.execute(
             """

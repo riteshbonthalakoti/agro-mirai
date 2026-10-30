@@ -32,6 +32,7 @@ from agro_mirai.persistence.models import (
     Field_,
     IrrigationAdvice,
     NDVIReading,
+    PushToken,
     SoilSample,
     WeatherReading,
 )
@@ -923,6 +924,42 @@ class SupabaseDataStore:
         )
 
     # --- Chat sessions (Module 58, floating chatbot) ---
+    def save_push_token(self, farmer_id: str, token: PushToken) -> PushToken:
+        if not _is_uuid(farmer_id):
+            raise NotFoundError(f"farmer {farmer_id} not found")
+        payload = {
+            "id": token.id,
+            "farmer_id": farmer_id,
+            "token": token.token,
+            "platform": token.platform,
+            "created_at": _dt(token.created_at),
+            "updated_at": _dt(token.updated_at),
+        }
+        try:
+            self._client.table("push_tokens").upsert(payload, on_conflict="token").execute()
+        except Exception as e:
+            raise ConflictError(str(e)) from e
+        return token
+
+    def list_push_tokens(self, farmer_id: str) -> list[PushToken]:
+        if not _is_uuid(farmer_id):
+            return []
+        res = self._client.table("push_tokens").select("*").eq("farmer_id", farmer_id).execute()
+        return [
+            PushToken(
+                id=r["id"], farmer_id=r["farmer_id"], token=r["token"], platform=r.get("platform") or "android",
+                created_at=_parse_dt(r["created_at"]), updated_at=_parse_dt(r["updated_at"]),
+            )
+            for r in res.data
+        ]
+
+    def delete_push_token(self, token: str) -> None:
+        self._client.table("push_tokens").delete().eq("token", token).execute()
+
+    def list_farmer_ids_with_push_tokens(self) -> list[str]:
+        res = self._client.table("push_tokens").select("farmer_id").execute()
+        return list({r["farmer_id"] for r in res.data})
+
     def save_chat_session(self, farmer_id: str, session: ChatSession) -> ChatSession:
         if not _is_uuid(farmer_id):
             raise NotFoundError(f"farmer {farmer_id} not found")

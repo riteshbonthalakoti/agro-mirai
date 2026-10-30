@@ -344,4 +344,10 @@ export const listChatSessionMessages = (sessionId: string): Promise<ChatMessageI
   request<{ session: ChatSessionSummary; messages: ChatMessageItem[] }>(`/v2/chat/sessions/${sessionId}/messages`, { method: 'GET' })
     .then((r) => r.messages);
 
+// ---- push notifications (Module 59) ----------------------------------------
+export const registerPushToken = (token: string) =>
+  request<{ ok: boolean }>('/v2/push-tokens', json('POST', { token, platform: 'android' }), { timeout: 8000 }).catch(() => undefined);
+export const unregisterPushToken = (token: string) =>
+  request<{ ok: boolean }>('/v2/push-tokens', { method: 'DELETE', body: JSON.stringify({ token }) }, { timeout: 8000 }).catch(() => undefined);
+
 export { API_BASE_URL };

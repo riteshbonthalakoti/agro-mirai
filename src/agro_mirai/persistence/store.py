@@ -24,6 +24,7 @@ from agro_mirai.persistence.models import (
     Field_,
     IrrigationAdvice,
     NDVIReading,
+    PushToken,
     SoilSample,
     WeatherReading,
 )
@@ -201,6 +202,15 @@ class DataStore(Protocol):
     ) -> list[Advisory]: ...
 
     def get_advisory(self, farmer_id: str, advisory_id: str) -> Advisory | None: ...
+
+    # --- Push notifications (Module 59) ---
+    def save_push_token(self, farmer_id: str, token: PushToken) -> PushToken: ...
+
+    def list_push_tokens(self, farmer_id: str) -> list[PushToken]: ...
+
+    def delete_push_token(self, token: str) -> None: ...
+
+    def list_farmer_ids_with_push_tokens(self) -> list[str]: ...
 
     def save_feedback_entry(
         self, farmer_id: str, entry: FeedbackEntry

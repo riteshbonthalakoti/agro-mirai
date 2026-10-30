@@ -181,6 +181,7 @@ def _register_routers(app: Flask, limiter: "Limiter") -> None:
     from agro_mirai.api.routes.feedback import feedback_bp
     from agro_mirai.api.routes.frontend import frontend_bp
     from agro_mirai.api.routes.health import health_bp
+    from agro_mirai.api.routes.push_v2 import push_v2_bp
     from agro_mirai.api.routes.value_v2 import value_v2_bp
     from agro_mirai.api.routes.voice_v2 import voice_v2_bp
 
@@ -199,6 +200,7 @@ def _register_routers(app: Flask, limiter: "Limiter") -> None:
     app.register_blueprint(value_v2_bp)
     app.register_blueprint(voice_v2_bp)
     app.register_blueprint(chat_v2_bp)
+    app.register_blueprint(push_v2_bp)
 
     # Module 27 — OTP-request-specific rate limit, on top of the general
     # per-key limit above. The @otp_request_limiter.limit(...) decorator

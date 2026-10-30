@@ -72,6 +72,7 @@ import { AddAccountScreen, AuthScreen, LanguageScreen, PermissionsScreen } from 
 import { CoachTour, TourStep } from './src/components/CoachTour';
 import { NotificationsProvider, useNotifications } from './src/notifications';
 import { registerBackgroundAlerts, setBackgroundField } from './src/backgroundAlerts';
+import { registerForPushNotifications, unregisterForPushNotifications } from './src/push';
 import { emitAccountSignedIn, emitAccountSignedOut, onAccountEvent } from './src/accountEvents';
 import { playOnboardingClip, stopAudio } from './src/audio';
 import { getReminderSettings } from './src/reminderSettings';
@@ -463,6 +464,7 @@ function RootInner({ lang, setLang }: { lang: Lang; setLang: (l: Lang) => void }
     if (farmer) emitAccountSignedOut(farmer.id);
     clearScheduledNotifications();
     setBackgroundField(undefined, undefined);
+    unregisterForPushNotifications();
     const id = accounts.getActiveAccountId();
     if (id) {
       await accounts.markSessionExpired(id);
@@ -718,6 +720,7 @@ function RootInner({ lang, setLang }: { lang: Lang; setLang: (l: Lang) => void }
     if (phase !== 'main' || !fieldIdForAlerts) return;
     setBackgroundField(fieldIdForAlerts, fieldNameForAlerts); // so alerts still arrive when the app is closed
     registerBackgroundAlerts();
+    registerForPushNotifications(); // real Android push -- reaches a closed app/other devices, unlike the local polling above
     let stop = false;
     const check = async () => {
       try {
