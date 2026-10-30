@@ -195,7 +195,14 @@ export function FieldMapScreen({ onClose }: { onClose: () => void }) {
             centered on the exact pin -- an approximation (no surveyed
             polygon exists), same "center + radius" assumption any mapping
             tool uses when all it has is a point and an area. */}
-        {fieldBoundary && GeoJSONSource && Layer && (
+        {/* Each toggle is its own layer now (field finding 2026-10-30):
+            previously both the field pin/boundary and the live phone marker
+            always rendered together regardless of which toggle was active --
+            it only moved the camera, so a field registered near the farmer's
+            actual location made the two markers overlap and look like a
+            rendering glitch. "Field Plot" now shows only the field pin +
+            boundary; "Your Phone" shows only the live location marker. */}
+        {activeFocus === 'field' && fieldBoundary && GeoJSONSource && Layer && (
           <GeoJSONSource id="field-boundary-source" data={fieldBoundary}>
             <Layer
               id="field-boundary-fill"
@@ -215,19 +222,21 @@ export function FieldMapScreen({ onClose }: { onClose: () => void }) {
         {/* Field location marker -- a classic red map pin, tip anchored to
             the exact lat/lon (Module 60 field finding: the old flat dot
             didn't read as "this exact point" the way a pin's point does). */}
-        <Marker
-          {...({ anchor: 'bottom', lngLat: [fieldLon, fieldLat] } as any)}
-        >
-          <View style={styles.markerContainer}>
-            <View style={styles.fieldLabel}>
-              <Text style={styles.fieldLabelText}>{field.name || 'Field'}</Text>
+        {activeFocus === 'field' && (
+          <Marker
+            {...({ anchor: 'bottom', lngLat: [fieldLon, fieldLat] } as any)}
+          >
+            <View style={styles.markerContainer}>
+              <View style={styles.fieldLabel}>
+                <Text style={styles.fieldLabelText}>{field.name || 'Field'}</Text>
+              </View>
+              <RedPin size={40} />
             </View>
-            <RedPin size={40} />
-          </View>
-        </Marker>
+          </Marker>
+        )}
 
         {/* User live phone location marker */}
-        {userLocation && (
+        {activeFocus === 'phone' && userLocation && (
           <Marker
             {...({ anchor: 'center', lngLat: [userLocation.lon, userLocation.lat] } as any)}
           >
