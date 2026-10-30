@@ -162,7 +162,17 @@ export function HomeTab() {
   const busy = crop.loading || irr.loading || dis.loading;
   const c = crop.data;
   const i = irr.data;
-  const d = dis.data?.items?.[0];
+  // Field finding (2026-10-30): this endpoint's list mixes real photo scans
+  // with auto-inserted environmental/weather-proxy guesses (the GET itself
+  // computes and saves a fresh environmental estimate on every call), and
+  // items[0] was just "whichever is most recent, either kind" -- opening
+  // this tab could insert a new environmental guess that buries a farmer's
+  // real scan from a moment ago, so Home and Scan appeared to disagree.
+  // Same real-scan-only filter Scan tab's own history already applies.
+  const realScan = dis.data?.items?.find(
+    (a) => a.source && !/_not_a_plant$|^environmental(_fallback)?$/.test(a.source),
+  );
+  const d = realScan;
   const dd = dis.data?.details;
   const today = todayLine(t, i, d, dd);
 

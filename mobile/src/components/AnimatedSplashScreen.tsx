@@ -154,6 +154,17 @@ const styles = StyleSheet.create({
   video: {
     width: '100%',
     height: '100%',
-    backgroundColor: '#F1EEE1',
+    // Field finding (2026-10-30): confirmed live via frame-by-frame
+    // recording -- VideoView is a native video surface, not a plain RN
+    // View, and it paints its OWN background from this static style prop
+    // independently of React's animation updates. With a hardcoded cream
+    // fill here, the already-correctly-crossfading parent (videoContainer,
+    // animatedBackgroundColor) kept getting visually overridden by this
+    // frozen cream rectangle right at the video's own bounds, producing a
+    // clean white/cream/white banded seam exactly at that edge once the
+    // parent had animated further toward white than this ever did.
+    // Transparent lets the parent's own (correctly animating) background
+    // show through any letterboxed gap instead.
+    backgroundColor: 'transparent',
   },
 });
