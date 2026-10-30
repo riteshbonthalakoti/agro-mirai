@@ -26,8 +26,13 @@ keys 2026-10-30; free-tier slugs rotate often, re-verify if either starts
   this exact model has not yet been observed live -- re-verify once the
   daily quota resets (`X-RateLimit-Reset` header) before relying on it in
   production.
-- Groq: `llama-3.1-8b-instant` -- per Groq's own current docs, NOT yet
-  verified live (no Groq chat keys provided for this pool yet).
+- Groq: `openai/gpt-oss-20b` -- `llama-3.1-8b-instant` (the first slug
+  tried) 404s "does not exist or you do not have access to it" on the
+  provided key. `openai/gpt-oss-20b` was confirmed live with a real 200
+  response and a correct, on-topic answer (2026-10-30). Note: this
+  model's response includes a separate `message.reasoning` field
+  alongside `message.content` -- `_extract_text` reads only `content`,
+  which comes back clean (no reasoning text mixed in).
 """
 import json as json_module
 import logging
@@ -42,7 +47,7 @@ _TIMEOUT_S = 20
 _OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 _OPENROUTER_MODEL = "google/gemma-4-31b-it:free"
 _GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
-_GROQ_MODEL = "llama-3.1-8b-instant"
+_GROQ_MODEL = "openai/gpt-oss-20b"
 
 _openrouter_pool = KeyPool("openrouter_chat", "OPENROUTER_CHAT_API_KEY", max_keys=4)
 _groq_pool = KeyPool("groq_chat", "GROQ_CHAT_API_KEY", max_keys=3)
