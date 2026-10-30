@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Image, Platform, ScrollView, Switch, Text, TouchableOpacity, View } from 'react-native';
+import { Image, Modal, Platform, ScrollView, Switch, Text, TouchableOpacity, TouchableWithoutFeedback, View } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { AuthBackdrop } from '../components/AuthBackdrop';
 import { dialog } from '../dialog';
@@ -147,6 +147,7 @@ export function MeTab({ initialScreenContext, onConsumeScreenContext }: { initia
     }
   };
 
+  const [langPickerOpen, setLangPickerOpen] = useState(false);
   const chooseLang = async (l: typeof lang) => {
     changeLang(l);
     try { setFarmer(await patchMe({ preferred_language: l })); } catch {}
@@ -272,23 +273,42 @@ export function MeTab({ initialScreenContext, onConsumeScreenContext }: { initia
           <Muted style={{ marginTop: 2 }}>{farmer.phone}</Muted>
         </View>
 
-        {/* ---- language: big pill row, matches the sign-in language switcher */}
-        <Section icon="globe" tint="#E3F1FA" title={t('language')}>
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: S.sm }}>
-            {LANGS.map((l) => {
-              const on = lang === l.code;
-              return (
-                <TouchableOpacity
-                  key={l.code}
-                  onPress={() => chooseLang(l.code)}
-                  style={{ minHeight: 46, paddingHorizontal: 18, borderRadius: 23, borderWidth: on ? 2 : 1.5, borderColor: on ? C.accent : '#B9C9B4', backgroundColor: on ? '#E8F3E8' : '#fff', alignItems: 'center', justifyContent: 'center' }}
-                >
-                  <Text style={{ fontSize: 16, fontWeight: on ? '800' : '600', color: on ? C.accent : C.text }}>{l.native}</Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-        </Section>
+        {/* ---- language: a small dropdown, not the sign-in screen's big pill
+            row -- this is a settings tweak most farmers set once and forget,
+            not a first-run decision that deserves a whole section of its own. */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: S.sm }}>
+          <Text style={{ flex: 1, fontSize: 14, color: C.muted }}>{t('language')}</Text>
+          <TouchableOpacity
+            onPress={() => { feedback.tap(); setLangPickerOpen(true); }}
+            style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 6, paddingHorizontal: 12, borderRadius: 14, backgroundColor: '#fff', borderWidth: 1, borderColor: '#D8E2D3' }}
+          >
+            <Text style={{ fontSize: 14, fontWeight: '700', color: C.text, marginRight: 4 }}>{LANGS.find((l) => l.code === lang)?.native}</Text>
+            <Icon name="chevron-down" size={14} color={C.muted} />
+          </TouchableOpacity>
+        </View>
+        <Modal visible={langPickerOpen} transparent animationType="fade" onRequestClose={() => setLangPickerOpen(false)}>
+          <TouchableWithoutFeedback onPress={() => setLangPickerOpen(false)}>
+            <View style={{ flex: 1, backgroundColor: 'rgba(10,18,10,0.4)', justifyContent: 'center', padding: S.xl }}>
+              <TouchableWithoutFeedback>
+                <View style={{ backgroundColor: '#fff', borderRadius: 18, padding: S.sm, overflow: 'hidden' }}>
+                  {LANGS.map((l) => {
+                    const on = lang === l.code;
+                    return (
+                      <TouchableOpacity
+                        key={l.code}
+                        onPress={() => { chooseLang(l.code); setLangPickerOpen(false); }}
+                        style={{ paddingVertical: 14, paddingHorizontal: S.md, borderRadius: 12, backgroundColor: on ? '#E8F3E8' : 'transparent', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}
+                      >
+                        <Text style={{ fontSize: 16, fontWeight: on ? '800' : '500', color: on ? C.accent : C.text }}>{l.native}</Text>
+                        {on ? <Icon name="check" size={16} color={C.accent} /> : null}
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              </TouchableWithoutFeedback>
+            </View>
+          </TouchableWithoutFeedback>
+        </Modal>
 
         {/* ---- sounds + notifications */}
         <Section icon="bell" tint="#F6ECD6" title={t('soundsTitle')}>

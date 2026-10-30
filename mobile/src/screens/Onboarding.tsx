@@ -44,23 +44,23 @@ function PhoneKey({
 
   return (
     <TouchableOpacity
-      onPress={onPress}
+      onPress={() => { feedback.tap(); onPress(); }}
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
       activeOpacity={0.8}
-      style={{ flex: 1, marginHorizontal: 5, marginVertical: 4 }}
+      style={{ flex: 1, marginHorizontal: 5, marginVertical: 5 }}
     >
       <Animated.View
         style={{
           transform: [{ scale: scaleAnim }],
           backgroundColor: confirm ? '#1B4332' : danger ? '#FEE2E2' : '#FFFFFF',
-          borderRadius: 14,
+          borderRadius: 16,
           borderWidth: confirm ? 0 : 1,
           borderColor: danger ? '#FECACA' : '#E5E7EB',
           alignItems: 'center',
           justifyContent: 'center',
-          paddingVertical: 10,
-          minHeight: 52,
+          paddingVertical: 14,
+          minHeight: 64,
           shadowColor: '#000',
           shadowOffset: { width: 0, height: 1 },
           shadowOpacity: 0.04,
@@ -68,8 +68,11 @@ function PhoneKey({
           elevation: 1,
         }}
       >
-        <Text style={{ fontSize: 22, fontWeight: '700', color: confirm ? '#FFFFFF' : danger ? '#DC2626' : '#111827' }}>{label}</Text>
-        {sub ? <Text style={{ fontSize: 9, fontWeight: '600', color: '#6B7280', letterSpacing: 0.8, marginTop: 1 }}>{sub}</Text> : null}
+        <Text style={{ fontSize: 26, fontWeight: '700', color: confirm ? '#FFFFFF' : danger ? '#DC2626' : '#111827' }}>{label}</Text>
+        {/* Always render this line (blank for "1"/⌫, which have no letters) so
+            every key is the same height -- "1" used to look visually smaller
+            than its neighbours because only it skipped the sub-label line. */}
+        <Text style={{ fontSize: 9, fontWeight: '600', color: '#6B7280', letterSpacing: 0.8, marginTop: 1, minHeight: 12 }}>{sub || ' '}</Text>
       </Animated.View>
     </TouchableOpacity>
   );

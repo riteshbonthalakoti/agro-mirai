@@ -70,9 +70,11 @@ function Why({ text }: { text?: string | null }) {
   );
 }
 
-function HeroHeader({ name, crop, greeting, lat, lon }: {
-  name: string; crop: string | null; greeting: string; lat?: number; lon?: number;
-}) {
+function HeroHeader({ name, greeting }: { name: string; greeting: string }) {
+  // The field's current crop used to also show here as a chip -- directly on top
+  // of the Crop Recommendation section a few inches below, which (now that it
+  // defaults to "how's my current crop doing" instead of a switch suggestion)
+  // shows the exact same crop name again. One place for the crop name, not three.
   return (
     <View style={{ backgroundColor: H.heroBg, borderRadius: 28, overflow: 'hidden', marginBottom: S.md }}>
       <View style={{ position: 'absolute', right: -40, top: -40, width: 180, height: 180, borderRadius: 90, backgroundColor: 'rgba(255,255,255,0.06)' }} />
@@ -80,13 +82,6 @@ function HeroHeader({ name, crop, greeting, lat, lon }: {
       <View style={{ padding: S.xl, paddingBottom: S.lg }}>
         <Text style={{ fontSize: 13, fontWeight: '600', letterSpacing: 0.8, color: H.heroMuted, textTransform: 'uppercase' }}>{greeting}</Text>
         <Text style={{ fontSize: 28, fontWeight: '900', color: H.heroText, marginTop: 4, letterSpacing: -0.5 }} numberOfLines={1} adjustsFontSizeToFit>{name || '—'}</Text>
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: S.sm }}>
-          {crop ? (
-            <View style={{ alignSelf: 'flex-start', backgroundColor: 'rgba(255,255,255,0.18)', borderRadius: 20, paddingHorizontal: S.md, paddingVertical: 4 }}>
-              <Text style={{ fontSize: 13, fontWeight: '700', color: H.heroAccent }}>{crop}</Text>
-            </View>
-          ) : null}
-        </View>
       </View>
     </View>
   );
@@ -151,9 +146,15 @@ const greetKey = () => {
 export function HomeTab() {
   const { field, t, lang, farmer } = useApp();
   const id = field?.id;
-  // "advise on my current crop" instead of proposing a switch (backend: ?keep_current=true)
-  const [keep, setKeep] = useState(false);
-  useEffect(() => { setKeep(false); }, [id]);
+  // Defaults to "how's my current crop doing" (backend: ?keep_current=true) when
+  // the field already has one sown -- defaulting to a switch suggestion (the old
+  // behaviour) meant Home's first thing a farmer with an established crop saw was
+  // some other crop recommended in its place, often simply because EcoCrop's own
+  // top pick already *was* their crop (a correct, boring, non-answer that read as
+  // a confusing duplicate of the crop chip right above it). A farmer with nothing
+  // sown yet still gets the "best new crop" suggestion by default.
+  const [keep, setKeep] = useState(!!field?.current_crop);
+  useEffect(() => { setKeep(!!field?.current_crop); }, [id]);
   const crop = useLoad(id ? `rec:${id}:${keep}` : null, () => getRecommendation(id!, keep), [id, keep]);
   const irr = useLoad(id ? `irr:${id}` : null, () => getIrrigation(id!), [id]);
   const dis = useLoad(id ? `dis:${id}:${lang}` : null, () => getDiseaseRiskFull(id!, lang), [id, lang]);
@@ -233,10 +234,7 @@ export function HomeTab() {
       >
         <HeroHeader
           name={field?.name ?? '—'}
-          crop={field?.current_crop ? cropLabel(lang, field.current_crop) : null}
           greeting={`${t(greetKey())}${first ? `, ${first}` : ''}`}
-          lat={field?.latitude}
-          lon={field?.longitude}
         />
 
         {!field ? (
