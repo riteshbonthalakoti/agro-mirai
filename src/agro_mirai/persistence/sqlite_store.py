@@ -41,6 +41,7 @@ BUG_REPORTS_MIGRATION_PATH = ROOT / "migrations" / "sqlite" / "009_bug_reports.s
 ADMIN_WRITE_MIGRATION_PATH = ROOT / "migrations" / "sqlite" / "010_admin_write_actions.sql"
 CONVERSATIONS_MIGRATION_PATH = ROOT / "migrations" / "sqlite" / "011_conversations.sql"
 CASCADE_SOURCE_MIGRATION_PATH = ROOT / "migrations" / "sqlite" / "012_cascade_source.sql"
+DISEASE_ALERT_PHOTO_MIGRATION_PATH = ROOT / "migrations" / "sqlite" / "013_disease_alert_photo.sql"
 
 
 # --------------------------------------------------------------------------
@@ -103,12 +104,30 @@ class SQLiteDataStore:
         self._apply_admin_write_migration()
         self._apply_conversations_migration()
         self._apply_cascade_source_migration()
+        self._apply_disease_alert_photo_migration()
 
     def _apply_cascade_source_migration(self) -> None:
         """AI cascade restructure: same ADD-COLUMN-tolerating pattern as
         _apply_auth_migration -- see
         migrations/sqlite/012_cascade_source.sql's header."""
         sql = CASCADE_SOURCE_MIGRATION_PATH.read_text(encoding="utf-8")
+        conn = self._conn
+        for statement in sql.split(";"):
+            statement = statement.strip()
+            if not statement:
+                continue
+            try:
+                conn.execute(statement)
+            except sqlite3.OperationalError as e:
+                if "duplicate column name" not in str(e):
+                    raise
+        conn.commit()
+
+    def _apply_disease_alert_photo_migration(self) -> None:
+        """Scan photo persistence (2026-10-30): same ADD-COLUMN-tolerating
+        pattern as _apply_auth_migration -- see
+        migrations/sqlite/013_disease_alert_photo.sql's header."""
+        sql = DISEASE_ALERT_PHOTO_MIGRATION_PATH.read_text(encoding="utf-8")
         conn = self._conn
         for statement in sql.split(";"):
             statement = statement.strip()
@@ -845,8 +864,8 @@ class SQLiteDataStore:
             self._conn.execute(
                 """
                 INSERT INTO disease_risk_alerts (id, field_id, created_at, disease, risk_level,
-                    confidence, window_start_at, window_end_at, recommended_action, source)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    confidence, window_start_at, window_end_at, recommended_action, source, photo_url)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     alert.id,
@@ -859,6 +878,7 @@ class SQLiteDataStore:
                     _dt_to_text(alert.window_end_at) if alert.window_end_at else None,
                     alert.recommended_action,
                     alert.source,
+                    alert.photo_url,
                 ),
             )
             self._conn.commit()
@@ -910,6 +930,7 @@ class SQLiteDataStore:
             window_end_at=_text_to_dt(row["window_end_at"]) if row["window_end_at"] else None,
             recommended_action=row["recommended_action"],
             source=row["source"] if "source" in row.keys() else None,
+            photo_url=row["photo_url"] if "photo_url" in row.keys() else None,
         )
 
     # --- Advisory ---

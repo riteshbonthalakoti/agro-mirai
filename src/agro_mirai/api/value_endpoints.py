@@ -19,7 +19,9 @@ in behaviour — including the Module 22 degrade-not-fail contracts (422
 on data-exhaustion, ``environmental_fallback`` on an unreachable CNN
 service), which both surfaces get "for free" from calling the same code.
 """
+import base64
 import dataclasses
+import io
 import uuid
 from datetime import datetime, timedelta, timezone
 
@@ -257,6 +259,25 @@ def compute_advisories(store, ext: dict, farmer_id: str, field_id: str, generate
     return {"items": items}
 
 
+def _photo_url_for_storage(image_bytes: bytes) -> str | None:
+    """Resizes the scanned photo down to a small JPEG before storing it as a
+    base64 data URI, same lesson as the profile-photo fix (2026-10-29): an
+    unresized upload bloats every scan-history response the same way an
+    unresized profile photo bloated every /v2/farmers/me response. Returns
+    None (never raises) on any image-processing failure -- a stored photo
+    is a nice-to-have, not worth failing the whole scan over."""
+    try:
+        from PIL import Image
+
+        img = Image.open(io.BytesIO(image_bytes)).convert("RGB")
+        img.thumbnail((640, 640))
+        out = io.BytesIO()
+        img.save(out, format="JPEG", quality=70)
+        return f"data:image/jpeg;base64,{base64.b64encode(out.getvalue()).decode('ascii')}"
+    except Exception:
+        return None
+
+
 def compute_disease_risk_image(
     store, ext: dict, farmer_id: str, field_id: str, file_storage, target_lang: str = "en"
 ) -> dict:
@@ -356,6 +377,7 @@ def compute_disease_risk_image(
             source="kindwise_fallback",
         )
 
+    alert.photo_url = _photo_url_for_storage(image_bytes)
     saved = store.save_disease_risk_alert(farmer_id, alert)
     return _with_disease_translation(drop_unset_source(to_json(saved)), target_lang)
 

@@ -126,6 +126,11 @@ class DiseaseRiskAlert:
     window_end_at: datetime | None = None
     recommended_action: str | None = None
     source: str | None = None  # Module 21: "cnn" | "environmental" | "environmental_fallback"
+    # The scanned photo itself, stored server-side so it survives a reinstall/
+    # new device/re-login (2026-10-30) -- base64 data URI, same pattern as
+    # Farmer.photo_url (no file-storage service exists yet). Resized before
+    # storage, same lesson as the profile-photo fix earlier this project.
+    photo_url: str | None = None
 
 
 @dataclass

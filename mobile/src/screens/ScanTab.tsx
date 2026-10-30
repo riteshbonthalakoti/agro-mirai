@@ -20,7 +20,7 @@ import { levelColor, S, C } from '../theme';
 import { Badge, Banner, Btn, LastUpdated, Muted } from '../ui';
 import { ZoomModal } from '../zoom';
 
-type HistoryItem = { id: string; date: string; disease: string; risk: string; source: string | null; confidence: number; action?: string | null };
+type HistoryItem = { id: string; date: string; disease: string; risk: string; source: string | null; confidence: number; action?: string | null; photo_url?: string | null };
 type Phase = 'home' | 'analyzing' | 'result' | 'notLeaf' | 'error';
 type ErrKind = 'network' | 'server' | 'unavailable' | 'file' | 'noField';
 
@@ -323,8 +323,9 @@ export function ScanTab() {
 
   // History comes from the server (every photo scan is stored there), so it
   // survives reinstalling the app or switching phones. The device cache only
-  // paints instantly / covers being offline. Photos themselves stay local
-  // (see savePhotoLocally) since the server never stores the image.
+  // paints instantly / covers being offline. Photos are now also stored
+  // server-side (2026-10-30, item.photo_url) -- savePhotoLocally's on-device
+  // cache is kept as a fast-path/offline fallback, not the only copy.
   useEffect(() => {
     let alive = true;
     cacheGetWithTime<HistoryItem[]>('scans').then((h) => {
@@ -349,6 +350,7 @@ export function ScanTab() {
             id: a.id, date: a.created_at, disease: a.disease_translated || a.disease,
             risk: a.risk_level, source: a.source ?? null, confidence: a.confidence,
             action: diseaseAction(t, a.risk_level, a.recommended_action),
+            photo_url: a.photo_url ?? null,
           }));
         setHistory(fromServer);
         cacheSet('scans', fromServer);
@@ -546,8 +548,8 @@ export function ScanTab() {
               activeOpacity={0.85}
               style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.95)', borderRadius: 16, padding: S.sm, marginBottom: S.sm, borderWidth: 1, borderColor: C.border }}
             >
-              {photos[h.id] ? (
-                <Image source={{ uri: photos[h.id] }} style={{ width: 56, height: 56, borderRadius: 12, marginRight: S.md }} />
+              {(h.photo_url || photos[h.id]) ? (
+                <Image source={{ uri: h.photo_url || photos[h.id] }} style={{ width: 56, height: 56, borderRadius: 12, marginRight: S.md }} />
               ) : (
                 // TODO: add C.successBg token for '#EEF4E8'
                 <View style={{ width: 56, height: 56, borderRadius: 12, marginRight: S.md, backgroundColor: '#EEF4E8', alignItems: 'center', justifyContent: 'center' }}>
@@ -580,7 +582,7 @@ export function ScanTab() {
       {openItem ? (
         <ScanDetailModal
           item={openItem}
-          photoUri={photos[openItem.id] ?? null}
+          photoUri={openItem.photo_url || photos[openItem.id] || null}
           onClose={() => setOpenItem(null)}
           onZoom={(u) => setZoomUri(u)}
         />

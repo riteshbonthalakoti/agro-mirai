@@ -149,6 +149,10 @@ export type DiseaseDetails = {
 export type DiseaseAlert = {
   id: string; disease: string; disease_translated?: string; risk_level: string; confidence: number;
   recommended_action?: string | null; source?: string | null; created_at: string;
+  // Server-stored copy of the scanned photo (2026-10-30) -- present once the
+  // backend persists it, so history survives a reinstall/new device/
+  // re-login instead of relying on savePhotoLocally's on-device-only cache.
+  photo_url?: string | null;
 };
 export type Advisory = { id: string; title: string; body: string; body_plain?: string; severity: string; language: string; created_at: string };
 export type Weather = {
