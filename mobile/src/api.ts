@@ -200,135 +200,28 @@ export const patchField = (id: string, data: Record<string, unknown>) => request
 export const deleteField = (id: string) => request<void>(`/v2/fields/${id}`, { method: 'DELETE' });
 export const refreshData = (id: string) =>
   request<{ data_acquisition: Record<string, string> }>(`/v2/fields/${id}/refresh-data`, { method: 'POST' }, { timeout: 45000 });
-export const dataSummary = async (id: string): Promise<DataSummary> => {
-  try {
-    const res = await request<DataSummary>(`/v2/fields/${id}/data-summary`, {}, { timeout: 4000 });
-    if (res && res.weather) return res;
-    throw new Error('empty_summary');
-  } catch {
-    const now = new Date();
-    const makeDate = (offsetDays: number) => new Date(now.getTime() + offsetDays * 86400000).toISOString();
-    return {
-      fetched_at: now.toISOString(),
-      soil_used: {
-        ph: 6.8,
-        nitrogen_mg_per_kg: 185,
-        phosphorus_mg_per_kg: 48,
-        potassium_mg_per_kg: 195,
-        organic_carbon_pct: 0.85,
-        moisture_pct: 26.5,
-        chemistry_source: 'soilgrids',
-        moisture_source: 'soilgrids',
-      },
-      weather: {
-        current: {
-          observed_at: now.toISOString(),
-          source: 'open_meteo',
-          temp_c: 28.5,
-          temp_min_c: 22.0,
-          temp_max_c: 31.0,
-          humidity_pct: 65,
-          rainfall_mm: 0.0,
-          wind_mps: 3.2,
-          is_forecast: false,
-        },
-        recent: [
-          { observed_at: makeDate(-1), source: 'open_meteo', temp_c: 28.0, temp_min_c: 21.5, temp_max_c: 30.5, humidity_pct: 68, rainfall_mm: 2.0, wind_mps: 2.8, is_forecast: false },
-          { observed_at: makeDate(-2), source: 'open_meteo', temp_c: 27.5, temp_min_c: 21.0, temp_max_c: 29.8, humidity_pct: 72, rainfall_mm: 5.5, wind_mps: 3.0, is_forecast: false },
-          { observed_at: makeDate(-3), source: 'open_meteo', temp_c: 29.0, temp_min_c: 22.5, temp_max_c: 31.5, humidity_pct: 62, rainfall_mm: 0.0, wind_mps: 2.5, is_forecast: false },
-        ],
-        forecast: [
-          { observed_at: makeDate(1), source: 'open_meteo', temp_c: 29.0, temp_min_c: 22.0, temp_max_c: 32.0, humidity_pct: 60, rainfall_mm: 0.0, wind_mps: 3.5, is_forecast: true },
-          { observed_at: makeDate(2), source: 'open_meteo', temp_c: 28.5, temp_min_c: 21.8, temp_max_c: 31.0, humidity_pct: 64, rainfall_mm: 1.2, wind_mps: 3.1, is_forecast: true },
-          { observed_at: makeDate(3), source: 'open_meteo', temp_c: 27.8, temp_min_c: 21.0, temp_max_c: 30.2, humidity_pct: 70, rainfall_mm: 4.8, wind_mps: 2.9, is_forecast: true },
-        ],
-      },
-      soil: {
-        observed_at: now.toISOString(),
-        source: 'soilgrids',
-        ph: 6.8,
-        nitrogen_mg_per_kg: 185,
-        phosphorus_mg_per_kg: 48,
-        potassium_mg_per_kg: 195,
-        organic_carbon_pct: 0.85,
-        moisture_pct: 26.5,
-      },
-      ndvi: {
-        latest: { observed_at: makeDate(-2), source: 'gee_live', ndvi: 0.68, cloud_cover_pct: 8.5, satellite: 'Sentinel-2' },
-        history: [
-          { observed_at: makeDate(-2), source: 'gee_live', ndvi: 0.68, cloud_cover_pct: 8.5, satellite: 'Sentinel-2' },
-          { observed_at: makeDate(-12), source: 'gee_live', ndvi: 0.64, cloud_cover_pct: 12.0, satellite: 'Sentinel-2' },
-          { observed_at: makeDate(-22), source: 'cache', ndvi: 0.59, cloud_cover_pct: 18.2, satellite: 'Sentinel-2' },
-        ],
-      },
-    };
-  }
-};
+export const dataSummary = (id: string): Promise<DataSummary> =>
+  // Field finding (2026-10-30, audit): this used to catch any failure --
+  // including a request that simply hadn't finished acquiring data yet --
+  // and silently substitute fully-fabricated weather/soil/NDVI readings
+  // (specific fake numbers: 28.5°C, pH 6.8, NDVI 0.68...) presented as if
+  // they were real sensor/satellite data, indistinguishable from the real
+  // thing. Same bug class as the disease-risk fake fallback already fixed;
+  // let the real request (or a real error) through.
+  request<DataSummary>(`/v2/fields/${id}/data-summary`, {}, { timeout: 8000 });
 
 // ---- the three models + advisory ---------------------------------------------
-export const getRecommendation = async (id: string, keepCurrent = false): Promise<CropRec> => {
-  try {
-    const res = await request<CropRec>(`/v2/fields/${id}/recommendation${keepCurrent ? '?keep_current=true' : ''}`, {}, { timeout: 4000 });
-    if (res && res.recommended_crop) return res;
-    throw new Error('empty_rec');
-  } catch {
-    return {
-      id: `rec-${id}`,
-      recommended_crop: 'tomato',
-      confidence: 0.92,
-      season: 'Kharif',
-      rationale: 'Optimal soil pH (6.8), balanced NPK levels, and temperature range (24–29°C) provide prime conditions for high-yield Tomato cultivation.',
-      rationale_plain: 'Optimal soil pH (6.8), balanced NPK levels, and temperature range (24–29°C) provide prime conditions for high-yield Tomato cultivation.',
-      created_at: new Date().toISOString(),
-      details: {
-        method: 'fao_ecocrop',
-        mode: keepCurrent ? 'keep_current' : 'best_fit',
-        ranking: [
-          { crop: 'tomato', score: 0.92, fit: 'good', good_time_to_sow: true },
-          { crop: 'chickpea', score: 0.88, fit: 'good', good_time_to_sow: true },
-          { crop: 'maize', score: 0.81, fit: 'fair', good_time_to_sow: false },
-        ],
-        current_crop: { crop: 'tomato', score: 0.92, fit: 'good', verdict: 'keep' },
-        temperature_c: 27.4,
-        soil_ph: 6.8,
-        soil_values_measured: true,
-        annual_rain_mm: 890,
-        sowing_month: new Date().getMonth() + 1,
-      },
-    };
-  }
-};
+// Field finding (2026-10-30, audit): getRecommendation/getIrrigation used
+// to catch any failure or empty result and substitute a hardcoded fake
+// answer (always "tomato, 92% confidence" / always "18.5mm, moderate") --
+// a farmer whose request failed once got a confident, specific, entirely
+// fabricated recommendation with no indication it wasn't real. Same bug
+// class as the disease-risk and data-summary fake fallbacks.
+export const getRecommendation = (id: string, keepCurrent = false): Promise<CropRec> =>
+  request<CropRec>(`/v2/fields/${id}/recommendation${keepCurrent ? '?keep_current=true' : ''}`, {}, { timeout: 8000 });
 
-export const getIrrigation = async (id: string): Promise<Irrigation> => {
-  try {
-    const res = await request<Irrigation>(`/v2/fields/${id}/irrigation`, {}, { timeout: 4000 });
-    if (res && res.recommended_depth_mm !== undefined) return res;
-    throw new Error('empty_irr');
-  } catch {
-    return {
-      id: `irr-${id}`,
-      recommended_depth_mm: 18.5,
-      window_start_at: new Date().toISOString(),
-      window_end_at: new Date(Date.now() + 86400000 * 2).toISOString(),
-      urgency: 'moderate',
-      rationale: 'FAO-56 water balance calculates 18.5 mm irrigation needed in early morning (approx 45 min drip runtime).',
-      rationale_plain: 'FAO-56 water balance calculates 18.5 mm irrigation needed in early morning (approx 45 min drip runtime).',
-      created_at: new Date().toISOString(),
-      details: {
-        method: 'soil_water_balance',
-        soil_water_used_pct: 48,
-        days_until_water: 2,
-        waiting_for_rain: false,
-        rain_last_7d_mm: 4.2,
-        rain_forecast_3d_mm: 1.5,
-        rain_forecast_7d_mm: 8.0,
-        crop_water_use_mm_per_day: 4.2,
-        crop_stage: 'vegetative',
-        et0_method: 'hargreaves_samani',
-      },
-    };
-  }
-};
+export const getIrrigation = (id: string): Promise<Irrigation> =>
+  request<Irrigation>(`/v2/fields/${id}/irrigation`, {}, { timeout: 8000 });
 
 // same call, but keeps the `details` object (trend, wet days) next to the items
 export const getDiseaseRiskFull = async (id: string, lang: string) => {
@@ -353,24 +246,14 @@ export const getDiseaseRisk = (id: string, lang: string) =>
 
 // generate=false only lists stored advisories (opening the tab); generate=true
 // computes and stores a new one (the "Get today's advice" button).
+// Field finding (2026-10-30, audit): used to catch any failure or a
+// genuinely-empty-but-valid "no advisories yet" result and substitute a
+// single fully-written fake advisory ("Optimal root-zone moisture recorded
+// at 26.5%...") presented as real, specific agronomic guidance. Same bug
+// class as the other fake fallbacks found and removed this session.
 export const getAdvisories = async (id: string, generate = false): Promise<Advisory[]> => {
-  try {
-    const res = await request<{ items: Advisory[] }>(`/v2/fields/${id}/advisories?generate=${generate}`, {}, { timeout: 25000 });
-    if (res && Array.isArray(res.items) && res.items.length > 0) return res.items;
-    throw new Error('empty_advisories');
-  } catch {
-    return [
-      {
-        id: `adv-${id}-today`,
-        title: "Today's Agronomic & Irrigation Advisory",
-        body: 'Optimal root-zone moisture recorded at 26.5%. Daily FAO-56 balance calculates 18 mm irrigation demand in 48 hours. Weather forecast is stable with 65% humidity. Inspect lower foliage for early fungal spotting and maintain scheduled drip fertigation.',
-        body_plain: 'Optimal root-zone moisture recorded at 26.5%. Daily FAO-56 balance calculates 18 mm irrigation demand in 48 hours. Weather forecast is stable with 65% humidity. Inspect lower foliage for early fungal spotting and maintain scheduled drip fertigation.',
-        severity: 'info',
-        language: 'en',
-        created_at: new Date().toISOString(),
-      },
-    ];
-  }
+  const res = await request<{ items: Advisory[] }>(`/v2/fields/${id}/advisories?generate=${generate}`, {}, { timeout: 25000 });
+  return res?.items ?? [];
 };
 
 // ---- scan / feedback / bug reports --------------------------------------------
@@ -401,37 +284,20 @@ export type AskResult = {
   question_text: string; detected_lang: string; answer_text: string; language: string;
   answer_audio_base64: string | null; answer_audio_mimetype: string | null;
 };
+// Field finding (2026-10-30, audit): the worst instance of the fake-
+// fallback bug found this session -- any failure (including the mic/
+// network/server genuinely not understanding the farmer) used to return a
+// fake TRANSCRIPTION of a question the farmer never asked ("What is
+// today's irrigation advisory?") plus a fake spoken-sounding answer,
+// presented as if their actual voice had been heard and answered. Let the
+// real result or a real error through.
 export const askByVoice = async (audioUri: string, mime: string, expectedLang: string): Promise<AskResult> => {
   const f = new ExpoFile(audioUri);
   if (!f.exists || !f.size) return Promise.reject(new ApiError(-1, 'no recording'));
-  try {
-    const form = new FormData();
-    form.append('audio', f as unknown as Blob, 'question.m4a');
-    form.append('expected_lang', expectedLang);
-    const res = await request<AskResult>('/v2/voice/ask', { method: 'POST', body: form }, { timeout: 45000 });
-    if (res && res.answer_text) return res;
-    throw new Error('empty_voice');
-  } catch {
-    const isKn = expectedLang === 'kn';
-    const isTe = expectedLang === 'te';
-    const isHi = expectedLang === 'hi';
-    const question = isKn ? 'ಇಂದಿನ ನೀರಾವರಿ ಸಲಹೆ ಏನು?' : isTe ? 'ఈ రోజు నీటిపారుదల సలహా ఏమిటి?' : isHi ? 'आज की सिंचाई सलाह क्या है?' : "What is today's irrigation advisory?";
-    const answer = isKn
-      ? 'ನಿಮ್ಮ ಕ್ಷೇತ್ರದ ಮಣ್ಣಿನ ತೇವಾಂಶ 26% ಇದೆ. ನಾಳೆ ಬೆಳಿಗ್ಗೆ ಸುಮಾರು 18 ಮಿಮೀ ನೀರಾವರಿ (45 ನಿಮಿಷ ಹನಿ ನೀರಾವರಿ) ಒದಗಿಸಲು ಶಿಫಾರಸು ಮಾಡಲಾಗಿದೆ.'
-      : isTe
-      ? 'మీ పొలంలో నేల తేమ 26% ఉంది. రేపు ఉదయం సుమారు 18 మిమీ నీరు (45 నిమిషాల డ్రిప్ రన్‌టైమ్) అందించాలని సూచించబడింది.'
-      : isHi
-      ? 'आपके खेत की मिट्टी की नमी 26% है। कल सुबह लगभग 18 मिमी सिंचाई (45 मिनट ड्रिप रनटाइम) देने की सिफारिश की जाती है।'
-      : 'Soil moisture is optimal at 26.5%. Applying 18.5 mm of drip irrigation tomorrow morning is recommended based on daily ET0 water balance.';
-    return {
-      question_text: question,
-      detected_lang: expectedLang || 'en',
-      answer_text: answer,
-      language: expectedLang || 'en',
-      answer_audio_base64: null,
-      answer_audio_mimetype: null,
-    };
-  }
+  const form = new FormData();
+  form.append('audio', f as unknown as Blob, 'question.m4a');
+  form.append('expected_lang', expectedLang);
+  return request<AskResult>('/v2/voice/ask', { method: 'POST', body: form }, { timeout: 45000 });
 };
 
 export type ConversationItem = { id: string; field_id?: string; question: string; answer: string; lang: string; ts: number };
