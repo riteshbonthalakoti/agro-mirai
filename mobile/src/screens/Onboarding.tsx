@@ -16,7 +16,7 @@ import { LANGS, Lang } from '../i18n';
 import { C, S } from '../theme';
 import { Banner, Btn, Chip, Input, Muted, OtpBoxInput, st } from '../ui';
 import { AuthBackdrop } from '../components/AuthBackdrop';
-import { extractOtpCode, getAppSignatures, startSmsRetriever, stopSmsRetriever } from '../../modules/sms-retriever';
+import { extractOtpCode, getAppSignatures, startSmsRetriever, startSmsUserConsent, stopSmsRetriever, stopSmsUserConsent } from '../../modules/sms-retriever';
 
 // ─── Custom phone number keyboard ────────────────────────────────────────────
 // App-themed 10-digit keyboard. Auto-hides once 10 digits are entered.
@@ -500,13 +500,26 @@ export function AuthScreen({ lang, onLoggedIn, notice, onChangeLanguage, onCance
   const requestWithName = async (theName: string) => {
     if (busy) return; // guards against a double-tap firing two OTP requests
     setBusy(true);
-    // Start SMS Retriever BEFORE the network call so the BroadcastReceiver is
-    // already registered by the time the SMS arrives (avoids a race where a
-    // fast gateway delivers the OTP before the receiver is up).
+    // Start both SMS Retriever (fully silent, but depends on an exact app-hash
+    // match in the message) AND SMS User Consent (needs one tap on a system
+    // dialog, but no hash match at all) in parallel -- the same belt-and-
+    // suspenders approach most Indian banking apps use, since Retriever alone
+    // has proven unreliable here even after the message-format bugs were
+    // fixed. Whichever resolves first fills the code; manual entry still
+    // always works regardless.
     smsRetrieverCancelRef.current?.();
     let retrieverCancelled = false;
-    smsRetrieverCancelRef.current = () => { retrieverCancelled = true; stopSmsRetriever(); };
+    smsRetrieverCancelRef.current = () => {
+      retrieverCancelled = true;
+      stopSmsRetriever();
+      stopSmsUserConsent();
+    };
     startSmsRetriever().then((body) => {
+      if (retrieverCancelled || !body) return;
+      const code = extractOtpCode(body);
+      if (code) setOtp(code);
+    });
+    startSmsUserConsent().then((body) => {
       if (retrieverCancelled || !body) return;
       const code = extractOtpCode(body);
       if (code) setOtp(code);

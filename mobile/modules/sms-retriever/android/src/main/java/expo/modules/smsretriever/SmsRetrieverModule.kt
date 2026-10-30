@@ -1,5 +1,6 @@
 package expo.modules.smsretriever
 
+import android.app.Activity
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
@@ -17,6 +18,10 @@ import expo.modules.kotlin.modules.ModuleDefinition
 import expo.modules.kotlin.Promise
 import java.security.MessageDigest
 
+// Request code for the SMS User Consent system dialog's startActivityForResult
+// call -- arbitrary but must not collide with another module's in the same app.
+private const val SMS_CONSENT_REQUEST_CODE = 91011
+
 /**
  * Android SMS Retriever API (Module 56) -- the farmer's OTP screen never
  * needs the keyboard or a copy-paste: the OS delivers the SMS body to this
@@ -24,9 +29,20 @@ import java.security.MessageDigest
  * the backend to every OTP text; see agro_mirai.auth.otp_providers and
  * SMS_APP_HASH). No SMS/phone permission is needed -- that's the whole
  * point of this API over reading the inbox directly.
+ *
+ * Module 59: SMS Retriever alone proved unreliable in the field (farmer
+ * reports persisted even after the message-format bugs were fixed) --
+ * exactly the experience that pushed most Indian banking apps to pair it
+ * with the SMS User Consent API instead/as well: a one-tap system dialog
+ * ("Allow AGRO MIRAI to read this SMS?") that needs no signature-hash
+ * match at all, so it works even when Retriever silently doesn't. Both
+ * run in parallel from the JS side (Onboarding.tsx); whichever resolves
+ * first wins, and manual entry is still always available either way.
  */
 class SmsRetrieverModule : Module() {
   private var receiver: BroadcastReceiver? = null
+  private var consentReceiver: BroadcastReceiver? = null
+  private var consentPromise: Promise? = null
 
   override fun definition() = ModuleDefinition {
     Name("SmsRetriever")
@@ -82,6 +98,87 @@ class SmsRetrieverModule : Module() {
       appContext.reactContext?.let { stopListening(it) }
     }
 
+    // Starts the SMS User Consent flow: resolves with the full SMS body once
+    // the farmer taps "Allow" on the system dialog that appears for the next
+    // matching SMS, or null if they tap "Deny"/dismiss it, or rejects if the
+    // dialog itself never showed (no Play Services, etc). Unlike Retriever,
+    // this needs no app-hash match in the message at all -- `null` sender
+    // means "any sender", since the gateway's relay number isn't fixed.
+    AsyncFunction("startSmsUserConsent") { promise: Promise ->
+      val context = appContext.reactContext ?: run {
+        promise.reject(Exceptions.ReactContextLost())
+        return@AsyncFunction
+      }
+      val activity = appContext.currentActivity ?: run {
+        promise.reject("ERR_SMS_CONSENT_NO_ACTIVITY", "No foreground activity to show the consent dialog on", null)
+        return@AsyncFunction
+      }
+
+      stopConsentListening(context)
+      consentPromise = promise
+
+      val client = SmsRetriever.getClient(context)
+      val filter = IntentFilter(SmsRetriever.SMS_RETRIEVED_ACTION)
+
+      client.startSmsUserConsent(null)
+        .addOnSuccessListener {
+          val newReceiver = object : BroadcastReceiver() {
+            override fun onReceive(ctx: Context, intent: Intent) {
+              if (intent.action != SmsRetriever.SMS_RETRIEVED_ACTION) return
+              val extras = intent.extras ?: return
+              val status = extras.get(SmsRetriever.EXTRA_STATUS) as? Status ?: return
+              when (status.statusCode) {
+                CommonStatusCodes.SUCCESS -> {
+                  // Not the SMS text itself yet -- an Intent to launch that shows
+                  // the actual system permission dialog; the real text only comes
+                  // back via onActivityResult once the farmer taps Allow.
+                  @Suppress("DEPRECATION")
+                  val consentIntent = extras.getParcelable<Intent>(SmsRetriever.EXTRA_CONSENT_INTENT)
+                  if (consentIntent != null) {
+                    try {
+                      activity.startActivityForResult(consentIntent, SMS_CONSENT_REQUEST_CODE)
+                    } catch (e: Exception) {
+                      stopConsentListening(context)
+                      promise.reject("ERR_SMS_CONSENT_LAUNCH", "Could not show the consent dialog: ${e.message}", null)
+                    }
+                  }
+                }
+                CommonStatusCodes.TIMEOUT -> {
+                  stopConsentListening(context)
+                  promise.reject("ERR_SMS_CONSENT_TIMEOUT", "Timed out waiting for the OTP SMS", null)
+                }
+              }
+            }
+          }
+          consentReceiver = newReceiver
+          ContextCompat.registerReceiver(context, newReceiver, filter, ContextCompat.RECEIVER_EXPORTED)
+        }
+        .addOnFailureListener { e ->
+          promise.reject("ERR_SMS_CONSENT_START", "SMS User Consent failed to start: ${e.message}", null)
+        }
+    }
+
+    AsyncFunction("stopSmsUserConsent") {
+      appContext.reactContext?.let { stopConsentListening(it) }
+    }
+
+    // The farmer's tap on the system dialog (Allow/Deny) comes back here, not
+    // through the broadcast receiver above -- that receiver only ever hands us
+    // the Intent needed to launch the dialog itself.
+    OnActivityResult { _, payload ->
+      if (payload.requestCode != SMS_CONSENT_REQUEST_CODE) return@OnActivityResult
+      val promise = consentPromise ?: return@OnActivityResult
+      consentPromise = null
+      appContext.reactContext?.let { stopConsentListening(it) }
+      if (payload.resultCode == Activity.RESULT_OK) {
+        val message = payload.data?.getStringExtra(SmsRetriever.EXTRA_SMS_MESSAGE)
+        promise.resolve(message)
+      } else {
+        // Farmer tapped Deny/dismissed -- not an error, just nothing retrieved.
+        promise.resolve(null)
+      }
+    }
+
     // Dev utility only -- prints the 11-char hash SMS Retriever expects
     // appended to every OTP text (SMS_APP_HASH on the backend). Debug and
     // release currently share the same signing key (android/app/build.gradle),
@@ -101,6 +198,17 @@ class SmsRetrieverModule : Module() {
       }
     }
     receiver = null
+  }
+
+  private fun stopConsentListening(context: Context) {
+    consentReceiver?.let {
+      try {
+        context.unregisterReceiver(it)
+      } catch (_: IllegalArgumentException) {
+        // already unregistered -- fine
+      }
+    }
+    consentReceiver = null
   }
 
   // Standard Google sample algorithm (AppSignatureHelper): package name +

@@ -4,6 +4,8 @@ import { Platform } from 'react-native';
 type SmsRetrieverNativeModule = {
   startSmsRetriever(): Promise<string | null>;
   stopSmsRetriever(): Promise<void>;
+  startSmsUserConsent(): Promise<string | null>;
+  stopSmsUserConsent(): Promise<void>;
   getAppSignatures(): string[];
 };
 
@@ -38,6 +40,26 @@ export async function startSmsRetriever(): Promise<string | null> {
 
 export async function stopSmsRetriever(): Promise<void> {
   await NativeModule?.stopSmsRetriever();
+}
+
+/**
+ * SMS User Consent API: shows a system "Allow <app> to read this SMS?"
+ * dialog for the next matching message and resolves with its full text once
+ * the farmer taps Allow (or null on Deny/dismiss). Needs no app-hash match
+ * in the message, unlike the Retriever above -- this is the fallback most
+ * Indian banking apps lean on because Retriever alone proved unreliable.
+ */
+export async function startSmsUserConsent(): Promise<string | null> {
+  if (!NativeModule) return null;
+  try {
+    return await NativeModule.startSmsUserConsent();
+  } catch {
+    return null;
+  }
+}
+
+export async function stopSmsUserConsent(): Promise<void> {
+  await NativeModule?.stopSmsUserConsent();
 }
 
 /** Dev utility: logs the hash to append as SMS_APP_HASH on the backend. */
