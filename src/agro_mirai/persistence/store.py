@@ -14,6 +14,8 @@ from agro_mirai.persistence.models import (
     Advisory,
     AuditLogEntry,
     BugReport,
+    ChatMessage,
+    ChatSession,
     Conversation,
     CropRecommendation,
     DiseaseRiskAlert,
@@ -230,6 +232,19 @@ class DataStore(Protocol):
     def delete_conversation(
         self, farmer_id: str, conversation_id: str
     ) -> bool: ...
+
+    # --- Chat sessions (Module 58, floating chatbot) ---
+    def save_chat_session(self, farmer_id: str, session: ChatSession) -> ChatSession: ...
+
+    def list_chat_sessions(self, farmer_id: str, limit: int = 50) -> list[ChatSession]: ...
+
+    def get_chat_session(self, farmer_id: str, session_id: str) -> ChatSession | None: ...
+
+    def save_chat_message(self, farmer_id: str, message: ChatMessage) -> ChatMessage: ...
+
+    def list_chat_messages(
+        self, farmer_id: str, session_id: str, limit: int = 200
+    ) -> list[ChatMessage]: ...
 
     # --- Health ---
     def ping(self) -> bool: ...

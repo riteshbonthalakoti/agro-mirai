@@ -217,6 +217,9 @@ const en = {
   chatPlaceholder: 'Type a question about your field…',
   chatEmptyHint: 'Ask about your field, crop, irrigation, or disease risk.',
   chatUnavailable: 'The assistant is unreachable right now. Please try again shortly.',
+  chatHistoryTitle: 'Past conversations',
+  chatHistoryEmpty: 'No past conversations yet.',
+  chatNew: 'Start a new chat',
 
   // scan
   scanTitle: 'Leaf disease scan',
@@ -679,6 +682,9 @@ const kn: Dict = {
   chatPlaceholder: 'ನಿಮ್ಮ ಹೊಲದ ಬಗ್ಗೆ ಪ್ರಶ್ನೆ ಟೈಪ್ ಮಾಡಿ…',
   chatEmptyHint: 'ನಿಮ್ಮ ಹೊಲ, ಬೆಳೆ, ನೀರಾವರಿ ಅಥವಾ ರೋಗದ ಅಪಾಯದ ಬಗ್ಗೆ ಕೇಳಿ.',
   chatUnavailable: 'ಸಹಾಯಕ ಈಗ ತಲುಪುತ್ತಿಲ್ಲ. ದಯವಿಟ್ಟು ಸ್ವಲ್ಪ ಸಮಯದ ನಂತರ ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.',
+  chatHistoryTitle: 'ಹಿಂದಿನ ಸಂಭಾಷಣೆಗಳು',
+  chatHistoryEmpty: 'ಇನ್ನೂ ಯಾವುದೇ ಹಿಂದಿನ ಸಂಭಾಷಣೆ ಇಲ್ಲ.',
+  chatNew: 'ಹೊಸ ಚಾಟ್ ಪ್ರಾರಂಭಿಸಿ',
 
   scanTitle: 'ಎಲೆ ರೋಗ ಸ್ಕ್ಯಾನ್',
   scanSub: 'ರೋಗ ಪರಿಶೀಲಿಸಲು ಎಲೆಯ ಫೋಟೋ ತೆಗೆಯಿರಿ.',
@@ -1136,6 +1142,9 @@ const te: Dict = {
   chatPlaceholder: 'మీ పొలం గురించి ప్రశ్న టైప్ చేయండి…',
   chatEmptyHint: 'మీ పొలం, పంట, నీటిపారుదల లేదా వ్యాధి ప్రమాదం గురించి అడగండి.',
   chatUnavailable: 'సహాయకుడు ఇప్పుడు అందుబాటులో లేదు. దయచేసి కొద్ది సేపటి తర్వాత ప్రయత్నించండి.',
+  chatHistoryTitle: 'గత సంభాషణలు',
+  chatHistoryEmpty: 'ఇంకా గత సంభాషణలు లేవు.',
+  chatNew: 'కొత్త చాట్ ప్రారంభించండి',
 
   scanTitle: 'ఆకు వ్యాధి స్కాన్',
   scanSub: 'వ్యాధి తెలుసుకోవడానికి ఆకు ఫోటో తీయండి.',
@@ -1593,6 +1602,9 @@ const hi: Dict = {
   chatPlaceholder: 'अपने खेत के बारे में सवाल टाइप करें…',
   chatEmptyHint: 'अपने खेत, फसल, सिंचाई या रोग जोखिम के बारे में पूछें।',
   chatUnavailable: 'सहायक अभी उपलब्ध नहीं है। कृपया थोड़ी देर बाद फिर कोशिश करें।',
+  chatHistoryTitle: 'पिछली बातचीत',
+  chatHistoryEmpty: 'अभी कोई पिछली बातचीत नहीं है।',
+  chatNew: 'नई चैट शुरू करें',
 
   scanTitle: 'पत्ती रोग स्कैन',
   scanSub: 'रोग जांचने के लिए पत्ती की फोटो लें।',

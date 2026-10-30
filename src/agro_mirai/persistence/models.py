@@ -202,3 +202,33 @@ class Conversation:
     language: str
     created_at: datetime
     field_id: str | None = None
+
+
+@dataclass
+class ChatSession:
+    """A floating-chatbot thread (Module 58): one row per conversation the
+    farmer starts with the assistant, so sessions persist across app
+    restarts and devices, same as Conversation does for voice Q&A."""
+
+    id: str
+    farmer_id: str
+    created_at: datetime
+    updated_at: datetime
+    title: str | None = None
+
+
+@dataclass
+class ChatMessage:
+    """One turn in a ChatSession. ``chart``/``cards`` are the structured
+    JSON blocks the chat route attaches (trend chart from the model,
+    grounded crop/irrigation/disease cards from the farmer's own real
+    records) -- stored as JSON so the thread renders identically on reopen."""
+
+    id: str
+    session_id: str
+    farmer_id: str
+    role: str  # "user" | "assistant"
+    content: str
+    created_at: datetime
+    chart: dict | None = None
+    cards: list[dict] = field(default_factory=list)

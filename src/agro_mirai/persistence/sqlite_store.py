@@ -18,6 +18,8 @@ from agro_mirai.persistence.models import (
     Advisory,
     AuditLogEntry,
     BugReport,
+    ChatMessage,
+    ChatSession,
     Conversation,
     CropRecommendation,
     DiseaseRiskAlert,
@@ -42,6 +44,7 @@ ADMIN_WRITE_MIGRATION_PATH = ROOT / "migrations" / "sqlite" / "010_admin_write_a
 CONVERSATIONS_MIGRATION_PATH = ROOT / "migrations" / "sqlite" / "011_conversations.sql"
 CASCADE_SOURCE_MIGRATION_PATH = ROOT / "migrations" / "sqlite" / "012_cascade_source.sql"
 DISEASE_ALERT_PHOTO_MIGRATION_PATH = ROOT / "migrations" / "sqlite" / "013_disease_alert_photo.sql"
+CHAT_SESSIONS_MIGRATION_PATH = ROOT / "migrations" / "sqlite" / "014_chat_sessions.sql"
 
 
 # --------------------------------------------------------------------------
@@ -105,6 +108,17 @@ class SQLiteDataStore:
         self._apply_conversations_migration()
         self._apply_cascade_source_migration()
         self._apply_disease_alert_photo_migration()
+        self._apply_chat_sessions_migration()
+
+    def _apply_chat_sessions_migration(self) -> None:
+        """Module 58: floating chatbot persisted sessions/messages, brand
+        new tables -- CREATE TABLE/INDEX IF NOT EXISTS, same pattern as
+        _apply_bug_reports_migration -- see
+        migrations/sqlite/014_chat_sessions.sql."""
+        sql = CHAT_SESSIONS_MIGRATION_PATH.read_text(encoding="utf-8")
+        conn = self._conn
+        conn.executescript(sql)
+        conn.commit()
 
     def _apply_cascade_source_migration(self) -> None:
         """AI cascade restructure: same ADD-COLUMN-tolerating pattern as
@@ -1255,6 +1269,82 @@ class SQLiteDataStore:
         )
         self._conn.commit()
         return cursor.rowcount > 0
+
+    # --- Chat sessions (Module 58, floating chatbot) ---
+    def save_chat_session(self, farmer_id: str, session: ChatSession) -> ChatSession:
+        self._conn.execute(
+            """
+            INSERT INTO chat_sessions (id, farmer_id, title, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?)
+            ON CONFLICT(id) DO UPDATE SET title = excluded.title, updated_at = excluded.updated_at
+            """,
+            (session.id, farmer_id, session.title, _dt_to_text(session.created_at), _dt_to_text(session.updated_at)),
+        )
+        self._conn.commit()
+        return session
+
+    def list_chat_sessions(self, farmer_id: str, limit: int = 50) -> list[ChatSession]:
+        rows = self._conn.execute(
+            "SELECT * FROM chat_sessions WHERE farmer_id = ? ORDER BY updated_at DESC LIMIT ?",
+            (farmer_id, limit),
+        ).fetchall()
+        return [
+            ChatSession(
+                id=r["id"], farmer_id=r["farmer_id"], title=r["title"],
+                created_at=_text_to_dt(r["created_at"]), updated_at=_text_to_dt(r["updated_at"]),
+            )
+            for r in rows
+        ]
+
+    def get_chat_session(self, farmer_id: str, session_id: str) -> ChatSession | None:
+        row = self._conn.execute(
+            "SELECT * FROM chat_sessions WHERE id = ? AND farmer_id = ?",
+            (session_id, farmer_id),
+        ).fetchone()
+        if row is None:
+            return None
+        return ChatSession(
+            id=row["id"], farmer_id=row["farmer_id"], title=row["title"],
+            created_at=_text_to_dt(row["created_at"]), updated_at=_text_to_dt(row["updated_at"]),
+        )
+
+    def save_chat_message(self, farmer_id: str, message: ChatMessage) -> ChatMessage:
+        self._conn.execute(
+            """
+            INSERT INTO chat_messages
+                (id, session_id, farmer_id, role, content, chart_json, cards_json, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                message.id, message.session_id, farmer_id, message.role, message.content,
+                json.dumps(message.chart) if message.chart is not None else None,
+                json.dumps(message.cards) if message.cards else None,
+                _dt_to_text(message.created_at),
+            ),
+        )
+        self._conn.commit()
+        return message
+
+    def list_chat_messages(
+        self, farmer_id: str, session_id: str, limit: int = 200
+    ) -> list[ChatMessage]:
+        rows = self._conn.execute(
+            """
+            SELECT * FROM chat_messages WHERE farmer_id = ? AND session_id = ?
+            ORDER BY created_at ASC LIMIT ?
+            """,
+            (farmer_id, session_id, limit),
+        ).fetchall()
+        return [
+            ChatMessage(
+                id=r["id"], session_id=r["session_id"], farmer_id=r["farmer_id"],
+                role=r["role"], content=r["content"],
+                chart=json.loads(r["chart_json"]) if r["chart_json"] else None,
+                cards=json.loads(r["cards_json"]) if r["cards_json"] else [],
+                created_at=_text_to_dt(r["created_at"]),
+            )
+            for r in rows
+        ]
 
     # --- Health ---
     def ping(self) -> bool:

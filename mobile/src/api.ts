@@ -318,9 +318,30 @@ export const saveConversationApi = async (entry: { field_id?: string; question: 
 // ---- chat (floating assistant) ---------------------------------------------
 export type ChatHistoryItem = { role: 'user' | 'assistant'; content: string };
 export type ChatChart = { type: 'bar' | 'line'; title: string; labels: string[]; values: number[] };
-export type ChatResult = { reply: string; chart: ChatChart | null; source?: 'llm' | 'rule_based' };
+export type ChatCard =
+  | { type: 'irrigation'; field: string; depth_mm: number; window_start_at: string; window_end_at: string; urgency: string }
+  | { type: 'disease'; field: string; disease: string; risk_level: string; confidence: number; recommended_action: string | null }
+  | { type: 'crop'; field: string; crop: string; confidence: number; rationale: string | null };
+export type ChatResult = {
+  reply: string; chart: ChatChart | null; cards: ChatCard[]; session_id: string; source?: 'llm' | 'rule_based';
+};
+export type ChatSessionSummary = { id: string; title: string | null; created_at: string; updated_at: string };
+export type ChatMessageItem = {
+  id: string; role: 'user' | 'assistant'; content: string; chart: ChatChart | null; cards: ChatCard[]; created_at: string;
+};
 
-export const sendChatMessage = (message: string, history: ChatHistoryItem[], language: string): Promise<ChatResult> =>
-  request<ChatResult>('/v2/chat', json('POST', { message, history, language }), { timeout: 30000 });
+export const sendChatMessage = (message: string, sessionId: string | null, language: string): Promise<ChatResult> =>
+  request<ChatResult>(
+    '/v2/chat',
+    json('POST', { message, ...(sessionId ? { session_id: sessionId } : {}), language }),
+    { timeout: 30000 },
+  );
+
+export const listChatSessions = (): Promise<ChatSessionSummary[]> =>
+  request<{ sessions: ChatSessionSummary[] }>('/v2/chat/sessions', { method: 'GET' }).then((r) => r.sessions);
+
+export const listChatSessionMessages = (sessionId: string): Promise<ChatMessageItem[]> =>
+  request<{ session: ChatSessionSummary; messages: ChatMessageItem[] }>(`/v2/chat/sessions/${sessionId}/messages`, { method: 'GET' })
+    .then((r) => r.messages);
 
 export { API_BASE_URL };

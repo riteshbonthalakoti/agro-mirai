@@ -13,6 +13,7 @@ Construction raises ``RuntimeError`` immediately if either is unset —
 callers (including the parity test suite) are expected to catch that and
 skip rather than limp along without a backend.
 """
+import json
 import os
 import uuid
 from datetime import datetime, timezone
@@ -21,6 +22,8 @@ from agro_mirai.persistence.models import (
     Advisory,
     AuditLogEntry,
     BugReport,
+    ChatMessage,
+    ChatSession,
     Conversation,
     CropRecommendation,
     DiseaseRiskAlert,
@@ -916,6 +919,91 @@ class SupabaseDataStore:
             question=row["question"],
             answer=row["answer"],
             language=row["language"],
+            created_at=_parse_dt(row["created_at"]),
+        )
+
+    # --- Chat sessions (Module 58, floating chatbot) ---
+    def save_chat_session(self, farmer_id: str, session: ChatSession) -> ChatSession:
+        if not _is_uuid(farmer_id):
+            raise NotFoundError(f"farmer {farmer_id} not found")
+        payload = {
+            "id": session.id,
+            "farmer_id": farmer_id,
+            "title": session.title,
+            "created_at": _dt(session.created_at),
+            "updated_at": _dt(session.updated_at),
+        }
+        try:
+            self._client.table("chat_sessions").upsert(payload).execute()
+        except Exception as e:
+            raise ConflictError(str(e)) from e
+        return session
+
+    def list_chat_sessions(self, farmer_id: str, limit: int = 50) -> list[ChatSession]:
+        if not _is_uuid(farmer_id):
+            return []
+        res = (
+            self._client.table("chat_sessions").select("*").eq("farmer_id", farmer_id)
+            .order("updated_at", desc=True).limit(limit).execute()
+        )
+        return [self._row_to_chat_session(r) for r in res.data]
+
+    def get_chat_session(self, farmer_id: str, session_id: str) -> ChatSession | None:
+        if not _is_uuid(farmer_id) or not _is_uuid(session_id):
+            return None
+        res = (
+            self._client.table("chat_sessions").select("*")
+            .eq("id", session_id).eq("farmer_id", farmer_id).limit(1).execute()
+        )
+        if not res.data:
+            return None
+        return self._row_to_chat_session(res.data[0])
+
+    def save_chat_message(self, farmer_id: str, message: ChatMessage) -> ChatMessage:
+        if not _is_uuid(farmer_id):
+            raise NotFoundError(f"farmer {farmer_id} not found")
+        payload = {
+            "id": message.id,
+            "session_id": message.session_id,
+            "farmer_id": farmer_id,
+            "role": message.role,
+            "content": message.content,
+            "chart_json": json.dumps(message.chart) if message.chart is not None else None,
+            "cards_json": json.dumps(message.cards) if message.cards else None,
+            "created_at": _dt(message.created_at),
+        }
+        try:
+            self._client.table("chat_messages").insert(payload).execute()
+        except Exception as e:
+            raise ConflictError(str(e)) from e
+        return message
+
+    def list_chat_messages(
+        self, farmer_id: str, session_id: str, limit: int = 200
+    ) -> list[ChatMessage]:
+        if not _is_uuid(farmer_id) or not _is_uuid(session_id):
+            return []
+        res = (
+            self._client.table("chat_messages").select("*")
+            .eq("farmer_id", farmer_id).eq("session_id", session_id)
+            .order("created_at", desc=False).limit(limit).execute()
+        )
+        return [self._row_to_chat_message(r) for r in res.data]
+
+    @staticmethod
+    def _row_to_chat_session(row: dict) -> ChatSession:
+        return ChatSession(
+            id=row["id"], farmer_id=row["farmer_id"], title=row.get("title"),
+            created_at=_parse_dt(row["created_at"]), updated_at=_parse_dt(row["updated_at"]),
+        )
+
+    @staticmethod
+    def _row_to_chat_message(row: dict) -> ChatMessage:
+        return ChatMessage(
+            id=row["id"], session_id=row["session_id"], farmer_id=row["farmer_id"],
+            role=row["role"], content=row["content"],
+            chart=json.loads(row["chart_json"]) if row.get("chart_json") else None,
+            cards=json.loads(row["cards_json"]) if row.get("cards_json") else [],
             created_at=_parse_dt(row["created_at"]),
         )
 

@@ -35,6 +35,7 @@ import {
   Wind,
   MessageCircle,
   Send,
+  History,
 } from 'lucide-react-native';
 
 export type IconName =
@@ -43,7 +44,7 @@ export type IconName =
   | 'chevron-right' | 'bolt' | 'gallery' | 'globe' | 'user' | 'field'
   | 'mic' | 'thermo' | 'speaker' | 'logout' | 'close' | 'location'
   | 'settings' | 'bell' | 'check' | 'alert' | 'info' | 'bug' | 'image' | 'plus'
-  | 'wind' | 'humidity' | 'chat' | 'send';
+  | 'wind' | 'humidity' | 'chat' | 'send' | 'history';
 
 type IconProps = { name: IconName; size?: number; color?: string };
 
@@ -118,6 +119,8 @@ export function Icon({ name, size = 18, color = '#23281F' }: IconProps) {
       return <MessageCircle size={size} color={color} strokeWidth={strokeWidth} />;
     case 'send':
       return <Send size={size} color={color} strokeWidth={strokeWidth} />;
+    case 'history':
+      return <History size={size} color={color} strokeWidth={strokeWidth} />;
     case 'settings':
       return <Settings size={size} color={color} strokeWidth={strokeWidth} />;
     case 'check':
