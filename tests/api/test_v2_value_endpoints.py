@@ -235,10 +235,10 @@ def test_disease_risk_image_gemini_unavailable_returns_503(client):
 def test_disease_risk_image_gemini_success_path(client, monkeypatch):
     from agro_mirai.api import value_endpoints
 
-    monkeypatch.setattr(value_endpoints, "gemini_is_plant_precheck", lambda image_bytes: True)
+    monkeypatch.setattr(value_endpoints, "vision_is_plant_precheck", lambda image_bytes: True)
     monkeypatch.setattr(
         value_endpoints,
-        "gemini_analyze_leaf",
+        "vision_analyze_leaf",
         lambda image_bytes: {
             "plant_name": "Tomato", "has_disease": True, "disease_name": "Early Blight",
             "confidence": 0.81, "description": "", "recommended_action": "",
@@ -253,7 +253,7 @@ def test_disease_risk_image_gemini_success_path(client, monkeypatch):
     )
     assert resp.status_code == 200
     body = resp.get_json()
-    assert body["source"] == "gemini_simple"
+    assert body["source"] == "vision_simple"
     assert body["disease"] == "Tomato: Early Blight"
 
 

@@ -82,10 +82,10 @@ def test_gemini_analyze_success_path(client, monkeypatch):
     Gemini call does the diagnosis -- no CNN/plant-disease-API/rule-based
     cascade involved at all."""
     _patch_features(monkeypatch)
-    monkeypatch.setattr(value_endpoints, "gemini_is_plant_precheck", lambda image_bytes: True)
+    monkeypatch.setattr(value_endpoints, "vision_is_plant_precheck", lambda image_bytes: True)
     monkeypatch.setattr(
         value_endpoints,
-        "gemini_analyze_leaf",
+        "vision_analyze_leaf",
         lambda image_bytes: {
             "plant_name": "Tomato",
             "has_disease": True,
@@ -103,17 +103,17 @@ def test_gemini_analyze_success_path(client, monkeypatch):
     )
     assert resp.status_code == 200
     body = resp.get_json()
-    assert body["source"] == "gemini_simple"
+    assert body["source"] == "vision_simple"
     assert body["disease"] == "Tomato: Early Blight"
     assert body["risk_level"] == "high"
 
 
 def test_gemini_analyze_healthy_is_low_risk(client, monkeypatch):
     _patch_features(monkeypatch)
-    monkeypatch.setattr(value_endpoints, "gemini_is_plant_precheck", lambda image_bytes: True)
+    monkeypatch.setattr(value_endpoints, "vision_is_plant_precheck", lambda image_bytes: True)
     monkeypatch.setattr(
         value_endpoints,
-        "gemini_analyze_leaf",
+        "vision_analyze_leaf",
         lambda image_bytes: {
             "plant_name": "Banana",
             "has_disease": False,
@@ -137,7 +137,7 @@ def test_gemini_analyze_unavailable_returns_503_not_a_fake_diagnosis(client, mon
     """No fallback for this flow by design -- Gemini unreachable/malformed
     means a clean service-unavailable response, never a guessed diagnosis."""
     _patch_features(monkeypatch)
-    monkeypatch.setattr(value_endpoints, "gemini_analyze_leaf", lambda image_bytes: None)
+    monkeypatch.setattr(value_endpoints, "vision_analyze_leaf", lambda image_bytes: None)
     resp = client.post(
         f"/fields/{FIELD_ID}/disease-risk/image",
         data={"image": (io.BytesIO(_png_bytes()), "leaf.png")},
@@ -178,7 +178,7 @@ def test_gemini_precheck_rejects_what_the_pixel_gate_missed(client, monkeypatch)
     confirms the second, Gemini-backed check rejects it -- 422, cascade
     never reached -- when the pixel gate alone would have let it through."""
     _patch_features(monkeypatch)
-    monkeypatch.setattr(value_endpoints, "gemini_is_plant_precheck", lambda image_bytes: False)
+    monkeypatch.setattr(value_endpoints, "vision_is_plant_precheck", lambda image_bytes: False)
     cnn_called = []
     monkeypatch.setattr(
         "agro_mirai.api.cnn_client.call_cnn_service", lambda *a, **k: cnn_called.append(1)
@@ -206,10 +206,10 @@ def test_gemini_precheck_inconclusive_rejects_with_503(client, monkeypatch):
     "try again" 503 as an unreachable analyze call, never a silent
     pass-through -- the analyze step below must NOT be reached."""
     _patch_features(monkeypatch)
-    monkeypatch.setattr(value_endpoints, "gemini_is_plant_precheck", lambda image_bytes: None)
+    monkeypatch.setattr(value_endpoints, "vision_is_plant_precheck", lambda image_bytes: None)
     monkeypatch.setattr(
         value_endpoints,
-        "gemini_analyze_leaf",
+        "vision_analyze_leaf",
         lambda image_bytes: (_ for _ in ()).throw(AssertionError("analyze must not run when precheck is inconclusive")),
     )
 

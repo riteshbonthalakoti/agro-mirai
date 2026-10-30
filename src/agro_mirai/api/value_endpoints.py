@@ -27,9 +27,9 @@ from agro_mirai.api.errors import ApiError
 from agro_mirai.api.farmer_text import in_karnataka, plain_advisory, plain_irrigation
 from agro_mirai.api.features import build_features_for_field
 from agro_mirai.api.image_validation import validate_image_upload
-from agro_mirai.api.gemini_client import gemini_analyze_leaf, gemini_is_plant_precheck
 from agro_mirai.api.leaf_gate import looks_like_plant_photo
 from agro_mirai.api.plant_disease_client import identify_disease as kindwise_identify_disease
+from agro_mirai.api.vision_client import vision_analyze_leaf, vision_is_plant_precheck
 from agro_mirai.api.serializers import drop_unset_source, to_json
 from agro_mirai.api.validation import validate_feedback_create
 from agro_mirai.api.voice_client import translate_text
@@ -278,13 +278,11 @@ def compute_disease_risk_image(
     #
     # `None` (unreachable/unconfigured/malformed reply) used to pass through
     # rather than block an upload the pixel gate already accepted -- but a
-    # real farmer's genuinely unreachable Gemini and a junk image slipping
-    # the pixel gate look identical here, and letting it through just means
-    # paying for a doomed analyze call that times out anyway. Reject instead:
-    # user-directed decision (2026-10-30), since Gemini being down for
-    # everyone is the same scenario the strict-gate directive on this
-    # pipeline was written for in the first place.
-    plant_precheck = gemini_is_plant_precheck(image_bytes)
+    # real farmer's genuinely unreachable vision provider and a junk image
+    # slipping the pixel gate look identical here, and letting it through
+    # just means paying for a doomed analyze call that times out anyway.
+    # Reject instead: user-directed decision (2026-10-30).
+    plant_precheck = vision_is_plant_precheck(image_bytes)
     if plant_precheck is False:
         raise ApiError(
             422,
@@ -298,12 +296,13 @@ def compute_disease_risk_image(
             "Could not verify this photo right now. Please try again.",
         )
 
-    # Simplified pipeline (2026-10-26, user-directed): gate already passed
-    # above (pixel heuristic + strict Gemini is-a-leaf check) -- skip the
+    # Simplified pipeline (2026-10-26, user-directed; moved off Gemini onto
+    # OpenRouter/Groq 2026-10-30 after Gemini proved unreliable live -- see
+    # vision_client.py): gate already passed above -- skip the
     # plant-disease-API/CNN/rule-based cascade entirely for this flow, one
-    # Gemini call does the diagnosis. No weather data needed since there's
+    # vision call does the diagnosis. No weather data needed since there's
     # no environmental fallback path to feed.
-    result = gemini_analyze_leaf(image_bytes)
+    result = vision_analyze_leaf(image_bytes)
     if result is not None:
         confidence = result["confidence"]
         if not result["has_disease"]:
@@ -325,10 +324,10 @@ def compute_disease_risk_image(
             risk_level=risk_level,
             confidence=confidence,
             recommended_action=result["recommended_action"] or result["description"] or None,
-            source="gemini_simple",
+            source="vision_simple",
         )
     else:
-        # Field finding (2026-10-29): every configured Gemini key failed
+        # Field finding (2026-10-29): every configured vision key failed
         # (overloaded/timed out/rate-limited) -- rather than give up with a
         # bare 503 while Kindwise's crop.health credits sit unused, try it
         # as a genuine second real identification source. This is not the
