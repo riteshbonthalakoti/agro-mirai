@@ -48,19 +48,19 @@ function PhoneKey({
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
       activeOpacity={0.8}
-      style={{ flex: 1, marginHorizontal: 5, marginVertical: 5 }}
+      style={{ flex: 1, marginHorizontal: 4, marginVertical: 3 }}
     >
       <Animated.View
         style={{
           transform: [{ scale: scaleAnim }],
           backgroundColor: confirm ? '#1B4332' : danger ? '#FEE2E2' : '#FFFFFF',
-          borderRadius: 16,
+          borderRadius: 12,
           borderWidth: confirm ? 0 : 1,
           borderColor: danger ? '#FECACA' : '#E5E7EB',
           alignItems: 'center',
           justifyContent: 'center',
-          paddingVertical: 14,
-          minHeight: 64,
+          paddingVertical: 6,
+          minHeight: 42,
           shadowColor: '#000',
           shadowOffset: { width: 0, height: 1 },
           shadowOpacity: 0.04,
@@ -68,11 +68,11 @@ function PhoneKey({
           elevation: 1,
         }}
       >
-        <Text style={{ fontSize: 26, fontWeight: '700', color: confirm ? '#FFFFFF' : danger ? '#DC2626' : '#111827' }}>{label}</Text>
+        <Text style={{ fontSize: 18, fontWeight: '700', color: confirm ? '#FFFFFF' : danger ? '#DC2626' : '#111827' }}>{label}</Text>
         {/* Always render this line (blank for "1"/⌫, which have no letters) so
             every key is the same height -- "1" used to look visually smaller
             than its neighbours because only it skipped the sub-label line. */}
-        <Text style={{ fontSize: 9, fontWeight: '600', color: '#6B7280', letterSpacing: 0.8, marginTop: 1, minHeight: 12 }}>{sub || ' '}</Text>
+        <Text style={{ fontSize: 7, fontWeight: '600', color: '#6B7280', letterSpacing: 0.6, marginTop: 0, minHeight: 9 }}>{sub || ' '}</Text>
       </Animated.View>
     </TouchableOpacity>
   );
@@ -140,8 +140,8 @@ function NumericKeyboard({
         borderTopWidth: 1,
         borderColor: '#E5E7EB',
         paddingHorizontal: 16,
-        paddingTop: 10,
-        paddingBottom: Platform.OS === 'ios' ? 24 : 12,
+        paddingTop: 6,
+        paddingBottom: Platform.OS === 'ios' ? 18 : 8,
       }}
     >
       {rows.map((row) => (
