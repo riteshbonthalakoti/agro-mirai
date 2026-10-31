@@ -45,8 +45,15 @@ def _format_report(pool: dict) -> str:
     return "\n".join(lines)
 
 
+def _rows_for_html(pool: dict) -> list[dict]:
+    rows = [{"label": "Combined remaining", "value": f"{pool['total_remaining']} / {pool['total_limit']} ({pool['pct_remaining']}%)"}]
+    for k in pool["keys"]:
+        rows.append({"label": f"{k['provider'].capitalize()} …{k['suffix']}", "value": f"{k['remaining']} / {k['limit']}"})
+    return rows
+
+
 def sweep(store) -> int:
-    from agro_mirai.api.email_alerts import send_alert_email
+    from agro_mirai.api.email_alerts import render_alert_html, send_alert_email
     from agro_mirai.api.quota_monitor import check_all_pools
 
     today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
@@ -61,6 +68,7 @@ def sweep(store) -> int:
             logger.info("%s: already alerted today, skipping", pool["pool"])
             continue
 
+        severity = "critical" if pool["pct_remaining"] <= 5 else "warning"
         subject = f"AGRO MIRAI: {pool['label']} API quota low ({pool['pct_remaining']}% remaining)"
         body = (
             f"One of this project's API key pools is running low on today's free-tier quota.\n\n"
@@ -68,7 +76,22 @@ def sweep(store) -> int:
             f"This resets at each key's own 24h cycle. No action needed unless it actually "
             f"hits 0 -- the app falls back to the next key/provider automatically either way.\n"
         )
-        sent = send_alert_email(subject, body)
+        html_body = render_alert_html(
+            heading=f"{pool['label']} quota is running low",
+            severity=severity,
+            intro=(
+                f"Only {pool['pct_remaining']}% of today's free-tier requests remain across "
+                f"this pool's keys. It resets on each key's own 24h cycle, and the app already "
+                f"falls back to the next key/provider automatically -- no action needed unless "
+                f"it actually hits 0."
+            ),
+            rows=_rows_for_html(pool),
+            footnote=(
+                "This is an automated check that runs every 2 hours. You won't get another "
+                "email for this pool today once this one sends."
+            ),
+        )
+        sent = send_alert_email(subject, body, html_body)
         if sent:
             store.mark_quota_alert_sent(pool["pool"], today, datetime.now(timezone.utc))
             alerted += 1
