@@ -23,13 +23,10 @@
   ],
   "rewrites": [
     { "source": "/download", "destination": "/download.html" },
-    { "source": "/admin/", "destination": "https://agromirai-admin.vercel.app/index.html" },
-    { "source": "/admin/style.css", "destination": "https://agromirai-admin.vercel.app/style.css" },
-    { "source": "/admin/tailwind.generated.css", "destination": "https://agromirai-admin.vercel.app/tailwind.generated.css" },
-    { "source": "/admin/admin.js", "destination": "https://agromirai-admin.vercel.app/admin.js" },
-    { "source": "/admin/logo-mark.png", "destination": "https://agromirai-admin.vercel.app/logo-mark.png" },
-    { "source": "/admin/favicon.ico", "destination": "https://agromirai-admin.vercel.app/favicon.ico" },
-    { "source": "/admin/:path*", "destination": "https://agro-mirai-xi27.onrender.com/admin/:path*" },
+    { "source": "/admin/login", "destination": "https://agro-mirai-xi27.onrender.com/admin/login" },
+    { "source": "/admin/logout", "destination": "https://agro-mirai-xi27.onrender.com/admin/logout" },
+    { "source": "/admin/forgot-password", "destination": "https://agro-mirai-xi27.onrender.com/admin/forgot-password" },
+    { "source": "/admin/reset-password", "destination": "https://agro-mirai-xi27.onrender.com/admin/reset-password" },
     { "source": "/v2/:path*", "destination": "https://agro-mirai-xi27.onrender.com/v2/:path*" }
   ]
 }

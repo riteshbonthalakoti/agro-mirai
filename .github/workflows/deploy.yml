@@ -1,11 +1,12 @@
 name: Deploy (Vercel)
 
 # Render's own git integration already auto-deploys agro-mirai and
-# agro-mirai-cnn on push to main -- this workflow covers the two Vercel
-# static sites (web/admin, web/landing), which were previously deployed
-# by hand via `vercel deploy --prod`. Runs only after CI's test job
-# passes, and only on main (never on pull_request), so a broken branch
-# can never reach production.
+# agro-mirai-cnn on push to main -- this workflow covers the single
+# Vercel static site (web/landing, which now also serves the admin SPA
+# at /admin/ directly -- see web/landing/admin/ and this commit's
+# message for why the separate agromirai-admin project was dropped).
+# Runs only after CI's test job passes, and only on main (never on
+# pull_request), so a broken branch can never reach production.
 on:
   workflow_run:
     workflows: [CI]
@@ -13,27 +14,6 @@ on:
     branches: [main]
 
 jobs:
-  deploy-admin:
-    if: github.event.workflow_run.conclusion == 'success'
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: web/admin
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.workflow_run.head_sha }}
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-      - run: npm install -g vercel
-      - run: vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
-      - run: vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
-      - run: vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }}
-    env:
-      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_ADMIN_PROJECT_ID }}
-
   deploy-landing:
     if: github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
@@ -47,6 +27,15 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
+      - name: Copy the admin SPA's deployable files in under /admin/
+        # web/admin/ stays the single source of truth to edit (dev-server.mjs,
+        # the Tailwind build config, README) -- only the static files the
+        # browser actually needs get copied in here, so this project serves
+        # them directly under its own domain instead of the old separate
+        # agromirai-admin Vercel project + cross-project rewrites.
+        run: |
+          mkdir -p admin
+          cp ../admin/index.html ../admin/admin.js ../admin/style.css ../admin/tailwind.generated.css ../admin/logo-mark.png ../admin/favicon.ico admin/
       - run: npm install -g vercel
       - run: vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
       - run: vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}

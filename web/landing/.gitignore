@@ -1,2 +1,5 @@
 .vercel
 .env*
+# Copied in from web/admin/ at deploy time (deploy.yml) -- web/admin/ stays
+# the single source of truth to edit.
+/admin
