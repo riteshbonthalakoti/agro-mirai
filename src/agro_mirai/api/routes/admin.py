@@ -7,8 +7,11 @@ scope (decisions/0017) was superseded.
 """
 import dataclasses
 import json
+import logging
 import time
 from collections import Counter
+
+logger = logging.getLogger(__name__)
 
 from flask import Blueprint, Response, current_app, g, jsonify, request
 
@@ -229,9 +232,20 @@ _SCAN_SOURCES = {"cnn", "environmental_fallback"}
 
 def _per_field(store, fetch, limit):
     """Yield (field, records) across every farmer's fields. One query per
-    field, fine at this project's scale."""
+    field, fine at this project's scale.
+
+    One field's query failing (seen live: a transient
+    ``httpx.ReadError`` from Supabase's connection pool reusing a stale
+    keep-alive socket after the backend sat idle) used to take down the
+    *entire* overview/scans endpoint with it -- a single flaky request
+    among dozens shouldn't 500 the whole admin dashboard. Logs and skips
+    that one field instead."""
     for field in store.list_all_fields():
-        yield field, fetch(field.farmer_id, field.id, limit=limit)
+        try:
+            yield field, fetch(field.farmer_id, field.id, limit=limit)
+        except Exception as exc:  # noqa: BLE001 -- one field's data must never take down the whole page
+            logger.warning("_per_field: skipping field=%s after fetch error: %s", field.id, exc)
+            continue
 
 
 @admin_bp.get("/scans")
