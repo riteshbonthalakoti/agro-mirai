@@ -9,6 +9,21 @@ services:
     buildCommand: pip install -r requirements.txt
     startCommand: 'PYTHONPATH=src gunicorn -w 1 --threads 4 --timeout 120 -b 0.0.0.0:$PORT "agro_mirai.api.app:create_app()"'
     healthCheckPath: /health
+    # Only redeploy this service for changes that actually affect it --
+    # a frontend/workflow/docs-only commit used to restart it anyway
+    # (every push to main, no filtering), which briefly 502'd live admin
+    # dashboard traffic mid-restart for no reason tied to that commit.
+    buildFilter:
+      paths:
+        - src/agro_mirai/**
+        - migrations/**
+        - requirements.txt
+        - render.yaml
+      ignoredPaths:
+        - mobile/**
+        - web/**
+        - docs/**
+        - '**/*.md'
     envVars:
       - key: FLASK_ENV
         value: production
@@ -69,6 +84,16 @@ services:
     buildCommand: pip install -r services/cnn-onnx/requirements.txt
     startCommand: 'PYTHONPATH=src:services/cnn-onnx gunicorn -w 1 --threads 2 --timeout 180 -b 0.0.0.0:$PORT app:app'
     healthCheckPath: /health
+    buildFilter:
+      paths:
+        - services/cnn-onnx/**
+        - src/agro_mirai/models/**
+        - render.yaml
+      ignoredPaths:
+        - mobile/**
+        - web/**
+        - docs/**
+        - '**/*.md'
     envVars:
       - key: PYTHON_VERSION
         value: 3.12.10
