@@ -79,9 +79,28 @@ class SupabaseDataStore:
                 "SUPABASE_URL and SUPABASE_KEY must be set to construct SupabaseDataStore "
                 "(see .env.example)"
             )
-        from supabase import Client, create_client  # local import: optional dep
+        from supabase import Client, ClientOptions, create_client  # local import: optional dep
 
-        self._client: Client = create_client(url, key)
+        # Module 60: seen live -- a request every so often hit
+        # httpx.ReadError ("Resource temporarily unavailable") 500ing
+        # otherwise-simple single-query admin routes (list_all_farmers,
+        # not just the per-field loops). Root cause: Supabase/its load
+        # balancer silently closes an idle keep-alive connection
+        # server-side; the client's own pool doesn't find out until it
+        # tries to reuse that already-dead socket. A short
+        # keepalive_expiry makes httpx proactively drop a connection
+        # before it goes stale enough to hit this, and HTTPTransport's
+        # own `retries` covers the rare case that still slips through by
+        # silently retrying once at the transport level -- no call site
+        # anywhere in this file needs to know this ever happens.
+        import httpx
+
+        httpx_client = httpx.Client(
+            limits=httpx.Limits(max_keepalive_connections=10, keepalive_expiry=5.0),
+            transport=httpx.HTTPTransport(retries=1),
+            timeout=120,
+        )
+        self._client: Client = create_client(url, key, options=ClientOptions(httpx_client=httpx_client))
 
     # --- Farmer ---
     def get_farmer(self, farmer_id: str) -> Farmer | None:
