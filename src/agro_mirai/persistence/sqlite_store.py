@@ -381,6 +381,32 @@ class SQLiteDataStore:
         ).fetchall()
         return [self._row_to_field(r) for r in rows]
 
+    def list_all_disease_risk_alerts(self, limit: int = 500) -> list[DiseaseRiskAlert]:
+        """Module 19/60: admin-only, unscoped across every field -- one
+        query instead of the N-queries-per-field pattern _per_field() in
+        routes/admin.py used to use (a single flaky one of which used to
+        500 the entire admin dashboard; see that fix's commit)."""
+        rows = self._conn.execute(
+            "SELECT * FROM disease_risk_alerts ORDER BY created_at DESC LIMIT ?", (limit,)
+        ).fetchall()
+        return [self._row_to_disease(r) for r in rows]
+
+    def list_all_advisories(self, limit: int = 500) -> list[Advisory]:
+        """Module 19/60: admin-only, unscoped across every field. See
+        list_all_disease_risk_alerts's docstring."""
+        rows = self._conn.execute(
+            "SELECT * FROM advisories ORDER BY created_at DESC LIMIT ?", (limit,)
+        ).fetchall()
+        return [self._row_to_advisory(r) for r in rows]
+
+    def count_disease_risk_alerts_by_source(self, sources: list[str]) -> int:
+        placeholders = ",".join("?" for _ in sources)
+        row = self._conn.execute(
+            f"SELECT COUNT(*) AS n FROM disease_risk_alerts WHERE source IN ({placeholders})",
+            tuple(sources),
+        ).fetchone()
+        return row["n"] if row else 0
+
     def list_all_feedback_with_advisories(self, limit: int = 2000):
         """Module 19: admin-only. Returns (FeedbackEntry, Advisory) pairs
         across every farmer, joined so FeedbackAggregator.aggregate can

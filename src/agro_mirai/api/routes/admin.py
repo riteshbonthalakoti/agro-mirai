@@ -230,35 +230,31 @@ def feedback_summary():
 _SCAN_SOURCES = {"cnn", "environmental_fallback"}
 
 
-def _per_field(store, fetch, limit):
-    """Yield (field, records) across every farmer's fields. One query per
-    field, fine at this project's scale.
-
-    One field's query failing (seen live: a transient
-    ``httpx.ReadError`` from Supabase's connection pool reusing a stale
-    keep-alive socket after the backend sat idle) used to take down the
-    *entire* overview/scans endpoint with it -- a single flaky request
-    among dozens shouldn't 500 the whole admin dashboard. Logs and skips
-    that one field instead."""
-    for field in store.list_all_fields():
-        try:
-            yield field, fetch(field.farmer_id, field.id, limit=limit)
-        except Exception as exc:  # noqa: BLE001 -- one field's data must never take down the whole page
-            logger.warning("_per_field: skipping field=%s after fetch error: %s", field.id, exc)
-            continue
+def _field_lookup(store) -> dict:
+    """field_id -> Field_, one query, so callers that already fetched
+    every field's scans/advisories in bulk can still attach
+    farmer_id/field_name without a second per-field round trip."""
+    return {f.id: f for f in store.list_all_fields()}
 
 
 @admin_bp.get("/scans")
 @require_admin
 def list_scans():
+    """Used to issue one Supabase query per field (N round trips for N
+    fields) via the old _per_field() helper -- a single query across
+    every field, same as list_all_farmers/list_all_fields already did,
+    replaces it. Also what used to let one flaky field's query 500 the
+    whole page (a stale pooled connection -- see the fix two commits
+    before this one); a single query has nothing to fail "per field" at
+    all, so that failure mode is gone outright, not just contained."""
     store = current_app.extensions["data_store"]
+    fields = _field_lookup(store)
     items = []
-    for field, alerts in _per_field(store, store.list_disease_risk_alerts, 200):
-        for a in alerts:
-            if a.source in _SCAN_SOURCES:
-                items.append(
-                    {**to_json(a), "farmer_id": field.farmer_id, "field_name": field.name}
-                )
+    for a in store.list_all_disease_risk_alerts(limit=2000):
+        field = fields.get(a.field_id)
+        if field is None or a.source not in _SCAN_SOURCES:
+            continue
+        items.append({**to_json(a), "farmer_id": field.farmer_id, "field_name": field.name})
     items.sort(key=lambda i: i["created_at"], reverse=True)
     return jsonify({"items": items}), 200
 
@@ -316,10 +312,13 @@ def lookup_otp():
 @require_admin
 def list_advisories():
     store = current_app.extensions["data_store"]
+    fields = _field_lookup(store)
     items = []
-    for field, advisories in _per_field(store, store.list_advisories_for_field, 50):
-        for a in advisories:
-            items.append({**drop_unset_source(to_json(a)), "farmer_id": field.farmer_id, "field_name": field.name})
+    for a in store.list_all_advisories(limit=2000):
+        field = fields.get(a.field_id)
+        if field is None:
+            continue
+        items.append({**drop_unset_source(to_json(a)), "farmer_id": field.farmer_id, "field_name": field.name})
     items.sort(key=lambda i: i["created_at"], reverse=True)
     return jsonify({"items": items}), 200
 
@@ -331,36 +330,44 @@ def build_overview(store) -> dict:
     one implementation."""
     farmers = store.list_all_farmers()
     fields = store.list_all_fields()
+    fields_by_id = {f.id: f for f in fields}
 
     language_counts = Counter(f.preferred_language for f in farmers)
     crop_counts = Counter(f.current_crop for f in fields if f.current_crop)
 
-    scan_total = 0
+    # "Total Scans" is a true system-wide count, independent of however
+    # many rows the recent-activity feed below actually pulls (only the
+    # 20 most recent items are ever shown, so 300 is already generous
+    # headroom there) -- one query each instead of the old
+    # one-query-per-field loop.
+    scan_total = store.count_disease_risk_alerts_by_source(list(_SCAN_SOURCES))
     recent = []
-    for field, alerts in _per_field(store, store.list_disease_risk_alerts, 200):
-        for a in alerts:
-            if a.source in _SCAN_SOURCES:
-                scan_total += 1
-                recent.append(
-                    {
-                        "type": "scan",
-                        "created_at": a.created_at.isoformat(),
-                        "farmer_id": field.farmer_id,
-                        "field_name": field.name,
-                        "detail": a.disease,
-                    }
-                )
-    for field, advisories in _per_field(store, store.list_advisories_for_field, 50):
-        for adv in advisories:
-            recent.append(
-                {
-                    "type": "advisory",
-                    "created_at": adv.created_at.isoformat(),
-                    "farmer_id": field.farmer_id,
-                    "field_name": field.name,
-                    "detail": adv.severity,
-                }
-            )
+    for a in store.list_all_disease_risk_alerts(limit=300):
+        field = fields_by_id.get(a.field_id)
+        if field is None or a.source not in _SCAN_SOURCES:
+            continue
+        recent.append(
+            {
+                "type": "scan",
+                "created_at": a.created_at.isoformat(),
+                "farmer_id": field.farmer_id,
+                "field_name": field.name,
+                "detail": a.disease,
+            }
+        )
+    for adv in store.list_all_advisories(limit=300):
+        field = fields_by_id.get(adv.field_id)
+        if field is None:
+            continue
+        recent.append(
+            {
+                "type": "advisory",
+                "created_at": adv.created_at.isoformat(),
+                "farmer_id": field.farmer_id,
+                "field_name": field.name,
+                "detail": adv.severity,
+            }
+        )
     recent.sort(key=lambda i: i["created_at"], reverse=True)
 
     return {

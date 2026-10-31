@@ -70,6 +70,22 @@ class DataStore(Protocol):
         """Module 19. Admin-only, unscoped across every farmer's fields."""
         ...
 
+    def list_all_disease_risk_alerts(self, limit: int = 500) -> list[DiseaseRiskAlert]:
+        """Module 60. Admin-only, unscoped across every field -- one query
+        for the whole system instead of one-per-field."""
+        ...
+
+    def count_disease_risk_alerts_by_source(self, sources: list[str]) -> int:
+        """Module 60. Admin-only -- a true system-wide count (for the
+        overview's "Total Scans" stat), independent of whatever cap
+        list_all_disease_risk_alerts's own `limit` uses for the recent-
+        activity feed."""
+        ...
+
+    def list_all_advisories(self, limit: int = 500) -> list[Advisory]:
+        """Module 60. Admin-only, unscoped across every field."""
+        ...
+
     def list_all_feedback_with_advisories(
         self, limit: int = 2000
     ) -> list[tuple[FeedbackEntry, Advisory]]:

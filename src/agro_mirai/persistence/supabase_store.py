@@ -149,6 +149,39 @@ class SupabaseDataStore:
         )
         return [self._row_to_field(r) for r in res.data]
 
+    def list_all_disease_risk_alerts(self, limit: int = 500) -> list[DiseaseRiskAlert]:
+        """Module 60. Admin-only, unscoped -- one query for the whole
+        system instead of routes/admin.py's old one-query-per-field loop."""
+        res = (
+            self._client.table("disease_risk_alerts")
+            .select("*")
+            .order("created_at", desc=True)
+            .limit(limit)
+            .execute()
+        )
+        return [self._row_to_disease(r) for r in res.data]
+
+    def list_all_advisories(self, limit: int = 500) -> list[Advisory]:
+        """Module 60. Admin-only, unscoped -- see list_all_disease_risk_alerts."""
+        res = (
+            self._client.table("advisories")
+            .select("*")
+            .order("created_at", desc=True)
+            .limit(limit)
+            .execute()
+        )
+        return [self._row_to_advisory(r) for r in res.data]
+
+    def count_disease_risk_alerts_by_source(self, sources: list[str]) -> int:
+        res = (
+            self._client.table("disease_risk_alerts")
+            .select("id", count="exact")
+            .in_("source", sources)
+            .limit(1)
+            .execute()
+        )
+        return res.count or 0
+
     def list_all_feedback_with_advisories(
         self, limit: int = 2000
     ) -> list[tuple[FeedbackEntry, Advisory]]:
