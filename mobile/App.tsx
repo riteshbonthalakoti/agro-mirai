@@ -464,7 +464,7 @@ function RootInner({ lang, setLang }: { lang: Lang; setLang: (l: Lang) => void }
     if (farmer) emitAccountSignedOut(farmer.id);
     clearScheduledNotifications();
     setBackgroundField(undefined, undefined);
-    unregisterForPushNotifications();
+    void unregisterForPushNotifications();
     const id = accounts.getActiveAccountId();
     if (id) {
       await accounts.markSessionExpired(id);
@@ -720,7 +720,7 @@ function RootInner({ lang, setLang }: { lang: Lang; setLang: (l: Lang) => void }
     if (phase !== 'main' || !fieldIdForAlerts) return;
     setBackgroundField(fieldIdForAlerts, fieldNameForAlerts); // so alerts still arrive when the app is closed
     registerBackgroundAlerts();
-    registerForPushNotifications(); // real Android push -- reaches a closed app/other devices, unlike the local polling above
+    void registerForPushNotifications(); // real Android push -- reaches a closed app/other devices, unlike the local polling above
     let stop = false;
     const check = async () => {
       try {
