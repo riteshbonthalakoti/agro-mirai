@@ -1,0 +1,46 @@
+name: API Quota Alert Sweep
+
+on:
+  schedule:
+    # Every 2 hours -- cheap to check (OpenRouter's auth endpoint doesn't
+    # cost quota; Groq costs 1 request per key per run, negligible against
+    # a ~1000/day limit), and catches a pool running low well before it's
+    # actually exhausted.
+    - cron: '0 */2 * * *'
+  workflow_dispatch:
+
+jobs:
+  sweep:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Check API quotas and email if any pool is low
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+          OPENROUTER_CHAT_API_KEY_1: ${{ secrets.OPENROUTER_CHAT_API_KEY_1 }}
+          OPENROUTER_CHAT_API_KEY_2: ${{ secrets.OPENROUTER_CHAT_API_KEY_2 }}
+          OPENROUTER_CHAT_API_KEY_3: ${{ secrets.OPENROUTER_CHAT_API_KEY_3 }}
+          GROQ_CHAT_API_KEY_1: ${{ secrets.GROQ_CHAT_API_KEY_1 }}
+          OPENROUTER_VISION_API_KEY_1: ${{ secrets.OPENROUTER_VISION_API_KEY_1 }}
+          OPENROUTER_VISION_API_KEY_2: ${{ secrets.OPENROUTER_VISION_API_KEY_2 }}
+          OPENROUTER_VISION_API_KEY_3: ${{ secrets.OPENROUTER_VISION_API_KEY_3 }}
+          GROQ_VISION_API_KEY_1: ${{ secrets.GROQ_VISION_API_KEY_1 }}
+          GROQ_VISION_API_KEY_2: ${{ secrets.GROQ_VISION_API_KEY_2 }}
+          GROQ_VISION_API_KEY_3: ${{ secrets.GROQ_VISION_API_KEY_3 }}
+          OPENROUTER_API_KEY_1: ${{ secrets.OPENROUTER_API_KEY_1 }}
+          OPENROUTER_API_KEY_2: ${{ secrets.OPENROUTER_API_KEY_2 }}
+          OPENROUTER_API_KEY_3: ${{ secrets.OPENROUTER_API_KEY_3 }}
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASS: ${{ secrets.SMTP_PASS }}
+          ALERT_EMAIL_TO: ${{ secrets.ALERT_EMAIL_TO }}
+        run: python tools/quota_alert_sweep.py --backend supabase

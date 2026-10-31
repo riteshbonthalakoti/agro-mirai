@@ -47,6 +47,7 @@ CASCADE_SOURCE_MIGRATION_PATH = ROOT / "migrations" / "sqlite" / "012_cascade_so
 DISEASE_ALERT_PHOTO_MIGRATION_PATH = ROOT / "migrations" / "sqlite" / "013_disease_alert_photo.sql"
 CHAT_SESSIONS_MIGRATION_PATH = ROOT / "migrations" / "sqlite" / "014_chat_sessions.sql"
 PUSH_TOKENS_MIGRATION_PATH = ROOT / "migrations" / "sqlite" / "015_push_tokens.sql"
+QUOTA_ALERTS_MIGRATION_PATH = ROOT / "migrations" / "sqlite" / "016_quota_alerts.sql"
 
 
 # --------------------------------------------------------------------------
@@ -112,6 +113,29 @@ class SQLiteDataStore:
         self._apply_disease_alert_photo_migration()
         self._apply_chat_sessions_migration()
         self._apply_push_tokens_migration()
+        self._apply_quota_alerts_migration()
+
+    def _apply_quota_alerts_migration(self) -> None:
+        """Module 60: quota-alert-email dedup -- brand new table, same
+        pattern as _apply_push_tokens_migration. See
+        migrations/sqlite/016_quota_alerts.sql."""
+        sql = QUOTA_ALERTS_MIGRATION_PATH.read_text(encoding="utf-8")
+        conn = self._conn
+        conn.executescript(sql)
+        conn.commit()
+
+    def has_quota_alert_sent_today(self, pool: str, alert_date: str) -> bool:
+        row = self._conn.execute(
+            "SELECT 1 FROM quota_alerts_sent WHERE pool = ? AND alert_date = ?", (pool, alert_date)
+        ).fetchone()
+        return row is not None
+
+    def mark_quota_alert_sent(self, pool: str, alert_date: str, sent_at) -> None:
+        self._conn.execute(
+            "INSERT OR IGNORE INTO quota_alerts_sent (pool, alert_date, sent_at) VALUES (?, ?, ?)",
+            (pool, alert_date, _dt_to_text(sent_at)),
+        )
+        self._conn.commit()
 
     def _apply_push_tokens_migration(self) -> None:
         """Module 59: Android push notifications -- brand new table, same

@@ -964,6 +964,21 @@ class SupabaseDataStore:
         res = self._client.table("push_tokens").select("farmer_id").execute()
         return list({r["farmer_id"] for r in res.data})
 
+    def has_quota_alert_sent_today(self, pool: str, alert_date: str) -> bool:
+        res = (
+            self._client.table("quota_alerts_sent").select("pool")
+            .eq("pool", pool).eq("alert_date", alert_date).limit(1).execute()
+        )
+        return bool(res.data)
+
+    def mark_quota_alert_sent(self, pool: str, alert_date: str, sent_at) -> None:
+        try:
+            self._client.table("quota_alerts_sent").insert(
+                {"pool": pool, "alert_date": alert_date, "sent_at": _dt(sent_at)}
+            ).execute()
+        except Exception:
+            pass  # already marked (unique violation) -- fine, that's the point of this table
+
     def save_chat_session(self, farmer_id: str, session: ChatSession) -> ChatSession:
         if not _is_uuid(farmer_id):
             raise NotFoundError(f"farmer {farmer_id} not found")
