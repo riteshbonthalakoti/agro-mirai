@@ -25,6 +25,7 @@ jobs:
 
       - name: Check API quotas and email if any pool is low
         env:
+          PYTHONPATH: src
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
           OPENROUTER_CHAT_API_KEY_1: ${{ secrets.OPENROUTER_CHAT_API_KEY_1 }}

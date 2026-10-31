@@ -23,6 +23,7 @@ jobs:
 
       - name: Run the push sweep against production
         env:
+          PYTHONPATH: src
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
           OPENWEATHER_API_KEY: ${{ secrets.OPENWEATHER_API_KEY }}
