@@ -76,12 +76,17 @@ def stream_bug_reports():
 @admin_bp.get("/farmers")
 @require_admin
 def list_farmers():
+    """Used to issue one list_fields() query per farmer just to compute
+    field_count -- N round trips for N farmers, the same pattern fixed
+    in build_overview/list_scans/list_advisories (see that commit). One
+    list_all_fields() call plus an in-memory Counter instead."""
     store = current_app.extensions["data_store"]
     farmers = store.list_all_farmers()
-    items = []
-    for f in farmers:
-        field_count = len(store.list_fields(f.id, limit=1000))
-        items.append({**farmer_to_public_json(f), "field_count": field_count})
+    field_counts = Counter(f.farmer_id for f in store.list_all_fields())
+    items = [
+        {**farmer_to_public_json(f), "field_count": field_counts.get(f.id, 0)}
+        for f in farmers
+    ]
     return jsonify({"items": items}), 200
 
 
@@ -393,9 +398,22 @@ _VALID_BUG_REPORT_STATUSES = {"open", "triaged", "in_progress", "resolved"}
 @admin_bp.get("/bug-reports")
 @require_admin
 def list_bug_reports_admin():
+    """``photo_url`` is a full base64 data URI (no file-storage service
+    exists yet, same as Farmer/DiseaseRiskAlert) -- admin.js never
+    renders it anywhere in the list view, confirmed (no `photo_url`
+    reference in that file at all), so including it here was pure dead
+    weight: measured live at 282KB for this one route alone, re-fetched
+    on every single tab switch with no caching. Swapped for a cheap
+    boolean; nothing in the UI needs the actual bytes until/unless a
+    detail view is built that does."""
     store = current_app.extensions["data_store"]
     reports = store.list_all_bug_reports()
-    return jsonify({"items": [to_json(r) for r in reports]}), 200
+    items = []
+    for r in reports:
+        item = to_json(r)
+        item["has_photo"] = bool(item.pop("photo_url", None))
+        items.append(item)
+    return jsonify({"items": items}), 200
 
 
 @admin_bp.patch("/bug-reports/<bug_report_id>")
@@ -432,6 +450,25 @@ def delete_bug_report_admin(bug_report_id):
 @admin_bp.get("/audit-log")
 @require_admin
 def get_audit_log():
+    """Measured live at 338KB for this one route. write_audit_log now
+    strips embedded base64 photos from new snapshots at write time (see
+    audit.py), but that does nothing for rows already stored before that
+    existed -- strip them here too, on the way out, so this doesn't stay
+    slow for however long it takes those older rows to age out."""
+    from agro_mirai.api.audit import strip_snapshot_photos
+
     store = current_app.extensions["data_store"]
     entries = store.list_audit_log()
-    return jsonify({"items": [to_json(e) for e in entries]}), 200
+    items = []
+    for e in entries:
+        item = to_json(e)
+        for key in ("before_json", "after_json"):
+            raw = item.get(key)
+            if not raw:
+                continue
+            try:
+                item[key] = json.dumps(strip_snapshot_photos(json.loads(raw)))
+            except (ValueError, TypeError):
+                pass  # not valid JSON for some reason -- leave it as-is rather than drop it
+        items.append(item)
+    return jsonify({"items": items}), 200

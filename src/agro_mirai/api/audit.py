@@ -9,6 +9,22 @@ import uuid
 from datetime import datetime, timezone
 
 
+# Fields holding a full base64 data URI (no file-storage service exists
+# yet, same reason across every model that has one) -- fine on the record
+# itself, but an audit snapshot embedding the whole image on every edit is
+# pure bloat nothing ever reads back out of an audit entry. Stripped to a
+# boolean at write time; see strip_snapshot_photos() for the matching
+# read-time cleanup of entries already stored before this existed.
+_PHOTO_FIELDS = ("photo_url",)
+
+
+def strip_snapshot_photos(d: dict) -> dict:
+    for field in _PHOTO_FIELDS:
+        if d.get(field):
+            d[field] = f"<{field} omitted from audit snapshot, {len(d[field])} chars>"
+    return d
+
+
 def write_audit_log(store, admin_farmer_id: str, action: str, target_type: str,
                      target_id: str, before=None, after=None) -> None:
     from agro_mirai.persistence.models import AuditLogEntry
@@ -16,7 +32,7 @@ def write_audit_log(store, admin_farmer_id: str, action: str, target_type: str,
     def _snapshot(record):
         if record is None:
             return None
-        return json.dumps(dataclasses.asdict(record), default=str)
+        return json.dumps(strip_snapshot_photos(dataclasses.asdict(record)), default=str)
 
     store.save_audit_log_entry(
         AuditLogEntry(
