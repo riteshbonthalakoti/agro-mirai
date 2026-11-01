@@ -344,6 +344,12 @@ export const listChatSessionMessages = (sessionId: string): Promise<ChatMessageI
   request<{ session: ChatSessionSummary; messages: ChatMessageItem[] }>(`/v2/chat/sessions/${sessionId}/messages`, { method: 'GET' })
     .then((r) => r.messages);
 
+// ---- soil type suggestion (Module 61) ---------------------------------------
+export type SoilTypeSuggestion = { suggestion: string | null; measured_ph?: number | null; measured_organic_carbon_pct?: number | null };
+export const getSoilTypeSuggestion = (lat: number, lon: number): Promise<SoilTypeSuggestion> =>
+  request<SoilTypeSuggestion>(`/v2/soil-type-suggestion?lat=${lat}&lon=${lon}`, {}, { timeout: 15000 })
+    .catch(() => ({ suggestion: null }));
+
 // ---- push notifications (Module 59) ----------------------------------------
 export const registerPushToken = (token: string) =>
   request<{ ok: boolean }>('/v2/push-tokens', json('POST', { token, platform: 'android' }), { timeout: 8000 }).catch(() => undefined);

@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, ImageBackground, ScrollView, StyleSheet, Text, TouchableOpacity, View, useWindowDimensions } from 'react-native';
 import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 import * as Location from 'expo-location';
-import { ApiError, Field, createField, patchField, getRecommendation, getIrrigation, getDiseaseRiskFull, dataSummary } from '../api';
+import { ApiError, Field, createField, patchField, getRecommendation, getIrrigation, getDiseaseRiskFull, dataSummary, getSoilTypeSuggestion, SoilTypeSuggestion } from '../api';
 import { cropLabel, soilLabel, useApp } from '../ctx';
 import { DateField } from '../datepicker';
 import { classifyError } from '../errors';
@@ -84,6 +84,7 @@ export function FieldForm({ initial, onDone, onCancel }: { initial?: Field; onDo
   const [mode, setMode] = useState<'page' | 'steps'>('steps');
   const [step, setStep] = useState(0);
   const [savedField, setSavedField] = useState<Field | null>(null);
+  const [soilSuggestion, setSoilSuggestion] = useState<SoilTypeSuggestion | null>(null);
 
   useEffect(() => { cacheGet<'page' | 'steps'>('fieldFormMode').then((m) => m ? setMode(m) : setMode('steps')); }, []);
   const chooseMode = (m: 'page' | 'steps') => { feedback.select(); setMode(m); setStep(0); setErr(''); cacheSet('fieldFormMode', m); };
@@ -107,6 +108,21 @@ export function FieldForm({ initial, onDone, onCancel }: { initial?: Field; onDo
     if (initial) lookupPlace(initial.latitude, initial.longitude);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Module 61 (raised by a teammate): once the field's location is known,
+  // check what soil type the real measured chemistry there actually
+  // suggests -- shown as a non-blocking hint at the soil-type step, not
+  // an override, since a farmer may know their own field better than a
+  // coarse global soil model. Fires once per location, silently does
+  // nothing if SoilGrids is unreachable (never fabricates a suggestion).
+  useEffect(() => {
+    const latN = parseFloat(lat);
+    const lonN = parseFloat(lon);
+    if (!Number.isFinite(latN) || !Number.isFinite(lonN)) return;
+    let cancelled = false;
+    getSoilTypeSuggestion(latN, lonN).then((r) => { if (!cancelled) setSoilSuggestion(r); });
+    return () => { cancelled = true; };
+  }, [lat, lon]);
 
   const useMyLocation = async () => {
     setLocating(true);
@@ -340,9 +356,18 @@ export function FieldForm({ initial, onDone, onCancel }: { initial?: Field; onDo
     key: s, label: s === 'unknown' ? t('soilUnknown') : soilLabel(lang, s), desc: t(`soilDesc_${s}`),
     icon: (s === 'unknown' ? 'info' : 'field') as IconName, tint: SOIL_TINT[s],
   }));
+  const suggestedSoilMismatch =
+    soilSuggestion?.suggestion && soil && soilSuggestion.suggestion !== soil
+      ? t('soilSuggestionMismatch')
+          .replace('{suggested}', soilLabel(lang, soilSuggestion.suggestion))
+          .replace('{picked}', soilLabel(lang, soil))
+      : null;
   const soilQ = (
     <Q mode={mode} n={5} title={t('qSoil')} hint={t('qSoilHint')}>
       <PickGrid prefix="soil" items={soilItems} selected={soil} onSelect={setSoil} columns={2} />
+      {suggestedSoilMismatch ? (
+        <Banner text={suggestedSoilMismatch} kind="info" />
+      ) : null}
     </Q>
   );
 

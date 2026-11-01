@@ -357,3 +357,41 @@ def field_data_summary(field_id: str):
             },
         }
     ), 200
+
+
+@farms_v2_bp.get("/soil-type-suggestion")
+@require_session_auth
+def soil_type_suggestion():
+    """Module 61: raised directly by a teammate -- a farmer picking a
+    soil type the real location data doesn't support got no feedback at
+    all. Called during field setup (FieldForm.tsx, once lat/lon is known,
+    at the soil-type step), BEFORE the field exists, so this takes
+    lat/lon as query params rather than a field_id. A suggestion, never a
+    hard override -- see soil_type_suggestion.py's docstring for why
+    there's no single "correct" answer to assert."""
+    from agro_mirai.acquisition.base import FieldInput
+    from agro_mirai.acquisition.soilgrids import SoilAdapter
+    from agro_mirai.models.soil_type_suggestion import suggest_soil_type
+
+    try:
+        lat = float(request.args.get("lat", ""))
+        lon = float(request.args.get("lon", ""))
+    except (TypeError, ValueError):
+        raise ApiError(400, "BAD_REQUEST", "lat and lon query params are required numbers")
+
+    try:
+        rows = SoilAdapter().fetch(FieldInput(latitude=lat, longitude=lon))
+    except Exception:  # noqa: BLE001 -- honest degrade, same as every other
+        # external-data path in this project: no suggestion beats a fabricated one.
+        return jsonify({"suggestion": None}), 200
+
+    row = rows[0] if rows else {}
+    ph = row.get("ph")
+    organic_carbon_pct = row.get("organic_carbon_pct")
+    result = suggest_soil_type(ph, organic_carbon_pct)
+
+    return jsonify({
+        "suggestion": result["soil_type"] if result else None,
+        "measured_ph": ph,
+        "measured_organic_carbon_pct": organic_carbon_pct,
+    }), 200
