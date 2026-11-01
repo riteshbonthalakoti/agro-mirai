@@ -9,3 +9,4 @@
 *.tif binary
 *.tiff binary
 *.wav binary
+*.apk filter=lfs diff=lfs merge=lfs -text
