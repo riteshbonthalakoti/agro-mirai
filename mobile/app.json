@@ -2,7 +2,7 @@
   "expo": {
     "name": "Agro Mirai",
     "slug": "agro-mirai",
-    "version": "2.8.15",
+    "version": "2.8.16",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -17,7 +17,7 @@
       "predictiveBackGestureEnabled": false,
       "package": "com.ritesh1918.mobile",
       "googleServicesFile": "./google-services.json",
-      "versionCode": 34,
+      "versionCode": 35,
       "permissions": [
         "android.permission.RECORD_AUDIO",
         "android.permission.MODIFY_AUDIO_SETTINGS",
