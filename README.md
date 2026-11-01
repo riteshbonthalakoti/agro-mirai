@@ -33,8 +33,8 @@
 ## 🎬 Product Demo & Visual Showcase
 
 <div align="center">
-  <img src="docs/images/agro_mirai_hero_animation.gif" alt="AGRO MIRAI Brand & Mobile App Animation" width="90%" style="border-radius: 12px; border: 2px solid #e1e4e8; box-shadow: 0 8px 24px rgba(0,0,0,0.12);"/>
-  <p><em>AGRO MIRAI — Complete Agronomic Advisory, Leaf Diagnostics, and Voice Assistance Workflow.</em></p>
+  <video src="https://github.com/riteshbonthalakoti/agro-mirai/releases/download/v2.8.16/AGR-MIRAI-LOGO-ANIMATION.mp4" width="40%" autoplay loop muted playsinline style="border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.12);"></video>
+  <p><em>The real app-launch logo animation — AGRO MIRAI's actual splash screen, not a mockup.</em></p>
 </div>
 
 <br/>
