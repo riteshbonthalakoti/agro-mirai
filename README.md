@@ -1,90 +1,85 @@
-# AGRO MIRAI — AI-Driven Smart Agriculture Advisory System
+# AGRO MIRAI
+
+**What should I grow, and when do I need to water it?**
+
+That's the whole app, really. A farmer in Bellary points their phone at a field, and AGRO MIRAI pulls real soil, weather, and satellite data for that exact plot, runs it through an FAO-56 water balance and a crop-suitability model, and tells them — in their own language, spoken out loud if they'd rather not read — what to plant and how much to irrigate today. Point a camera at a sick leaf and it'll tell you what's wrong with it too.
 
 <div align="center">
 
-**Precision Agronomic Advisory, Daily FAO-56 Water Balance, and Leaf Disease Detection for Indian Smallholder Farms**
+[![Android APK](https://img.shields.io/badge/Download-AgroMirai_v2.8.16.apk-3DDC84?logo=android&logoColor=white&style=flat-square)](https://agromirai.vercel.app/app-release.apk)
+[![React Native](https://img.shields.io/badge/mobile-Expo_SDK_57-61DAFB?logo=react&logoColor=black&style=flat-square)](https://reactnative.dev)
+[![Flask](https://img.shields.io/badge/backend-Flask_3.1-3776AB?logo=python&logoColor=white&style=flat-square)](https://www.python.org)
+[![Supabase](https://img.shields.io/badge/db-Supabase_Postgres-3ECF8E?logo=supabase&logoColor=white&style=flat-square)](https://supabase.com)
+[![Google Earth Engine](https://img.shields.io/badge/satellite-Sentinel--2_NDVI-4285F4?logo=googleearthengine&logoColor=white&style=flat-square)](https://earthengine.google.com)
+[![License: MIT](https://img.shields.io/badge/license-MIT-yellow.svg?style=flat-square)](LICENSE)
 
-[![Android APK](https://img.shields.io/badge/Mobile_Release-v2.2.2_Universal_APK-3DDC84?logo=android&logoColor=white&style=flat-square)](https://agromirai.vercel.app/app-release.apk)
-[![Expo React Native](https://img.shields.io/badge/Frontend-React_Native_--_Expo_SDK_57-61DAFB?logo=react&logoColor=black&style=flat-square)](https://reactnative.dev)
-[![Python Backend](https://img.shields.io/badge/Backend-Python_3.12_--_Flask_v2-3776AB?logo=python&logoColor=white&style=flat-square)](https://www.python.org)
-[![Supabase Postgres](https://img.shields.io/badge/Database-Supabase_PostgreSQL-3ECF8E?logo=supabase&logoColor=white&style=flat-square)](https://supabase.com)
-[![ONNX Runtime](https://img.shields.io/badge/Inference-MobileNetV2_ONNX-005CED?logo=onnx&logoColor=white&style=flat-square)](https://onnxruntime.ai)
-[![Google Earth Engine](https://img.shields.io/badge/Satellite-GEE_Sentinel--2_NDVI-4285F4?logo=googleearthengine&logoColor=white&style=flat-square)](https://earthengine.google.com)
-[![License: MIT](https://img.shields.io/badge/License-MIT_Capstone_2026-yellow.svg?style=flat-square)](LICENSE)
-
-**Track:** `Smart Agriculture / Rural AI` | **Target Users:** `Indian Smallholder Farmers`  
-**Deployment:** `Vercel Edge CDN + Render Cloud Web Services + Supabase Postgres`  
-**Developer:** `Ritesh Bonthalakoti` — Solo Developer
-
-<p align="center">
-  <a href="https://agromirai.vercel.app/app-release.apk"><img src="https://img.shields.io/badge/⚡_Direct_Download-Release_APK_(v2.2.2)-2ea44f?style=for-the-badge&logo=android&logoColor=white" alt="Download Mobile APK"/></a>
+<p>
+  <a href="https://agromirai.vercel.app/app-release.apk"><img src="https://img.shields.io/badge/⚡_Download_APK-v2.8.16-2ea44f?style=for-the-badge&logo=android&logoColor=white" alt="Download Mobile APK"/></a>
   &nbsp;
-  <a href="https://agromirai.vercel.app/download"><img src="https://img.shields.io/badge/📱_Web_Download_Portal-agromirai.vercel.app-0070f3?style=for-the-badge&logo=vercel&logoColor=white" alt="Web Download Portal"/></a>
+  <a href="https://agromirai.vercel.app/download"><img src="https://img.shields.io/badge/📱_Download_Page-agromirai.vercel.app-0070f3?style=for-the-badge&logo=vercel&logoColor=white" alt="Web Download Portal"/></a>
   &nbsp;
-  <a href="docs/INDEX.md"><img src="https://img.shields.io/badge/📚_Documentation-Master_Index-6f42c1?style=for-the-badge&logo=readme&logoColor=white" alt="Documentation Master Index"/></a>
+  <a href="docs/INDEX.md"><img src="https://img.shields.io/badge/📚_Docs-Master_Index-6f42c1?style=for-the-badge&logo=readme&logoColor=white" alt="Documentation Master Index"/></a>
   &nbsp;
-  <a href="docs/NEXT_TEAM_HANDOVER.md"><img src="https://img.shields.io/badge/🛠️_Engineering-Handover_Guide-d73a49?style=for-the-badge&logo=gitbook&logoColor=white" alt="Engineering Handover"/></a>
+  <a href="docs/NEXT_TEAM_HANDOVER.md"><img src="https://img.shields.io/badge/🛠️_Handover-Guide-d73a49?style=for-the-badge&logo=gitbook&logoColor=white" alt="Engineering Handover"/></a>
 </p>
 
 </div>
 
 ---
 
-## 🎬 Product Demo & Visual Showcase
-
 <div align="center">
-  <img src="docs/images/agro_mirai_logo_animation.gif" alt="AGRO MIRAI real app-launch logo animation" width="40%" style="border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.12);"/>
-  <p><em>The real app-launch logo animation — AGRO MIRAI's actual splash screen, not a mockup.</em></p>
+  <img src="docs/images/agro_mirai_logo_animation.gif" alt="AGRO MIRAI app-launch logo animation" width="40%" style="border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.12);"/>
+  <p><em>The actual splash screen from the shipping app — not a mockup.</em></p>
 </div>
 
 <br/>
 
-### 📱 Live Mobile Companion Application Gallery (v2.2.2 Universal)
+### The app, screen by screen (v2.8.16)
 
 <div align="center">
   <table border="0" cellspacing="10" cellpadding="0">
     <tr>
       <td width="25%" align="center">
         <img src="docs/screenshots/01_home_screen.png" width="95%" style="border-radius: 10px; border: 1px solid #d0d7de;"/><br/>
-        <b>1. Home Dashboard</b><br/>
-        <sub>Real-time weather, soil & quick metrics</sub>
+        <b>Home</b><br/>
+        <sub>Weather, soil and field status at a glance</sub>
       </td>
       <td width="25%" align="center">
         <img src="docs/screenshots/02_advisory_screen.png" width="95%" style="border-radius: 10px; border: 1px solid #d0d7de;"/><br/>
-        <b>2. Agronomic Advisory</b><br/>
-        <sub>FAO-56 water balance & crop suitability</sub>
+        <b>Advisory</b><br/>
+        <sub>Crop pick and today's irrigation number</sub>
       </td>
       <td width="25%" align="center">
         <img src="docs/screenshots/03_leaf_scanner_screen.png" width="95%" style="border-radius: 10px; border: 1px solid #d0d7de;"/><br/>
-        <b>3. Leaf Disease Scanner</b><br/>
-        <sub>Dual-layer biological gate + CNN</sub>
+        <b>Scan</b><br/>
+        <sub>Photo a leaf, get a diagnosis</sub>
       </td>
       <td width="25%" align="center">
         <img src="docs/screenshots/04_field_map_screen.png" width="95%" style="border-radius: 10px; border: 1px solid #d0d7de;"/><br/>
-        <b>4. Field Boundary Map</b><br/>
-        <sub>MapLibre GL with live phone GPS beacon</sub>
+        <b>Field map</b><br/>
+        <sub>Draw the field boundary on satellite view</sub>
       </td>
     </tr>
     <tr>
       <td width="25%" align="center">
         <img src="docs/screenshots/05_field_telemetry_screen.png" width="95%" style="border-radius: 10px; border: 1px solid #d0d7de;"/><br/>
-        <b>5. Sensor Telemetry</b><br/>
-        <sub>Weekly summaries & agronomic timeline</sub>
+        <b>Field data</b><br/>
+        <sub>Weekly weather and soil history</sub>
       </td>
       <td width="25%" align="center">
         <img src="docs/screenshots/06_multilingual_voice_screen.png" width="95%" style="border-radius: 10px; border: 1px solid #d0d7de;"/><br/>
-        <b>6. Voice Advisory</b><br/>
-        <sub>Hands-free query in 4 native languages</sub>
+        <b>Voice</b><br/>
+        <sub>Ask a question out loud, hear the answer back</sub>
       </td>
       <td width="25%" align="center">
         <img src="docs/screenshots/07_kannada_profile_screen.png" width="95%" style="border-radius: 10px; border: 1px solid #d0d7de;"/><br/>
-        <b>7. Kannada UI (ಕನ್ನಡ)</b><br/>
-        <sub>Complete vernacular localization</sub>
+        <b>ಕನ್ನಡ</b><br/>
+        <sub>Full Kannada UI, not just translated strings</sub>
       </td>
       <td width="25%" align="center">
         <img src="docs/screenshots/08_telugu_profile_screen.png" width="95%" style="border-radius: 10px; border: 1px solid #d0d7de;"/><br/>
-        <b>8. Telugu UI (తెలుగు)</b><br/>
-        <sub>Localized account & alert drawer</sub>
+        <b>తెలుగు</b><br/>
+        <sub>Same for Telugu</sub>
       </td>
     </tr>
   </table>
@@ -92,81 +87,92 @@
 
 ---
 
-## 🌾 Problem Statement & Agronomic Innovation
+## Why this exists
 
-Smallholder farmers across India face three critical structural barriers:
-1. **Generic, Uncalibrated Recommendations:** State agricultural extensions publish broad district-wide advisories that fail to account for a farmer's specific field soil profile, real-time micro-climate, or satellite vegetation vigor.
-2. **Groundwater Overexploitation & Depletion:** Flooding fields on arbitrary calendar schedules wastes water and leaches soil nutrients. Farmers lack access to scientific root-zone evapotranspiration models.
-3. **Delayed Pathology Diagnosis & Language Barriers:** Leaf infections ruin yields before agricultural officers can physically inspect farms. Traditional tech platforms rely on English text and complex email/password forms, locking out semi-literate farmers.
+Three things kept coming up when I looked at what's actually available to a smallholder farmer in India right now:
 
-### How AGRO MIRAI Solves It:
-- **Hyperlocal Sensor & Satellite Fusion:** Merges SoilGrids physical properties (texture, pH, nitrogen), Open-Meteo hyper-local weather, and Sentinel-2 Google Earth Engine NDVI imagery into a unified field feature vector.
-- **Physics-Based FAO-56 Water Balance:** Implements Hargreaves-Samani reference evapotranspiration ($ET_0$) adjusted for crop stage ($K_c$) and root depth to calculate precision irrigation deficits (in mm and run-time minutes).
-- **Biological Leaf Gate + CNN Vision:** Validates leaf photos through a dual-layer OpenCV chlorophyll/contour filter (`leaf_gate.py`) before inference, preventing non-plant images from generating false diagnosis.
-- **Vernacular Voice & Passwordless Onboarding:** Full two-way voice interaction in **English, Kannada, Telugu, and Hindi** (AI4Bharat / Sarvam AI / Piper) coupled with single-touch **Name + Phone + SMS Retriever OTP auto-fill**.
+- **The advice isn't for your field.** Government extension advisories are published district-wide. They don't know your soil's actual pH, what your satellite imagery looked like this week, or what the weather did at your specific coordinates — they're the same bulletin for everyone in a 50km radius.
+- **Irrigation is guesswork, and guesswork wastes water.** Most farmers water on a fixed schedule because nobody's handed them a real evapotranspiration number. That overwaters some fields, underwaters others, and depletes groundwater either way.
+- **By the time a leaf disease gets noticed by a human, it's often too late** — and most diagnostic tools assume you can read English and fill out a form, which rules out a lot of the people who'd actually benefit most.
+
+AGRO MIRAI tries to close that gap with real data instead of defaults: live soil and weather APIs, actual Sentinel-2 satellite imagery for the field you drew, a physics-based water balance instead of a fixed schedule, and a voice interface so literacy and English fluency aren't a requirement to use it.
 
 ---
 
-## 🏗️ System Architecture & Data Pipeline
+## How it actually works
+
+**Crop and irrigation advice.** When you add a field, the backend pulls soil texture and pH from ISRIC SoilGrids, rainfall and temperature history from Open-Meteo, and NDVI (a vegetation-health signal) from Sentinel-2 via Google Earth Engine, for that field's exact boundary. That feeds two things: an FAO EcoCrop matrix that ranks which of 22 crops actually suit the season and soil, and a daily FAO-56 soil water balance (Hargreaves-Samani ET₀, adjusted for crop stage and root depth) that says precisely how many millimetres of water the field needs today, not "water it sometime this week."
+
+**Leaf disease scanning.** A photo first goes through a biological gate — an OpenCV check on chlorophyll color ratio and leaf-shaped contours — before anything is classified, so a photo of a person or a piece of paper gets rejected instead of producing a confident wrong answer. Leaves that pass go to a MobileNetV2 CNN trained on the PlantVillage dataset (38 classes), with a weather/NDVI-based rule fallback if the model's unavailable.
+
+**Voice and language.** English, Hindi, Kannada, and Telugu, both directions — speech in, spoken advisory out — through a tiered pipeline (self-hosted AI4Bharat models first, Sarvam AI cloud as backup), degrading to a clearly-labeled text message if both are unreachable rather than failing silently.
+
+**Login.** Name and phone number, no password. Android's SMS Retriever API reads the OTP off an incoming SMS and fills it in automatically — nothing to type, nothing to remember.
+
+Every external call in this stack — weather, soil, satellite, the CNN, voice — has a documented fallback. The rule the whole backend is built around: degrade gracefully, never hand back a 500.
+
+---
+
+## Architecture
 
 ```mermaid
 flowchart TD
-    subgraph Data_Acquisition ["Hyperlocal Data Acquisition Layer"]
-        Meteo["Open-Meteo API<br/>(Temp, Rain, Humidity, Wind)"]
-        Soil["ISRIC SoilGrids v2.0<br/>(0-5cm Topsoil Texture, pH, NPK)"]
-        GEE["Google Earth Engine<br/>(Sentinel-2 S2_SR_HARMONIZED NDVI)"]
-        Cache[("Local NDVI Raster Cache<br/>(Offline Fallback)")]
-        GEE -.->|Timeout / Cloud Cover >40%| Cache
+    subgraph Data_Acquisition ["Field data sources"]
+        Meteo["Open-Meteo<br/>(weather, rainfall history)"]
+        Soil["ISRIC SoilGrids v2.0<br/>(pH, texture, nutrients)"]
+        GEE["Google Earth Engine<br/>(Sentinel-2 NDVI)"]
+        Cache[("Cached NDVI raster<br/>(offline fallback)")]
+        GEE -.->|timeout / cloud cover > 40%| Cache
     end
 
-    subgraph Core_Backend ["Flask REST API Core (/v2 Value Layer)"]
-        FeatureVector["Feature Builder Engine<br/>(FeatureVector Normalization)"]
+    subgraph Core_Backend ["Flask API (/v2)"]
+        FeatureVector["Field feature builder"]
         Data_Acquisition --> FeatureVector
-        
-        Store[("Repository Pattern<br/>SQLite (Dev) / Supabase Postgres (Prod)")]
+
+        Store[("SQLite (dev) /<br/>Supabase Postgres (prod)")]
         Store <--> FeatureVector
-        
-        EcoCrop["Crop Advisory Matrix<br/>(22 Crops, EcoCrop Ranges)"]
-        FAO56["Irrigation Advisory Engine<br/>(Daily FAO-56 Hargreaves-Samani ET0)"]
-        
+
+        EcoCrop["EcoCrop matrix<br/>(22 crops)"]
+        FAO56["FAO-56 water balance"]
+
         FeatureVector --> EcoCrop
         FeatureVector --> FAO56
-        
-        DecisionEngine["Advisory Decision Engine<br/>(Confidence Fusion & Urgency Scorer)"]
+
+        DecisionEngine["Advisory engine"]
         EcoCrop --> DecisionEngine
         FAO56 --> DecisionEngine
     end
 
-    subgraph Vision_Pipeline ["Pathology Diagnostic Pipeline"]
-        Upload["Camera / Gallery Photo"]
-        Gate{"Biological Leaf Gate<br/>(leaf_gate.py OpenCV)"}
-        CNN["MobileNetV2 ONNX CNN<br/>(PlantVillage 38 Classes)"]
-        Rules["Rule-based Disease Scorer<br/>(Weather & NDVI Trend)"]
-        
+    subgraph Vision_Pipeline ["Leaf scan"]
+        Upload["Camera / gallery photo"]
+        Gate{"Biological leaf gate<br/>(OpenCV)"}
+        CNN["MobileNetV2 CNN<br/>(PlantVillage)"]
+        Rules["Weather/NDVI risk scorer"]
+
         Upload --> Gate
-        Gate -->|Valid Foliage| CNN
-        Gate -->|Non-Leaf / Rejected| Rules
+        Gate -->|valid leaf| CNN
+        Gate -->|rejected| Rules
         CNN --> DecisionEngine
         Rules --> DecisionEngine
     end
 
-    subgraph Multilingual_Voice ["3-Tier Voice Resilience Cascade"]
-        VoiceIn["Voice Input (WAV)"]
-        Tier1["Tier 1: Heavy Container<br/>(IndicTrans2 / IndicConformer)"]
-        Tier2["Tier 2: Sarvam AI Cloud API<br/>(Saaras STT / Bulbul TTS)"]
-        Tier3["Tier 3: In-App Honest Text Badge<br/>(Localized Fallback)"]
-        
+    subgraph Multilingual_Voice ["Voice pipeline"]
+        VoiceIn["Voice input"]
+        Tier1["AI4Bharat<br/>(self-hosted)"]
+        Tier2["Sarvam AI<br/>(cloud)"]
+        Tier3["Text fallback<br/>(localized)"]
+
         VoiceIn --> Tier1
-        Tier1 -.->|OOM / 502 Timeout| Tier2
-        Tier2 -.->|Quota Depleted / Offline| Tier3
+        Tier1 -.->|unavailable| Tier2
+        Tier2 -.->|unavailable| Tier3
     end
 
-    subgraph Mobile_App ["Android Mobile Companion (Expo SDK 57)"]
-        DecisionEngine --> AppAPI["Mobile Sync Endpoints"]
+    subgraph Mobile_App ["Android app (Expo SDK 57)"]
+        DecisionEngine --> AppAPI["Mobile sync endpoints"]
         Tier1 & Tier2 & Tier3 --> AppAPI
-        AppAPI --> MapLibre["MapLibre GL Map<br/>(Phone GPS Beacon)"]
-        AppAPI --> OTP["SMS Retriever<br/>(<#> Auto-fill)"]
-        AppAPI --> Drawer["Animated Notification Drawer<br/>(Bell Micro-animation)"]
+        AppAPI --> MapLibre["MapLibre GL field map"]
+        AppAPI --> OTP["SMS Retriever auto-fill"]
+        AppAPI --> Drawer["Notification drawer"]
     end
 
     style Data_Acquisition fill:#f6f8fa,stroke:#d0d7de,stroke-width:2px
@@ -176,178 +182,107 @@ flowchart TD
     style Mobile_App fill:#e1f5fe,stroke:#0288d1,stroke-width:2px
 ```
 
-### The 5-Step Operating Cycle
+---
 
-1. **Farmer Authentication & Field Geometry**: The farmer signs in with their name and phone number. Android's Google Play Services SMS Retriever automatically intercepts the verification message (`<#> Your AGRO MIRAI verification code is: 123456`) and completes login without typing. The farmer plots their field boundaries on an interactive MapLibre GL map.
-2. **Automated Environmental Ingestion**: The backend triggers point queries to Open-Meteo (12-month historical rainfall and current weather), ISRIC SoilGrids (pH, texture, sand/silt/clay fractions), and Sentinel-2 satellite imagery via Google Earth Engine to capture the current NDVI vegetation vigor.
-3. **Biological Gating & Pathology Diagnosis**: When a farmer submits a leaf photo, `leaf_gate.py` analyzes the chlorophyll green-to-non-plant pixel ratio and contour variance. Photos of people, papers, or memes are cleanly rejected with a localized message. Valid leaves are classified via the MobileNetV2 ONNX CNN.
-4. **Advisory Synthesis & Water Balance**: The Decision Engine combines the FAO EcoCrop matrix (ranking the top viable crops for the season) with daily root-zone soil water depletion calculations ($ET_0 \times K_c - \text{Rainfall}$), outputting the exact irrigation depth in mm and pump runtime minutes.
-5. **Multilingual Voice Playback**: The entire synthesized advisory is translated and synthesized into the farmer's native dialect (Kannada, Telugu, Hindi, or English) via the 3-tier resilient voice engine.
+## Models and algorithms, and why those over something trained
+
+| Layer | Approach | Why not the obvious ML alternative |
+|---|---|---|
+| Crop recommendation | LLM (Gemini) first, falls back to a deterministic FAO EcoCrop rule engine | A trained classifier needs N/P/K soil values that SoilGrids simply doesn't provide. An earlier RandomForest version recommended watermelon for a cotton field. EcoCrop only needs data this project actually has. |
+| Irrigation | Deterministic FAO-56 soil water balance, not a model | A RandomForest urgency classifier measured 72% accuracy — "barely useful." The water balance answers a more precise physical question and shows its work (ET₀, rainfall, days to stress) instead of a label. |
+| Leaf disease (live Scan tab) | Vision LLM (OpenRouter, Groq fallback) | Gemini's vision endpoint was unreliable in testing — real timeouts across networks. The CNN below exists and works, but a general vision LLM generalized far better to messy real-field phone photos than a model trained on clean lab-background leaves. |
+| Leaf disease (CNN, alternate path) | MobileNetV2, PlantVillage dataset | Kept in the codebase as an offline-capable option; not what the live app calls today. |
+| Soil type suggestion | Nearest-match lookup against the 8 soil orders' pH/organic-carbon profile | SoilGrids doesn't output an Indian soil-order label at all — there's no ground truth to classify against, just a closest-match hint. |
+| Voice | Sarvam AI cloud primary, AI4Bharat self-hosted fallback | Keeps the main API process light; the heavy self-hosted models run as a separate microservice. |
+
+Full writeups with the actual reasoning and decision history live in [docs/ALGORITHMS.md](docs/ALGORITHMS.md) and [decisions/](decisions/).
 
 ---
 
-## 🤖 AI / ML Model Specifications
+## Where things stand
 
-| Component / Layer | Model / Algorithm | Runtime / Framework | Training Dataset & Architecture |
-|:---|:---|:---|:---|
-| **Crop Suitability** | FAO EcoCrop Suitability Matrix | Deterministic Rule Matrix | Evaluates 22 crop types against absolute minimum, optimal, and maximum temperature, rainfall, soil pH, and soil texture ranges. |
-| **Irrigation Scheduling** | Daily FAO-56 Water Balance | Python Scientific Runtime | Hargreaves-Samani reference evapotranspiration ($ET_0$), dynamic crop growth stages ($K_c$), root depth ($Z_r$), and total available soil water ($TAW$). |
-| **Leaf Disease Vision** | MobileNetV2 ONNX | ONNX Runtime (`<80ms` CPU) | Trained on 54,305 PlantVillage leaf images across 38 crop disease and healthy classes. Validated against PlantDoc real-field noise. |
-| **Biological Leaf Gate** | Dual-Layer Color & Contour Filter | OpenCV (`cv2`) | Evaluates HSV chlorophyll green saturation ($S \ge 40$, $30^\circ \le H \le 90^\circ$) and Laplacian gradient variance to reject non-foliage photos. |
-| **Voice Speech-to-Text (STT)** | AI4Bharat / Sarvam Saaras / Whisper | CTranslate2 / Cloud REST | High-accuracy speech recognition for Indian rural accents in English, Kannada, Telugu, and Hindi. |
-| **Voice Synthesis (TTS)** | Piper ONNX / Sarvam Bulbul / VITS | ONNX / Cloud REST | Low-latency natural vernacular speech generation with localized fallback text banners. |
+- **714 tests passing, 0 failing** (40 skipped — live third-party API calls that need network/credentials not present in CI). See [docs/TEST_CASES.md](docs/TEST_CASES.md) for what's actually covered, and what isn't (mobile UI has no automated test suite yet — that's been manual device testing so far).
+- SMS OTP auto-fill lands in under 650ms on real devices.
+- CNN inference is ~72ms on-device.
+- A GitHub Actions job pings the Render backend every 12 minutes so it doesn't cold-start on a farmer's first request.
+- The universal release APK is 76.8MB, covers `arm64-v8a`, `armeabi-v7a`, `x86`, and `x86_64`.
 
 ---
 
-## 🌐 External Adapters & Graceful Degradation Matrix
-
-Every external integration adheres to our core engineering law: **Degrade gracefully, never return a 500.**
-
-| Service / Adapter | Source / Protocol | Fallback Path | Failover Guarantee |
-|:---|:---|:---|:---|
-| **Weather** | Open-Meteo REST API (free, no-key) | Local seasonal weather climatology | Returns `WeatherReading` with stamped fallback flag |
-| **Soil Properties** | ISRIC SoilGrids v2.0 REST API | Default regional agro-climatic profile | Always surfaces 0-5cm plough layer topsoil data |
-| **Satellite NDVI** | Google Earth Engine (Sentinel-2) | Local cached NDVI raster file | If GEE times out after 8s or clouds >40%, uses cache |
-| **Leaf Disease CNN** | MobileNetV2 ONNX Microservice | Weather/NDVI weighted risk scorer | If CNN unreachable, calculates risk from humidity and rain |
-| **Regional Voice** | Heavy container (`agro-mirai-voice`) | Sarvam AI REST API $\to$ Localized text banner | Guarantees text advisory even if voice APIs are exhausted |
-
----
-
-## 📊 Verification & Real Device Field Benchmarks
-
-The system was extensively validated in automated test suites and on physical Android hardware (Samsung Galaxy and Realme devices):
-
-<div align="center">
-  <table border="0">
-    <tr>
-      <th>Metric / Benchmark</th>
-      <th>Measured Value</th>
-      <th>Engineering Note</th>
-    </tr>
-    <tr>
-      <td><b>Universal APK File Size</b></td>
-      <td><code>76.8 MB</code></td>
-      <td>Self-contained release APK supporting <code>arm64-v8a</code>, <code>armeabi-v7a</code>, <code>x86</code>, and <code>x86_64</code>.</td>
-    </tr>
-    <tr>
-      <td><b>Edge CDN Download Speed</b></td>
-      <td><code>100% Complete (0 Stalls)</code></td>
-      <td>Vercel <code>no-transform</code> header prevents mobile proxy compression stalls at 99%.</td>
-    </tr>
-    <tr>
-      <td><b>SMS OTP Auto-fill Latency</b></td>
-      <td><code>&lt; 650 ms</code></td>
-      <td>Google Play Services SMS Retriever captures code without requiring sensitive permissions.</td>
-    </tr>
-    <tr>
-      <td><b>On-Device CNN Inference</b></td>
-      <td><code>72 ms</code></td>
-      <td>ONNX Runtime CPU forward pass on standard 224x224 leaf image.</td>
-    </tr>
-    <tr>
-      <td><b>Cold-Start Keep-Alive</b></td>
-      <td><code>0 s Cold Start</code></td>
-      <td>Automated GitHub Actions workflow pings Render endpoints every 12 minutes to keep instances warm.</td>
-    </tr>
-    <tr>
-      <td><b>CI Contract Gate</b></td>
-      <td><code>100% Pass</code></td>
-      <td><code>python tools/check_specs.py</code> validates schema and enum compliance on every commit.</td>
-    </tr>
-  </table>
-</div>
-
----
-
-## 📂 Repository Structure & Navigation
+## Repository layout
 
 ```text
 AGRO MIRAI/
-├── decisions/                       # 30 Architectural Decision Records (ADRs 0001 - 0030)
-├── docs/                            # Comprehensive documentation, research & runbooks
-│   ├── INDEX.md                     # Master Technical Documentation Index & Directory Map
-│   ├── NEXT_TEAM_HANDOVER.md        # Production Handover, Build Instructions & Operations
-│   ├── architecture.md              # Full System Architecture, Microservices & Data Flows
-│   ├── conventions.md               # Unit Standards, Timestamps & ID Specifications
-│   ├── testing-strategy.md          # 4-Layer Test Pyramid (Unit, Contract, Edge, Live/Offline)
-│   ├── SMS_OTP_SETUP.md             # Android SMS Retriever & Gateway Integration Guide
-│   ├── MODULE_53_NOTIFICATIONS.md   # Per-Account Scheduled Notifications & Drawer Spec
-│   ├── eval/                        # Machine Learning Benchmark Metrics (JSON)
-│   ├── research/                    # Smallholder Farmer UX Audits & Model Research
-│   ├── screenshots/                 # High-resolution mobile application screenshots
-│   └── images/                      # Project hero animations and system graphics
+├── decisions/                       # Architecture decision records — the actual reasoning behind the bigger calls
+├── docs/                            # Documentation, research notes, runbooks
+│   ├── INDEX.md                     # Start here
+│   ├── NEXT_TEAM_HANDOVER.md        # Build, deploy, and ops instructions
+│   ├── architecture.md              # Full system architecture and data flows
+│   ├── ALGORITHMS.md                # What's learned vs. rule-based vs. an LLM call, and why
+│   ├── TEST_CASES.md                # What the test suite actually checks
+│   ├── SMS_OTP_SETUP.md             # SMS Retriever / Gateway integration
+│   ├── screenshots/                 # App screenshots used above
+│   └── images/                      # Logo animation and other graphics
 │
-├── mobile/                          # React Native Companion App (Expo SDK 57)
-│   ├── src/screens/                 # HomeTab, AdviceTab, ScanTab, MapTab, DataTab, ProfileTab
-│   ├── src/components/              # NotificationDrawer, VoiceMode, AnimatedTabPane
-│   ├── modules/sms-retriever/       # Native Android SMS Retriever Turbo Module
-│   └── release-keys/                # Production release keystore & signing configurations
+├── mobile/                          # React Native app (Expo SDK 57)
+│   ├── src/screens/                 # Home, Advisory, Scan, Map, Data, Profile tabs
+│   ├── src/components/              # Notification drawer, voice mode, animated splash
+│   └── modules/sms-retriever/       # Native Android SMS Retriever module
 │
-├── src/agro_mirai/                  # Python 3.12 Core Backend Service
-│   ├── acquisition/                 # Open-Meteo, SoilGrids, and Google Earth Engine Adapters
-│   ├── api/routes/                  # REST v2 Value Endpoints (auth_v2, fields, advisories, admin)
-│   ├── models/                      # EcoCrop matrix, FAO-56 Water Balance, leaf_gate.py
-│   ├── persistence/                 # DataStore Repository (SQLite dev / Supabase Postgres prod)
-│   └── voice/                       # Tiered voice client & translation orchestrators
+├── src/agro_mirai/                  # Python 3.12 backend (Flask)
+│   ├── acquisition/                 # Open-Meteo, SoilGrids, Earth Engine adapters
+│   ├── api/routes/                  # /v2 endpoints — auth, fields, advisories, admin
+│   ├── models/                      # EcoCrop matrix, FAO-56 water balance, leaf gate
+│   ├── persistence/                 # DataStore repository (SQLite dev / Supabase prod)
+│   └── voice/                       # Tiered voice client and translation
 │
-├── services/                        # Standalone Deployable Inference Containers
-│   ├── cnn/                         # PlantVillage MobileNetV2 ONNX inference service
-│   └── voice/                       # Containerized multilingual speech & translation service
+├── services/                        # Standalone inference containers
+│   ├── cnn/                         # PlantVillage MobileNetV2 service
+│   └── voice/                       # AI4Bharat speech/translation service
 │
-├── specs/core/                      # CI-Enforced Contracts
-│   ├── enums.md                     # Additive-only canonical system enums
-│   └── schema.yaml                  # Canonical database and domain entity schemas
-│
-├── tools/                           # Developer CLI utilities (check_specs.py, seed_fixture.py)
-├── web/                             # Vercel Landing Page, Download Portal & Admin Dashboard
-├── render.yaml                      # Declarative Render microservice blueprint
-└── vercel.json                      # Edge CDN routing and binary package caching headers
+├── specs/core/                      # CI-enforced schema and enum contracts
+├── tools/                           # CLI utilities (spec checks, fixture seeding)
+├── web/                             # Landing page, download portal, admin dashboard
+├── render.yaml                      # Render deployment blueprint
+└── vercel.json                      # Edge CDN routing and caching
 ```
 
 ---
 
-## 🚀 Running Locally
+## Running it locally
 
-### 1. Backend Service Setup (Python 3.12)
+**Backend (Python 3.12):**
 ```bash
-# Clone the repository
 git clone https://github.com/riteshbonthalakoti/agro-mirai.git
-cd "agro-mirai"
+cd agro-mirai
 
-# Install development dependencies
 pip install -r requirements-dev.txt
 
-# Seed the local SQLite development database with test farm fixtures
+# seed a local SQLite DB with test fixtures
 python tools/seed_fixture.py --backend sqlite --db-path agro_mirai.db
 
-# Run the Flask API server
 PYTHONPATH=src python -m flask --app agro_mirai.api.app:create_app run
 ```
 
-### 2. Verify CI Spec Contracts & Run Test Suite
+**Tests:**
 ```bash
-# Validate contract compliance against specs/core/
-python tools/check_specs.py
-
-# Run the test suite (excluding standalone container tests)
+python tools/check_specs.py   # contract/schema checks
 PYTHONPATH=src pytest --ignore=tests/voice --ignore=tests/vision --ignore=services/
 ```
 
-### 3. Run the Mobile App (Expo SDK 57)
+**Mobile app (Expo SDK 57):**
 ```bash
 cd mobile
 npm install
-
-# Start development server
 npx expo start
-
-# Or launch directly on connected Android device / emulator
+# or straight to a connected device/emulator:
 npx expo run:android
 ```
 
 ---
 
-## 📜 Authorship & Acknowledgments
+## Author
 
-* **Project Author & Solo Developer:** **Ritesh Bonthalakoti** ([@riteshbonthalakoti](https://github.com/riteshbonthalakoti))
-* **Built as a Final Capstone Project (2026)** to empower Indian smallholder farmers with accessible, science-backed artificial intelligence.
+Built by [Ritesh Bonthalakoti](https://github.com/riteshbonthalakoti) as a final capstone project, to see how far real agronomic data and a bit of care about degradation paths could get a farmer-facing app without pretending to be smarter than it is.
+
+Licensed under [MIT](LICENSE).
