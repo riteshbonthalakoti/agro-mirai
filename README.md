@@ -213,10 +213,11 @@ Full writeups with the actual reasoning and decision history live in [docs/ALGOR
 
 ```text
 AGRO MIRAI/
-├── decisions/                       # Architecture decision records — the actual reasoning behind the bigger calls
-├── docs/                            # Documentation, research notes, runbooks
+├── decisions/                       # 31 architecture decision records — the reasoning behind the bigger calls
+├── docs/                            # Documentation, research notes, handoffs, runbooks
 │   ├── INDEX.md                     # Start here
 │   ├── NEXT_TEAM_HANDOVER.md        # Build, deploy, and ops instructions
+│   ├── LOCAL_SETUP.md               # Full local dev setup (backend, mobile, tests)
 │   ├── architecture.md              # Full system architecture and data flows
 │   ├── ALGORITHMS.md                # What's learned vs. rule-based vs. an LLM call, and why
 │   ├── TEST_CASES.md                # What the test suite actually checks
@@ -225,64 +226,48 @@ AGRO MIRAI/
 │   └── images/                      # Logo animation and other graphics
 │
 ├── mobile/                          # React Native app (Expo SDK 57)
-│   ├── src/screens/                 # Home, Advisory, Scan, Map, Data, Profile tabs
-│   ├── src/components/              # Notification drawer, voice mode, animated splash
-│   └── modules/sms-retriever/       # Native Android SMS Retriever module
+│   ├── src/screens/                 # HomeTab, AdviceTab, ScanTab, FieldMapScreen, DataTab, MeTab
+│   ├── src/components/              # VoiceMode, ChatAssistant, Charts, AnimatedSplashScreen
+│   ├── modules/sms-retriever/       # Native Android SMS Retriever module
+│   └── android/                     # Native Android project (Gradle, signing config)
 │
 ├── src/agro_mirai/                  # Python 3.12 backend (Flask)
 │   ├── acquisition/                 # Open-Meteo, SoilGrids, Earth Engine adapters
-│   ├── api/routes/                  # /v2 endpoints — auth, fields, advisories, admin
-│   ├── models/                      # EcoCrop matrix, FAO-56 water balance, leaf gate
+│   ├── api/                         # App factory + all /v2 route modules (auth, routes/, voice, vision, LLM clients)
+│   ├── auth/                        # OTP providers, session auth
+│   ├── models/                      # EcoCrop matrix, FAO-56 water balance, disease risk, leaf gate
 │   ├── persistence/                 # DataStore repository (SQLite dev / Supabase prod)
+│   ├── processing/                  # Feature building and data normalization
 │   └── voice/                       # Tiered voice client and translation
 │
 ├── services/                        # Standalone inference containers
-│   ├── cnn/                         # PlantVillage MobileNetV2 service
+│   ├── cnn-inference/ & cnn-onnx/   # PlantVillage MobileNetV2 serving (ONNX)
 │   └── voice/                       # AI4Bharat speech/translation service
 │
-├── specs/core/                      # CI-enforced schema and enum contracts
+├── migrations/                      # SQLite + Postgres schema migrations (local dev)
+├── supabase/migrations/             # Supabase (production Postgres) migrations
+├── specs/
+│   ├── core/                        # CI-enforced schema, enum, and OpenAPI contracts
+│   └── domains/                     # Domain fixtures
 ├── tools/                           # CLI utilities (spec checks, fixture seeding)
-├── web/                             # Landing page, download portal, admin dashboard
-├── render.yaml                      # Render deployment blueprint
-└── vercel.json                      # Edge CDN routing and caching
+├── web/
+│   ├── landing/                     # Marketing site + APK download portal (Vercel)
+│   └── admin/                       # Admin dashboard frontend
+├── tests/                           # Backend test suite (api, auth, models, persistence, e2e, ...)
+├── render.yaml                      # Render deployment blueprint (backend + services)
+└── docker-compose.yml               # Local multi-service container setup
 ```
 
 ---
 
 ## Running it locally
 
-**Backend (Python 3.12):**
-```bash
-git clone https://github.com/riteshbonthalakoti/agro-mirai.git
-cd agro-mirai
-
-pip install -r requirements-dev.txt
-
-# seed a local SQLite DB with test fixtures
-python tools/seed_fixture.py --backend sqlite --db-path agro_mirai.db
-
-PYTHONPATH=src python -m flask --app agro_mirai.api.app:create_app run
-```
-
-**Tests:**
-```bash
-python tools/check_specs.py   # contract/schema checks
-PYTHONPATH=src pytest --ignore=tests/voice --ignore=tests/vision --ignore=services/
-```
-
-**Mobile app (Expo SDK 57):**
-```bash
-cd mobile
-npm install
-npx expo start
-# or straight to a connected device/emulator:
-npx expo run:android
-```
+Full step-by-step setup — backend, mobile dev client, tests, the works — lives in its own doc rather than cluttering this page: **[docs/LOCAL_SETUP.md](docs/LOCAL_SETUP.md)**.
 
 ---
 
 ## Author
 
-Built by [Ritesh Bonthalakoti](https://github.com/riteshbonthalakoti) as a final capstone project, to see how far real agronomic data and a bit of care about degradation paths could get a farmer-facing app without pretending to be smarter than it is.
+Built by [Ritesh Bonthalakoti](https://github.com/riteshbonthalakoti) — an experiment in how far real agronomic data and a bit of care about degradation paths could take a farmer-facing app, without pretending to be smarter than it is.
 
 Licensed under [MIT](LICENSE).
