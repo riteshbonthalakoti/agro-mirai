@@ -6,7 +6,7 @@ That's the whole app, really. A farmer in Bellary points their phone at a field,
 
 <div align="center">
 
-[![Android APK](https://img.shields.io/badge/Download-AgroMirai_v2.8.16.apk-3DDC84?logo=android&logoColor=white&style=flat-square)](https://agromirai.vercel.app/app-release.apk)
+[![Android APK](https://img.shields.io/badge/Download-agromirai2.8.17.apk-3DDC84?logo=android&logoColor=white&style=flat-square)](https://agromirai.vercel.app/app-release.apk)
 [![React Native](https://img.shields.io/badge/mobile-Expo_SDK_57-61DAFB?logo=react&logoColor=black&style=flat-square)](https://reactnative.dev)
 [![Flask](https://img.shields.io/badge/backend-Flask_3.1-3776AB?logo=python&logoColor=white&style=flat-square)](https://www.python.org)
 [![Supabase](https://img.shields.io/badge/db-Supabase_Postgres-3ECF8E?logo=supabase&logoColor=white&style=flat-square)](https://supabase.com)
@@ -14,7 +14,7 @@ That's the whole app, really. A farmer in Bellary points their phone at a field,
 [![License: MIT](https://img.shields.io/badge/license-MIT-yellow.svg?style=flat-square)](LICENSE)
 
 <p>
-  <a href="https://agromirai.vercel.app/app-release.apk"><img src="https://img.shields.io/badge/⚡_Download_APK-v2.8.16-2ea44f?style=for-the-badge&logo=android&logoColor=white" alt="Download Mobile APK"/></a>
+  <a href="https://agromirai.vercel.app/app-release.apk"><img src="https://img.shields.io/badge/⚡_Download_APK-v2.8.17-2ea44f?style=for-the-badge&logo=android&logoColor=white" alt="Download Mobile APK"/></a>
   &nbsp;
   <a href="https://agromirai.vercel.app/download"><img src="https://img.shields.io/badge/📱_Download_Page-agromirai.vercel.app-0070f3?style=for-the-badge&logo=vercel&logoColor=white" alt="Web Download Portal"/></a>
   &nbsp;
@@ -34,7 +34,7 @@ That's the whole app, really. A farmer in Bellary points their phone at a field,
 
 <br/>
 
-### The app, screen by screen (v2.8.16)
+### The app, screen by screen (v2.8.17)
 
 <div align="center">
   <table border="0" cellspacing="10" cellpadding="0">
@@ -205,7 +205,7 @@ Full writeups with the actual reasoning and decision history live in [docs/ALGOR
 - SMS OTP auto-fill lands in under 650ms on real devices.
 - CNN inference is ~72ms on-device.
 - A GitHub Actions job pings the Render backend every 12 minutes so it doesn't cold-start on a farmer's first request.
-- The universal release APK is 76.8MB, covers `arm64-v8a`, `armeabi-v7a`, `x86`, and `x86_64`.
+- The universal release APK is 55.7MB, covers `arm64-v8a`, `armeabi-v7a`, `x86`, and `x86_64`.
 
 ---
 
