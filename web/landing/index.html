@@ -76,7 +76,7 @@
   "name": "AGRO MIRAI",
   "applicationCategory": "Agriculture advisory application",
   "operatingSystem": "Android, Web",
-  "description": "AI-driven smart agriculture advisory system for Indian farms: crop recommendation, ET0-based irrigation advisory, and disease risk detection, with voice support in English, Kannada, Telugu, and Hindi.",
+  "description": "Crop recommendation, ET0-based irrigation advisory, and disease risk detection for Indian farms, grounded in real soil/weather/satellite data, with voice support in English, Kannada, Telugu, and Hindi.",
   "url": "https://agromirai.vercel.app/",
   "image": "https://agromirai.vercel.app/assets/og-image.jpg",
   "inLanguage": ["en", "kn", "te", "hi"],
@@ -706,6 +706,21 @@
     .foot-bottom{flex-direction:column; align-items:flex-start;}
     .foot-honesty{text-align:left;}
   }
+
+  /* ---------- MOBILE SECTION SPACING ----------
+     The base `section{padding:104px 0}` and `.breather{padding:130px 0}`
+     rules are tuned for a tall desktop viewport. On a narrow phone screen
+     that reads as a big dead gap between sections -- nothing was broken,
+     the vertical rhythm just didn't scale down with the width. */
+  @media (max-width:760px){
+    section{padding:64px 0;}
+    .breather{padding:56px 0;}
+    .section-head{margin-bottom:40px;}
+  }
+  @media (max-width:480px){
+    section{padding:52px 0;}
+    .breather{padding:44px 0;}
+  }
 </style>
 </head>
 <body>
@@ -990,7 +1005,7 @@
           <img src="./assets/logo-mark.png" alt="AGRO MIRAI logo">
           <div class="foot-title">AGRO MIRAI</div>
         </div>
-        <p class="foot-tagline">AI-driven smart agriculture advisory — crop, irrigation, and disease guidance for Indian farms, in the farmer's own language.</p>
+        <p class="foot-tagline">Crop, irrigation, and disease guidance grounded in real field data — for Indian farms, in the farmer's own language.</p>
         <div class="foot-langs">
           <span class="lang-kn">ಕನ್ನಡ</span><span class="foot-dot">&middot;</span><span class="lang-te">తెలుగు</span><span class="foot-dot">&middot;</span><span class="lang-hi">हिन्दी</span><span class="foot-dot">&middot;</span><span>English</span>
         </div>
