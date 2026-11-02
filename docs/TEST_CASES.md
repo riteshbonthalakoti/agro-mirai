@@ -11,6 +11,18 @@ This document describes real, existing test scenarios — it does not invent cov
 
 ---
 
+## Test levels
+
+| Level | What it means here | Test count | Representative files |
+|---|---|---|---|
+| **Unit** | A single function/class in isolation — model math, serializers, validators, single-adapter logic, mocked dependencies | ~547 | `tests/models/test_ecocrop.py`, `test_soil_water_balance.py`, `tests/api/test_serializers.py`, `tests/auth/test_otp.py`, `tests/api/test_key_pool.py` |
+| **Integration** | Multiple real components wired together — API route → model → store, LLM cascade with real fallback chain, SQLite ↔ Supabase contract parity | 160 | `tests/api/test_v2_auth_integration.py` (26), `tests/persistence/contract/test_contract.py` (48, runs identically against both DB backends), `tests/api/test_gemini_cascade.py`, `tests/models/test_decision_engine_integration.py` |
+| **System (E2E)** | Hits the actual deployed production backend over the network, no test client, no mocks | 6 | `tests/e2e/test_deployed_smoke.py` — pings the live Render `/health` endpoint |
+
+Excluded from the counts above (separate suites, not run by default): `tests/voice/`, `tests/vision/`, `tests/voice_remote/`, and `services/*/tests` — these need either a live model download or an external service, so they're gated out of the fast CI run via `--ignore=tests/voice --ignore=tests/vision`.
+
+---
+
 ## 1. Authentication & Session Management (`tests/api/test_v2_auth_integration.py`, `tests/auth/`)
 
 - Phone number normalization: a bare 10-digit number, one with spaces/dashes, and an already-E.164 number all resolve to the same stored identity.
