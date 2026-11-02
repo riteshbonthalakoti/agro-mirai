@@ -10,7 +10,7 @@ Live path
 ---------
 Authenticate with the service account whose key path is in the
 ``EE_SERVICE_ACCOUNT_KEY`` environment variable (never hardcoded; the key
-lives outside the repo — see ``docs/TOOLING.md``). Query
+lives outside the repo). Query
 ``COPERNICUS/S2_SR_HARMONIZED``, filtered to the field's point and the
 last ``lookback_days`` days, keeping only scenes below
 ``max_cloud_cover_pct``; take the most-recent such scene, compute NDVI

@@ -8,7 +8,7 @@ fabricated. This script does exactly that and writes it into
 ``specs/domains/fixtures/ndvi_cache.json``.
 
 Prerequisites: ``EE_SERVICE_ACCOUNT_KEY`` set to the service-account key
-path (see docs/TOOLING.md), and the service account granted
+path, and the service account granted
 ``roles/serviceusage.serviceUsageConsumer`` on its GCP project.
 
     EE_SERVICE_ACCOUNT_KEY=~/.config/agro-mirai/ee-service-account.json \

@@ -7,8 +7,7 @@ front of Google's FCM -- the app registers for an Expo push token
 wants to notify a farmer, with no Firebase SDK or service-account
 credential needed on the *backend* side at all (that credential only
 has to be uploaded once to the Expo/EAS project itself, a one-time
-console step -- see docs/PUSH_SETUP.md). Needs no API key for this
-scale of traffic.
+console step). Needs no API key for this scale of traffic.
 
 Never raises: a push failure must never break the request that
 triggered it (a scan result, a fresh advisory) -- same never-raise

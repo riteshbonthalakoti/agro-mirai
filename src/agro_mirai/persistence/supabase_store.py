@@ -3,9 +3,8 @@
 Talks to Supabase Postgres via the ``supabase-py`` client (PostgREST
 under the hood), against the tables created by
 ``migrations/postgres/001_init.sql`` (applied out-of-band via the
-``supabase`` CLI — see ``docs/TOOLING.md`` and
-``decisions/0005-migration-generation.md``; this module never runs DDL
-itself).
+``supabase`` CLI — see ``decisions/0005-migration-generation.md``;
+this module never runs DDL itself).
 
 Credentials come from ``SUPABASE_URL`` / ``SUPABASE_KEY`` env vars
 (placeholders documented in ``.env.example``, never committed for real).

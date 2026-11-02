@@ -1,8 +1,8 @@
 """``BhashiniVoiceAdapter`` — stub ``VoiceService`` implementation for
 the Digital India Bhashini API.
 
-Bhashini API access has been requested but has not cleared yet (see
-``docs/TOOLING.md``). Per the module scope, this adapter is not blocked
+Bhashini API access has been requested but has not cleared yet. Per
+the module scope, this adapter is not blocked
 on that: it implements the same ``VoiceService`` contract so swapping it
 in later is a config change, not a rewrite, but every method raises
 ``VoiceUnavailableError`` until real credentials are wired in via

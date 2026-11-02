@@ -69,8 +69,7 @@ pytestmark = pytest.mark.skipif(
     reason=(
         "voice-stack deps not present/compatible (needs transformers 4.x, "
         "not 5.x — see docs/architecture.md) and/or models/voice/ weights "
-        "not downloaded — run with .venv/Scripts/python.exe per "
-        "docs/TOOLING.md"
+        "not downloaded — run with .venv/Scripts/python.exe"
     ),
 )
 

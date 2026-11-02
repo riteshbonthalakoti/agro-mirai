@@ -160,10 +160,10 @@ class AI4BharatVoiceService:
                 if source_lang == "en"
                 else "ai4bharat/indictrans2-indic-en-dist-200M"
             )
-            # Local snapshot dir (a dev machine that already ran the
-            # `hf download ... --local-dir models/voice/<name>` from
-            # docs/TOOLING.md) wins if present; otherwise fall through to
-            # the HF repo id, same lazy-download-into-HF_HOME pattern as
+            # Local snapshot dir (a dev machine that already ran
+            # `hf download ... --local-dir models/voice/<name>`) wins
+            # if present; otherwise fall through to the HF repo id,
+            # same lazy-download-into-HF_HOME pattern as
             # IndicConformer/Whisper below -- both repos are HF-gated, so
             # this needs HF_TOKEN set (an account with access granted).
             repo_dir = self._model_dir / repo_id.split("/")[1]

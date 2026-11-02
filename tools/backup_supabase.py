@@ -2,8 +2,7 @@
 """Export the core Supabase tables to a timestamped local JSON file.
 
 Manual/ad-hoc backup for the Render free-tier deployment, which has no
-easy access to a scheduled cron job (see docs/BACKUPS.md for how and how
-often to run this). Reads SUPABASE_URL/SUPABASE_KEY the same way
+easy access to a scheduled cron job. Reads SUPABASE_URL/SUPABASE_KEY the same way
 SupabaseDataStore does; run against the same credentials as the deployed
 instance to back up its actual data.
 
