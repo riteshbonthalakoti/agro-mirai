@@ -38,7 +38,7 @@ const SOIL_TINT: Record<string, string> = {
   alluvial: '#EFE3CC', black: '#D9D9D6', red: '#F3D9CF', laterite: '#F5DFC8', mountain: '#E5E0D2',
   desert: '#F7ECC9', saline: '#EDEDE8', peaty: '#DCD3C8', unknown: '#EEF4E8',
 };
-const STEPS = ['place', 'size', 'crop', 'planted', 'soil'] as const;
+const ALL_STEPS = ['place', 'size', 'crop', 'planted', 'soil'] as const;
 
 function Q({ mode, n, title, hint, children }: { mode: 'page' | 'steps'; n: number; title: string; hint?: string; children: React.ReactNode }) {
   return (
@@ -72,6 +72,8 @@ export function FieldForm({ initial, onDone, onCancel }: { initial?: Field; onDo
   const [lon, setLon] = useState(initial ? String(initial.longitude) : '');
   const [soil, setSoil] = useState<string | null>(initial?.soil_type ?? null);
   const [crop, setCrop] = useState<string | null>(initial?.current_crop ?? null);
+  // nothing planted yet -> no "when did you plant it?" step to ask
+  const STEPS = crop === null ? ALL_STEPS.filter((s) => s !== 'planted') : ALL_STEPS;
   const [sown, setSown] = useState(initial?.sown_on ?? daysAgo(21));
   const [quick, setQuick] = useState<string | null>(initial?.sown_on ? null : 'm1');
   const [busy, setBusy] = useState(false);
@@ -163,7 +165,7 @@ export function FieldForm({ initial, onDone, onCancel }: { initial?: Field; onDo
       if (!name.trim()) return t('fieldNameRequired');
       if (!(areaN > 0)) return t('areaRequired');
     }
-    if (which === 'planted' || which === 'all') {
+    if ((which === 'planted' || which === 'all') && crop) {
       if (!/^\d{4}-\d{2}-\d{2}$/.test(sown) || isNaN(Date.parse(sown))) return t('dateInvalid');
     }
     return '';
@@ -179,10 +181,10 @@ export function FieldForm({ initial, onDone, onCancel }: { initial?: Field; onDo
     setErr('');
     const areaN = Math.round(parseFloat(area) * HA_PER[unit] * 10000) / 10000;
     const payload: Record<string, unknown> = {
-      name: name.trim(), latitude: parseFloat(lat), longitude: parseFloat(lon), area_ha: areaN, sown_on: sown,
+      name: name.trim(), latitude: parseFloat(lat), longitude: parseFloat(lon), area_ha: areaN,
     };
     if (soil) payload.soil_type = soil;
-    if (crop) payload.current_crop = crop;
+    if (crop) { payload.current_crop = crop; payload.sown_on = sown; }
 
     setBusy(true);
     try {
@@ -462,7 +464,10 @@ export function FieldForm({ initial, onDone, onCancel }: { initial?: Field; onDo
   }
 
   if (mode === 'steps') {
-    const cur = [placeQ, sizeQ, cropQn, plantedQ, soilQ][step];
+    const stepContent: Record<(typeof ALL_STEPS)[number], React.ReactNode> = {
+      place: placeQ, size: sizeQ, crop: cropQn, planted: plantedQ, soil: soilQ,
+    };
+    const cur = stepContent[STEPS[step]];
     const last = step === STEPS.length - 1;
     return (
       <View style={fs.rootView}>
@@ -494,7 +499,7 @@ export function FieldForm({ initial, onDone, onCancel }: { initial?: Field; onDo
           {placeQ}
           {sizeQ}
           {cropQn}
-          {plantedQ}
+          {crop !== null ? plantedQ : null}
           {soilQ}
           {errBox}
           <View style={fs.saveBtnWrapper}>{primary(t('saveField'), submit)}</View>
