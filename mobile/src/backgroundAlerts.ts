@@ -60,7 +60,13 @@ TaskManager?.defineTask(ALERT_TASK, async () => {
     // across the many times WorkManager may run this task per day).
     const sentOn = await cacheGet<string>(DAILY_DIGEST_KEY);
     const today = todayLocal();
-    if (sentOn !== today && list.length) {
+    const topAlreadyAlerted = seen.has(`adv-${list[0]?.id}`) || fresh.some((a) => a.id === list[0]?.id);
+    if (sentOn !== today && list.length && !topAlreadyAlerted) {
+      // Skip the digest when today's top advisory was already sent as its
+      // own high/severe alert, whether just now in `fresh` above (same run)
+      // or by an earlier run today (`seen`, from the persisted inbox) --
+      // same content under two different titles, which reads as a
+      // duplicate notification even though each identifier is unique.
       const lang: Lang = (await cacheGet<Lang>('lang')) || 'en';
       const top = list[0];
       const title = `${target.name}: ${STRINGS[lang].dailyAdviceTitle}`;

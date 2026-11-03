@@ -3,6 +3,7 @@ import {
   ActivityIndicator,
   Animated,
   Easing,
+  Keyboard,
   KeyboardAvoidingView,
   Modal,
   PanResponder,
@@ -152,6 +153,24 @@ function ChatPanel({ onClose, sheetHeight }: { onClose: () => void; sheetHeight:
   const [err, setErr] = useState('');
   const scrollRef = useRef<ScrollView>(null);
 
+  // KeyboardAvoidingView's own layout measurement is unreliable here: this
+  // panel sits inside a transparent Modal with an animated transform
+  // (the bottom-sheet slide), and on Android that combination routinely
+  // leaves the input bar under the keyboard instead of pushing it up.
+  // Tracking the keyboard height directly and padding the input row with
+  // it sidesteps that measurement entirely -- works regardless of the
+  // Modal/transform situation above it.
+  const [kbHeight, setKbHeight] = useState(0);
+  useEffect(() => {
+    if (Platform.OS !== 'android') return;
+    const showSub = Keyboard.addListener('keyboardDidShow', (e) => setKbHeight(e.endCoordinates.height));
+    const hideSub = Keyboard.addListener('keyboardDidHide', () => setKbHeight(0));
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
+
   // On open, resume the farmer's most recent thread rather than always
   // starting blank -- the whole point of persisting sessions server-side.
   useEffect(() => {
@@ -247,10 +266,10 @@ function ChatPanel({ onClose, sheetHeight }: { onClose: () => void; sheetHeight:
             </TouchableOpacity>
           </View>
 
-          {/* Android had no avoidance at all here (behavior was undefined) --
-              the input box stayed pinned to the screen bottom under the
-              keyboard instead of rising above it. */}
-          <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+          {/* KeyboardAvoidingView alone isn't reliable in here (see kbHeight
+              above) -- kept for iOS, where it behaves correctly; Android
+              instead gets manual bottom padding from kbHeight below. */}
+          <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
             {loadingThread ? (
               <ActivityIndicator style={{ marginTop: S.lg }} color={C.accent} />
             ) : (
@@ -287,7 +306,7 @@ function ChatPanel({ onClose, sheetHeight }: { onClose: () => void; sheetHeight:
               </ScrollView>
             )}
 
-            <View style={{ flexDirection: 'row', alignItems: 'flex-end', paddingHorizontal: S.md, paddingTop: S.sm, paddingBottom: Math.max(S.sm, insets.bottom), borderTopWidth: 1, borderTopColor: C.border, gap: S.sm }}>
+            <View style={{ flexDirection: 'row', alignItems: 'flex-end', paddingHorizontal: S.md, paddingTop: S.sm, paddingBottom: Math.max(S.sm, insets.bottom, kbHeight ? kbHeight - insets.bottom + S.sm : 0), borderTopWidth: 1, borderTopColor: C.border, gap: S.sm }}>
               <TextInput
                 value={input}
                 onChangeText={setInput}
