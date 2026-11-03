@@ -45,3 +45,4 @@ yarn-error.*
 # Firebase credentials (per-developer/CI, never committed)
 google-services.json
 GoogleService-Info.plist
+firebase-adminsdk-*.json
