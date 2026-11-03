@@ -41,3 +41,7 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+# Firebase credentials (per-developer/CI, never committed)
+google-services.json
+GoogleService-Info.plist

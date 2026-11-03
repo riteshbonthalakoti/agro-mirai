@@ -7,15 +7,19 @@
 // dynamic config file to vary by build. See docs/TOOLING.md's "OTA
 // updates" section for how this is set at prebuild time.
 //
-// Also switches runtimeVersion to the "fingerprint" policy instead of
-// "appVersion": fingerprint is computed from the actual native code, so
-// an update can never be silently offered to a binary with a mismatched
-// native module set just because someone forgot to bump `version` in
-// app.json (a real, easy-to-miss maintenance burden `appVersion` would
-// have left on every future native change).
+// runtimeVersion is a fixed, manually-bumped string, not the "fingerprint"
+// policy -- see decisions/0032-runtime-version-policy.md. fingerprint's
+// hash turned out to not be reproducible outside the exact machine/moment
+// a given APK was built (confirmed twice, independently, on real shipped
+// APKs), so OTA updates were silently failing to reach installed builds
+// with no error anywhere. A plain string means a JS-only change always
+// reaches every build still on this version, with zero fingerprint
+// guesswork -- the cost is remembering to bump this by hand on an actual
+// native change (new native module, permission, config plugin, native
+// SDK upgrade). See the ADR for the full incident writeup.
 module.exports = ({ config }) => ({
   ...config,
-  runtimeVersion: { policy: 'fingerprint' },
+  runtimeVersion: '1.0.0',
   updates: {
     ...config.updates,
     requestHeaders: {
